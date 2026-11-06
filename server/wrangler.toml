@@ -1,0 +1,10 @@
+# Velvet Dairy Network: Cloudflare Worker + D1.
+# The deploy workflow (.github/workflows/server.yml) creates the database and fills in database_id.
+name = "velvet-dairy"
+main = "src/index.js"
+compatibility_date = "2025-06-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "velvet-dairy"
+database_id = "REPLACED_BY_DEPLOY"
