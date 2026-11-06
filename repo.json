@@ -6,12 +6,12 @@
     "AssemblyVersion": "0.2.0.0",
     "Punchline": "Be the cow. Keep your dairy, get milked, sell to the creamery. Adults only.",
     "Description": "You play the cow: keep your needs up inside your registered dairy, get milked in your stalls or by a registered farmhand, fill creamery orders, raise your milk quality and level up. 18+ only.",
-    "RepoUrl": "https://github.com/sadoniaveletoria/VelvetDairy",
+    "RepoUrl": "https://github.com/sadoniaveletoria/velvetdairy",
     "ApplicableVersion": "any",
     "DalamudApiLevel": 15,
     "Tags": [ "game", "roleplay", "housing", "nsfw" ],
-    "DownloadLinkInstall": "https://github.com/sadoniaveletoria/VelvetDairy/releases/latest/download/latest.zip",
-    "DownloadLinkUpdate": "https://github.com/sadoniaveletoria/VelvetDairy/releases/latest/download/latest.zip",
-    "DownloadLinkTesting": "https://github.com/sadoniaveletoria/VelvetDairy/releases/latest/download/latest.zip"
+    "DownloadLinkInstall": "https://github.com/sadoniaveletoria/velvetdairy/releases/latest/download/latest.zip",
+    "DownloadLinkUpdate": "https://github.com/sadoniaveletoria/velvetdairy/releases/latest/download/latest.zip",
+    "DownloadLinkTesting": "https://github.com/sadoniaveletoria/velvetdairy/releases/latest/download/latest.zip"
   }
 ]

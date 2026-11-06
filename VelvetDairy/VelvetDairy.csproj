@@ -3,7 +3,7 @@
   <PropertyGroup>
     <Version>0.2.0.0</Version>
     <Description>Velvet Dairy — be the cow. Care, milking stalls, farmhands and a creamery economy. Proof of concept.</Description>
-    <PackageProjectUrl>https://github.com/sadoniaveletoria/VelvetDairy</PackageProjectUrl>
+    <PackageProjectUrl>https://github.com/sadoniaveletoria/velvetdairy</PackageProjectUrl>
     <IsPackable>false</IsPackable>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>

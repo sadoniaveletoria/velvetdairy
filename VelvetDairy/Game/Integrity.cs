@@ -17,6 +17,15 @@ public static partial class Integrity
 {
     public enum Result { Fine, NewSave, Restored, Reset }
 
+    /// <summary>
+    /// Public key used by builds made before the real VELVET_INTEGRITY_KEY secret exists (early testing).
+    /// Saves signed with it are accepted once and re-signed with the real key. Remove this once testers have updated.
+    /// </summary>
+    public const string TestingKeyHex = "77363D5FA05AB2AB759D4BBFE517696A4380D031387CAC5DC80787CB2553B00B";
+
+    /// <summary>True when this build has no real key (CI fell back to the testing key).</summary>
+    public static bool UsingTestingKey => KeyHex == TestingKeyHex;
+
     private static string BackupPath => Path.Combine(Plugin.PluginInterface.ConfigDirectory.FullName, "save-backup.json");
 
     /// <summary>A stable text version of everything worth cheating on. Numbers are rounded so tiny float differences never matter.</summary>
@@ -55,15 +64,17 @@ public static partial class Integrity
         return sb.ToString();
     }
 
-    public static string Sign(FarmSave f)
+    public static string Sign(FarmSave f) => Sign(f, KeyHex);
+
+    private static string Sign(FarmSave f, string keyHex)
     {
-        using var h = new HMACSHA256(Convert.FromHexString(KeyHex));
+        using var h = new HMACSHA256(Convert.FromHexString(keyHex));
         return Convert.ToHexString(h.ComputeHash(Encoding.UTF8.GetBytes(Canonical(f))));
     }
 
-    private static bool Valid(FarmSave f) =>
+    private static bool Valid(FarmSave f, string? keyHex = null) =>
         !string.IsNullOrEmpty(f.Seal) &&
-        CryptographicOperations.FixedTimeEquals(Encoding.ASCII.GetBytes(f.Seal), Encoding.ASCII.GetBytes(Sign(f)));
+        CryptographicOperations.FixedTimeEquals(Encoding.ASCII.GetBytes(f.Seal), Encoding.ASCII.GetBytes(Sign(f, keyHex ?? KeyHex)));
 
     /// <summary>Signs the save and keeps a copy of it as the last good backup.</summary>
     public static void Seal(FarmSave f)
@@ -91,6 +102,8 @@ public static partial class Integrity
         // Saves from before signing existed (and brand new saves) have no seal yet: accept them once
         if (string.IsNullOrEmpty(f.Seal)) return Result.NewSave;
         if (Valid(f)) return Result.Fine;
+        // Signed by an early testing build: accept it and re-sign with this build's key
+        if (!UsingTestingKey && Valid(f, TestingKeyHex)) return Result.NewSave;
 
         Plugin.Log.Warning("Velvet Dairy: the save doesn't match its signature (edited outside the game).");
         try

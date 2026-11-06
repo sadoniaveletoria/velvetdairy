@@ -85,7 +85,7 @@ Developer mode adds a **Developer** panel in Settings (shortcuts, the test farmh
 
 ## Install (players and testers)
 1. `/xlsettings` → **Experimental** → **Custom Plugin Repositories**.
-2. Add `https://raw.githubusercontent.com/sadoniaveletoria/VelvetDairy/main/repo.json`, tick it, **Save**.
+2. Add `https://raw.githubusercontent.com/sadoniaveletoria/velvetdairy/main/repo.json`, tick it, **Save**.
 3. `/xlplugins` → search **Velvet Dairy** → Install. Updates arrive like any other plugin.
 
 ## Releasing (for me)
