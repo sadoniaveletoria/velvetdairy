@@ -24,7 +24,7 @@ public static class Toasts
     public static void Prune(double now) => Items.RemoveAll(t => now - t.T0 > 5);
 }
 
-public sealed class MainWindow : Window
+public sealed partial class MainWindow : Window
 {
     private readonly Plugin plugin;
     private readonly Art art;
@@ -33,7 +33,7 @@ public sealed class MainWindow : Window
     private FarmSave F => plugin.Config.Farm;
     private DairyGame G => plugin.Game;
 
-    private static readonly string[] Tabs = { "Barn", "Creamery", "Shop", "Dairy", "Progress", "Settings" };
+    private static readonly string[] Tabs = { "Barn", "Creamery", "Shop", "Dairy", "Dairies", "Progress", "Settings" };
     private int tab;
     private bool ticked18;
     private string dairyName = "";
@@ -54,6 +54,13 @@ public sealed class MainWindow : Window
     }
 
     private const float Pad = 18f;
+
+    /// <summary>Opens the window on a tab (used by the HUDs).</summary>
+    public void OpenTab(int i)
+    {
+        tab = i;
+        IsOpen = true;
+    }
 
     /// <summary>Spoiled milk is tinted a sour yellow.</summary>
     public static readonly Vector4 SourMilk = new(0.93f, 0.88f, 0.60f, 1f);
@@ -179,7 +186,8 @@ public sealed class MainWindow : Window
                 case 1: DrawCreamery(bodyMin, bodyMax); break;
                 case 2: DrawShop(bodyMin, bodyMax); break;
                 case 3: DrawDairy(bodyMin, bodyMax); break;
-                case 4: DrawProgress(bodyMin, bodyMax); break;
+                case 4: DrawNetwork(bodyMin, bodyMax); break;
+                case 5: DrawProgress(bodyMin, bodyMax); break;
                 default: DrawSettings(bodyMin, bodyMax); break;
             }
         }
@@ -215,7 +223,9 @@ public sealed class MainWindow : Window
         Ui.Icon(dl, "coin", new Vector2(right - cw - 22, o.Y + 36), 16);
         Ui.Text(dl, fonts.Heading, coins, new Vector2(right, o.Y + 24), Theme.Ink, 1f);
         var where = G.Where;
-        var chip = (G.Dev ? "DEV - " : "") + (G.Paused ? "Paused" : where.InDairy ? where.Why : F.Dairy == null ? "No dairy yet" : $"Away from {F.Dairy.Name}");
+        var dairy = G.DairyName;
+        var chip = (G.Dev ? "DEV - " : "") + (G.Paused ? "Paused" : where.InDairy ? where.Why : dairy.Length == 0 ? "No dairy yet" : $"Away from {dairy}");
+        if (G.Networked && G.Role != "cow" && !G.Paused) chip = $"{G.Role} · {chip}";
         var chipColor = G.Paused ? Theme.InkSoft : where.InDairy ? Theme.SageDeep : Theme.RoseDeep;
         var cs = Ui.Measure(fonts.Label, chip.ToUpperInvariant());
         var cmin = new Vector2(right - cs.X - 30, o.Y + 56);
@@ -224,6 +234,17 @@ public sealed class MainWindow : Window
         dl.AddRect(cmin, cmax, Ui.U(chipColor, 0.6f), 99, ImDrawFlags.None, 1f);
         dl.AddCircleFilled(new Vector2(cmin.X + 11, (cmin.Y + cmax.Y) / 2), 3.5f, Ui.U(chipColor));
         Ui.Text(dl, fonts.Label, chip.ToUpperInvariant(), new Vector2(cmin.X + 20, cmin.Y + 3), chipColor);
+
+        // How many people are playing right now
+        if (G.Net.Last != null)
+        {
+            var online = $"{G.Net.Last.Online:N0} online";
+            var ow = Ui.Measure(fonts.Small, online).X;
+            var ox = right - cw - 40 - ow;
+            dl.AddCircleFilled(new Vector2(ox - 9, o.Y + 35), 4f, Ui.U(Theme.SageDeep));
+            Ui.Text(dl, fonts.Small, online, new Vector2(ox, o.Y + 27), Theme.SageDeep);
+        }
+
         return h;
     }
 
@@ -770,7 +791,7 @@ public sealed class MainWindow : Window
     private void DrawStallColumn(float width)
     {
         var problem = G.StallProblem();
-        var status = F.Stalls!.Count == 0 ? "No stalls yet. Set one up on the Dairy tab." : problem ?? $"You're in {G.Where.AtStall!.Name}.";
+        var status = G.Stalls.Count == 0 ? (G.Networked && !G.IsOwner ? "Your dairy's owner hasn't set up stalls yet." : "No stalls yet. Set one up on the Dairy tab.") : problem ?? $"You're in {G.Where.AtStall!.Name}.";
         var how = G.AutoStall ? "Sitting in a stall starts it by itself." : "Sit in a stall, then press Start.";
         if (ListRow(Ico("bucket"), "Stalls", Theme.Ink,
                 new[] { new Line(status, problem == null ? Theme.SageDeep : Theme.InkSoft), new Line(how, Theme.InkSoft) },
@@ -780,14 +801,14 @@ public sealed class MainWindow : Window
 
     private void DrawHandColumn(float width)
     {
-        var hands = F.Farmhands!.Where(f => G.Dev || !f.IsTest).ToList();
+        var hands = G.Farmhands.Where(f => G.Dev || !f.IsTest).ToList();
         if (hands.Count == 0)
         {
             ListRow(Ico("ribbon"), "Hand milking", Theme.Ink,
                 new[]
                 {
-                    new Line("Only a registered farmhand of your dairy can do this.", Theme.InkSoft),
-                    new Line("Right-click a player > Velvet Dairy > Register as farmhand.", Theme.InkSoft),
+                    new Line(G.Networked ? "Only a farmer of your dairy can do this." : "Only a registered farmhand of your dairy can do this.", Theme.InkSoft),
+                    new Line(G.Networked ? "Your dairy's owner invites farmers." : "Right-click a player > Velvet Dairy > Register as farmhand.", Theme.InkSoft),
                 }, Array.Empty<Btn>(), width);
             return;
         }
@@ -866,6 +887,8 @@ public sealed class MainWindow : Window
             var wait = F.NextOrderUtc - DateTime.UtcNow;
             ImGui.TextColored(Theme.InkSoft, wait.TotalSeconds > 0 ? $"Next order in {Mins(wait)}." : "A new order is on its way.");
         }
+
+        DrawNetOrders(width);
     }
 
     // =====================================================================
@@ -992,6 +1015,12 @@ public sealed class MainWindow : Window
 
     private void DrawDairy(Vector2 min, Vector2 max)
     {
+        if (G.Networked)
+        {
+            DrawNetDairy(min, max);
+            return;
+        }
+
         var mid = (min.X + max.X) / 2;
         var splitY = min.Y + (max.Y - min.Y) * 0.5f;
         Panel("##place", min, new Vector2(mid - 7, splitY - 7), "Your dairy", DrawPlace);
@@ -1042,7 +1071,7 @@ public sealed class MainWindow : Window
     {
         Ui.Wrapped($"A stall is a seat in your dairy: a chair, bench or bed. Sit on it and press Add. You can have {G.MaxStalls}.", Theme.InkSoft, width);
         Gap(6);
-        foreach (var s in F.Stalls!.ToList())
+        foreach (var s in G.Stalls.ToList())
         {
             var here = G.Where.AtStall == s;
             if (Row($"##rmstall{s.Id}", "bucket", s.Name + (here ? "  ·  you're here" : ""),
@@ -1109,6 +1138,11 @@ public sealed class MainWindow : Window
             else if (clicked == 0 && !fh.IsTest) G.RecordEmote(fh);
         }
 
+        DrawEmotes(width);
+    }
+
+    private void DrawEmotes(float width)
+    {
         SubHeading("Milking emotes", width);
         string? remove = null;
         foreach (var e in F.HandEmotes!)
@@ -1261,6 +1295,12 @@ public sealed class MainWindow : Window
         if (ImGui.Checkbox("Lock the HUD in place", ref b)) { F.LockHud = b; changed = true; }
         b = F.ChatEcho;
         if (ImGui.Checkbox("Echo events to my chat log (only you see it)", ref b)) { F.ChatEcho = b; changed = true; }
+        b = F.NetEnabled;
+        if (ImGui.Checkbox("Join the Velvet Dairy Network (dairies, invites, deliveries, online count)", ref b)) { F.NetEnabled = b; changed = true; }
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip("Shares only what the network needs: a random id for this install, your dairy's listing, and your character name with the dairy you join.");
+        b = F.ShowOwnerHud;
+        if (ImGui.Checkbox("Show the owner HUD when I own a dairy", ref b)) { F.ShowOwnerHud = b; changed = true; }
 
         b = F.SoundOn;
         if (ImGui.Checkbox("Milking sounds (only you hear them)", ref b)) { F.SoundOn = b; changed = true; }
@@ -1289,7 +1329,8 @@ public sealed class MainWindow : Window
 
         SubHeading("Privacy and safety", width);
         Ui.Wrapped("Everything stays in this window and your own chat log. Nothing is posted in public chat, and the plugin never moves your character or does emotes for you. " +
-                   "Farmhands are only ever people you registered yourself.", Theme.InkSoft, width);
+                   "Farmhands are only ever people you registered yourself or your dairy invited. " +
+                   "The network only shows your dairy's address when you make it public, and your name only if you choose to show it.", Theme.InkSoft, width);
 
         Gap(10);
         if (ImGui.Button("Withdraw 18+ confirmation"))
@@ -1348,6 +1389,10 @@ public sealed class MainWindow : Window
         if (ImGui.SliderFloat("Farmhand range (default 3 y)", ref range, 1f, 8f, "%.1f")) { F.HandRange = range; changed = true; }
         b = F.HandNeedsTarget;
         if (ImGui.Checkbox("Farmhand must be targeting me (default on)", ref b)) { F.HandNeedsTarget = b; changed = true; }
+        var srv = F.NetServerOverride;
+        ImGui.SetNextItemWidth(320);
+        if (ImGui.InputText("Test network server (blank = live)", ref srv, 200)) { F.NetServerOverride = srv; changed = true; }
+        ImGui.TextColored(Theme.InkSoft, $"Network: {G.Net.Status}  ·  {G.Net.Api ?? "no address"}");
         if (ImGui.Button("Reset rules to defaults"))
         {
             F.Paused = false;

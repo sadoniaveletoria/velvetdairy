@@ -139,6 +139,13 @@ public sealed class HudWindow : Window
             col = Theme.RoseDeep;
         }
 
+        // Farmers and bulls don't make milk: say what they are instead
+        if (!G.ProducesMilk && !G.Paused && s == null)
+        {
+            status = $"{char.ToUpperInvariant(G.Role[0])}{G.Role[1..]}{(G.DairyName.Length > 0 ? $" at {G.DairyName}" : "")}{(G.Where.InDairy ? " · here" : "")}";
+            col = G.Where.InDairy ? Theme.SageDeep : Theme.InkSoft;
+        }
+
         // Latest message briefly replaces the status
         var now = ImGui.GetTime();
         if (Toasts.Items.Count > 0 && now - Toasts.Items[0].T0 < 4)

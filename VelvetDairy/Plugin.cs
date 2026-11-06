@@ -5,6 +5,7 @@ using Dalamud.IoC;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
 using VelvetDairy.Game;
+using VelvetDairy.Network;
 using VelvetDairy.Windows;
 
 namespace VelvetDairy;
@@ -30,6 +31,11 @@ public sealed class Plugin : IDalamudPlugin
     public MainWindow MainWindow { get; }
     public HudWindow Hud { get; }
     public Sounds Sounds { get; }
+    public NetClient Net { get; }
+    public OwnerHudWindow OwnerHud { get; }
+
+    /// <summary>This build's version, sent to the network so old versions can be told to update.</summary>
+    public static string Version { get; } = typeof(Plugin).Assembly.GetName().Version?.ToString() ?? "0";
 
     private readonly WindowSystem windowSystem = new("VelvetDairy");
     private readonly ContextMenuHandler contextMenu;
@@ -60,12 +66,15 @@ public sealed class Plugin : IDalamudPlugin
         Ui.Art = art;
         Ui.Fonts = fonts;
 
+        Net = new NetClient(this);
         Game = new DairyGame(this);
         Sounds = new Sounds(this);
         MainWindow = new MainWindow(this, art, fonts);
         Hud = new HudWindow(this, art, fonts);
         windowSystem.AddWindow(MainWindow);
         windowSystem.AddWindow(Hud);
+        OwnerHud = new OwnerHudWindow(this, art, fonts);
+        windowSystem.AddWindow(OwnerHud);
         contextMenu = new ContextMenuHandler(this);
 
         switch (integrity)
@@ -96,6 +105,7 @@ public sealed class Plugin : IDalamudPlugin
         var dt = (float)fw.UpdateDelta.TotalSeconds;
         Game.Update(dt);
         Sounds.Update();
+        Net.Update();
 
         // Needs and milk change every second; write them out now and then
         saveTimer += dt;
@@ -111,6 +121,7 @@ public sealed class Plugin : IDalamudPlugin
         Framework.Update -= OnFrameworkUpdate;
         Game.Stop("Plugin unloaded.");
         Sounds.Dispose();
+        Net.Dispose();
         contextMenu.Dispose();
 
         PluginInterface.UiBuilder.OpenConfigUi -= MainWindow.Toggle;

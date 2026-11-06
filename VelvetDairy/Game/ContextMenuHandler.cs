@@ -48,6 +48,26 @@ public sealed class ContextMenuHandler : IDisposable
         var items = new List<MenuItem>();
         var fh = game.FindFarmhand(name, worldId);
 
+        if (game.Networked)
+        {
+            var member = game.MemberNamed(name, worldName);
+            if (member == null)
+                foreach (var role in game.InvitableRoles)
+                    items.Add(Item($"Invite to {game.DairyName} as a {role}", () => game.InvitePlayer(name, worldId, role)));
+            else if (game.CanRemove(member))
+                items.Add(Item($"Remove from {game.DairyName}", () => game.RemoveMember(member)));
+
+            if (fh != null && game.ProducesMilk)
+            {
+                if (game.Active == null) items.Add(Item("Let them milk me", () => game.StartHand(fh)));
+                else items.Add(Item("Stop milking", () => game.Stop()));
+                items.Add(Item("Use their current emote for milking", () => game.RecordEmote(fh)));
+            }
+
+            if (items.Count == 0) items.Add(Item(member != null ? $"{member.Name} is a {member.Role} in your dairy" : "Nothing to do here", () => { }));
+            return items;
+        }
+
         if (fh == null)
         {
             items.Add(Item("Register as farmhand", () => game.AddFarmhand(name, worldId, worldName)));

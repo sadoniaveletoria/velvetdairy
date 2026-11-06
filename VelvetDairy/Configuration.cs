@@ -71,6 +71,20 @@ public class FarmSave
     public FarmStats Stats { get; set; } = new();
     public List<string>? Log { get; set; }
 
+    // ----- Velvet Dairy Network -----
+    public string NetId { get; set; } = "";          // random id for this install (not your character)
+    public string NetKey { get; set; } = "";         // secret that proves it's this install
+    public bool NetEnabled { get; set; } = true;
+    public string NetServerOverride { get; set; } = "";   // developer only: test server address
+    public NetMember? NetMember { get; set; }         // the dairy you belong to (cached from the server)
+    public bool ListPublic { get; set; } = true;      // your dairy shows its address in the directory
+    public bool ListShowName { get; set; }            // your character name shows as the owner
+    public string ListDescription { get; set; } = "";
+    public string OwnerRole { get; set; } = "cow";    // what you play in your own dairy: cow, farmer, bull or none
+    public bool ShowOwnerHud { get; set; } = true;
+    public string VisitDay { get; set; } = "";        // bonus orders at other dairies, per day
+    public List<string>? VisitOrdersDone { get; set; }
+
     // ----- Save protection -----
     public string Seal { get; set; } = "";            // signature of the progress above (see Game/Integrity.cs)
     public int EditsCaught { get; set; }              // times an edited save was caught and undone
@@ -86,6 +100,7 @@ public class FarmSave
         if (Tank == null || Tank.Length != Game.Grades.Count) Tank = new float[Game.Grades.Count];
         Orders ??= new List<Order>();
         Log ??= new List<string>();
+        VisitOrdersDone ??= new List<string>();
         if (!StarterGiven)
         {
             Pantry["hay"] = 6;
@@ -93,6 +108,16 @@ public class FarmSave
             StarterGiven = true;
         }
     }
+}
+
+[Serializable]
+public class NetMember
+{
+    public string DairyId { get; set; } = "";
+    public string Dairy { get; set; } = "";
+    public string Role { get; set; } = "";
+    public bool IsOwner { get; set; }
+    public string HouseId { get; set; } = "";
 }
 
 [Serializable]

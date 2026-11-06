@@ -62,6 +62,20 @@ A small card with your milk bottle, grade, needs and status. Drag it where you l
 - The Dairy tab shows what the plugin sees for each farmhand: distance, whether they're targeting you and which emote they're doing. If an emote you want doesn't count, have them do it and press **Use their emote**.
 - Right-click a farmhand > Velvet Dairy > **Let them milk me** starts it from the world.
 
+## The Velvet Dairy Network
+
+When the network is up, dairies are shared between players:
+
+- **Owners** register their own estate (house, FC house, apartment or shared estate) as a dairy. An address can only be registered once, and each player can own or belong to one dairy at a time.
+- Owners invite **farmers, cows and bulls**, set up and upgrade the dairy's stalls, and choose a play role for themselves (any role, or none). Owners get an extra **owner HUD** showing who's online, who's in the dairy and how full each cow is.
+- **Farmers** hand milk the dairy's cows and can invite cows and bulls (not other farmers).
+- **Cows** make milk and get milked in the dairy's stalls or by its farmers. **Bulls** are a role only for now.
+- Invite with right-click > Velvet Dairy, or target a player and use the Members panel on the Dairy tab.
+- The **Dairies** tab shows how many people are online and lists every dairy. Public ones show their address: Visit takes you there with Lifestream (or copies the address).
+- **Deliveries**: owners of public dairies post buy orders (coins are held until filled). Cows go there in person and deliver from their tank. Each public dairy also has two creamery visitor orders a day.
+
+Without the network (or with it turned off in Settings) everything works locally as before.
+
 ## Privacy and safety
 - Everything stays in the window and your own chat log. Nothing is ever said in public chat.
 - The plugin never moves your character or does emotes for you.
@@ -87,6 +101,10 @@ Developer mode adds a **Developer** panel in Settings (shortcuts, the test farmh
 1. `/xlsettings` → **Experimental** → **Custom Plugin Repositories**.
 2. Add `https://raw.githubusercontent.com/sadoniaveletoria/velvetdairy/main/repo.json`, tick it, **Save**.
 3. `/xlplugins` → search **Velvet Dairy** → Install. Updates arrive like any other plugin.
+
+## Network server (for me)
+
+The server is in `server/` (Cloudflare Worker + D1). Add the repo secrets `CLOUDFLARE_API_TOKEN` (Workers Scripts edit + D1 edit) and `CLOUDFLARE_ACCOUNT_ID`; the "Network server" workflow then creates the database, deploys, and writes `network.json`, which the plugin reads to find the server. Tests: `node --no-warnings server/test/run.mjs`.
 
 ## Releasing (for me)
 Bump `<Version>` in `VelvetDairy/VelvetDairy.csproj` **and** `AssemblyVersion` in `repo.json`, then push to `main`.

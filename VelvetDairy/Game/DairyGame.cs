@@ -4,6 +4,7 @@ using System.Linq;
 using System.Numerics;
 using Dalamud.Game.ClientState.Objects.Enums;
 using Dalamud.Game.ClientState.Objects.SubKinds;
+using VelvetDairy.Network;
 
 namespace VelvetDairy.Game;
 
@@ -77,6 +78,149 @@ public sealed class DairyGame
     public float StallRange => Dev ? F.StallRange : 1.6f;
     public float HandRange => Dev ? F.HandRange : 3f;
     public bool HandNeedsTarget => !Dev || F.HandNeedsTarget;
+
+    // =================================================================
+    // Network mode: when the Velvet Dairy Network is up, your dairy is the one you belong to on the server
+    // (as its owner, or invited as a farmer, cow or bull). Without the network everything runs locally as before.
+    // =================================================================
+
+    public NetClient Net => plugin.Net;
+
+    /// <summary>The game uses the network's dairies, roles and stalls.</summary>
+    public bool Networked => F.NetEnabled && (F.NetMember != null || (Net.Api != null && Net.Last != null));
+
+    /// <summary>Your dairy on the network (kept in the save so it still works if the server is briefly unreachable).</summary>
+    public NetMember? Member => Networked ? F.NetMember : null;
+
+    /// <summary>Your role: owner's play role or what you were invited as. Locally everyone is a cow.</summary>
+    public string Role => !Networked ? "cow" : F.NetMember?.Role ?? "cow";
+    public bool IsOwner => !Networked || F.NetMember?.IsOwner == true;
+    public bool IsCow => Role == "cow";
+    public bool CanInvite => Networked && F.NetMember != null && (F.NetMember.IsOwner || F.NetMember.Role == "farmer");
+
+    /// <summary>Only cows make and give milk. Bulls and farmers keep their needs but have no bottle (yet).</summary>
+    public bool ProducesMilk => IsCow;
+
+    public string DairyName => Networked ? F.NetMember?.Dairy ?? "" : F.Dairy?.Name ?? "";
+
+    private List<Stall> netStalls = new();
+    private List<Farmhand> netFarmers = new();
+
+    /// <summary>The stalls you can use: your dairy's (set up by its owner) on the network, your own locally.</summary>
+    public List<Stall> Stalls => Networked ? netStalls : F.Stalls!;
+
+    /// <summary>Who can hand milk you: your dairy's farmers on the network, your registered farmhands locally. Plus the dev test farmhand.</summary>
+    public List<Farmhand> Farmhands => Networked ? netFarmers : F.Farmhands!;
+
+    /// <summary>Server told us our membership (every heartbeat).</summary>
+    public void OnMembership(MembershipInfo? m)
+    {
+        var before = F.NetMember;
+        if (m == null)
+        {
+            if (before != null)
+            {
+                F.NetMember = null;
+                netStalls = new List<Stall>();
+                netFarmers = Dev ? F.Farmhands!.Where(f => f.IsTest).ToList() : new List<Farmhand>();
+                Stop("You're no longer in a dairy.");
+                plugin.SaveConfig();
+            }
+
+            return;
+        }
+
+        if (before == null || before.DairyId != m.DairyId || before.Role != m.Role || before.IsOwner != m.IsOwner || before.Dairy != m.Dairy)
+        {
+            F.NetMember = new NetMember
+            {
+                DairyId = m.DairyId, Dairy = m.Dairy, Role = m.Role, IsOwner = m.IsOwner,
+                HouseId = before?.DairyId == m.DairyId ? before.HouseId : "",
+            };
+            if (before != null && before.Role != m.Role) Say($"You're now a {m.Role} at {m.Dairy}.", 1);
+            if (!ProducesMilk) Stop();
+            plugin.SaveConfig();
+        }
+    }
+
+    /// <summary>Your dairy's details: address, stalls and members (farmers become your hand milkers).</summary>
+    public void OnMyDairy(MyDairyReply? r)
+    {
+        if (r?.Dairy == null || F.NetMember == null) return;
+        if (F.NetMember.HouseId != r.Dairy.HouseId)
+        {
+            F.NetMember.HouseId = r.Dairy.HouseId;
+            plugin.SaveConfig();
+        }
+
+        // Keep the same Stall objects where possible so a running session isn't cut off by a refresh
+        var stalls = new List<Stall>();
+        foreach (var si in r.Stalls)
+        {
+            var s = netStalls.FirstOrDefault(x => x.Id == si.Id) ?? new Stall { Id = si.Id };
+            s.Name = si.Name;
+            s.X = si.X;
+            s.Y = si.Y;
+            s.Z = si.Z;
+            s.Tier = Math.Clamp(si.Tier, 1, 4);
+            stalls.Add(s);
+        }
+
+        netStalls = stalls;
+
+        var me = Plugin.ObjectTable.LocalPlayer;
+        var myName = me?.Name.TextValue ?? "";
+        var farmers = new List<Farmhand>();
+        foreach (var m in r.Members.Where(m => m.Role == "farmer" && !m.Name.Equals(myName, StringComparison.OrdinalIgnoreCase)))
+        {
+            var fh = netFarmers.FirstOrDefault(f => !f.IsTest && f.Name == m.Name && f.WorldName == m.World)
+                     ?? new Farmhand { Name = m.Name, WorldName = m.World, WorldId = LookupWorld(m.World) };
+            farmers.Add(fh);
+        }
+
+        if (Dev) farmers.AddRange(F.Farmhands!.Where(f => f.IsTest));
+        netFarmers = farmers;
+    }
+
+    private static uint LookupWorld(string name)
+    {
+        foreach (var w in Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.World>())
+            if (w.Name.ExtractText().Equals(name, StringComparison.OrdinalIgnoreCase)) return w.RowId;
+        return 0;
+    }
+
+    /// <summary>Messages from other parts of the plugin (network results).</summary>
+    public void Notify(string text, int kind)
+    {
+        if (kind == 2) Fail(text);
+        else Say(text, kind);
+    }
+
+    /// <summary>Applies coins, milk and notices the server was holding for you.</summary>
+    public void ApplyInbox(List<InboxItem> items)
+    {
+        foreach (var i in items)
+        {
+            switch (i.Kind)
+            {
+                case "payout":
+                    Earn(i.Coins);
+                    AddXp(Math.Max(5, i.Coins / 8));
+                    break;
+                case "refund":
+                    F.Coins += i.Coins;
+                    break;
+                case "milk":
+                    var g = Math.Clamp(i.Grade, 0, Grades.Count - 1);
+                    F.Tank![g] += i.Oz;
+                    break;
+            }
+
+            Say(i.Note.Length > 0 ? i.Note : $"Network: {i.Kind}.", i.Kind == "notice" ? 0 : 1);
+        }
+
+        if (items.Count > 0) plugin.SaveConfig();
+    }
     public int BottleTier => Math.Min(Catalog.BottleSizes.Length - 1, 1 + Owned("bottle"));
     public float BottleSize => Catalog.BottleSizes[BottleTier];
     public string BottleName => Catalog.BottleNames[BottleTier];
@@ -185,7 +329,21 @@ public sealed class DairyGame
 
         string why;
         var inDairy = false;
-        if (d == null) why = "You haven't registered a dairy yet (Dairy tab).";
+        if (Networked)
+        {
+            var m = F.NetMember;
+            var here = Estate.Current();
+            if (m == null) why = "You aren't in a dairy yet. Register your own estate or accept an invite (Dairy tab).";
+            else if (here == null) why = $"You're away from {m.Dairy}.";
+            else if (m.HouseId.Length == 0) why = "Loading your dairy...";
+            else if (!ulong.TryParse(m.HouseId, out var hid) || !Estate.Same(hid, here.Value.HouseId)) why = $"This isn't {m.Dairy}.";
+            else
+            {
+                inDairy = true;
+                why = $"In {m.Dairy}.";
+            }
+        }
+        else if (d == null) why = "You haven't registered a dairy yet (Dairy tab).";
         else if (!inHouse) why = $"You're away from {d.Name}.";
         else if (Plugin.ClientState.TerritoryType != d.Territory || me.CurrentWorld.RowId != d.World || ward != d.Ward || plot != d.Plot)
             why = $"This isn't {d.Name}.";
@@ -200,7 +358,7 @@ public sealed class DairyGame
         Stall? at = null;
         if (inDairy && seated)
         {
-            at = F.Stalls!
+            at = Stalls
                 .Select(s => (s, dist: Vector3.Distance(me.Position, new Vector3(s.X, s.Y, s.Z))))
                 .Where(x => x.dist <= StallRange)
                 .OrderBy(x => x.dist)
@@ -218,7 +376,7 @@ public sealed class DairyGame
         if (minutes < 1) return;
 
         var before = Cow.Milk;
-        var rate = RateParts(false).Aggregate(BaseRate, (r, p) => r * p.Multiplier);
+        var rate = ProducesMilk ? RateParts(false).Aggregate(BaseRate, (r, p) => r * p.Multiplier) : 0f;
         Cow.Milk = Math.Min(Capacity, Cow.Milk + rate * minutes);
         if (!Cow.Spoiled && Cow.FullSinceUtc == null && Cow.Milk >= Capacity - 0.01f && rate > 0)
             Cow.FullSinceUtc = Cow.LastTickUtc.AddMinutes(Math.Max(0, (Capacity - before) / rate));
@@ -259,7 +417,7 @@ public sealed class DairyGame
             Cow.Comfort = Clamp(Cow.Comfort - 1.0f * m);
             Cow.Mood = Clamp(Cow.Mood - 0.5f * m);
         }
-        else if (Active == null)
+        else if (Active == null && ProducesMilk)
         {
             Cow.Milk = Math.Min(Capacity, Cow.Milk + ProductionPerMinute() * m);
             if (FullBottles > fullBefore)
@@ -440,8 +598,9 @@ public sealed class DairyGame
     {
         var p = CareProblem();
         if (p != null) return p.Replace("Care is", "Milking is");
+        if (!ProducesMilk) return $"Only cows are milked. You're a {Role} here.";
         if (Cow.Spoiled) return "Your milk has spoiled. Dump it first.";
-        if (F.Stalls!.Count == 0) return "Register a stall first (Dairy tab).";
+        if (Stalls.Count == 0) return Networked && !IsOwner ? "Your dairy's owner hasn't set up any stalls yet." : "Register a stall first (Dairy tab).";
         if (!Where.Seated) return "Sit down in one of your stalls.";
         if (Where.AtStall == null) return $"You're not sitting in a stall (they work within {StallRange:0.#} y).";
         if (Cow.Milk < 0.5f) return "You don't have enough milk yet.";
@@ -462,6 +621,7 @@ public sealed class DairyGame
     {
         var p = CareProblem();
         if (p != null) return p.Replace("Care is", "Milking is");
+        if (!ProducesMilk) return $"Only cows are milked. You're a {Role} here.";
         if (Cow.Spoiled) return "Your milk has spoiled. Dump it first.";
         if (Cow.Milk < 0.5f) return "You don't have enough milk yet.";
         if (fh.IsTest) return Dev ? null : "The test farmhand only works in developer mode.";
@@ -625,11 +785,12 @@ public sealed class DairyGame
     // =================================================================
 
     public Farmhand? FindFarmhand(string name, uint world) =>
-        F.Farmhands!.FirstOrDefault(f => !f.IsTest && f.WorldId == world && f.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+        Farmhands.FirstOrDefault(f => !f.IsTest && f.WorldId == world && f.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
 
     public string? RegisterProblem()
     {
         if (Blocked() != null) return Blocked();
+        if (Networked) return "On the network, farmers join by invite (Dairy tab or right-click them).";
         if (F.Dairy == null) return "Register your dairy first.";
         if (!Where.InDairy) return "Farmhands are signed on inside your dairy. " + Where.Why;
         return null;
@@ -657,7 +818,9 @@ public sealed class DairyGame
     public void AddTestFarmhand()
     {
         if (!Dev || F.Farmhands!.Any(f => f.IsTest)) return;
-        F.Farmhands!.Add(new Farmhand { Name = "Test farmhand", IsTest = true });
+        var test = new Farmhand { Name = "Test farmhand", IsTest = true };
+        F.Farmhands!.Add(test);
+        if (Networked) netFarmers.Add(test);
         plugin.SaveConfig();
     }
 
@@ -665,6 +828,7 @@ public sealed class DairyGame
     {
         if (Active?.Hand == fh) Stop("Farmhand removed.");
         F.Farmhands!.Remove(fh);
+        netFarmers.Remove(fh);
         plugin.SaveConfig();
     }
 
@@ -710,7 +874,7 @@ public sealed class DairyGame
         {
             nextScan = now + 0.5;
             handObjects.Clear();
-            var wanted = F.Farmhands!.Where(f => !f.IsTest).ToList();
+            var wanted = Farmhands.Where(f => !f.IsTest).ToList();
             if (wanted.Count > 0)
             {
                 foreach (var o in Plugin.ObjectTable)
@@ -748,23 +912,37 @@ public sealed class DairyGame
     // Dairy and stalls
     // =================================================================
 
+    /// <summary>Null when you can register the house you're standing in; otherwise why not.</summary>
     public string? DairyHereProblem()
     {
         if (Blocked() != null) return Blocked();
-        var (ward, _) = Housing.Current();
-        return ward < 0 ? "Go inside the house you want to use as your dairy." : null;
+        var here = Estate.Current();
+        if (here == null) return "Go inside the house you want to use as your dairy.";
+        if (!Estate.IsOwnEstate(here.Value) && !Dev) return "You can only register your own estate: your house, your FC's house, your apartment or a shared estate.";
+        if (Networked && F.NetMember != null && !F.NetMember.IsOwner) return $"You're a member of {F.NetMember.Dairy}. Leave it first to start your own dairy.";
+        return null;
     }
 
+    /// <summary>Registers your own estate as your dairy (on the network when it's up, otherwise locally).</summary>
     public bool RegisterDairyHere(string name)
     {
         var p = DairyHereProblem();
         if (p != null) return Fail(p);
         var me = Plugin.ObjectTable.LocalPlayer!;
+        var here = Estate.Current()!.Value;
+        var clean = string.IsNullOrWhiteSpace(name) ? "My Dairy" : name.Trim();
+
+        if (Networked)
+        {
+            PublishDairy(clean, here);
+            return true;
+        }
+
         var (ward, plot) = Housing.Current();
         var moved = F.Dairy != null;
         F.Dairy = new DairyPlace
         {
-            Name = string.IsNullOrWhiteSpace(name) ? "My Dairy" : name.Trim(),
+            Name = clean,
             Territory = Plugin.ClientState.TerritoryType,
             World = me.CurrentWorld.RowId,
             WorldName = me.CurrentWorld.ValueNullable?.Name.ExtractText() ?? "",
@@ -780,9 +958,49 @@ public sealed class DairyGame
             Stop("Dairy moved.");
         }
 
-        Say($"{F.Dairy.Name} is registered ({Housing.Describe(ward, plot)}).", 1);
+        Say($"{F.Dairy.Name} is registered ({here.Describe}).", 1);
         plugin.SaveConfig();
         return true;
+    }
+
+    /// <summary>Sends your dairy and its listing settings to the network. Also used to save listing changes.</summary>
+    public void PublishDairy(string name, Address? at = null)
+    {
+        var me = Plugin.ObjectTable.LocalPlayer;
+        if (me == null) return;
+        Address addr;
+        if (at.HasValue) addr = at.Value;
+        else if (F.NetMember?.HouseId is { Length: > 0 } h && ulong.TryParse(h, out var hid))
+            addr = Estate.FromId(hid);
+        else
+        {
+            Fail("Go to your dairy to save it.");
+            return;
+        }
+
+        var world = Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.World>().GetRowOrDefault(addr.World);
+        var body = new
+        {
+            houseId = addr.HouseId.ToString(),
+            name,
+            description = F.ListDescription,
+            isPublic = F.ListPublic,
+            showOwner = F.ListShowName,
+            ownerName = me.Name.TextValue,
+            world = addr.World,
+            worldName = world?.Name.ExtractText() ?? "",
+            dcName = world?.DataCenter.ValueNullable?.Name.ExtractText() ?? "",
+            district = addr.District,
+            districtKind = addr.DistrictKind,
+            ward = addr.Ward,
+            plot = addr.Plot,
+            room = addr.Room,
+            role = F.OwnerRole,
+        };
+        Net.PutDairy(body, _ =>
+        {
+            Say(F.NetMember?.IsOwner == true ? $"{name} is updated on the network." : $"{name} is registered on the network. You own it.", 1);
+        }, e => Fail(e));
     }
 
     public void RenameDairy(string name)
@@ -794,11 +1012,16 @@ public sealed class DairyGame
 
     public string? StallHereProblem()
     {
-        if (F.Dairy == null) return "Register your dairy first.";
+        if (Networked)
+        {
+            if (F.NetMember == null) return "Join or register a dairy first.";
+            if (!F.NetMember.IsOwner) return "Only the dairy's owner sets up stalls.";
+        }
+        else if (F.Dairy == null) return "Register your dairy first.";
         if (!Where.InDairy) return "Stalls go inside your dairy. " + Where.Why;
         if (!Where.Seated) return "Sit on the furniture you want to use as a stall.";
         if (Where.AtStall != null) return $"That's already {Where.AtStall.Name}.";
-        if (F.Stalls!.Count >= MaxStalls) return $"You have {MaxStalls} stall(s). Buy a Stall kit for more.";
+        if (Stalls.Count >= MaxStalls) return $"You have {MaxStalls} stall(s). Buy a Stall kit for more.";
         return null;
     }
 
@@ -807,6 +1030,13 @@ public sealed class DairyGame
         var p = StallHereProblem();
         if (p != null) return Fail(p);
         var me = Plugin.ObjectTable.LocalPlayer!;
+        if (Networked)
+        {
+            var name = $"Stall {Stalls.Count + 1}";
+            Net.AddStall(name, me.Position.X, me.Position.Y, me.Position.Z, MaxStalls, () => Say($"{name} is set up here for everyone in your dairy.", 1), e => Fail(e));
+            return true;
+        }
+
         var stall = new Stall { Name = $"Stall {F.Stalls!.Count + 1}", X = me.Position.X, Y = me.Position.Y, Z = me.Position.Z };
         F.Stalls.Add(stall);
         Say($"{stall.Name} is set up here.", 1);
@@ -817,6 +1047,18 @@ public sealed class DairyGame
     public void RemoveStall(Stall s)
     {
         if (Active?.Stall == s) Stop("Stall removed.");
+        if (Networked)
+        {
+            if (!IsOwner)
+            {
+                Fail("Only the dairy's owner can remove stalls.");
+                return;
+            }
+
+            Net.RemoveStall(s.Id, e => Fail(e));
+            return;
+        }
+
         F.Stalls!.Remove(s);
         plugin.SaveConfig();
     }
@@ -892,6 +1134,7 @@ public sealed class DairyGame
     public string? StallUpgradeProblem(Stall s)
     {
         if (Blocked() != null) return Blocked();
+        if (Networked && !IsOwner) return "Only the dairy's owner upgrades stalls.";
         if (s.Tier >= 4) return "Fully upgraded.";
         var next = s.Tier + 1;
         if (Level < Catalog.StallTierUnlock[next]) return $"Unlocks at level {Catalog.StallTierUnlock[next]}.";
@@ -903,8 +1146,24 @@ public sealed class DairyGame
     {
         var p = StallUpgradeProblem(s);
         if (p != null) return Fail(p);
-        s.Tier++;
-        F.Coins -= Catalog.StallTierPrice[s.Tier];
+        var next = s.Tier + 1;
+        var price = Catalog.StallTierPrice[next];
+        if (Networked)
+        {
+            // Pay first; give the coins back if the server says no
+            F.Coins -= price;
+            plugin.SaveConfig();
+            Net.UpgradeStall(s.Id, next, () => Say($"{s.Name} is now a {Catalog.StallTierNames[next].ToLowerInvariant()}.", 1), e =>
+            {
+                F.Coins += price;
+                plugin.SaveConfig();
+                Fail(e);
+            });
+            return true;
+        }
+
+        s.Tier = next;
+        F.Coins -= price;
         Say($"{s.Name} is now a {Catalog.StallTierNames[s.Tier].ToLowerInvariant()}.", 1);
         plugin.SaveConfig();
         return true;
@@ -1004,6 +1263,214 @@ public sealed class DairyGame
         F.Orders!.Remove(o);
         F.NextOrderUtc = DateTime.UtcNow.AddMinutes(20);
         plugin.SaveConfig();
+    }
+
+    // =================================================================
+    // Network: members, invites, buy orders, deliveries, visitor orders
+    // =================================================================
+
+    /// <summary>Roles you can invite: owners invite farmers, cows and bulls; farmers invite cows and bulls.</summary>
+    public string[] InvitableRoles => !CanInvite ? Array.Empty<string>() : F.NetMember!.IsOwner ? new[] { "cow", "bull", "farmer" } : new[] { "cow", "bull" };
+
+    public void InvitePlayer(string name, uint world, string role)
+    {
+        if (!InvitableRoles.Contains(role))
+        {
+            Fail(F.NetMember?.IsOwner == true ? "You can't invite that role." : "Only owners and farmers can invite, and only owners can invite farmers.");
+            return;
+        }
+
+        Net.Invite(name, world, role, () => Say($"Invited {name} to {DairyName} as a {role}. They'll see it next time their plugin checks in.", 1), e => Fail(e));
+    }
+
+    public MemberInfo? MemberNamed(string name, string world) =>
+        Net.Mine?.Members.FirstOrDefault(m => m.Name.Equals(name, StringComparison.OrdinalIgnoreCase) && (world.Length == 0 || m.World.Equals(world, StringComparison.OrdinalIgnoreCase)));
+
+    /// <summary>Owners can remove anyone but themselves; farmers can remove cows and bulls.</summary>
+    public bool CanRemove(MemberInfo m)
+    {
+        var me = F.NetMember;
+        if (me == null || m.IsOwner || m.Id == Net.Mine?.You?.Id) return false;
+        return me.IsOwner || (me.Role == "farmer" && m.Role is "cow" or "bull");
+    }
+
+    public void RemoveMember(MemberInfo m)
+    {
+        if (!CanRemove(m))
+        {
+            Fail("You can't remove them.");
+            return;
+        }
+
+        Net.RemoveMember(m.Id, e => Fail(e));
+        Say($"{m.Name} was removed from {DairyName}.", 0);
+    }
+
+    public void SetMemberRole(MemberInfo m, string role)
+    {
+        if (F.NetMember?.IsOwner != true) return;
+        Net.SetRole(m.Id, role, e => Fail(e));
+    }
+
+    public void AcceptInvite(InviteInfo inv) =>
+        Net.Accept(inv, r => Say(r.Left != null ? $"You left {r.Left} and joined {r.Dairy} as a {r.Role}." : $"You joined {r.Dairy} as a {r.Role}.", 1), e => Fail(e));
+
+    public void DeclineInvite(InviteInfo inv) => Net.Decline(inv, e => Fail(e));
+
+    public void LeaveDairy()
+    {
+        Stop();
+        Net.Leave(() => Say("You left the dairy.", 0), e => Fail(e));
+    }
+
+    public void CloseDairy()
+    {
+        Stop();
+        Net.CloseDairy(() => Say("Your dairy is closed. Its members were told.", 0), e => Fail(e));
+    }
+
+    // ----- Owner buy orders: you put up coins, other players' cows deliver milk in person -----
+
+    public const int MaxOrderOz = 64;
+
+    /// <summary>Fair coins for an order: a bit over what the creamery pays, so it's worth the trip.</summary>
+    public static int SuggestedOrderCoins(int oz, int grade) => (int)Math.Round(oz * Grades.All[grade].Price * 1.5f);
+
+    public string? PostOrderProblem(int oz, int grade, int coins)
+    {
+        if (!Networked || F.NetMember?.IsOwner != true) return "Only a dairy owner can post buy orders.";
+        if (Net.Mine?.Dairy?.IsPublic != true) return "Make your dairy public so cows can find it and deliver.";
+        if (oz < 1 || oz > MaxOrderOz) return $"Ask for 1 to {MaxOrderOz} oz.";
+        if (coins < oz) return "Offer at least 1 coin per oz.";
+        if (coins > oz * 40) return "That's more than 40 coins per oz.";
+        if (F.Coins < coins) return $"You need {coins} coins.";
+        return null;
+    }
+
+    public void PostBuyOrder(int oz, int grade, int coins)
+    {
+        var p = PostOrderProblem(oz, grade, coins);
+        if (p != null)
+        {
+            Fail(p);
+            return;
+        }
+
+        // The coins are held by the network until the order is filled or cancelled (then they come back in your inbox)
+        F.Coins -= coins;
+        plugin.SaveConfig();
+        Net.PostOrder(oz, grade, coins, () => Say($"Posted: {oz} oz of Grade {Grades.Name(grade)} or better for {coins} coins.", 1), e =>
+        {
+            F.Coins += coins;
+            plugin.SaveConfig();
+            Fail(e);
+        });
+    }
+
+    public void CancelBuyOrder(BuyOrder o) => Net.CancelOrder(o.Id, e => Fail(e));
+
+    /// <summary>The dairy you're standing in if it's someone else's on the network.</summary>
+    public HereInfo? VisitingDairy => Networked && Net.Last?.Here is { Mine: false } h && h.Id != F.NetMember?.DairyId ? h : null;
+
+    public string? DeliverProblem(BuyOrder o)
+    {
+        if (Blocked() != null) return Blocked();
+        if (!ProducesMilk) return "Only cows deliver milk.";
+        if (VisitingDairy?.Id != o.DairyId) return "Go to that dairy to deliver in person.";
+        if (OzAtOrAbove(o.MinGrade) < o.Oz) return $"You need {o.Oz} oz of Grade {Grades.Name(o.MinGrade)} or better in your tank.";
+        return null;
+    }
+
+    public void Deliver(BuyOrder o)
+    {
+        var p = DeliverProblem(o);
+        if (p != null)
+        {
+            Fail(p);
+            return;
+        }
+
+        // Take the milk now (lowest grade that still qualifies first); give it back if the delivery fails
+        var taken = new float[Grades.Count];
+        var left = (float)o.Oz;
+        var lowest = -1;
+        for (var g = o.MinGrade; g < Grades.Count && left > 0; g++)
+        {
+            var take = Math.Min(left, F.Tank![g]);
+            if (take <= 0) continue;
+            if (lowest < 0) lowest = g;
+            F.Tank[g] -= take;
+            taken[g] = take;
+            left -= take;
+        }
+
+        plugin.SaveConfig();
+        Net.Fill(o, Math.Max(lowest, o.MinGrade), r =>
+        {
+            F.Stats.OrdersFilled++;
+            F.DayOrders++;
+            EaseTaint(Catalog.TaintPerOrder);
+            AddQuality(Grades.QualityPerOrder);
+            Say($"Delivered {r.Oz} oz to {r.Dairy}. Your {r.Coins} coins are on the way.", 1);
+            plugin.SaveConfig();
+        }, e =>
+        {
+            for (var g = 0; g < Grades.Count; g++) F.Tank![g] += taken[g];
+            plugin.SaveConfig();
+            Fail(e);
+        });
+    }
+
+    // ----- Visitor orders: the game itself pays you for bringing milk to other public dairies (2 a day each) -----
+
+    public List<Order> VisitorOrders(string dairyId)
+    {
+        var day = DateTime.UtcNow.ToString("yyyy-MM-dd");
+        if (F.VisitDay != day)
+        {
+            F.VisitDay = day;
+            F.VisitOrdersDone!.Clear();
+        }
+
+        var list = new List<Order>();
+        var seed = 0;
+        foreach (var c in dairyId + day) seed = seed * 31 + c;
+        var r = new Random(seed);
+        for (var i = 0; i < 2; i++)
+        {
+            var grade = Math.Min(GradeCap, r.Next(0, 3));
+            var oz = 8 * r.Next(1, 4);
+            var key = $"{dairyId}:{i}";
+            if (F.VisitOrdersDone.Contains(key)) continue;
+            list.Add(new Order
+            {
+                Id = i,
+                Customer = Catalog.Customers[r.Next(Catalog.Customers.Length)],
+                Oz = oz,
+                MinGrade = grade,
+                Coins = (int)Math.Round(oz * Grades.All[grade].Price * 2f) + 20,
+                Xp = (int)(oz * 3f) + 25 + grade * 10,
+            });
+        }
+
+        return list;
+    }
+
+    public bool FillVisitorOrder(string dairyId, Order o)
+    {
+        if (VisitingDairy?.Id != dairyId) return Fail("Go to that dairy to deliver in person.");
+        if (!ProducesMilk) return Fail("Only cows deliver milk.");
+        if (!VisitorOrders(dairyId).Any(x => x.Id == o.Id)) return Fail("That order is already done.");
+        F.VisitOrdersDone!.Add($"{dairyId}:{o.Id}");
+        F.Orders!.Add(o);   // reuse the regular fill (milk, coins, xp, quality)
+        if (!Fill(o))
+        {
+            F.Orders.Remove(o);
+            F.VisitOrdersDone.Remove($"{dairyId}:{o.Id}");
+            return false;
+        }
+
+        return true;
     }
 
     // =================================================================
