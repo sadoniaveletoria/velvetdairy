@@ -1,0 +1,92 @@
+name: Build & release
+
+# Every push to main builds the plugin. When the <Version> in VelvetDairy/VelvetDairy.csproj has no release yet, it also
+# tags that commit v<Version> and publishes the release with latest.zip, so releasing = bump the version and push.
+# (Pushing a v* tag yourself still works too.) Pull requests only build.
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Download Dalamud
+        shell: pwsh
+        run: |
+          Invoke-WebRequest -Uri https://goatcorp.github.io/dalamud-distrib/latest.zip -OutFile latest.zip
+          $dest = "$env:AppData\XIVLauncher\addon\Hooks\dev"
+          New-Item -ItemType Directory -Force -Path $dest | Out-Null
+          Expand-Archive -Force latest.zip $dest
+          "DALAMUD_HOME=$dest\" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Write the save-signing key
+        shell: pwsh
+        env:
+          KEY: ${{ secrets.VELVET_INTEGRITY_KEY }}
+        run: |
+          # The key that signs saves never lives in Git. It comes from the VELVET_INTEGRITY_KEY repository secret.
+          if (-not $env:KEY) {
+            if ("${{ github.event_name }}" -eq "pull_request") {
+              # Pull requests can't read secrets: build with a throwaway key just to check the code compiles
+              $env:KEY = -join ((1..32) | ForEach-Object { '{0:X2}' -f (Get-Random -Max 256) })
+            } else {
+              "::error::Add the VELVET_INTEGRITY_KEY secret (Settings > Secrets and variables > Actions)."; exit 1
+            }
+          }
+          @"
+          namespace VelvetDairy.Game;
+
+          public static partial class Integrity
+          {
+              private const string KeyHex = "$($env:KEY.Trim())";
+          }
+          "@ | Out-File -Encoding utf8 VelvetDairy/Game/IntegrityKey.cs
+
+      - name: Build
+        run: dotnet build VelvetDairy/VelvetDairy.csproj -c Release
+
+      - name: Upload build
+        uses: actions/upload-artifact@v4
+        with:
+          name: VelvetDairy
+          path: VelvetDairy/bin/Release/VelvetDairy/latest.zip
+
+      - name: Work out the release
+        id: rel
+        if: github.event_name == 'push'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $version = ([xml](Get-Content VelvetDairy/VelvetDairy.csproj)).Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
+          $tag = "v$version"
+          if ("${{ github.ref }}".StartsWith("refs/tags/v")) { $tag = "${{ github.ref_name }}" }
+          gh release view $tag --repo "${{ github.repository }}" *> $null
+          $exists = $LASTEXITCODE -eq 0
+          $global:LASTEXITCODE = 0
+          "tag=$tag" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "publish=$(if ($exists) { 'false' } else { 'true' })" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          if ($exists) { "Release $tag already exists, nothing to publish." } else { "Publishing $tag." }
+
+      - name: Publish release
+        if: steps.rel.outputs.publish == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.rel.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          name: Velvet Dairy ${{ steps.rel.outputs.tag }}
+          files: VelvetDairy/bin/Release/VelvetDairy/latest.zip
+          generate_release_notes: true

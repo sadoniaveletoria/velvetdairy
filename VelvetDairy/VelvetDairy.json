@@ -1,0 +1,9 @@
+{
+  "Author": "Sadonia (Velvet Systems)",
+  "Name": "Velvet Dairy",
+  "Punchline": "Be the cow. Keep your dairy, get milked, sell to the creamery.",
+  "Description": "Proof of concept. You play the cow: keep your needs up inside your registered dairy, get milked in your stalls or by a registered farmhand, fill creamery orders and level up. Adults only.",
+  "ApplicableVersion": "any",
+  "Tags": [ "game", "roleplay", "housing", "nsfw" ],
+  "RepoUrl": "https://github.com/sadoniaveletoria/VelvetDairy"
+}

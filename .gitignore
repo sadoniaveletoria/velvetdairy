@@ -1,0 +1,9 @@
+bin/
+obj/
+.vs/
+.idea/
+*.user
+*.suo
+__pycache__/
+# Signing key for saves: never commit it (CI writes it from the VELVET_INTEGRITY_KEY secret)
+VelvetDairy/Game/IntegrityKey.cs

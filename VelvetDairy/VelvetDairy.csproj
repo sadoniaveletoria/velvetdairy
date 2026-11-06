@@ -1,0 +1,28 @@
+<Project Sdk="Dalamud.NET.Sdk/15.0.0">
+
+  <PropertyGroup>
+    <Version>0.2.0.0</Version>
+    <Description>Velvet Dairy — be the cow. Care, milking stalls, farmhands and a creamery economy. Proof of concept.</Description>
+    <PackageProjectUrl>https://github.com/sadoniaveletoria/VelvetDairy</PackageProjectUrl>
+    <IsPackable>false</IsPackable>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- UI art (regenerate with: python3 tools/make_dairy_art.py VelvetDairy/Assets) -->
+    <Content Include="Assets\**\*.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <!-- Milking sounds (regenerate with: python3 tools/make_sounds.py VelvetDairy/Assets/sounds) -->
+    <Content Include="Assets\**\*.wav">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Plays the milking sounds -->
+    <PackageReference Include="NAudio" Version="2.2.1" />
+  </ItemGroup>
+
+</Project>
