@@ -33,7 +33,9 @@ public sealed partial class MainWindow : Window
     private FarmSave F => plugin.Config.Farm;
     private DairyGame G => plugin.Game;
 
-    private static readonly string[] Tabs = { "Barn", "Creamery", "Shop", "Dairy", "Dairies", "Progress", "Settings" };
+    public const int TabBarn = 0, TabPantry = 1, TabShop = 2, TabCreamery = 3, TabDairy = 4, TabDairies = 5, TabProgress = 6, TabSettings = 7;
+
+    private static readonly string[] Tabs = { "Barn", "Pantry", "Shop", "Creamery", "Dairy", "Dairies", "Progress", "Settings" };
     private int tab;
     private bool ticked18;
     private string dairyName = "";
@@ -185,12 +187,13 @@ public sealed partial class MainWindow : Window
         {
             switch (tab)
             {
-                case 0: DrawBarn(bodyMin, bodyMax); break;
-                case 1: DrawCreamery(bodyMin, bodyMax); break;
-                case 2: DrawShop(bodyMin, bodyMax); break;
-                case 3: DrawDairy(bodyMin, bodyMax); break;
-                case 4: DrawNetwork(bodyMin, bodyMax); break;
-                case 5: DrawProgress(bodyMin, bodyMax); break;
+                case TabBarn: DrawBarn(bodyMin, bodyMax); break;
+                case TabPantry: DrawPantry(bodyMin, bodyMax); break;
+                case TabShop: DrawShop(bodyMin, bodyMax); break;
+                case TabCreamery: DrawCreamery(bodyMin, bodyMax); break;
+                case TabDairy: DrawDairy(bodyMin, bodyMax); break;
+                case TabDairies: DrawNetwork(bodyMin, bodyMax); break;
+                case TabProgress: DrawProgress(bodyMin, bodyMax); break;
                 default: DrawSettings(bodyMin, bodyMax); break;
             }
         }
@@ -274,6 +277,46 @@ public sealed partial class MainWindow : Window
         }
 
         return h;
+    }
+
+    // ----- Sub-tabs: a row of small pills under the main tabs -----
+
+    private readonly Dictionary<string, int> subTabs = new();
+
+    private int Sub(string id) => subTabs.TryGetValue(id, out var v) ? v : 0;
+
+    /// <summary>Draws the sub-tab pills at the top of the body and returns where the content starts.</summary>
+    private Vector2 SubTabs(string id, string[] labels, Vector2 min, float width)
+    {
+        var dl = ImGui.GetWindowDrawList();
+        var sel = Math.Clamp(Sub(id), 0, labels.Length - 1);
+        const float h = 30f;
+        var x = min.X;
+        for (var i = 0; i < labels.Length; i++)
+        {
+            var size = Ui.Measure(fonts.Small, labels[i]);
+            var bw = size.X + 30;
+            var p = new Vector2(x, min.Y);
+            ImGui.SetCursorScreenPos(p);
+            if (ImGui.InvisibleButton($"##sub{id}{i}", new Vector2(bw, h))) sel = i;
+            var hov = ImGui.IsItemHovered();
+            var on = sel == i;
+            dl.AddRectFilled(p, p + new Vector2(bw, h), Ui.U(on ? Theme.Rose : Theme.Paper, on ? 0.95f : hov ? 0.95f : 0.75f), h / 2);
+            dl.AddRect(p, p + new Vector2(bw, h), Ui.U(Theme.RoseDeep, on ? 0.7f : 0.3f), h / 2, ImDrawFlags.None, 1.2f);
+            Ui.Text(dl, fonts.Small, labels[i], p + new Vector2(bw / 2, h / 2), on ? Theme.Ink : hov ? Theme.RoseDeep : Theme.InkSoft, 0.5f, 0.5f);
+            x += bw + 8;
+        }
+
+        subTabs[id] = sel;
+        return new Vector2(min.X, min.Y + h + 10);
+    }
+
+    /// <summary>A centered column at most maxWidth wide, for screens with one list.</summary>
+    private static (Vector2 Min, Vector2 Max) Column(Vector2 min, Vector2 max, float maxWidth)
+    {
+        var w = Math.Min(max.X - min.X, maxWidth);
+        var x = min.X + (max.X - min.X - w) / 2;
+        return (new Vector2(x, min.Y), new Vector2(x + w, max.Y));
     }
 
     private void DrawToasts(ImDrawListPtr dl, Vector2 winMin, Vector2 winMax)
@@ -712,12 +755,9 @@ public sealed partial class MainWindow : Window
 
         if (shown == 0) Ui.Wrapped("Your pantry is empty. Buy feed in the Shop.", Theme.InkSoft, width);
         Gap(4);
-        var showEmpty = F.CareShowEmpty;
-        if (ImGui.Checkbox("Show feed I'm out of##careempty", ref showEmpty))
-        {
-            F.CareShowEmpty = showEmpty;
-            plugin.SaveConfig();
-        }
+        if (ImGui.SmallButton("Open pantry##carepantry")) tab = TabPantry;
+        ImGui.SameLine();
+        if (ImGui.SmallButton("Shop##careshop")) tab = TabShop;
     }
 
     /// <summary>Tooltip line about how far your milk quality lets your grade go.</summary>
@@ -836,9 +876,15 @@ public sealed partial class MainWindow : Window
 
     private void DrawCreamery(Vector2 min, Vector2 max)
     {
-        var mid = (min.X + max.X) / 2;
-        Panel("##tank", min, new Vector2(mid - 7, max.Y), "Your tank", DrawTank);
-        Panel("##orders", new Vector2(mid + 7, min.Y), max, "Creamery orders", DrawOrders, true);
+        var labels = G.Networked ? new[] { "Sell milk", "Customer orders", "Deliveries" } : new[] { "Sell milk", "Customer orders" };
+        var top = SubTabs("creamery", labels, min, max.X - min.X);
+        var (cmin, cmax) = Column(top, max, 760);
+        switch (Sub("creamery"))
+        {
+            case 0: Panel("##tank", cmin, cmax, "Your milk", DrawTank); return;
+            case 1: Panel("##orders", cmin, cmax, "Creamery orders", DrawOrders, true); return;
+            default: Panel("##netorders", cmin, cmax, "Deliveries to other dairies", DrawNetOrders, true); return;
+        }
     }
 
     private void DrawTank(float width)
@@ -894,7 +940,6 @@ public sealed partial class MainWindow : Window
             ImGui.TextColored(Theme.InkSoft, wait.TotalSeconds > 0 ? $"Next order in {Mins(wait)}." : "A new order is on its way.");
         }
 
-        DrawNetOrders(width);
     }
 
     // =====================================================================
@@ -903,18 +948,62 @@ public sealed partial class MainWindow : Window
 
     private void DrawShop(Vector2 min, Vector2 max)
     {
+        var sub = SubTabs("shop", new[] { "Feed & treats", "Upgrades", "Bottles" }, min, max.X - min.X);
         var mid = (min.X + max.X) / 2;
-        Panel("##feedshop", min, new Vector2(mid - 7, max.Y), "Feed and treats", DrawFeedShop);
-        Panel("##upgrades", new Vector2(mid + 7, min.Y), max, "Upgrades", DrawUpgradeShop, true);
+        switch (Sub("shop"))
+        {
+            case 0:
+                Panel("##feedshop", sub, new Vector2(mid - 7, max.Y), "Feed", w => DrawFeedShop(w, false));
+                Panel("##treatshop", new Vector2(mid + 7, sub.Y), max, "Quality treats", w => DrawFeedShop(w, true), true);
+                break;
+            case 1:
+                Panel("##upgrades", sub, new Vector2(mid - 7, max.Y), "Comfort and care", w => DrawUpgradeShop(w, false));
+                Panel("##looks", new Vector2(mid + 7, sub.Y), max, "Things to wear", w => DrawUpgradeShop(w, true), true);
+                break;
+            default:
+                Panel("##bottleshop", sub, new Vector2(mid - 7, max.Y), "Bottles", DrawBottleShop);
+                Panel("##bottlenow", new Vector2(mid + 7, sub.Y), max, "Your bottles now", DrawBottleSummary, true);
+                break;
+        }
     }
 
-    private void DrawFeedShop(float width)
+    private static readonly string[] BottleUpgrades = { "bottle", "rack" };
+
+    private void DrawBottleShop(float width)
     {
-        Ui.Wrapped("Bought anywhere, eaten only in your dairy. Sell back what you don't need for half price, or hide it from your lists.", Theme.InkSoft, width);
+        Ui.Wrapped("Bigger bottles hold more each; extra bottles start filling when the one before is full.", Theme.InkSoft, width);
+        Gap(6);
+        foreach (var u in Catalog.Upgrades.Where(u => BottleUpgrades.Contains(u.Id))) UpgradeRow(u, width);
+    }
+
+    private void DrawBottleSummary(float width)
+    {
+        ImGui.TextColored(Theme.Ink, $"{G.BottleCount} × {G.BottleName} ({G.BottleSize:0} oz)");
+        ImGui.TextColored(Theme.InkSoft, $"Holds {G.Capacity:0} oz in all");
+        var rate = G.ProductionPerMinute();
+        if (rate > 0) ImGui.TextColored(Theme.InkSoft, $"Fills from empty in about {DairyGame.Wait(TimeSpan.FromMinutes(G.Capacity / rate))} at your current speed");
+        Gap(6);
+        var cur = ImGui.GetCursorScreenPos();
+        var bh = 150f;
+        for (var i = 0; i < G.BottleCount; i++)
+        {
+            var full = Math.Clamp((F.Cow.Milk - i * G.BottleSize) / G.BottleSize, 0f, 1f);
+            Ui.Bottle(ImGui.GetWindowDrawList(), cur + new Vector2(i * (bh / 2 + 10), 0), new Vector2(bh / 2, bh), full, Ui.Flow.Still, null, G.BottleTier);
+        }
+
+        ImGui.Dummy(new Vector2(width, bh + 6));
+    }
+
+    private void DrawFeedShop(float width, bool treats)
+    {
+        Ui.Wrapped(treats
+                ? $"Treats raise your milk quality toward the next grade. You can have one every {Grades.QualityTreatHours:0} hours."
+                : "Bought anywhere, eaten only in your dairy. Manage what you own in the Pantry.", Theme.InkSoft, width);
         Gap(6);
         var hiddenCount = 0;
         foreach (var item in Catalog.Feed)
         {
+            if ((item.Quality > 0) != treats) continue;
             var hidden = F.HiddenFeed!.Contains(item.Id);
             if (hidden) hiddenCount++;
             if (hidden && !showHiddenFeed) continue;
@@ -942,15 +1031,7 @@ public sealed partial class MainWindow : Window
             {
                 buttons.Add(new Btn($"##buy1{item.Id}", "Buy 1", "honey", p1 == null, p1 ?? item.Desc));
                 buttons.Add(new Btn($"##buy5{item.Id}", $"5 for {item.Price * 5}", "cream", p5 == null, p5));
-                if (have > 0)
-                {
-                    buttons.Add(new Btn($"##sell1{item.Id}", $"Sell 1 - {back}", "cream", true, $"Sell one back for {back} coins (half price)."));
-                    if (have > 1) buttons.Add(new Btn($"##sellall{item.Id}", $"Sell all - {back * have}", "cream", true, $"Sell all {have} back for {back * have} coins."));
-                }
             }
-
-            buttons.Add(new Btn($"##hide{item.Id}", hidden ? "Show" : "Hide", "cream", true,
-                hidden ? "Put it back in your Shop and Care lists." : "Hide it from your Shop and Care lists. Find it again under Show hidden."));
 
             var clicked = ListRow(Ico(item.Icon, locked || hidden ? 0.5f : 1f), item.Name + (hidden ? "  ·  hidden" : ""), locked || hidden ? Theme.InkSoft : Theme.Ink,
                 lines, buttons, width);
@@ -966,19 +1047,32 @@ public sealed partial class MainWindow : Window
         if (hiddenCount > 0)
         {
             Gap(4);
-            ImGui.Checkbox($"Show hidden ({hiddenCount})##showhiddenfeed", ref showHiddenFeed);
+            ImGui.Checkbox($"Show hidden ({hiddenCount})##showhiddenfeed{treats}", ref showHiddenFeed);
         }
     }
 
-    private void DrawUpgradeShop(float width)
+    private void DrawUpgradeShop(float width, bool looks)
     {
-        var owned = Catalog.Upgrades.Where(u => G.Owned(u.Id) >= u.MaxLevel).ToList();
-        foreach (var u in Catalog.Upgrades)
+        var list = Catalog.Upgrades.Where(u => u.Cosmetic == looks && !BottleUpgrades.Contains(u.Id) && !(u.Id == "stallkit" && G.Networked)).ToList();
+        var owned = list.Where(u => G.Owned(u.Id) >= u.MaxLevel).ToList();
+        foreach (var u in list)
+        {
+            if (G.Owned(u.Id) >= u.MaxLevel && !showOwnedUpgrades) continue;
+            UpgradeRow(u, width);
+        }
+
+        if (owned.Count > 0)
+        {
+            Ui.Wrapped("Owned: " + string.Join(", ", owned.Select(u => u.Name)), Theme.SageDeep, width);
+            ImGui.Checkbox($"List owned##showowned{looks}", ref showOwnedUpgrades);
+        }
+    }
+
+    private void UpgradeRow(Upgrade u, float width)
+    {
         {
             var have = G.Owned(u.Id);
             var maxed = have >= u.MaxLevel;
-            if (maxed && !showOwnedUpgrades) continue;
-            if (u.Id == "stallkit" && G.Networked) continue;   // on the network, stall slots come from the dairy's level
             var problem = G.UpgradeProblem(u);
             var levelText = u.MaxLevel > 1 ? $" {Math.Min(have + 1, u.MaxLevel)}/{u.MaxLevel}" : "";
             var desc = u.Id switch
@@ -995,13 +1089,11 @@ public sealed partial class MainWindow : Window
                     maxed ? u.Desc : problem ?? u.Desc, width))
                 G.BuyUpgrade(u);
         }
+    }
 
-        if (owned.Count > 0)
-        {
-            Ui.Wrapped("Owned: " + string.Join(", ", owned.Select(u => u.Name)), Theme.SageDeep, width);
-            ImGui.Checkbox("List owned upgrades##showowned", ref showOwnedUpgrades);
-        }
-
+    /// <summary>Stall upgrades (Dairy > Stalls). On the network only the owner, paid from the dairy fund.</summary>
+    private void DrawStallUpgrades(float width)
+    {
         if (G.Networked && !G.IsOwner) return;
         var prog = G.Networked ? G.Net.Progress : null;
         SubHeading(G.Networked ? "Dairy stalls (paid from the fund)" : "Your stalls", width);
@@ -1031,11 +1123,23 @@ public sealed partial class MainWindow : Window
             return;
         }
 
+        var top = SubTabs("dairylocal", new[] { "Overview", "Stalls", "Farmhands" }, min, max.X - min.X);
         var mid = (min.X + max.X) / 2;
-        var splitY = min.Y + (max.Y - min.Y) * 0.5f;
-        Panel("##place", min, new Vector2(mid - 7, splitY - 7), "Your dairy", DrawPlace);
-        Panel("##stalls", new Vector2(min.X, splitY + 7), new Vector2(mid - 7, max.Y), "Stalls", DrawStalls);
-        Panel("##hands", new Vector2(mid + 7, min.Y), max, "Farmhands", DrawFarmhands, true);
+        switch (Sub("dairylocal"))
+        {
+            case 0:
+                var (cmin, cmax) = Column(top, max, 760);
+                Panel("##place", cmin, cmax, "Your dairy", DrawPlace);
+                break;
+            case 1:
+                Panel("##stalls", top, new Vector2(mid - 7, max.Y), "Stalls", DrawStalls);
+                Panel("##stallups", new Vector2(mid + 7, top.Y), max, "Stall upgrades", DrawStallUpgrades, true);
+                break;
+            default:
+                var (fmin, fmax) = Column(top, max, 760);
+                Panel("##hands", fmin, fmax, "Farmhands", DrawFarmhands, true);
+                break;
+        }
     }
 
     private void DrawPlace(float width)

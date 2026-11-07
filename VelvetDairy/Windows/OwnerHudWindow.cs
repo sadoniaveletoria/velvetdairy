@@ -106,6 +106,6 @@ public sealed class OwnerHudWindow : Window
 
         if (ImGui.IsWindowHovered() && !ImGui.IsAnyItemHovered() &&
             (ImGui.IsMouseClicked(ImGuiMouseButton.Right) || ImGui.IsMouseDoubleClicked(ImGuiMouseButton.Left)))
-            plugin.MainWindow.OpenTab(3);
+            plugin.MainWindow.OpenTab(MainWindow.TabDairy);
     }
 }

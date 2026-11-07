@@ -209,11 +209,44 @@ public sealed partial class MainWindow
 
     private void DrawNetDairy(Vector2 min, Vector2 max)
     {
+        var m = F.NetMember;
+        if (m == null)
+        {
+            var (a, b) = Column(min, max, 760);
+            Panel("##netplace", a, b, "Your dairy", DrawNetPlace);
+            return;
+        }
+
+        var labels = m.IsOwner ? new[] { "Overview", "Stalls", "Listing" } : new[] { "Overview", "Stalls" };
+        var top = SubTabs("dairynet", labels, min, max.X - min.X);
         var mid = (min.X + max.X) / 2;
-        var splitY = min.Y + (max.Y - min.Y) * 0.55f;
-        Panel("##netplace", min, new Vector2(mid - 7, splitY - 7), "Your dairy", DrawNetPlace);
-        Panel("##stalls", new Vector2(min.X, splitY + 7), new Vector2(mid - 7, max.Y), "Stalls", DrawStalls);
-        Panel("##members", new Vector2(mid + 7, min.Y), max, "Members", DrawMembers, true);
+        switch (Sub("dairynet"))
+        {
+            case 0:
+                Panel("##netplace", top, new Vector2(mid - 7, max.Y), "Your dairy", DrawNetPlace);
+                Panel("##netlevel", new Vector2(mid + 7, top.Y), max, "Level, fund and tank", DrawDairyLevel, true);
+                break;
+            case 1:
+                Panel("##stalls", top, new Vector2(mid - 7, max.Y), "Stalls", DrawStalls);
+                Panel("##stallside", new Vector2(mid + 7, top.Y), max, G.IsOwner ? "Stall upgrades" : "Milking emotes", w =>
+                {
+                    if (G.IsOwner) DrawStallUpgrades(w);
+                    if (G.Role is "cow" or "farmer") DrawEmotes(w);
+                }, true);
+                break;
+            default:
+                var (lmin, lmax) = Column(top, max, 760);
+                Panel("##listing", lmin, lmax, "Listing", w =>
+                {
+                    DrawRegisterForm(w, true);
+                    Gap(10);
+                    SubHeading("Close the dairy", w);
+                    Ui.Wrapped("Removes your dairy from the network. Members are told, and its stalls, fund, tank and orders go away.", Theme.InkSoft, w);
+                    if (Ui.Button("##closedairy", "Close dairy", new Vector2(150, 30), "cream", ImGui.GetIO().KeyShift, "Hold Shift and click."))
+                        G.CloseDairy();
+                });
+                break;
+        }
     }
 
     private void DrawNetPlace(float width)
@@ -249,16 +282,8 @@ public sealed partial class MainWindow
         ImGui.TextColored(RoleColor(m.Role), m.IsOwner ? $"You own it · you play as {(m.Role == "none" ? "no role" : m.Role)}" : $"You're a {m.Role} here");
         ImGui.TextColored(G.Where.InDairy ? Theme.SageDeep : Theme.RoseDeep, G.Where.Why);
         Gap(6);
-        DrawDairyLevel(width);
 
-        if (m.IsOwner)
-        {
-            DrawRegisterForm(width, true);
-            Gap(4);
-            if (Ui.Button("##closedairy", "Close dairy", new Vector2(150, 30), "cream", ImGui.GetIO().KeyShift,
-                    "Hold Shift and click. Removes your dairy from the network; members are told and its stalls and orders go away."))
-                G.CloseDairy();
-        }
+        if (m.IsOwner) ImGui.TextColored(Theme.InkSoft, "Change the name, listing or your role on the Listing tab.");
         else
         {
             Ui.Wrapped(m.Role switch
@@ -272,6 +297,9 @@ public sealed partial class MainWindow
             if (Ui.Button("##leavedairy", "Leave dairy", new Vector2(150, 30), "cream", ImGui.GetIO().KeyShift, "Hold Shift and click to leave."))
                 G.LeaveDairy();
         }
+
+        SubHeading("Members", width);
+        DrawMemberSummary(width);
     }
 
     /// <summary>The dairy's level, XP to the next one, and the shared fund members can donate to.</summary>
@@ -362,13 +390,12 @@ public sealed partial class MainWindow
         }
     }
 
-    private void DrawMembers(float width)
+    private void DrawMemberSummary(float width)
     {
         var mine = G.Net.Mine;
         if (F.NetMember == null || mine == null)
         {
             Ui.Wrapped(F.NetMember == null ? "Join or register a dairy to see its members." : "Loading...", Theme.InkSoft, width);
-            DrawEmotes(width);
             return;
         }
 
@@ -411,8 +438,6 @@ public sealed partial class MainWindow
                 "Opens the member list in its own window: search, filter by role, sort, change roles and remove."))
             plugin.Members.IsOpen = !plugin.Members.IsOpen;
         Gap(6);
-
-        if (G.Role is "cow" or "farmer") DrawEmotes(width);
     }
 
     // =====================================================================
