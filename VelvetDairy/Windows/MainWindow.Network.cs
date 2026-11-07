@@ -18,6 +18,7 @@ public sealed partial class MainWindow
     private int orderCoins = -1;
     private string dirFilter = "";
     private bool dirPublicOnly;
+    private int donateCoins = 100;
 
     private static readonly string[] OwnerRoles = { "cow", "farmer", "bull", "none" };
     private static readonly string[] RoleLabels = { "Cow (gets milked)", "Farmer (milks the cows)", "Bull", "No role (just run it)" };
@@ -82,15 +83,43 @@ public sealed partial class MainWindow
             ImGui.TextColored(Theme.InkSoft, "Deliver milk here from the Creamery tab.");
         }
 
+        // This week's most active dairies
+        var board = net.Leaderboard;
+        if (board != null)
+        {
+            SubHeading("This week's top dairies", width);
+            if (board.Dairies.Count == 0) Ui.Wrapped("No dairy has earned XP this week yet.", Theme.InkSoft, width);
+            foreach (var r in board.Dairies.Take(10))
+            {
+                var col = r.Mine ? Theme.RoseDeep : r.Rank <= 3 ? Theme.HoneyDeep : Theme.Ink;
+                ImGui.TextColored(col, $"{r.Rank}.");
+                ImGui.SameLine(28);
+                ImGui.TextColored(col, $"{r.Name}{(r.Mine ? " (yours)" : "")}");
+                ImGui.SameLine();
+                ImGui.TextColored(Theme.InkSoft, $"Lv {r.Level} · {r.WeekXp:N0} xp");
+            }
+
+            var reset = NextMonday() - DateTime.UtcNow;
+            ImGui.TextColored(Theme.InkSoft, $"Resets in {(int)reset.TotalDays}d {reset.Hours}h (Monday 00:00 UTC).");
+        }
+
         SubHeading("How it works", width);
         Ui.Wrapped("Owners register their own estate as a dairy and invite farmers, cows and bulls. Farmers can invite cows and bulls. " +
                    "Public dairies show their address here so anyone can visit; private ones only show their name. " +
-                   "Cows deliver milk in person: go to a public dairy and fill its owner's buy orders or the creamery's visitor orders.", Theme.InkSoft, width);
+                   "Cows deliver milk in person: go to a public dairy and fill its owner's buy orders or the creamery's visitor orders. " +
+                   "Dairies level up from what their members do inside them; higher levels get more stalls and better stall tiers and list first.", Theme.InkSoft, width);
         if (!Lifestream.Installed)
         {
             Gap(6);
             Ui.Wrapped("Tip: install the Lifestream plugin and Visit takes you straight there. Without it, Visit copies the address.", Theme.BlueDeep, width);
         }
+    }
+
+    private static DateTime NextMonday()
+    {
+        var d = DateTime.UtcNow.Date;
+        var days = ((int)DayOfWeek.Monday - (int)d.DayOfWeek + 7) % 7;
+        return d.AddDays(days == 0 ? 7 : days);
     }
 
     private void DrawDirectory(float width)
@@ -121,7 +150,7 @@ public sealed partial class MainWindow
         var shown = list.Where(d => (!dirPublicOnly || d.IsPublic) &&
                                     (f.Length == 0 || d.Name.Contains(f, StringComparison.OrdinalIgnoreCase) || d.WorldName.Contains(f, StringComparison.OrdinalIgnoreCase) ||
                                      d.District.Contains(f, StringComparison.OrdinalIgnoreCase) || d.Owner.Contains(f, StringComparison.OrdinalIgnoreCase)))
-            .OrderByDescending(d => d.Mine).ThenByDescending(d => d.CowsHere).ThenByDescending(d => d.IsPublic).ThenBy(d => d.Name).ToList();
+            .OrderByDescending(d => d.Level).ThenByDescending(d => d.CowsHere).ThenByDescending(d => d.IsPublic).ThenBy(d => d.Name).ToList();
         if (shown.Count == 0) Ui.Wrapped(list.Count == 0 ? "No dairies yet. Be the first: register your estate on the Dairy tab." : "Nothing matches.", Theme.InkSoft, width);
 
         foreach (var d in shown)
@@ -143,7 +172,7 @@ public sealed partial class MainWindow
                     new Btn($"##visit{d.Id}", "Visit", "blue", !Lifestream.Busy, Lifestream.Installed ? "Travel there with Lifestream." : "Copies the address (install Lifestream to travel automatically)."),
                 }
                 : Array.Empty<Btn>();
-            var title = d.Name + (d.Mine ? "  ·  yours" : d.IsPublic ? "" : "  ·  private");
+            var title = $"Lv {d.Level}  {d.Name}" + (d.Mine ? "  ·  yours" : d.IsPublic ? "" : "  ·  private");
             var clicked = ListRow(Ico(d.IsPublic ? "milk" : "ribbon", d.IsPublic || d.Mine ? 1f : 0.6f), title, d.Mine ? Theme.RoseDeep : Theme.Ink, lines, buttons, width);
             if (clicked == 0) Copy(d);
             else if (clicked == 1) Visit(d);
@@ -220,6 +249,7 @@ public sealed partial class MainWindow
         ImGui.TextColored(RoleColor(m.Role), m.IsOwner ? $"You own it · you play as {(m.Role == "none" ? "no role" : m.Role)}" : $"You're a {m.Role} here");
         ImGui.TextColored(G.Where.InDairy ? Theme.SageDeep : Theme.RoseDeep, G.Where.Why);
         Gap(6);
+        DrawDairyLevel(width);
 
         if (m.IsOwner)
         {
@@ -242,6 +272,35 @@ public sealed partial class MainWindow
             if (Ui.Button("##leavedairy", "Leave dairy", new Vector2(150, 30), "cream", ImGui.GetIO().KeyShift, "Hold Shift and click to leave."))
                 G.LeaveDairy();
         }
+    }
+
+    /// <summary>The dairy's level, XP to the next one, and the shared fund members can donate to.</summary>
+    private void DrawDairyLevel(float width)
+    {
+        var p = G.Net.Progress;
+        if (p == null) return;
+        SubHeading($"Dairy level {p.Level}", width);
+        var cur = ImGui.GetCursorScreenPos();
+        var barW = Math.Min(width, 360);
+        Ui.Bar(ImGui.GetWindowDrawList(), cur + new Vector2(0, 4), cur + new Vector2(barW, 12), p.LevelProgress, Theme.HoneyDeep);
+        ImGui.Dummy(new Vector2(barW, 16));
+        ImGui.TextColored(Theme.InkSoft, p.NextXp is { } n ? $"{p.Xp:N0} / {n:N0} xp · {p.WeekXp:N0} this week" : $"Max level · {p.WeekXp:N0} xp this week");
+        ImGui.TextColored(Theme.InkSoft, $"{p.StallSlots} stall slots · best stall: {Catalog.StallTierNames[Math.Clamp(p.MaxTier, 1, 4)]}");
+        Ui.Wrapped("Members earn XP for the dairy by milking and caring inside it (up to 300 each a day) and when cows fill its buy orders.", Theme.InkSoft, width);
+
+        Gap(4);
+        ImGui.TextColored(Theme.HoneyDeep, $"Dairy fund: {p.Fund:N0} coins");
+        if (ImGui.IsItemHovered()) ImGui.SetTooltip("Anyone in the dairy can add coins. The owner spends them on new stalls and stall upgrades.");
+        ImGui.SetNextItemWidth(110);
+        ImGui.InputInt("##donate", ref donateCoins, 50, 250);
+        donateCoins = Math.Clamp(donateCoins, 1, 100000);
+        ImGui.SameLine();
+        var problem = G.DonateProblem(donateCoins);
+        if (Ui.Button("##donatebtn", "Donate", new Vector2(110, 30), "honey", problem == null, problem ?? $"Put {donateCoins} of your coins into the fund."))
+            G.Donate(donateCoins);
+        if (p.Donors.Count > 0)
+            Ui.Wrapped("Top donors: " + string.Join(", ", p.Donors.Take(5).Select(d => $"{d.Name.Split(' ')[0]} {d.Coins:N0}")), Theme.InkSoft, width);
+        Gap(6);
     }
 
     /// <summary>Register (or, for the owner, update) the dairy and how it's listed.</summary>

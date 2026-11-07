@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 
 namespace VelvetDairy.Network;
@@ -11,6 +12,7 @@ public sealed class HeartbeatReply
     public MembershipInfo? Membership { get; set; }
     public List<InviteInfo> Invites { get; set; } = new();
     public int Inbox { get; set; }
+    public int DairyXp { get; set; }
 }
 
 public sealed class HereInfo
@@ -27,6 +29,7 @@ public sealed class MembershipInfo
     public string Dairy { get; set; } = "";
     public string Role { get; set; } = "";
     public bool IsOwner { get; set; }
+    public int Level { get; set; } = 1;
 }
 
 public sealed class InviteInfo
@@ -63,6 +66,8 @@ public sealed class DairyListing
     public int Members { get; set; }
     public int CowsHere { get; set; }
     public int OpenOrders { get; set; }
+    public int Level { get; set; } = 1;
+    public int WeekXp { get; set; }
 
     public string Address => Ward is null ? "Private" : Room is > 0 && Plot is null ? $"{District}, Ward {Ward}, apartment {Room}" : $"{District}, Ward {Ward}, Plot {Plot}";
 }
@@ -74,6 +79,55 @@ public sealed class MyDairyReply
     public List<MemberInfo> Members { get; set; } = new();
     public List<StallInfo> Stalls { get; set; } = new();
     public List<SentInvite> Invites { get; set; } = new();
+    public DairyProgress? Progress { get; set; }
+}
+
+/// <summary>A dairy's level, XP, shared fund and what its level allows.</summary>
+public sealed class DairyProgress
+{
+    public int Xp { get; set; }
+    public int Level { get; set; } = 1;
+    public int LevelXp { get; set; }
+    public int? NextXp { get; set; }
+    public int Fund { get; set; }
+    public int WeekXp { get; set; }
+    public int StallSlots { get; set; } = 2;
+    public int MaxTier { get; set; } = 2;
+    public int NextStallPrice { get; set; }
+    public List<int> TierPrices { get; set; } = new();
+    public List<Donor> Donors { get; set; } = new();
+
+    public float LevelProgress => NextXp is { } n && n > LevelXp ? Math.Clamp((Xp - LevelXp) / (float)(n - LevelXp), 0, 1) : 1;
+    public int TierPrice(int tier) => tier >= 0 && tier < TierPrices.Count ? TierPrices[tier] : 0;
+}
+
+public sealed class Donor
+{
+    public string Name { get; set; } = "";
+    public int Coins { get; set; }
+}
+
+public sealed class LeaderboardReply
+{
+    public string Week { get; set; } = "";
+    public List<LeaderRow> Dairies { get; set; } = new();
+}
+
+public sealed class LeaderRow
+{
+    public int Rank { get; set; }
+    public string Id { get; set; } = "";
+    public string Name { get; set; } = "";
+    public bool IsPublic { get; set; }
+    public string WorldName { get; set; } = "";
+    public int Level { get; set; }
+    public int WeekXp { get; set; }
+    public bool Mine { get; set; }
+}
+
+public sealed class FundReply
+{
+    public int Fund { get; set; }
 }
 
 public sealed class MyDairyInfo

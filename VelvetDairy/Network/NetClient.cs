@@ -265,6 +265,7 @@ public sealed class NetClient : IDisposable
             version = Plugin.Version,
             charHash = MyCharHash(),
             houseId = here?.HouseId.ToString(),
+            dairyXp = g.TakeDairyXp(),
             status = new MemberStatus
             {
                 Milk = (float)Math.Round(F.Cow.Milk, 1), Cap = g.Capacity, Grade = g.CurrentGrade, Spoiled = g.Spoiled,
@@ -317,7 +318,21 @@ public sealed class NetClient : IDisposable
     {
         nextDirectory = Now + 120;
         Call<DirectoryReply>("GET", "/v1/dairies", null, r => Directory = r);
+        Call<LeaderboardReply>("GET", "/v1/leaderboard", null, r => Leaderboard = r);
     }
+
+    /// <summary>This week's most active dairies.</summary>
+    public LeaderboardReply? Leaderboard { get; private set; }
+
+    /// <summary>Your dairy's level, XP and fund (from the last dairy refresh).</summary>
+    public DairyProgress? Progress => Mine?.Progress;
+
+    public void Donate(int coins, Action<int> ok, Action<string> failed) =>
+        Call<FundReply>("POST", "/v1/dairy/fund", new { coins }, r =>
+        {
+            Poke();
+            ok(r.Fund);
+        }, failed);
 
     public void RefreshOrders(string dairyId) =>
         Call<OrdersReply>("GET", $"/v1/dairies/{dairyId}/orders", null, r => OrdersByDairy[dairyId] = r.Orders,

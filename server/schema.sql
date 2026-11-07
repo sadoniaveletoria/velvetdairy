@@ -106,3 +106,31 @@ CREATE TABLE IF NOT EXISTS inbox (
   claimed  INTEGER
 );
 CREATE INDEX IF NOT EXISTS inbox_open ON inbox(install, claimed);
+
+-- Dairy levels: XP the members earn together, the shared fund, and this week's XP for the leaderboard.
+-- Kept by dairy, so XP stays when a member leaves.
+CREATE TABLE IF NOT EXISTS dairy_progress (
+  dairy_id  TEXT PRIMARY KEY,
+  xp        INTEGER NOT NULL DEFAULT 0,
+  fund      INTEGER NOT NULL DEFAULT 0,
+  week      TEXT NOT NULL DEFAULT '',     -- Monday (UTC) of the week week_xp belongs to
+  week_xp   INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS progress_week ON dairy_progress(week, week_xp);
+
+-- How much dairy XP one install has added today (daily cap).
+CREATE TABLE IF NOT EXISTS member_xp (
+  install  TEXT NOT NULL,
+  day      TEXT NOT NULL,
+  xp       INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (install, day)
+);
+
+-- Coins each member has put into their dairy's fund.
+CREATE TABLE IF NOT EXISTS donations (
+  dairy_id TEXT NOT NULL,
+  install  TEXT NOT NULL,
+  name     TEXT NOT NULL DEFAULT '',
+  coins    INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (dairy_id, install)
+);

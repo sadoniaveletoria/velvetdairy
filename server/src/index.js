@@ -28,6 +28,16 @@ const MAX_STALLS = 6;
 const MAX_MEMBERS = 40;
 const GRADES = 5;
 const PLAY_ROLES = ["farmer", "cow", "bull", "none"];
+
+// Dairy levels
+const MAX_LEVEL = 20;
+const MEMBER_DAILY_XP = 300;        // dairy XP one member can add per day from activity in the dairy
+const XP_PER_BEAT = 60;             // most dairy XP one heartbeat can carry
+const DELIVERY_XP_PER_OZ = 3;       // a filled buy order gives the dairy it was delivered to this much
+const DELIVERER_XP_PER_OZ = 1;      // and the deliverer's own dairy this much
+const MAX_DONATION = 100000;
+const TIER_PRICE = [0, 0, 150, 400, 900];   // fund coins to raise a stall to this tier
+const LEADERBOARD_SIZE = 20;
 const INVITE_ROLES = ["farmer", "cow", "bull"];
 
 export default {
@@ -99,6 +109,53 @@ function houseId(value) {
   return s;
 }
 
+/** Total XP needed to reach a level. Each level takes 250 more than the last (400, 650, 900...). */
+function xpToReach(level) {
+  let total = 0;
+  for (let l = 1; l < level; l++) total += 400 + 250 * (l - 1);
+  return total;
+}
+function levelFor(xp) {
+  let l = 1;
+  while (l < MAX_LEVEL && xp >= xpToReach(l + 1)) l++;
+  return l;
+}
+/** Stall slots: 2 at level 1, one more at levels 3, 6, 9, 12, 15 and 18 (8 at most). */
+const stallSlots = level => 2 + [3, 6, 9, 12, 15, 18].filter(l => level >= l).length;
+/** Best stall tier allowed: 2 at first, 3 from level 5, 4 from level 12. */
+const maxTier = level => level >= 12 ? 4 : level >= 5 ? 3 : 2;
+/** Fund coins for the next stall: the first is free, then 200 more each. */
+const stallPrice = count => 200 * count;
+/** Monday (UTC) of this week, e.g. "2026-11-02". */
+function weekKey(date = new Date()) {
+  const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
+  return d.toISOString().slice(0, 10);
+}
+
+async function progressOf(env, dairyId) {
+  const p = await env.DB.prepare("SELECT * FROM dairy_progress WHERE dairy_id = ?").bind(dairyId).first();
+  const xp = p?.xp || 0;
+  return { xp, fund: p?.fund || 0, weekXp: p && p.week === weekKey() ? p.week_xp : 0, level: levelFor(xp) };
+}
+
+function addXpStmt(env, dairyId, amount) {
+  return env.DB.prepare(`
+    INSERT INTO dairy_progress (dairy_id, xp, week, week_xp) VALUES (?, ?, ?, ?)
+    ON CONFLICT(dairy_id) DO UPDATE SET
+      xp = xp + excluded.xp,
+      week_xp = CASE WHEN week = excluded.week THEN week_xp + excluded.week_xp ELSE excluded.week_xp END,
+      week = excluded.week`).bind(dairyId, amount, weekKey(), amount);
+}
+
+/** Takes coins out of a dairy's fund; false when there aren't enough. */
+async function spendFund(env, dairyId, coins) {
+  if (coins <= 0) return true;
+  const r = await env.DB.prepare("UPDATE dairy_progress SET fund = fund - ? WHERE dairy_id = ? AND fund >= ? RETURNING fund")
+    .bind(coins, dairyId, coins).first();
+  return !!r;
+}
+
 const isHash = v => /^[0-9a-f]{64}$/.test(String(v ?? ""));
 
 // ---------------------------------------------------------------- auth
@@ -153,6 +210,8 @@ async function route(request, env) {
     ["GET", /^\/v1\/dairies\/([0-9a-f]{24})\/orders$/, m => dairyOrders(env, me, m[1])],
     ["DELETE", /^\/v1\/orders\/(\d+)$/, m => cancelOrder(env, me, Number(m[1]))],
     ["POST", /^\/v1\/orders\/(\d+)\/fill$/, m => fillOrder(env, me, Number(m[1]), request)],
+    ["POST", /^\/v1\/dairy\/fund$/, () => donate(env, me, request)],
+    ["GET", /^\/v1\/leaderboard$/, () => leaderboard(env, me)],
     ["GET", /^\/v1\/inbox$/, () => inbox(env, me)],
     ["POST", /^\/v1\/inbox\/claim$/, () => claim(env, me)],
   ];
@@ -225,6 +284,25 @@ async function heartbeat(env, me, request) {
     if (status !== mem.status) await env.DB.prepare("UPDATE members SET status = ? WHERE install = ?").bind(status, me.id).run();
   }
 
+  // Dairy XP from what the member did since the last heartbeat. It only counts while the server sees them
+  // in their own dairy (or delivering at someone else's public dairy), and only up to a daily amount.
+  let dairyXp = 0;
+  const asked = Math.max(0, Math.min(XP_PER_BEAT, Math.floor(Number(b.dairyXp) || 0)));
+  const atHome = mem && here && here.id === mem.dairy_id;
+  const visiting = mem && here && here.id !== mem.dairy_id && here.is_public;
+  if (asked > 0 && (atHome || visiting)) {
+    const day = today();
+    const used = (await env.DB.prepare("SELECT xp FROM member_xp WHERE install = ? AND day = ?").bind(me.id, day).first())?.xp || 0;
+    dairyXp = Math.min(asked, MEMBER_DAILY_XP - used);
+    if (dairyXp > 0) {
+      await env.DB.batch([
+        env.DB.prepare(`INSERT INTO member_xp (install, day, xp) VALUES (?, ?, ?)
+          ON CONFLICT(install, day) DO UPDATE SET xp = xp + excluded.xp`).bind(me.id, day, dairyXp),
+        addXpStmt(env, mem.dairy_id, dairyXp),
+      ]);
+    } else dairyXp = 0;
+  }
+
   const waiting = await env.DB.prepare("SELECT COUNT(*) AS n FROM inbox WHERE install = ? AND claimed IS NULL").bind(me.id).first();
   const invites = charHash ? (await env.DB.prepare(`
       SELECT i.id, i.role, d.name AS dairy, d.world_name AS world, d.is_public AS public
@@ -233,7 +311,8 @@ async function heartbeat(env, me, request) {
   return {
     online: await onlineCount(env),
     here: here ? { id: here.id, name: here.name, isPublic: !!here.is_public, mine: !!mem && mem.dairy_id === here.id } : null,
-    membership: mem ? { dairyId: mem.dairy_id, dairy: mem.dairy_name, role: mem.role, isOwner: !!mem.is_owner } : null,
+    membership: mem ? { dairyId: mem.dairy_id, dairy: mem.dairy_name, role: mem.role, isOwner: !!mem.is_owner, level: (await progressOf(env, mem.dairy_id)).level } : null,
+    dairyXp,
     invites: invites.map(i => ({ id: i.id, role: i.role, dairy: i.dairy, world: i.world })),
     inbox: waiting.n,
     time: t,
@@ -265,6 +344,8 @@ function listing(row, me) {
     members: row.members || 0,
     cowsHere: row.here || 0,
     openOrders: open ? row.orders || 0 : 0,
+    level: levelFor(row.xp || 0),
+    weekXp: row.week === weekKey() ? row.week_xp || 0 : 0,
     updated: row.updated,
   };
 }
@@ -272,13 +353,13 @@ function listing(row, me) {
 async function listDairies(env, me) {
   const t = now();
   const rows = await env.DB.prepare(`
-    SELECT d.*,
+    SELECT d.*, p.xp, p.week, p.week_xp,
       (SELECT COUNT(*) FROM installs i WHERE i.at_dairy = d.id AND i.last_seen >= ?) AS here,
       (SELECT COUNT(*) FROM members m WHERE m.dairy_id = d.id) AS members,
       (SELECT COUNT(*) FROM orders o WHERE o.dairy_id = d.id AND o.status = 'open') AS orders
-    FROM dairies d
+    FROM dairies d LEFT JOIN dairy_progress p ON p.dairy_id = d.id
     WHERE d.updated >= ? OR d.owner = ?
-    ORDER BY here DESC, d.is_public DESC, d.updated DESC
+    ORDER BY COALESCE(p.xp, 0) DESC, here DESC, d.is_public DESC, d.updated DESC
     LIMIT 500`).bind(t - ONLINE_WINDOW, t - LISTING_MAX_AGE, me.id).all();
   return { online: await onlineCount(env), dairies: rows.results.map(r => listing(r, me)) };
 }
@@ -309,7 +390,20 @@ async function myDairy(env, me) {
       online: (m.last_seen || 0) >= t - ONLINE_WINDOW, status: safeParse(m.status),
     })),
     stalls: stalls.map(s => ({ id: s.id, name: s.name, x: s.x, y: s.y, z: s.z, tier: s.tier })),
+    progress: await progressOut(env, d.id, stalls.length),
     invites: invites.map(i => ({ id: i.id, name: i.to_name, role: i.role, expires: i.expires })),
+  };
+}
+
+async function progressOut(env, dairyId, stallCount) {
+  const p = await progressOf(env, dairyId);
+  const donors = (await env.DB.prepare("SELECT name, coins FROM donations WHERE dairy_id = ? AND coins > 0 ORDER BY coins DESC LIMIT 10")
+    .bind(dairyId).all()).results;
+  return {
+    xp: p.xp, level: p.level, levelXp: xpToReach(p.level), nextXp: p.level >= MAX_LEVEL ? null : xpToReach(p.level + 1),
+    fund: p.fund, weekXp: p.weekXp, week: weekKey(),
+    stallSlots: stallSlots(p.level), maxTier: maxTier(p.level), nextStallPrice: stallPrice(stallCount), tierPrices: TIER_PRICE,
+    donors: donors.map(x => ({ name: x.name, coins: x.coins })),
   };
 }
 
@@ -378,6 +472,8 @@ async function deleteDairy(env, me) {
   await env.DB.batch([
     env.DB.prepare("DELETE FROM members WHERE dairy_id = ?").bind(d.id),
     env.DB.prepare("DELETE FROM stalls WHERE dairy_id = ?").bind(d.id),
+    env.DB.prepare("DELETE FROM dairy_progress WHERE dairy_id = ?").bind(d.id),
+    env.DB.prepare("DELETE FROM donations WHERE dairy_id = ?").bind(d.id),
     env.DB.prepare("UPDATE invites SET status = 'cancelled' WHERE dairy_id = ? AND status = 'pending'").bind(d.id),
     env.DB.prepare("DELETE FROM dairies WHERE id = ?").bind(d.id),
   ]);
@@ -493,8 +589,11 @@ async function addStall(env, me, request) {
   const b = await body(request);
   const d = await ownedDairy(env, me);
   const count = await env.DB.prepare("SELECT COUNT(*) AS n FROM stalls WHERE dairy_id = ?").bind(d.id).first();
-  const limit = int(b.limit ?? MAX_STALLS, 1, MAX_STALLS, "stall limit");
-  if (count.n >= limit) fail(400, `Your dairy has room for ${limit} stall(s).`);
+  const p = await progressOf(env, d.id);
+  const limit = stallSlots(p.level);
+  if (count.n >= limit) fail(400, `Your dairy has room for ${limit} stall(s) at level ${p.level}. Level up for more.`);
+  const price = stallPrice(count.n);
+  if (!(await spendFund(env, d.id, price))) fail(400, `A new stall costs ${price} coins from the dairy fund.`);
   const id = randomId();
   await env.DB.prepare("INSERT INTO stalls (id, dairy_id, name, x, y, z, tier, created) VALUES (?, ?, ?, ?, ?, ?, 1, ?)")
     .bind(id, d.id, clean(b.name, 24) || `Stall ${count.n + 1}`, num(b.x, "x"), num(b.y, "y"), num(b.z, "z"), now()).run();
@@ -513,10 +612,55 @@ async function upgradeStall(env, me, id, request) {
   const b = await body(request);
   const d = await ownedDairy(env, me);
   const tier = int(b.tier, 2, 4, "tier");
+  const p = await progressOf(env, d.id);
+  if (tier > maxTier(p.level)) fail(400, `Your dairy needs level ${tier >= 4 ? 12 : 5} for that.`);
+  const s = await env.DB.prepare("SELECT tier FROM stalls WHERE id = ? AND dairy_id = ?").bind(id, d.id).first();
+  if (!s || s.tier !== tier - 1) fail(409, "That stall changed; refresh and try again.");
+  if (!(await spendFund(env, d.id, TIER_PRICE[tier]))) fail(400, `That upgrade costs ${TIER_PRICE[tier]} coins from the dairy fund.`);
   const r = await env.DB.prepare("UPDATE stalls SET tier = ? WHERE id = ? AND dairy_id = ? AND tier = ? RETURNING id")
     .bind(tier, id, d.id, tier - 1).first();
-  if (!r) fail(409, "That stall changed; refresh and try again.");
+  if (!r) {
+    await env.DB.prepare("UPDATE dairy_progress SET fund = fund + ? WHERE dairy_id = ?").bind(TIER_PRICE[tier], d.id).run();
+    fail(409, "That stall changed; refresh and try again.");
+  }
   return { ok: true };
+}
+
+// ---------------------------------------------------------------- dairy fund and leaderboard
+
+/** Any member can put coins into their dairy's fund. Their plugin takes the coins first. */
+async function donate(env, me, request) {
+  const b = await body(request);
+  const mem = await membership(env, me.id);
+  if (!mem) fail(400, "Join a dairy first.");
+  const coins = int(b.coins, 1, MAX_DONATION, "coins");
+  await env.DB.batch([
+    env.DB.prepare(`INSERT INTO dairy_progress (dairy_id, fund, week) VALUES (?, ?, ?)
+      ON CONFLICT(dairy_id) DO UPDATE SET fund = fund + excluded.fund`).bind(mem.dairy_id, coins, weekKey()),
+    env.DB.prepare(`INSERT INTO donations (dairy_id, install, name, coins) VALUES (?, ?, ?, ?)
+      ON CONFLICT(dairy_id, install) DO UPDATE SET coins = coins + excluded.coins, name = excluded.name`)
+      .bind(mem.dairy_id, me.id, mem.name || "", coins),
+  ]);
+  const p = await progressOf(env, mem.dairy_id);
+  return { ok: true, fund: p.fund };
+}
+
+/** This week's most active dairies (week starts Monday 00:00 UTC). */
+async function leaderboard(env, me) {
+  const week = weekKey();
+  const mem = await membership(env, me.id);
+  const rows = (await env.DB.prepare(`
+    SELECT d.id, d.name, d.is_public, d.world_name, p.xp, p.week_xp
+    FROM dairy_progress p JOIN dairies d ON d.id = p.dairy_id
+    WHERE p.week = ? AND p.week_xp > 0
+    ORDER BY p.week_xp DESC LIMIT ?`).bind(week, LEADERBOARD_SIZE).all()).results;
+  return {
+    week,
+    dairies: rows.map((r, i) => ({
+      rank: i + 1, id: r.id, name: r.name, isPublic: !!r.is_public, worldName: r.world_name,
+      level: levelFor(r.xp), weekXp: r.week_xp, mine: !!mem && mem.dairy_id === r.id,
+    })),
+  };
 }
 
 // ---------------------------------------------------------------- buy orders
@@ -613,7 +757,10 @@ async function fillOrder(env, me, id, request) {
     env.DB.prepare("UPDATE installs SET deliver_day = ?, deliver_oz = ? WHERE id = ?").bind(day, delivered + o.oz, me.id),
     inboxStmt(env, me.id, "payout", o.coins, 0, 0, `${d.name} paid ${o.coins} coins for your ${o.oz} oz.`),
     inboxStmt(env, o.owner, "milk", 0, o.oz, grade, `A delivery filled your buy order: ${o.oz} oz of Grade ${gradeName(grade)}.`),
+    addXpStmt(env, d.id, o.oz * DELIVERY_XP_PER_OZ),
   ]);
+  const home = await membership(env, me.id);
+  if (home && home.dairy_id !== d.id) await addXpStmt(env, home.dairy_id, o.oz * DELIVERER_XP_PER_OZ).run();
   return { ok: true, coins: o.coins, oz: o.oz, dairy: d.name };
 }
 

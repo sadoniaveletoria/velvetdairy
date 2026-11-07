@@ -130,11 +130,18 @@ public sealed class DairyGame
             return;
         }
 
+        if (before != null && before.DairyId == m.DairyId && before.Level != m.Level)
+        {
+            if (m.Level > before.Level) Say($"{m.Dairy} reached dairy level {m.Level}!", 1);
+            before.Level = m.Level;
+            plugin.SaveConfig();
+        }
+
         if (before == null || before.DairyId != m.DairyId || before.Role != m.Role || before.IsOwner != m.IsOwner || before.Dairy != m.Dairy)
         {
             F.NetMember = new NetMember
             {
-                DairyId = m.DairyId, Dairy = m.Dairy, Role = m.Role, IsOwner = m.IsOwner,
+                DairyId = m.DairyId, Dairy = m.Dairy, Role = m.Role, IsOwner = m.IsOwner, Level = m.Level,
                 HouseId = before?.DairyId == m.DairyId ? before.HouseId : "",
             };
             if (before != null && before.Role != m.Role) Say($"You're now a {m.Role} at {m.Dairy}.", 1);
@@ -242,7 +249,7 @@ public sealed class DairyGame
     /// <summary>The grade your care would give if your level allowed it.</summary>
     public int CareGrade => Grades.FromState(Cow, false);
     public bool Overfull => Cow.Milk >= Capacity - 0.01f;
-    public int MaxStalls => 1 + Owned("stallkit");
+    public int MaxStalls => Networked ? Net.Progress?.StallSlots ?? 2 : 1 + Owned("stallkit");
     public float PriceBonus => 1f + (Owned("ribbon") > 0 ? 0.05f : 0) + (Owned("cap") > 0 ? 0.10f : 0);
     public float TankTotal => F.Tank!.Sum();
 
@@ -526,6 +533,7 @@ public sealed class DairyGame
         F.Stats.CareTasks++;
         F.DayCare++;
         AddXp(3);
+        EarnDairyXp(2);
         Say(text, 0);
         plugin.SaveConfig();
     }
@@ -752,6 +760,7 @@ public sealed class DairyGame
         F.Stats.TotalOz += collected;
         F.DayOz += collected;
         F.Stats.BestGrade = Math.Max(F.Stats.BestGrade, s.Grade);
+        EarnDairyXp(collected * (s.Kind == SessionKind.Hand ? 1.5f : 1f));
         F.Stats.BestSessionOz = Math.Max(F.Stats.BestSessionOz, collected);
 
         // Being milked feels good and resets the pressure
@@ -1021,7 +1030,13 @@ public sealed class DairyGame
         if (!Where.InDairy) return "Stalls go inside your dairy. " + Where.Why;
         if (!Where.Seated) return "Sit on the furniture you want to use as a stall.";
         if (Where.AtStall != null) return $"That's already {Where.AtStall.Name}.";
-        if (Stalls.Count >= MaxStalls) return $"You have {MaxStalls} stall(s). Buy a Stall kit for more.";
+        if (Networked)
+        {
+            if (Stalls.Count >= MaxStalls) return $"Your dairy has room for {MaxStalls} stall(s) at level {DairyLevel}. Level up the dairy for more.";
+            var price = Net.Progress?.NextStallPrice ?? 0;
+            if (price > (Net.Progress?.Fund ?? 0)) return $"The next stall costs {price} coins from the dairy fund.";
+        }
+        else if (Stalls.Count >= MaxStalls) return $"You have {MaxStalls} stall(s). Buy a Stall kit for more.";
         return null;
     }
 
@@ -1137,6 +1152,15 @@ public sealed class DairyGame
         if (Networked && !IsOwner) return "Only the dairy's owner upgrades stalls.";
         if (s.Tier >= 4) return "Fully upgraded.";
         var next = s.Tier + 1;
+        if (Networked)
+        {
+            var p = Net.Progress;
+            if (p == null) return "Loading your dairy...";
+            if (next > p.MaxTier) return $"Your dairy needs level {(next >= 4 ? 12 : 5)} for this.";
+            if (p.Fund < p.TierPrice(next)) return $"Needs {p.TierPrice(next)} coins in the dairy fund.";
+            return null;
+        }
+
         if (Level < Catalog.StallTierUnlock[next]) return $"Unlocks at level {Catalog.StallTierUnlock[next]}.";
         if (F.Coins < Catalog.StallTierPrice[next]) return "Not enough coins.";
         return null;
@@ -1150,15 +1174,8 @@ public sealed class DairyGame
         var price = Catalog.StallTierPrice[next];
         if (Networked)
         {
-            // Pay first; give the coins back if the server says no
-            F.Coins -= price;
-            plugin.SaveConfig();
-            Net.UpgradeStall(s.Id, next, () => Say($"{s.Name} is now a {Catalog.StallTierNames[next].ToLowerInvariant()}.", 1), e =>
-            {
-                F.Coins += price;
-                plugin.SaveConfig();
-                Fail(e);
-            });
+            // Paid from the dairy fund on the server
+            Net.UpgradeStall(s.Id, next, () => Say($"{s.Name} is now a {Catalog.StallTierNames[next].ToLowerInvariant()} (paid from the dairy fund).", 1), e => Fail(e));
             return true;
         }
 
@@ -1268,6 +1285,54 @@ public sealed class DairyGame
     // =================================================================
     // Network: members, invites, buy orders, deliveries, visitor orders
     // =================================================================
+
+    // ----- Dairy levels: members earn XP together; the shared fund pays for stalls -----
+
+    private float pendingDairyXp;
+
+    public int DairyLevel => Net.Progress?.Level ?? F.NetMember?.Level ?? 1;
+
+    /// <summary>XP for your dairy from what you do inside it (the server checks you're there and caps it per day).</summary>
+    private void EarnDairyXp(float amount)
+    {
+        if (Networked && F.NetMember != null && Where.InDairy) pendingDairyXp += amount;
+    }
+
+    /// <summary>Hands the next heartbeat what's built up (whole points, at most 60).</summary>
+    public int TakeDairyXp()
+    {
+        var n = (int)Math.Min(60, Math.Floor(pendingDairyXp));
+        pendingDairyXp = Math.Max(0, pendingDairyXp - n);
+        if (pendingDairyXp > 600) pendingDairyXp = 600;
+        return n;
+    }
+
+    public string? DonateProblem(int coins)
+    {
+        if (!Networked || F.NetMember == null) return "Join a dairy first.";
+        if (coins < 1) return "Donate at least 1 coin.";
+        if (coins > F.Coins) return "You don't have that many coins.";
+        return null;
+    }
+
+    public void Donate(int coins)
+    {
+        var p = DonateProblem(coins);
+        if (p != null)
+        {
+            Fail(p);
+            return;
+        }
+
+        F.Coins -= coins;
+        plugin.SaveConfig();
+        Net.Donate(coins, fund => Say($"You put {coins} coins into {DairyName}'s fund ({fund:N0} now).", 1), e =>
+        {
+            F.Coins += coins;
+            plugin.SaveConfig();
+            Fail(e);
+        });
+    }
 
     /// <summary>Roles you can invite: owners invite farmers, cows and bulls; farmers invite cows and bulls.</summary>
     public string[] InvitableRoles => !CanInvite ? Array.Empty<string>() : F.NetMember!.IsOwner ? new[] { "cow", "bull", "farmer" } : new[] { "cow", "bull" };
@@ -1462,6 +1527,7 @@ public sealed class DairyGame
         if (!ProducesMilk) return Fail("Only cows deliver milk.");
         if (!VisitorOrders(dairyId).Any(x => x.Id == o.Id)) return Fail("That order is already done.");
         F.VisitOrdersDone!.Add($"{dairyId}:{o.Id}");
+        pendingDairyXp += o.Oz;  // counts for your own dairy (the server checks you're at a public dairy)
         F.Orders!.Add(o);   // reuse the regular fill (milk, coins, xp, quality)
         if (!Fill(o))
         {

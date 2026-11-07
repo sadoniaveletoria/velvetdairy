@@ -227,9 +227,10 @@ public sealed partial class MainWindow : Window
         var chip = (G.Dev ? "DEV - " : "") + (G.Paused ? "Paused" : where.InDairy ? where.Why : dairy.Length == 0 ? "No dairy yet" : $"Away from {dairy}");
         if (G.Networked && G.Role != "cow" && !G.Paused) chip = $"{G.Role} · {chip}";
         if (G.Net.UpdateVersion is { } nv) chip = $"Update {nv} available · {chip}";
+        chip = chip.TrimEnd('.');
         var chipColor = G.Paused ? Theme.InkSoft : where.InDairy ? Theme.SageDeep : Theme.RoseDeep;
         var cs = Ui.Measure(fonts.Label, chip.ToUpperInvariant());
-        var cmin = new Vector2(right - cs.X - 30, o.Y + 56);
+        var cmin = new Vector2(right - cs.X - 38, o.Y + 56);
         var cmax = new Vector2(right, o.Y + 56 + cs.Y + 6);
         dl.AddRectFilled(cmin, cmax, Ui.U(chipColor, 0.12f), 99);
         dl.AddRect(cmin, cmax, Ui.U(chipColor, 0.6f), 99, ImDrawFlags.None, 1f);
@@ -336,7 +337,8 @@ public sealed partial class MainWindow : Window
         var iconW = icon != null ? iconR * 2 + 14 : 0;
         var widths = buttons.Select(BtnWidth).ToArray();
         var btnW = widths.Sum() + gap * Math.Max(0, widths.Length - 1);
-        var inline = buttons.Count == 0 || width - iconW - btnW - 14 >= 120;
+        // Keep buttons beside the text whenever the text still gets a sensible column (it wraps)
+        var inline = buttons.Count == 0 || width - iconW - btnW - 14 >= (buttons.Count == 1 ? 80 : 120);
         var textW = Math.Max(60, inline ? width - iconW - (buttons.Count > 0 ? btnW + 14 : 0) : width - iconW);
         var tx = p.X + iconW;
 
@@ -973,6 +975,7 @@ public sealed partial class MainWindow : Window
             var have = G.Owned(u.Id);
             var maxed = have >= u.MaxLevel;
             if (maxed && !showOwnedUpgrades) continue;
+            if (u.Id == "stallkit" && G.Networked) continue;   // on the network, stall slots come from the dairy's level
             var problem = G.UpgradeProblem(u);
             var levelText = u.MaxLevel > 1 ? $" {Math.Min(have + 1, u.MaxLevel)}/{u.MaxLevel}" : "";
             var desc = u.Id switch
@@ -996,14 +999,17 @@ public sealed partial class MainWindow : Window
             ImGui.Checkbox("List owned upgrades##showowned", ref showOwnedUpgrades);
         }
 
-        SubHeading("Your stalls", width);
-        if (F.Stalls!.Count == 0) Ui.Wrapped("No stalls yet. Set one up on the Dairy tab.", Theme.InkSoft, width);
-        foreach (var s in F.Stalls)
+        if (G.Networked && !G.IsOwner) return;
+        var prog = G.Networked ? G.Net.Progress : null;
+        SubHeading(G.Networked ? "Dairy stalls (paid from the fund)" : "Your stalls", width);
+        if (prog != null) ImGui.TextColored(Theme.HoneyDeep, $"Dairy fund: {prog.Fund:N0} coins · best tier at level {prog.Level}: {Catalog.StallTierNames[prog.MaxTier]}");
+        if (G.Stalls.Count == 0) Ui.Wrapped("No stalls yet. Set one up on the Dairy tab.", Theme.InkSoft, width);
+        foreach (var s in G.Stalls.ToList())
         {
             var problem = G.StallUpgradeProblem(s);
             var next = Math.Min(4, s.Tier + 1);
             var sub = s.Tier >= 4 ? $"{Catalog.StallSpeed[4]:0.##} oz/s · {Catalog.StallYield[4]:0.00}x yield"
-                : $"Now {Catalog.StallSpeed[s.Tier]:0.##} oz/s, {Catalog.StallYield[s.Tier]:0.00}x · next {Catalog.StallSpeed[next]:0.##} oz/s, {Catalog.StallYield[next]:0.00}x for {Catalog.StallTierPrice[next]} coins";
+                : $"Now {Catalog.StallSpeed[s.Tier]:0.##} oz/s, {Catalog.StallYield[s.Tier]:0.00}x · next {Catalog.StallSpeed[next]:0.##} oz/s, {Catalog.StallYield[next]:0.00}x for {(prog != null ? $"{prog.TierPrice(next)} fund coins" : $"{Catalog.StallTierPrice[next]} coins")}";
             if (Row($"##stallup{s.Id}", "gear", $"{s.Name} · {Catalog.StallTierNames[s.Tier]}", sub, s.Tier >= 4 ? "Maxed" : "Upgrade", "blue",
                     problem == null, problem, width))
                 G.UpgradeStall(s);
@@ -1070,16 +1076,26 @@ public sealed partial class MainWindow : Window
 
     private void DrawStalls(float width)
     {
-        Ui.Wrapped($"A stall is a seat in your dairy: a chair, bench or bed. Sit on it and press Add. You can have {G.MaxStalls}.", Theme.InkSoft, width);
+        if (G.Networked)
+        {
+            var pr = G.Net.Progress;
+            Ui.Wrapped(G.IsOwner
+                ? $"A stall is a seat in your dairy: a chair, bench or bed. Sit on it and press Add. Dairy level {G.DairyLevel} allows {G.MaxStalls}; " +
+                  $"the next costs {pr?.NextStallPrice ?? 0} coins from the dairy fund."
+                : "Your dairy's stalls. Sit on one to get milked.", Theme.InkSoft, width);
+        }
+        else Ui.Wrapped($"A stall is a seat in your dairy: a chair, bench or bed. Sit on it and press Add. You can have {G.MaxStalls}.", Theme.InkSoft, width);
         Gap(6);
         foreach (var s in G.Stalls.ToList())
         {
             var here = G.Where.AtStall == s;
             if (Row($"##rmstall{s.Id}", "bucket", s.Name + (here ? "  ·  you're here" : ""),
-                    $"{Catalog.StallTierNames[s.Tier]} · milked you {s.Sessions} time(s)", "Remove", "cream", true, "Forget this stall.", width))
+                    $"{Catalog.StallTierNames[s.Tier]} · milked you {s.Sessions} time(s)", "Remove", "cream", !G.Networked || G.IsOwner,
+                    G.Networked && !G.IsOwner ? "Only the owner can remove stalls." : "Forget this stall.", width))
                 G.RemoveStall(s);
         }
 
+        if (G.Networked && !G.IsOwner) return;
         var problem = G.StallHereProblem();
         Gap(4);
         if (Ui.Button("##addstall", "Add the seat I'm on", new Vector2(220, 36), "rose", problem == null, problem)) G.AddStallHere();

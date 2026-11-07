@@ -71,7 +71,7 @@ await test("owner registers a dairy and joins it", async () => {
   assert.equal(r.status, 200);
   dairy = r.data.id;
   const hb = await beat(alice);
-  assert.deepEqual(hb.data.membership, { dairyId: dairy, dairy: "Rose Hollow", role: "cow", isOwner: true });
+  assert.deepEqual(hb.data.membership, { dairyId: dairy, dairy: "Rose Hollow", role: "cow", isOwner: true, level: 1 });
 });
 
 await test("an address can only be registered once", async () => {
@@ -132,14 +132,40 @@ await test("members see the roster with roles and shared status", async () => {
 
 await test("only the owner sets up stalls, everyone sees them", async () => {
   assert.equal((await call(bob, "POST", "/v1/stalls", { x: 1, y: 2, z: 3 })).status, 403);
-  const r = await call(alice, "POST", "/v1/stalls", { name: "Stall 1", x: 1.5, y: 0, z: -3.25, limit: 1 });
-  assert.equal(r.status, 200);
-  assert.equal((await call(alice, "POST", "/v1/stalls", { x: 2, y: 0, z: 0, limit: 1 })).status, 400, "stall limit");
+  const r = await call(alice, "POST", "/v1/stalls", { name: "Stall 1", x: 1.5, y: 0, z: -3.25 });
+  assert.equal(r.status, 200, "the first stall is free");
+  assert.equal((await call(alice, "POST", "/v1/stalls", { x: 2, y: 0, z: 0 })).status, 400, "the second costs 200 from the fund");
   const stalls = (await call(carl, "GET", "/v1/dairy/mine")).data.stalls;
   assert.equal(stalls.length, 1);
   assert.equal(stalls[0].z, -3.25);
-  assert.equal((await call(alice, "POST", `/v1/stalls/${r.data.id}/tier`, { tier: 3 })).status, 409, "one tier at a time");
+  assert.equal((await call(alice, "POST", `/v1/stalls/${r.data.id}/tier`, { tier: 2 })).status, 400, "the fund is empty");
+  assert.equal((await call(carl, "POST", "/v1/dairy/fund", { coins: 500 })).status, 200, "any member can donate");
   assert.equal((await call(alice, "POST", `/v1/stalls/${r.data.id}/tier`, { tier: 2 })).status, 200);
+  assert.equal((await call(alice, "POST", `/v1/stalls/${r.data.id}/tier`, { tier: 3 })).status, 400, "tier 3 needs level 5");
+  assert.equal((await call(alice, "POST", "/v1/stalls", { name: "Stall 2", x: 2, y: 0, z: 0 })).status, 200);
+  assert.equal((await call(alice, "POST", "/v1/stalls", { x: 3, y: 0, z: 0 })).status, 400, "level 1 has 2 slots");
+  const p = (await call(bob, "GET", "/v1/dairy/mine")).data.progress;
+  assert.equal(p.fund, 500 - 150 - 200);
+  assert.equal(p.level, 1);
+  assert.equal(p.stallSlots, 2);
+  assert.deepEqual(p.donors, [{ name: "Carl Bull", coins: 500 }]);
+});
+
+await test("dairy XP: only in the dairy, capped per member per day", async () => {
+  assert.equal((await beat(bob, { houseId: ELSEWHERE, dairyXp: 50 })).data.dairyXp, 0, "away from the dairy");
+  let total = 0;
+  for (let i = 0; i < 8; i++) total += (await beat(bob, { houseId: HOUSE, dairyXp: 999 })).data.dairyXp;
+  assert.equal(total, 300, "daily cap");
+  await beat(alice, { houseId: HOUSE, dairyXp: 60 });
+  const p = (await call(alice, "GET", "/v1/dairy/mine")).data.progress;
+  assert.equal(p.xp, 360);
+  assert.equal(p.weekXp, 360);
+  assert.equal(p.nextXp, 400);
+  await beat(alice, { houseId: HOUSE, dairyXp: 60 });
+  assert.equal((await beat(alice)).data.membership.level, 2);
+  const board = (await call(dana, "GET", "/v1/leaderboard")).data;
+  assert.equal(board.dairies[0].name, "Rose Hollow");
+  assert.equal(board.dairies[0].weekXp, 420);
 });
 
 await test("farmer removes a bull; can't remove the owner", async () => {
@@ -227,6 +253,11 @@ await test("names are cleaned and trimmed", async () => {
   const d = (await call(dana, "GET", "/v1/dairies")).data.dairies.find(x => x.id === r.data.id);
   assert.ok(d.name.length <= 32);
   assert.ok(!d.name.includes("\u0007"));
+});
+
+await test("higher level dairies list first; delivery gives dairy XP", async () => {
+  const list = (await call(dana, "GET", "/v1/dairies")).data.dairies;
+  assert.ok(list[0].level >= list[list.length - 1].level);
 });
 
 await test("stats work without logging in", async () => {

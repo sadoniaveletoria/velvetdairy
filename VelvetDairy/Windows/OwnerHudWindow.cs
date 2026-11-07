@@ -65,7 +65,7 @@ public sealed class OwnerHudWindow : Window
         var x = o.X + 22;
         var right = o.X + size.X - 22;
 
-        Ui.Text(dl, fonts.Label, "OWNER", new Vector2(x, o.Y + 16), Theme.BlueDeep);
+        Ui.Text(dl, fonts.Label, $"OWNER · DAIRY LV {G.DairyLevel}", new Vector2(x, o.Y + 16), Theme.BlueDeep);
         Ui.Text(dl, fonts.Heading, mine.Dairy?.Name ?? F.NetMember!.Dairy, new Vector2(x, o.Y + 34), Theme.Ink);
 
         var members = mine.Members.Where(m => m.Id != mine.You?.Id).OrderByDescending(m => m.Online).ThenBy(m => m.Role).ThenBy(m => m.Name).ToList();

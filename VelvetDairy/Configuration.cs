@@ -118,6 +118,7 @@ public class NetMember
     public string Role { get; set; } = "";
     public bool IsOwner { get; set; }
     public string HouseId { get; set; } = "";
+    public int Level { get; set; } = 1;
 }
 
 [Serializable]
