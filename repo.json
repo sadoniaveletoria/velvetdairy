@@ -3,7 +3,7 @@
     "Author": "Sadonia",
     "Name": "Velvet Dairy",
     "InternalName": "VelvetDairy",
-    "AssemblyVersion": "0.4.2.0",
+    "AssemblyVersion": "0.4.3.0",
     "Punchline": "(Work in progress) A cozy 18+ dairy life: be the cow, run a dairy with friends, and bottle the finest milk in Eorzea.",
     "Description": "WORK IN PROGRESS: Velvet Dairy is still being built and tested. Expect bugs, balance changes and missing pieces.\n\nVelvet Dairy turns your house into a working dairy, and you're the cow.\n\n- Keep your hunger, thirst, comfort and mood up with feed and treats\n- Get milked in your dairy's stalls or by hand by a farmer, and watch your bottles fill\n- Sell to the creamery, fill customer orders and raise your milk from Grade C to S+\n- Level up for bigger bottles and better stalls, and empty them before the milk spoils\n- Join the Velvet Dairy Network: register your estate, invite farmers, cows and bulls, browse public dairies, visit them and deliver milk for coins\n- Dairies level up together: members earn dairy XP, pool coins in a shared fund for stalls, and compete on the weekly leaderboard\n\nComing in new updates: full Farmer and Bull roles. Farmers can already hand milk and invite cows and bulls, and bulls are a role only for now.\n\nAdults only (18+); Lalafell characters can't play. It never posts to chat or moves your character. Lifestream is optional, for one-click travel to public dairies.",
     "RepoUrl": "https://github.com/sadoniaveletoria/velvetdairy",
