@@ -365,8 +365,6 @@ public sealed class DairyGame
 
         if (Blocked() != null || Paused)
         {
-            // Not playing (logged out, character select, paused): the spoil clock waits too
-            if (Cow.FullSinceUtc != null && !Cow.Spoiled) Cow.FullSinceUtc = Cow.FullSinceUtc.Value.AddSeconds(dt);
             Cow.LastTickUtc = DateTime.UtcNow;
             return;
         }
@@ -445,16 +443,13 @@ public sealed class DairyGame
     }
 
     /// <summary>
-    /// Time spent logged out: no milk is made and the spoil countdown pauses, so a vacation never costs you anything.
+    /// Time spent logged out: no milk is made. Full bottles still spoil on the real clock, so empty them before you log out.
     /// Needs drift down gently (a quarter speed, never below 20) so a fresh login still has a little care to do.
     /// </summary>
     private void CatchUp()
     {
         var away = DateTime.UtcNow - Cow.LastTickUtc;
         if (away.TotalMinutes < 1) return;
-
-        // The spoil clock only runs while you're logged in
-        if (Cow.FullSinceUtc != null && !Cow.Spoiled) Cow.FullSinceUtc = Cow.FullSinceUtc.Value + away;
 
         var minutes = (float)Math.Min(away.TotalMinutes, 8 * 60);
         static float Floor(float v, float d) => Math.Max(Math.Min(v, 20), v - d);
