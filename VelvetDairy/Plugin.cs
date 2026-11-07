@@ -23,6 +23,7 @@ public sealed class Plugin : IDalamudPlugin
     [PluginService] internal static IFramework Framework { get; private set; } = null!;
     [PluginService] internal static ITextureProvider TextureProvider { get; private set; } = null!;
     [PluginService] internal static IPluginLog Log { get; private set; } = null!;
+    [PluginService] internal static IKeyState KeyState { get; private set; } = null!;
 
     private const string Command = "/vdairy";
 
@@ -98,6 +99,7 @@ public sealed class Plugin : IDalamudPlugin
         });
 
         PluginInterface.UiBuilder.Draw += windowSystem.Draw;
+        PluginInterface.UiBuilder.Draw += WatchUiInput;
         PluginInterface.UiBuilder.OpenMainUi += MainWindow.Toggle;
         PluginInterface.UiBuilder.OpenConfigUi += MainWindow.Toggle;
         Framework.Update += OnFrameworkUpdate;
@@ -130,6 +132,7 @@ public sealed class Plugin : IDalamudPlugin
         PluginInterface.UiBuilder.OpenConfigUi -= MainWindow.Toggle;
         PluginInterface.UiBuilder.OpenMainUi -= MainWindow.Toggle;
         PluginInterface.UiBuilder.Draw -= windowSystem.Draw;
+        PluginInterface.UiBuilder.Draw -= WatchUiInput;
         CommandManager.RemoveHandler(Command);
         windowSystem.RemoveAllWindows();
         fonts.Dispose();
@@ -192,6 +195,20 @@ public sealed class Plugin : IDalamudPlugin
         else
         {
             MainWindow.Toggle();
+        }
+    }
+
+    private float mouseTravel;
+
+    /// <summary>Mouse movement and clicks count as being at the keyboard (checked each UI frame).</summary>
+    private void WatchUiInput()
+    {
+        var io = Dalamud.Bindings.ImGui.ImGui.GetIO();
+        mouseTravel += io.MouseDelta.Length();
+        if (mouseTravel > 40 || Dalamud.Bindings.ImGui.ImGui.IsAnyMouseDown())
+        {
+            mouseTravel = 0;
+            Game.Touch();
         }
     }
 }

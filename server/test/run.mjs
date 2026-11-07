@@ -152,16 +152,17 @@ await test("only the owner sets up stalls, everyone sees them", async () => {
 });
 
 await test("dairy XP: only in the dairy, capped per member per day", async () => {
-  assert.equal((await beat(bob, { houseId: ELSEWHERE, dairyXp: 50 })).data.dairyXp, 0, "away from the dairy");
+  assert.equal((await beat(bob, { houseId: ELSEWHERE, dairyXp: 50, awake: true })).data.dairyXp, 0, "away from the dairy");
+  assert.equal((await beat(bob, { houseId: HOUSE, dairyXp: 50, awake: false })).data.dairyXp, 0, "asleep earns nothing");
   let total = 0;
-  for (let i = 0; i < 8; i++) total += (await beat(bob, { houseId: HOUSE, dairyXp: 999 })).data.dairyXp;
+  for (let i = 0; i < 8; i++) total += (await beat(bob, { houseId: HOUSE, dairyXp: 999, awake: true })).data.dairyXp;
   assert.equal(total, 300, "daily cap");
-  await beat(alice, { houseId: HOUSE, dairyXp: 60 });
+  await beat(alice, { houseId: HOUSE, dairyXp: 60, awake: true });
   const p = (await call(alice, "GET", "/v1/dairy/mine")).data.progress;
   assert.equal(p.xp, 360);
   assert.equal(p.weekXp, 360);
   assert.equal(p.nextXp, 400);
-  await beat(alice, { houseId: HOUSE, dairyXp: 60 });
+  await beat(alice, { houseId: HOUSE, dairyXp: 60, awake: true });
   assert.equal((await beat(alice)).data.membership.level, 2);
   const board = (await call(dana, "GET", "/v1/leaderboard")).data;
   assert.equal(board.dairies[0].name, "Rose Hollow");

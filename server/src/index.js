@@ -290,7 +290,7 @@ async function heartbeat(env, me, request) {
   const asked = Math.max(0, Math.min(XP_PER_BEAT, Math.floor(Number(b.dairyXp) || 0)));
   const atHome = mem && here && here.id === mem.dairy_id;
   const visiting = mem && here && here.id !== mem.dairy_id && here.is_public;
-  if (asked > 0 && (atHome || visiting)) {
+  if (asked > 0 && b.awake === true && (atHome || visiting)) {
     const day = today();
     const used = (await env.DB.prepare("SELECT xp FROM member_xp WHERE install = ? AND day = ?").bind(me.id, day).first())?.xp || 0;
     dairyXp = Math.min(asked, MEMBER_DAILY_XP - used);

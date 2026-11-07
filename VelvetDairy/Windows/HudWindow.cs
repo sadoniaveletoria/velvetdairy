@@ -128,6 +128,21 @@ public sealed class HudWindow : Window
             status = left.HasValue && left.Value.TotalHours < 24 ? $"Full! Spoils in {(left.Value.TotalHours >= 1 ? $"{(int)left.Value.TotalHours}h {left.Value.Minutes}m" : $"{left.Value.Minutes}m")}" : "Full, get milked";
             col = Theme.Warn;
         }
+        else if (G.Wake == DairyGame.Wakefulness.Asleep)
+        {
+            status = "Asleep · no milk until you move";
+            col = Theme.Warn;
+        }
+        else if (G.Wake == DairyGame.Wakefulness.Dozing)
+        {
+            status = "Dozing · milk at half speed";
+            col = Theme.HoneyDeep;
+        }
+        else if (G.Tired && G.ProducesMilk)
+        {
+            status = "Tired · half speed until tomorrow";
+            col = Theme.HoneyDeep;
+        }
         else if (G.Where.InDairy)
         {
             status = G.Where.Seated ? "Resting in the dairy" : "In the dairy";

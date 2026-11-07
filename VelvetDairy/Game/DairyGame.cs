@@ -75,7 +75,8 @@ public sealed class DairyGame
     public float MilkSpeed => Dev ? F.MilkSpeed : 1f;
     public bool Paused => Dev && F.Paused;
     public bool AutoStall => !Dev || F.AutoStall;
-    public float StallRange => Dev ? F.StallRange : 1.6f;
+    /// <summary>How close to a stall's seat you must be sitting. Tight, so sitting next to it doesn't count.</summary>
+    public float StallRange => Dev ? F.StallRange : 0.9f;
     public float HandRange => Dev ? F.HandRange : 3f;
     public bool HandNeedsTarget => !Dev || F.HandNeedsTarget;
 
@@ -281,7 +282,10 @@ public sealed class DairyGame
         if (Level > 1) parts.Add(new RatePart($"Level {Level}", 1f + Catalog.LevelBonus * (Level - 1)));
         if (Contented) parts.Add(new RatePart("Contented (all needs 75+)", 1f + Catalog.ContentBonus));
         if (BoostLeft > TimeSpan.Zero) parts.Add(new RatePart("Treat boost", 1f + Catalog.TreatBonus));
-        if (includeResting && Where.InDairy && Where.Seated) parts.Add(new RatePart("Resting in your dairy", 1f + Catalog.RestBonus));
+        if (includeResting && Where.InDairy && Where.Seated && Wake == Wakefulness.Awake) parts.Add(new RatePart("Resting in your dairy", 1f + Catalog.RestBonus));
+        if (includeResting && Wake == Wakefulness.Dozing) parts.Add(new RatePart("Dozing (no activity for 15 min)", 0.5f));
+        if (includeResting && Wake == Wakefulness.Asleep) parts.Add(new RatePart("Asleep (no activity for 30 min)", 0f));
+        if (Tired) parts.Add(new RatePart($"Tired ({TiredAfterHours} h milking today)", 0.5f));
         if (Math.Abs(MilkSpeed - 1f) > 0.01f) parts.Add(new RatePart("Milk speed setting", MilkSpeed));
         return parts;
     }
@@ -293,10 +297,77 @@ public sealed class DairyGame
     // Frame update
     // =================================================================
 
+    // =================================================================
+    // Awake, dozing, asleep: no milk for standing around with nobody at the keyboard
+    // =================================================================
+
+    public enum Wakefulness { Awake, Dozing, Asleep }
+
+    public const double DozeAfter = 15 * 60;
+    public const double SleepAfter = 30 * 60;
+    public const int TiredAfterHours = 12;
+
+    private double lastActive;
+    private Vector3 lastPos;
+    private float lastRot;
+    private ulong lastTarget;
+    private ushort lastEmote;
+    private Wakefulness lastWake;
+
+    /// <summary>Seconds since you last did something.</summary>
+    public double IdleSeconds => now - lastActive;
+
+    public Wakefulness Wake =>
+        Dev && !F.DevCanSleep ? Wakefulness.Awake
+        : IdleSeconds >= SleepAfter ? Wakefulness.Asleep
+        : IdleSeconds >= DozeAfter ? Wakefulness.Dozing
+        : Wakefulness.Awake;
+
+    /// <summary>After 12 hours of making milk in one day, milk comes in at half speed until tomorrow.</summary>
+    public bool Tired => F.DayAwakeMinutes >= TiredAfterHours * 60;
+
+    /// <summary>Something real happened (a click in the plugin, care, a farmer's stroke...).</summary>
+    public void Touch() => lastActive = now;
+
+    /// <summary>Watches for signs someone is playing: moving, turning, targeting, emotes, and the game's own input timer.</summary>
+    private void WatchActivity()
+    {
+        var me = Plugin.ObjectTable.LocalPlayer;
+        if (me == null) return;
+        var target = Plugin.TargetManager.Target?.GameObjectId ?? 0;
+        var emote = Emotes.Current(me);
+        if (Vector3.Distance(me.Position, lastPos) > 0.05f || Math.Abs(me.Rotation - lastRot) > 0.05f || target != lastTarget || emote != lastEmote)
+            Touch();
+        lastPos = me.Position;
+        lastRot = me.Rotation;
+        lastTarget = target;
+        lastEmote = emote;
+        foreach (var k in Plugin.KeyState.GetValidVirtualKeys())
+            if (Plugin.KeyState[k])
+            {
+                Touch();
+                break;
+            }
+
+        var w = Wake;
+        if (w != lastWake)
+        {
+            if (w == Wakefulness.Dozing) Say("You're dozing off. Milk comes in at half speed until you do something.", 2);
+            else if (w == Wakefulness.Asleep)
+            {
+                Stop("You fell asleep.");
+                Say("You fell asleep. No milk or XP until you wake up (move, emote or click anything).", 2);
+            }
+            else if (lastWake == Wakefulness.Asleep) Say("You wake up.", 0);
+            lastWake = w;
+        }
+    }
+
     public void Update(float dt)
     {
         now += dt;
         Where = Locate();
+        WatchActivity();
 
         if (Blocked() != null || Paused)
         {
@@ -318,6 +389,7 @@ public sealed class DairyGame
             var step = (float)simAccum;
             simAccum = 0;
             Simulate(step);
+            if (Wake == Wakefulness.Awake && ProducesMilk && Cow.Milk < Capacity - 0.01f) F.DayAwakeMinutes += step / 60f;
             Cow.LastTickUtc = DateTime.UtcNow;
         }
 
@@ -529,6 +601,7 @@ public sealed class DairyGame
 
     private void CareDone(string text)
     {
+        Touch();
         EaseTaint(Catalog.TaintPerCare);
         F.Stats.CareTasks++;
         F.DayCare++;
@@ -610,7 +683,8 @@ public sealed class DairyGame
         if (Cow.Spoiled) return "Your milk has spoiled. Dump it first.";
         if (Stalls.Count == 0) return Networked && !IsOwner ? "Your dairy's owner hasn't set up any stalls yet." : "Register a stall first (Dairy tab).";
         if (!Where.Seated) return "Sit down in one of your stalls.";
-        if (Where.AtStall == null) return $"You're not sitting in a stall (they work within {StallRange:0.#} y).";
+        if (Wake == Wakefulness.Asleep) return "You're asleep. Move, emote or click anything to wake up.";
+        if (Where.AtStall == null) return Where.Seated ? "Sit on a stall's own seat to be milked (you're sitting somewhere else)." : "Sit on one of the dairy's stalls to be milked.";
         if (Cow.Milk < 0.5f) return "You don't have enough milk yet.";
         return null;
     }
@@ -630,6 +704,7 @@ public sealed class DairyGame
         var p = CareProblem();
         if (p != null) return p.Replace("Care is", "Milking is");
         if (!ProducesMilk) return $"Only cows are milked. You're a {Role} here.";
+        if (Wake == Wakefulness.Asleep) return "You're asleep. Move, emote or click anything to wake up.";
         if (Cow.Spoiled) return "Your milk has spoiled. Dump it first.";
         if (Cow.Milk < 0.5f) return "You don't have enough milk yet.";
         if (fh.IsTest) return Dev ? null : "The test farmhand only works in developer mode.";
@@ -682,7 +757,7 @@ public sealed class DairyGame
         if (s == null)
         {
             if (Where.AtStall == null || Cow.Milk >= Math.Min(BottleSize * 0.5f, Capacity)) autoHold = false;
-            if (AutoStall && !autoHold && Where.AtStall != null && Cow.Milk >= 1 && StallProblem() == null) StartStall();
+            if (AutoStall && !autoHold && Where.AtStall != null && Cow.Milk >= 1 && Wake == Wakefulness.Awake && StallProblem() == null) StartStall();
             return;
         }
 
@@ -695,7 +770,7 @@ public sealed class DairyGame
         if (s.Kind == SessionKind.Stall)
         {
             if (Where.AtStall == s.Stall) s.LastActivity = now;
-            else if (now - s.LastActivity > 2)
+            else if (now - s.LastActivity > 1)
             {
                 Finish("You got up.");
                 return;
@@ -1295,7 +1370,7 @@ public sealed class DairyGame
     /// <summary>XP for your dairy from what you do inside it (the server checks you're there and caps it per day).</summary>
     private void EarnDairyXp(float amount)
     {
-        if (Networked && F.NetMember != null && Where.InDairy) pendingDairyXp += amount;
+        if (Networked && F.NetMember != null && Where.InDairy && Wake == Wakefulness.Awake) pendingDairyXp += amount;
     }
 
     /// <summary>Hands the next heartbeat what's built up (whole points, at most 60).</summary>
@@ -1584,6 +1659,7 @@ public sealed class DairyGame
         F.DayOrders = 0;
         F.DayCare = 0;
         F.DayHand = 0;
+        F.DayAwakeMinutes = 0;
         F.DayClaimed = 0;
     }
 

@@ -38,7 +38,8 @@ public class FarmSave
     public List<Farmhand>? Farmhands { get; set; }
     public List<string>? HandEmotes { get; set; }     // emote commands a farmhand uses to milk you
     public float HandRange { get; set; } = 3f;
-    public float StallRange { get; set; } = 1.6f;
+    public float StallRange { get; set; } = 0.9f;
+    public bool DevCanSleep { get; set; }          // developer: let the anti-AFK rules apply to you for testing
     public bool HandNeedsTarget { get; set; } = true; // farmhand must be targeting you
 
     // ----- You (the cow) -----
@@ -82,7 +83,8 @@ public class FarmSave
     public string ListDescription { get; set; } = "";
     public string OwnerRole { get; set; } = "cow";    // what you play in your own dairy: cow, farmer, bull or none
     public bool ShowOwnerHud { get; set; } = true;
-    public string VisitDay { get; set; } = "";        // bonus orders at other dairies, per day
+    public string VisitDay { get; set; } = "";
+    public float DayAwakeMinutes { get; set; }        // minutes of milk-making today (tired after 12 h)        // bonus orders at other dairies, per day
     public List<string>? VisitOrdersDone { get; set; }
 
     // ----- Save protection -----
@@ -101,6 +103,7 @@ public class FarmSave
         Orders ??= new List<Order>();
         Log ??= new List<string>();
         VisitOrdersDone ??= new List<string>();
+        if (Math.Abs(StallRange - 1.6f) < 0.01f) StallRange = 0.9f;   // old default was loose enough to count sitting beside a stall
         if (!StarterGiven)
         {
             Pantry["hay"] = 6;

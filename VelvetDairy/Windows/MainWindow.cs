@@ -1400,7 +1400,10 @@ public sealed partial class MainWindow : Window
         if (ImGui.SliderFloat("Milk speed (default 1x)", ref speed, 0.25f, 20f, "%.2fx")) { F.MilkSpeed = speed; changed = true; }
         var stall = F.StallRange;
         ImGui.SetNextItemWidth(200);
-        if (ImGui.SliderFloat("Stall seat range (default 1.6 y)", ref stall, 0.5f, 4f, "%.1f")) { F.StallRange = stall; changed = true; }
+        if (ImGui.SliderFloat("Stall seat range (players: 0.9 y)", ref stall, 0.5f, 4f, "%.1f")) { F.StallRange = stall; changed = true; }
+        var sleepy = F.DevCanSleep;
+        if (ImGui.Checkbox("Let me doze and fall asleep (anti-AFK test)", ref sleepy)) { F.DevCanSleep = sleepy; changed = true; }
+        ImGui.TextColored(Theme.InkSoft, $"Idle {(int)G.IdleSeconds}s · {G.Wake} · milk-making today {F.DayAwakeMinutes / 60f:0.0} h");
         var range = F.HandRange;
         ImGui.SetNextItemWidth(200);
         if (ImGui.SliderFloat("Farmhand range (default 3 y)", ref range, 1f, 8f, "%.1f")) { F.HandRange = range; changed = true; }
@@ -1415,7 +1418,7 @@ public sealed partial class MainWindow : Window
             F.Paused = false;
             F.AutoStall = true;
             F.MilkSpeed = 1f;
-            F.StallRange = 1.6f;
+            F.StallRange = 0.9f;
             F.HandRange = 3f;
             F.HandNeedsTarget = true;
             changed = true;
