@@ -93,6 +93,7 @@ public sealed class NetClient : IDisposable
             }
         }
 
+        if (Now >= nextUpdateCheck) CheckForUpdate();
         if (!F.NetEnabled || !F.Confirmed18 || Plugin.ObjectTable.LocalPlayer == null) return;
         var t = Now;
 
@@ -145,6 +146,34 @@ public sealed class NetClient : IDisposable
             catch
             {
                 mainThread.Enqueue(() => Status = "The Velvet Dairy network isn't set up yet. Playing locally.");
+            }
+        });
+    }
+
+    // ----- Update check: the repo's repo.json says which version is released -----
+
+    private const string RepoFileUrl = "https://raw.githubusercontent.com/sadoniaveletoria/velvetdairy/main/repo.json";
+    private double nextUpdateCheck;
+
+    /// <summary>The newest released version, when it's newer than this one.</summary>
+    public string? UpdateVersion { get; private set; }
+
+    private void CheckForUpdate()
+    {
+        nextUpdateCheck = Now + 30 * 60;
+        Task.Run(async () =>
+        {
+            try
+            {
+                var text = await http.GetStringAsync(RepoFileUrl + "?t=" + DateTime.UtcNow.Ticks);
+                using var doc = JsonDocument.Parse(text);
+                var latest = doc.RootElement[0].GetProperty("AssemblyVersion").GetString();
+                if (System.Version.TryParse(latest, out var lv) && System.Version.TryParse(Plugin.Version, out var mine) && lv > mine)
+                    mainThread.Enqueue(() => UpdateVersion = latest);
+            }
+            catch
+            {
+                // No update info right now; try again later
             }
         });
     }

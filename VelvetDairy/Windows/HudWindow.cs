@@ -146,6 +146,13 @@ public sealed class HudWindow : Window
             col = G.Where.InDairy ? Theme.SageDeep : Theme.InkSoft;
         }
 
+        // A newer version is out
+        if (G.Net.UpdateVersion is { } nv && s == null && !G.Spoiled && cow.Milk < cap - 0.1f)
+        {
+            status = $"Update {nv} is out · /xlplugins";
+            col = Theme.BlueDeep;
+        }
+
         // Latest message briefly replaces the status
         var now = ImGui.GetTime();
         if (Toasts.Items.Count > 0 && now - Toasts.Items[0].T0 < 4)

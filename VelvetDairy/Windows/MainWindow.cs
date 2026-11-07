@@ -226,6 +226,7 @@ public sealed partial class MainWindow : Window
         var dairy = G.DairyName;
         var chip = (G.Dev ? "DEV - " : "") + (G.Paused ? "Paused" : where.InDairy ? where.Why : dairy.Length == 0 ? "No dairy yet" : $"Away from {dairy}");
         if (G.Networked && G.Role != "cow" && !G.Paused) chip = $"{G.Role} · {chip}";
+        if (G.Net.UpdateVersion is { } nv) chip = $"Update {nv} available · {chip}";
         var chipColor = G.Paused ? Theme.InkSoft : where.InDairy ? Theme.SageDeep : Theme.RoseDeep;
         var cs = Ui.Measure(fonts.Label, chip.ToUpperInvariant());
         var cmin = new Vector2(right - cs.X - 30, o.Y + 56);
