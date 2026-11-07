@@ -492,7 +492,7 @@ public sealed class DairyGame
             var milkBefore = Cow.Milk;
             Cow.Milk = Math.Min(Capacity, Cow.Milk + ProductionPerMinute() * m);
             // XP ticks in as milk is made (dozing and tired already slow production; asleep and full make none)
-            pendingTickXp += (Cow.Milk - milkBefore) * Leveling.XpPerOzMade * Leveling.GradeBonus(CurrentGrade);
+            madeSinceTick += Cow.Milk - milkBefore;
             if (FullBottles > fullBefore)
                 Say(FullBottles >= BottleCount ? "All your bottles are full. Time to get milked." : $"Bottle {FullBottles} of {BottleCount} is full.", 0);
         }
@@ -1681,23 +1681,25 @@ public sealed class DairyGame
     public float? NextQuality => GradeCap + 1 < Grades.QualityNeed.Length ? Grades.QualityNeed[GradeCap + 1] : null;
 
     // ----- XP ticks while making milk -----
-    private float pendingTickXp;
-    private double nextXpTick;
+    private float madeSinceTick;      // milk made since the last +1 xp
+    private float gradeExtra;         // the grade bonus's extra xp, paid out in whole points
 
     /// <summary>The last XP tick, for the HUD's little "+xp" (amount, when).</summary>
     public (int Amount, double At) LastXpTick { get; private set; }
 
     public double Now => now;
 
+    /// <summary>+1 xp for every 0.1 oz made, right away. Better grades add a little extra on top.</summary>
     private void TickXp()
     {
-        if (now < nextXpTick) return;
-        nextXpTick = now + 60;
-        var n = (int)Math.Floor(pendingTickXp);
-        if (n <= 0) return;
-        pendingTickXp -= n;
-        AddXp(n);
-        LastXpTick = (n, now);
+        if (madeSinceTick < Leveling.OzPerXpTick) return;
+        var n = (int)(madeSinceTick / Leveling.OzPerXpTick);
+        madeSinceTick -= n * Leveling.OzPerXpTick;
+        gradeExtra += n * (Leveling.GradeBonus(CurrentGrade) - 1f);
+        var extra = (int)gradeExtra;
+        gradeExtra -= extra;
+        AddXp(n + extra);
+        LastXpTick = (n + extra + (now - LastXpTick.At < 3 ? LastXpTick.Amount : 0), now);
     }
 
     private void AddXp(int amount)
