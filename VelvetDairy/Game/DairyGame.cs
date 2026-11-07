@@ -311,7 +311,7 @@ public sealed class DairyGame
     private Vector3 lastPos;
     private float lastRot;
     private ulong lastTarget;
-    private ushort lastEmote;
+    private ushort myLastEmote;
     private Wakefulness lastWake;
 
     /// <summary>Seconds since you last did something.</summary>
@@ -336,12 +336,12 @@ public sealed class DairyGame
         if (me == null) return;
         var target = Plugin.TargetManager.Target?.GameObjectId ?? 0;
         var emote = Emotes.Current(me);
-        if (Vector3.Distance(me.Position, lastPos) > 0.05f || Math.Abs(me.Rotation - lastRot) > 0.05f || target != lastTarget || emote != lastEmote)
+        if (Vector3.Distance(me.Position, lastPos) > 0.05f || Math.Abs(me.Rotation - lastRot) > 0.05f || target != lastTarget || emote != myLastEmote)
             Touch();
         lastPos = me.Position;
         lastRot = me.Rotation;
         lastTarget = target;
-        lastEmote = emote;
+        myLastEmote = emote;
         foreach (var k in Plugin.KeyState.GetValidVirtualKeys())
             if (Plugin.KeyState[k])
             {
