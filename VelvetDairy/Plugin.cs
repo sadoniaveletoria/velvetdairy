@@ -33,6 +33,7 @@ public sealed class Plugin : IDalamudPlugin
     public Sounds Sounds { get; }
     public NetClient Net { get; }
     public OwnerHudWindow OwnerHud { get; }
+    public MembersWindow Members { get; }
 
     /// <summary>This build's version, sent to the network so old versions can be told to update.</summary>
     public static string Version { get; } = typeof(Plugin).Assembly.GetName().Version?.ToString() ?? "0";
@@ -75,6 +76,8 @@ public sealed class Plugin : IDalamudPlugin
         windowSystem.AddWindow(Hud);
         OwnerHud = new OwnerHudWindow(this, art, fonts);
         windowSystem.AddWindow(OwnerHud);
+        Members = new MembersWindow(this, fonts);
+        windowSystem.AddWindow(Members);
         contextMenu = new ContextMenuHandler(this);
 
         switch (integrity)

@@ -369,44 +369,30 @@ public sealed partial class MainWindow
             Gap(4);
         }
 
-        foreach (var mem in mine.Members.OrderByDescending(x => x.IsOwner).ThenBy(x => x.Role).ThenBy(x => x.Name))
+        // A short summary here; the full list lives in the Members pop-out (better with 10+ people)
+        var all = mine.Members;
+        var online = all.Where(x => x.Online).ToList();
+        var inside = online.Where(x => x.Status?.InDairy == true).ToList();
+        ImGui.TextColored(Theme.Ink, $"{all.Count} member{(all.Count == 1 ? "" : "s")} · {online.Count} online · {inside.Count} in the dairy");
+        ImGui.TextColored(Theme.InkSoft,
+            $"{all.Count(x => x.Role == "cow")} cows · {all.Count(x => x.Role == "farmer")} farmers · {all.Count(x => x.Role == "bull")} bulls" +
+            (mine.Invites.Count > 0 ? $" · {mine.Invites.Count} invite(s) waiting" : ""));
+
+        var full = all.Count(x => x.Role == "cow" && x.Online && x.Status is { Cap: > 0 } st && (st.Spoiled || st.Milk >= st.Cap - 0.1f));
+        if (full > 0) ImGui.TextColored(Theme.RoseDeep, $"{full} cow{(full == 1 ? "" : "s")} full and waiting to be milked");
+
+        if (inside.Count > 0)
         {
-            var you = mem.Id == mine.You?.Id;
-            var lines = new List<Line>
-            {
-                new($"{(mem.IsOwner ? "Owner · " : "")}{Cap1(mem.Role == "none" ? "no role" : mem.Role)} · {mem.World}", RoleColor(mem.Role)),
-                new(mem.Online ? mem.Status?.InDairy == true ? "Online · in the dairy" : "Online" : "Offline", mem.Online ? Theme.SageDeep : Theme.InkSoft),
-            };
-            if (mem.Role == "cow" && mem.Status != null && mem.Online)
-            {
-                var st = mem.Status;
-                lines.Add(new Line(st.Spoiled ? "Milk spoiled!" : $"{st.Milk:0.#} / {st.Cap:0} oz · Grade {Grades.Name(Math.Clamp(st.Grade, 0, Grades.Count - 1))} · level {st.Level}",
-                    st.Spoiled ? Theme.Warn : st.Cap > 0 && st.Milk >= st.Cap - 0.1f ? Theme.RoseDeep : Theme.InkSoft));
-            }
-
-            var buttons = new List<Btn>();
-            if (F.NetMember.IsOwner && !mem.IsOwner)
-                foreach (var r in new[] { "cow", "farmer", "bull" }.Where(r => r != mem.Role))
-                    buttons.Add(new Btn($"##role{mem.Id}{r}", Cap1(r), "cream", true, $"Make {mem.Name} a {r}."));
-            if (G.CanRemove(mem)) buttons.Add(new Btn($"##rm{mem.Id}", "Remove", "cream", ImGui.GetIO().KeyShift, "Hold Shift and click to remove them from your dairy."));
-
-            var fill = mem.Role == "cow" && mem.Status is { Cap: > 0 } s2 && mem.Online ? s2.Milk / s2.Cap : -1;
-            var clicked = ListRow(c => Ui.Avatar(ImGui.GetWindowDrawList(), you ? "you" : "farmhand", c, 20), mem.Name + (you ? "  ·  you" : ""), Theme.Ink, lines, buttons, width, fill, Theme.BlueDeep);
-            if (clicked >= 0)
-            {
-                var b = buttons[clicked];
-                if (b.Label == "Remove") G.RemoveMember(mem);
-                else G.SetMemberRole(mem, b.Label.ToLowerInvariant());
-            }
+            var names = inside.Take(6).Select(x => $"{x.Name.Split(' ')[0]} ({x.Role})");
+            Ui.Wrapped("Here now: " + string.Join(", ", names) + (inside.Count > 6 ? $" and {inside.Count - 6} more" : ""), Theme.SageDeep, width);
         }
 
-        if (mine.Invites.Count > 0)
-        {
-            SubHeading("Invites sent", width);
-            foreach (var inv in mine.Invites.ToList())
-                if (Row($"##cancelinv{inv.Id}", "ribbon", inv.Name, $"As a {inv.Role} · waiting", "Cancel", "cream", true, "Take back this invite.", width))
-                    G.Net.CancelInvite(inv.Id, e => G.Notify(e, 2));
-        }
+        Gap(6);
+        var manage = G.IsOwner || G.Role == "farmer" ? "Manage members" : "See members";
+        if (Ui.Button("##openmembers", manage, new Vector2(200, 34), "blue", true,
+                "Opens the member list in its own window: search, filter by role, sort, change roles and remove."))
+            plugin.Members.IsOpen = !plugin.Members.IsOpen;
+        Gap(6);
 
         if (G.Role is "cow" or "farmer") DrawEmotes(width);
     }
