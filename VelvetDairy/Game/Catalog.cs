@@ -97,7 +97,7 @@ public static class Catalog
         new Upgrade("stallkit", "Stall kit", "bucket", new[] { 200, 500 }, new[] { 6, 12 }, "Lets you register one more stall."),
         new Upgrade("cushion", "Plush bedding", "cushion", new[] { 250 }, new[] { 4 }, "Comfort drops half as fast. Resting restores more."),
         new Upgrade("bottle", "Bigger bottle", "bottle", new[] { 180, 450, 1000, 2200 }, new[] { 3, 8, 14, 21 }, "Each bottle holds more."),
-        new Upgrade("rack", "Extra bottle", "milk", new[] { 300, 800, 1800 }, new[] { 6, 12, 19 }, "One more bottle. When one fills, the next one starts."),
+        new Upgrade("rack", "Extra bottle", "milk", new[] { 300, 800, 1800, 3500 }, new[] { 6, 12, 19, 25 }, "One more bottle. When one fills, the next one starts."),
         new Upgrade("trough", "Clean trough", "water", new[] { 160 }, new[] { 5 }, "Thirst drops a third slower."),
         new Upgrade("bell", "Bell collar", "bell", new[] { 80 }, new[] { 3 }, "A brass bell. Mood drops a little slower.", true),
         new Upgrade("ribbon", "Show ribbon", "ribbon", new[] { 600 }, new[] { 15 }, "Wear your ribbon. +5% creamery prices.", true),
