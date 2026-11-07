@@ -81,7 +81,7 @@ When the network is up, dairies are shared between players:
 - **Cows** make milk and get milked in the dairy's stalls or by its farmers. **Bulls** are a role only for now.
 - Invite with right-click > Velvet Dairy, or target a player and use the Members panel on the Dairy tab.
 - The **Dairies** tab shows how many people are online and lists every dairy. Public ones show their address: Visit takes you there with Lifestream (or copies the address).
-- **Dairy milk tank**: milk pumped at a dairy's stalls is also stored in that dairy's own tank, by grade (a copy; the cow keeps hers). The Dairy tab shows the tank and its top pumpers. What it's used for comes later.
+- **Dairy milk tank**: milk from milkings at a dairy (stalls or hand milking) is also stored in that dairy's own tank, by grade (a copy; the cow keeps hers). The Dairy tab shows the tank and its top pumpers. What it's used for comes later.
 - **Deliveries**: owners of public dairies post buy orders (coins are held until filled). Cows go there in person and deliver from their tank. Each public dairy also has two creamery visitor orders a day.
 
 Without the network (or with it turned off in Settings) everything works locally as before.

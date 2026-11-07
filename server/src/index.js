@@ -305,7 +305,7 @@ async function heartbeat(env, me, request) {
     } else dairyXp = 0;
   }
 
-  // Milk pumped at the dairy's stalls goes into the dairy's tank too (only while awake in your own dairy)
+  // Milk from milkings in the dairy (stalls or hand) goes into the dairy's tank too (only while awake in your own dairy)
   let pumped = 0;
   const pump = Array.isArray(b.pumped) ? b.pumped.slice(0, 5).map(v => Math.max(0, Math.min(PUMP_PER_BEAT, Number(v) || 0))) : [];
   const asking = pump.reduce((a, v) => a + v, 0);

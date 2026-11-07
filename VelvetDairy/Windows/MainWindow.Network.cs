@@ -294,7 +294,7 @@ public sealed partial class MainWindow
             Gap(4);
             ImGui.TextColored(Theme.BlueDeep, $"Dairy milk tank: {p.Tank.Total:N1} oz");
             if (ImGui.IsItemHovered())
-                ImGui.SetTooltip("Milk pumped at this dairy's stalls is stored here too (you keep yours).\n" +
+                ImGui.SetTooltip("Milk from milkings in this dairy (stalls and hand) is stored here too (you keep yours).\n" +
                                  string.Join("\n", p.Tank.ByGrade.Select((oz, g) => $"Grade {Grades.Name(g)}: {oz:N1} oz")));
             if (p.Tank.Total > 0)
             {
@@ -303,7 +303,7 @@ public sealed partial class MainWindow
                 if (p.Tank.Pumpers.Count > 0)
                     Ui.Wrapped("Top pumpers: " + string.Join(", ", p.Tank.Pumpers.Take(5).Select(x => $"{x.Name.Split(' ')[0]} {x.Oz:N0} oz")), Theme.InkSoft, width);
             }
-            else ImGui.TextColored(Theme.InkSoft, "Empty. It fills as cows are pumped at the stalls.");
+            else ImGui.TextColored(Theme.InkSoft, "Empty. It fills as cows are milked here.");
         }
 
         Gap(4);

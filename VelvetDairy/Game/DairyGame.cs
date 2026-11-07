@@ -830,7 +830,7 @@ public sealed class DairyGame
         F.DayOz += collected;
         F.Stats.BestGrade = Math.Max(F.Stats.BestGrade, s.Grade);
         EarnDairyXp(collected * (s.Kind == SessionKind.Hand ? 1.5f : 1f));
-        if (s.Kind == SessionKind.Stall && Networked && F.NetMember != null && Where.InDairy) pendingPump[Math.Clamp(s.Grade, 0, 4)] += collected;
+        if (Networked && F.NetMember != null && Where.InDairy) pendingPump[Math.Clamp(s.Grade, 0, 4)] += collected;
         F.Stats.BestSessionOz = Math.Max(F.Stats.BestSessionOz, collected);
 
         // Being milked feels good and resets the pressure
