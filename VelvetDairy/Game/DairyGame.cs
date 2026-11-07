@@ -365,6 +365,8 @@ public sealed class DairyGame
 
         if (Blocked() != null || Paused)
         {
+            // Not playing (logged out, character select, paused): the spoil clock waits too
+            if (Cow.FullSinceUtc != null && !Cow.Spoiled) Cow.FullSinceUtc = Cow.FullSinceUtc.Value.AddSeconds(dt);
             Cow.LastTickUtc = DateTime.UtcNow;
             return;
         }
@@ -442,17 +444,19 @@ public sealed class DairyGame
         return new Whereabouts(true, inHouse, inDairy, seated, at, why);
     }
 
-    /// <summary>Time spent logged out: milk keeps coming, needs drop at a quarter speed and never below 20.</summary>
+    /// <summary>
+    /// Time spent logged out: no milk is made and the spoil countdown pauses, so a vacation never costs you anything.
+    /// Needs drift down gently (a quarter speed, never below 20) so a fresh login still has a little care to do.
+    /// </summary>
     private void CatchUp()
     {
-        var minutes = (float)Math.Min((DateTime.UtcNow - Cow.LastTickUtc).TotalMinutes, 8 * 60);
-        if (minutes < 1) return;
+        var away = DateTime.UtcNow - Cow.LastTickUtc;
+        if (away.TotalMinutes < 1) return;
 
-        var before = Cow.Milk;
-        var rate = ProducesMilk ? RateParts(false).Aggregate(BaseRate, (r, p) => r * p.Multiplier) : 0f;
-        Cow.Milk = Math.Min(Capacity, Cow.Milk + rate * minutes);
-        if (!Cow.Spoiled && Cow.FullSinceUtc == null && Cow.Milk >= Capacity - 0.01f && rate > 0)
-            Cow.FullSinceUtc = Cow.LastTickUtc.AddMinutes(Math.Max(0, (Capacity - before) / rate));
+        // The spoil clock only runs while you're logged in
+        if (Cow.FullSinceUtc != null && !Cow.Spoiled) Cow.FullSinceUtc = Cow.FullSinceUtc.Value + away;
+
+        var minutes = (float)Math.Min(away.TotalMinutes, 8 * 60);
         static float Floor(float v, float d) => Math.Max(Math.Min(v, 20), v - d);
         Cow.Hunger = Floor(Cow.Hunger, 0.35f * 0.25f * minutes);
         Cow.Thirst = Floor(Cow.Thirst, 0.5f * 0.25f * minutes);
@@ -460,9 +464,6 @@ public sealed class DairyGame
         Cow.Mood = Floor(Cow.Mood, 0.2f * 0.25f * minutes);
         Cow.Richness = Math.Max(0, Cow.Richness - 0.2f * 0.25f * minutes);
         Cow.LastTickUtc = DateTime.UtcNow;
-
-        var gained = Cow.Milk - before;
-        if (gained >= 0.5f) Say($"While you were away you made {gained:0.#} oz of milk.", 0);
         CheckSpoil();
     }
 
