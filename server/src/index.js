@@ -38,6 +38,8 @@ const DELIVERER_XP_PER_OZ = 1;      // and the deliverer's own dairy this much
 const MAX_DONATION = 100000;
 const TIER_PRICE = [0, 0, 150, 400, 900];   // fund coins to raise a stall to this tier
 const LEADERBOARD_SIZE = 20;
+const PUMP_PER_BEAT = 120;          // most oz one heartbeat can add to the dairy tank
+const MEMBER_DAILY_PUMP = 1500;     // most oz one member can add to a dairy tank per day
 const INVITE_ROLES = ["farmer", "cow", "bull"];
 
 export default {
@@ -303,6 +305,32 @@ async function heartbeat(env, me, request) {
     } else dairyXp = 0;
   }
 
+  // Milk pumped at the dairy's stalls goes into the dairy's tank too (only while awake in your own dairy)
+  let pumped = 0;
+  const pump = Array.isArray(b.pumped) ? b.pumped.slice(0, 5).map(v => Math.max(0, Math.min(PUMP_PER_BEAT, Number(v) || 0))) : [];
+  const asking = pump.reduce((a, v) => a + v, 0);
+  if (asking > 0 && b.awake === true && atHome) {
+    const day = today();
+    const used = (await env.DB.prepare("SELECT oz FROM member_pump WHERE install = ? AND day = ?").bind(me.id, day).first())?.oz || 0;
+    const room = Math.max(0, Math.min(PUMP_PER_BEAT, MEMBER_DAILY_PUMP - used));
+    const scale = asking > room ? room / asking : 1;
+    const stmts = [];
+    pump.forEach((oz, grade) => {
+      const add = Math.round(oz * scale * 100) / 100;
+      if (add <= 0) return;
+      pumped += add;
+      stmts.push(env.DB.prepare(`INSERT INTO dairy_tank (dairy_id, grade, oz) VALUES (?, ?, ?)
+        ON CONFLICT(dairy_id, grade) DO UPDATE SET oz = oz + excluded.oz`).bind(mem.dairy_id, grade, add));
+    });
+    if (pumped > 0) {
+      stmts.push(env.DB.prepare(`INSERT INTO member_pump (install, day, oz) VALUES (?, ?, ?)
+        ON CONFLICT(install, day) DO UPDATE SET oz = oz + excluded.oz`).bind(me.id, day, pumped));
+      stmts.push(env.DB.prepare(`INSERT INTO tank_contrib (dairy_id, install, name, oz) VALUES (?, ?, ?, ?)
+        ON CONFLICT(dairy_id, install) DO UPDATE SET oz = oz + excluded.oz, name = excluded.name`).bind(mem.dairy_id, me.id, mem.name || "", pumped));
+      await env.DB.batch(stmts);
+    }
+  }
+
   const waiting = await env.DB.prepare("SELECT COUNT(*) AS n FROM inbox WHERE install = ? AND claimed IS NULL").bind(me.id).first();
   const invites = charHash ? (await env.DB.prepare(`
       SELECT i.id, i.role, d.name AS dairy, d.world_name AS world, d.is_public AS public
@@ -313,6 +341,7 @@ async function heartbeat(env, me, request) {
     here: here ? { id: here.id, name: here.name, isPublic: !!here.is_public, mine: !!mem && mem.dairy_id === here.id } : null,
     membership: mem ? { dairyId: mem.dairy_id, dairy: mem.dairy_name, role: mem.role, isOwner: !!mem.is_owner, level: (await progressOf(env, mem.dairy_id)).level } : null,
     dairyXp,
+    pumped,
     invites: invites.map(i => ({ id: i.id, role: i.role, dairy: i.dairy, world: i.world })),
     inbox: waiting.n,
     time: t,
@@ -404,6 +433,20 @@ async function progressOut(env, dairyId, stallCount) {
     fund: p.fund, weekXp: p.weekXp, week: weekKey(),
     stallSlots: stallSlots(p.level), maxTier: maxTier(p.level), nextStallPrice: stallPrice(stallCount), tierPrices: TIER_PRICE,
     donors: donors.map(x => ({ name: x.name, coins: x.coins })),
+    tank: await tankOf(env, dairyId),
+  };
+}
+
+/** The dairy's milk tank by grade, and its top pumpers. */
+async function tankOf(env, dairyId) {
+  const rows = (await env.DB.prepare("SELECT grade, oz FROM dairy_tank WHERE dairy_id = ?").bind(dairyId).all()).results;
+  const byGrade = [0, 0, 0, 0, 0];
+  for (const r of rows) if (r.grade >= 0 && r.grade < 5) byGrade[r.grade] = Math.round(r.oz * 10) / 10;
+  const top = (await env.DB.prepare("SELECT name, oz FROM tank_contrib WHERE dairy_id = ? ORDER BY oz DESC LIMIT 10").bind(dairyId).all()).results;
+  return {
+    byGrade,
+    total: Math.round(byGrade.reduce((a, v) => a + v, 0) * 10) / 10,
+    pumpers: top.map(x => ({ name: x.name, oz: Math.round(x.oz * 10) / 10 })),
   };
 }
 
@@ -474,6 +517,8 @@ async function deleteDairy(env, me) {
     env.DB.prepare("DELETE FROM stalls WHERE dairy_id = ?").bind(d.id),
     env.DB.prepare("DELETE FROM dairy_progress WHERE dairy_id = ?").bind(d.id),
     env.DB.prepare("DELETE FROM donations WHERE dairy_id = ?").bind(d.id),
+    env.DB.prepare("DELETE FROM dairy_tank WHERE dairy_id = ?").bind(d.id),
+    env.DB.prepare("DELETE FROM tank_contrib WHERE dairy_id = ?").bind(d.id),
     env.DB.prepare("UPDATE invites SET status = 'cancelled' WHERE dairy_id = ? AND status = 'pending'").bind(d.id),
     env.DB.prepare("DELETE FROM dairies WHERE id = ?").bind(d.id),
   ]);

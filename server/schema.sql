@@ -134,3 +134,26 @@ CREATE TABLE IF NOT EXISTS donations (
   coins    INTEGER NOT NULL DEFAULT 0,
   PRIMARY KEY (dairy_id, install)
 );
+
+-- The dairy's milk tank: milk members pump at its stalls is recorded here by grade (a copy; members keep theirs).
+CREATE TABLE IF NOT EXISTS dairy_tank (
+  dairy_id TEXT NOT NULL,
+  grade    INTEGER NOT NULL,             -- 0 C, 1 B, 2 A, 3 S, 4 S+
+  oz       REAL NOT NULL DEFAULT 0,
+  PRIMARY KEY (dairy_id, grade)
+);
+
+-- Who pumped how much into a dairy's tank (stays with the dairy), and today's amount per install (cap).
+CREATE TABLE IF NOT EXISTS tank_contrib (
+  dairy_id TEXT NOT NULL,
+  install  TEXT NOT NULL,
+  name     TEXT NOT NULL DEFAULT '',
+  oz       REAL NOT NULL DEFAULT 0,
+  PRIMARY KEY (dairy_id, install)
+);
+CREATE TABLE IF NOT EXISTS member_pump (
+  install TEXT NOT NULL,
+  day     TEXT NOT NULL,
+  oz      REAL NOT NULL DEFAULT 0,
+  PRIMARY KEY (install, day)
+);

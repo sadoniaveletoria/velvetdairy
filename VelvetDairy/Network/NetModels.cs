@@ -96,9 +96,24 @@ public sealed class DairyProgress
     public int NextStallPrice { get; set; }
     public List<int> TierPrices { get; set; } = new();
     public List<Donor> Donors { get; set; } = new();
+    public DairyTank? Tank { get; set; }
 
     public float LevelProgress => NextXp is { } n && n > LevelXp ? Math.Clamp((Xp - LevelXp) / (float)(n - LevelXp), 0, 1) : 1;
     public int TierPrice(int tier) => tier >= 0 && tier < TierPrices.Count ? TierPrices[tier] : 0;
+}
+
+/// <summary>The dairy's milk tank: milk members pumped at its stalls, by grade.</summary>
+public sealed class DairyTank
+{
+    public List<float> ByGrade { get; set; } = new();
+    public float Total { get; set; }
+    public List<Pumper> Pumpers { get; set; } = new();
+}
+
+public sealed class Pumper
+{
+    public string Name { get; set; } = "";
+    public float Oz { get; set; }
 }
 
 public sealed class Donor

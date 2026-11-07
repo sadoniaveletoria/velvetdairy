@@ -164,6 +164,14 @@ await test("dairy XP: only in the dairy, capped per member per day", async () =>
   assert.equal(p.nextXp, 400);
   await beat(alice, { houseId: HOUSE, dairyXp: 60, awake: true });
   assert.equal((await beat(alice)).data.membership.level, 2);
+  // Pumped milk fills the dairy tank, only while awake in the dairy
+  assert.equal((await beat(bob, { houseId: HOUSE, pumped: [10, 0, 2.5, 0, 0], awake: true })).data.pumped, 12.5);
+  assert.equal((await beat(bob, { houseId: ELSEWHERE, pumped: [10], awake: true })).data.pumped, 0, "away");
+  assert.equal((await beat(bob, { houseId: HOUSE, pumped: [10], awake: false })).data.pumped, 0, "asleep");
+  const tank = (await call(alice, "GET", "/v1/dairy/mine")).data.progress.tank;
+  assert.deepEqual(tank.byGrade, [10, 0, 2.5, 0, 0]);
+  assert.equal(tank.total, 12.5);
+  assert.equal(tank.pumpers[0].oz, 12.5);
   const board = (await call(dana, "GET", "/v1/leaderboard")).data;
   assert.equal(board.dairies[0].name, "Rose Hollow");
   assert.equal(board.dairies[0].weekXp, 420);

@@ -830,6 +830,7 @@ public sealed class DairyGame
         F.DayOz += collected;
         F.Stats.BestGrade = Math.Max(F.Stats.BestGrade, s.Grade);
         EarnDairyXp(collected * (s.Kind == SessionKind.Hand ? 1.5f : 1f));
+        if (s.Kind == SessionKind.Stall && Networked && F.NetMember != null && Where.InDairy) pendingPump[Math.Clamp(s.Grade, 0, 4)] += collected;
         F.Stats.BestSessionOz = Math.Max(F.Stats.BestSessionOz, collected);
 
         // Being milked feels good and resets the pressure
@@ -1358,6 +1359,16 @@ public sealed class DairyGame
     // ----- Dairy levels: members earn XP together; the shared fund pays for stalls -----
 
     private float pendingDairyXp;
+    private readonly float[] pendingPump = new float[5];
+
+    /// <summary>Milk pumped at the dairy's stalls since the last heartbeat, by grade, for the dairy's tank (a copy; yours is kept).</summary>
+    public float[]? TakePumped()
+    {
+        if (pendingPump.All(v => v <= 0)) return null;
+        var r = pendingPump.Select(v => (float)Math.Round(v, 2)).ToArray();
+        Array.Clear(pendingPump);
+        return r;
+    }
 
     public int DairyLevel => Net.Progress?.Level ?? F.NetMember?.Level ?? 1;
 

@@ -47,7 +47,7 @@ public sealed class OwnerHudWindow : Window
         var mine = G.Net.Mine!;
         var others = mine.Members.Count(m => m.Id != mine.You?.Id);
         var rows = Math.Min(6, Math.Max(1, others));
-        Size = new Vector2(W, 96 + rows * 22 + (mine.Invites.Count > 0 || G.Net.MyOrders.Count > 0 ? 22 : 0));
+        Size = new Vector2(W, 96 + rows * 22 + (mine.Invites.Count > 0 || G.Net.MyOrders.Count > 0 || (mine.Progress?.Tank?.Total ?? 0) > 0 ? 22 : 0));
         SizeCondition = ImGuiCond.Always;
         ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, Vector2.Zero);
         ImGui.PushStyleVar(ImGuiStyleVar.WindowBorderSize, 0f);
@@ -97,7 +97,8 @@ public sealed class OwnerHudWindow : Window
 
         if (members.Count > 6) Ui.Text(dl, fonts.Small, $"+{members.Count - 6} more", new Vector2(right, y - 22), Theme.InkSoft, 1f);
 
-        var extra = (mine.Invites.Count > 0 ? $"{mine.Invites.Count} invite(s) waiting" : "") +
+        var tankOz = mine.Progress?.Tank?.Total ?? 0;
+        var extra = (tankOz > 0 ? $"Tank {tankOz:N0} oz" + (mine.Invites.Count > 0 || G.Net.MyOrders.Count > 0 ? " · " : "") : "") + (mine.Invites.Count > 0 ? $"{mine.Invites.Count} invite(s) waiting" : "") +
                     (mine.Invites.Count > 0 && G.Net.MyOrders.Count > 0 ? " · " : "") +
                     (G.Net.MyOrders.Count > 0 ? $"{G.Net.MyOrders.Count} buy order(s) open" : "");
         if (extra.Length > 0) Ui.Text(dl, fonts.Small, extra, new Vector2(x, o.Y + size.Y - 34), Theme.InkSoft);

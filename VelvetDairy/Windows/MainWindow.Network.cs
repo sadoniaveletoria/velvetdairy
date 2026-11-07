@@ -288,6 +288,24 @@ public sealed partial class MainWindow
         ImGui.TextColored(Theme.InkSoft, $"{p.StallSlots} stall slots · best stall: {Catalog.StallTierNames[Math.Clamp(p.MaxTier, 1, 4)]}");
         Ui.Wrapped("Members earn XP for the dairy by milking and caring inside it (up to 300 each a day) and when cows fill its buy orders.", Theme.InkSoft, width);
 
+        // The dairy's milk tank
+        if (p.Tank != null)
+        {
+            Gap(4);
+            ImGui.TextColored(Theme.BlueDeep, $"Dairy milk tank: {p.Tank.Total:N1} oz");
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip("Milk pumped at this dairy's stalls is stored here too (you keep yours).\n" +
+                                 string.Join("\n", p.Tank.ByGrade.Select((oz, g) => $"Grade {Grades.Name(g)}: {oz:N1} oz")));
+            if (p.Tank.Total > 0)
+            {
+                var parts = p.Tank.ByGrade.Select((oz, g) => (oz, g)).Where(x => x.oz > 0).Select(x => $"{Grades.Name(x.g)} {x.oz:N1}");
+                ImGui.TextColored(Theme.InkSoft, string.Join(" · ", parts));
+                if (p.Tank.Pumpers.Count > 0)
+                    Ui.Wrapped("Top pumpers: " + string.Join(", ", p.Tank.Pumpers.Take(5).Select(x => $"{x.Name.Split(' ')[0]} {x.Oz:N0} oz")), Theme.InkSoft, width);
+            }
+            else ImGui.TextColored(Theme.InkSoft, "Empty. It fills as cows are pumped at the stalls.");
+        }
+
         Gap(4);
         ImGui.TextColored(Theme.HoneyDeep, $"Dairy fund: {p.Fund:N0} coins");
         if (ImGui.IsItemHovered()) ImGui.SetTooltip("Anyone in the dairy can add coins. The owner spends them on new stalls and stall upgrades.");

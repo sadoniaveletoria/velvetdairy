@@ -266,6 +266,7 @@ public sealed class NetClient : IDisposable
             charHash = MyCharHash(),
             houseId = here?.HouseId.ToString(),
             dairyXp = g.TakeDairyXp(),
+            pumped = g.TakePumped(),
             awake = g.Wake == DairyGame.Wakefulness.Awake,
             status = new MemberStatus
             {
