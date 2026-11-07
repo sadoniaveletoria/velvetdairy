@@ -80,6 +80,13 @@ public sealed class HudWindow : Window
         var frac = full >= bCount ? 1f : Math.Clamp((shown - full * bSize) / bSize, 0f, 1f);
         Ui.Bottle(dl, bmin, new Vector2(bh / 2, bh), frac, flow, G.Spoiled ? MainWindow.SourMilk : null, G.BottleTier);
 
+        // "+xp" floats up beside the bottle when making milk ticks XP in
+        var tick = G.LastXpTick;
+        var age = G.Now - tick.At;
+        if (tick.Amount > 0 && age < 3)
+            Ui.Text(dl, fonts.Small, $"+{tick.Amount} xp", bmin + new Vector2(bh / 2 + 2, bh * 0.25f - (float)age * 10f),
+                Theme.Alpha(Theme.HoneyDeep, (float)(1 - age / 3)));
+
         // Milk and grade
         var x = bmin.X + bh / 2 + 14;
         var grade = G.CurrentGrade;

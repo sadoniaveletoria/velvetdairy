@@ -145,7 +145,17 @@ public static class Leveling
 {
     public const int MaxLevel = 30;
 
-    public static int Need(int level) => 80 + 50 * (level - 1);
+    public static int Need(int level) => 80 + 30 * (level - 1);
+
+    // ----- Where XP comes from -----
+    public const float XpPerOzMade = 4f;          // ticks in while you make milk (awake, bottles not full)
+    public const float XpPerOzStall = 4f;         // bonus for emptying at a stall, times the stall's tier bonus
+    public const float XpPerOzHand = 6f;          // bonus for being hand milked by a farmer
+    public const int XpHandSession = 10;          // plus this for each hand milking
+    public static readonly float[] StallXpBonus = { 0, 1.0f, 1.15f, 1.3f, 1.5f };
+    public static readonly float[] GradeXpBonus = { 1.0f, 1.2f, 1.4f, 1.7f, 2.0f };   // C, B, A, S, S+
+
+    public static float GradeBonus(int grade) => GradeXpBonus[Math.Clamp(grade, 0, GradeXpBonus.Length - 1)];
 
     public static (int Level, int Into, int Need) FromXp(int xp)
     {

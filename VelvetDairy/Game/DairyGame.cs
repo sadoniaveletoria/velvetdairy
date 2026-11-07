@@ -388,6 +388,7 @@ public sealed class DairyGame
         }
 
         UpdateSession(dt);
+        TickXp();
     }
 
     private Whereabouts Locate()
@@ -488,7 +489,10 @@ public sealed class DairyGame
         }
         else if (Active == null && ProducesMilk)
         {
+            var milkBefore = Cow.Milk;
             Cow.Milk = Math.Min(Capacity, Cow.Milk + ProductionPerMinute() * m);
+            // XP ticks in as milk is made (dozing and tired already slow production; asleep and full make none)
+            pendingTickXp += (Cow.Milk - milkBefore) * Leveling.XpPerOzMade * Leveling.GradeBonus(CurrentGrade);
             if (FullBottles > fullBefore)
                 Say(FullBottles >= BottleCount ? "All your bottles are full. Time to get milked." : $"Bottle {FullBottles} of {BottleCount} is full.", 0);
         }
@@ -837,7 +841,7 @@ public sealed class DairyGame
         {
             F.Stats.StallSessions++;
             s.Stall!.Sessions++;
-            xp = (int)Math.Round(collected * 5f);
+            xp = (int)Math.Round(collected * Leveling.XpPerOzStall * Leveling.StallXpBonus[Math.Clamp(s.Stall.Tier, 1, 4)] * Leveling.GradeBonus(s.Grade));
         }
         else
         {
@@ -845,7 +849,7 @@ public sealed class DairyGame
             F.DayHand++;
             s.Hand!.Sessions++;
             s.Hand.OzMilked += collected;
-            xp = (int)Math.Round(collected * 7.5f) + 10;
+            xp = (int)Math.Round(collected * Leveling.XpPerOzHand * Leveling.GradeBonus(s.Grade)) + Leveling.XpHandSession;
         }
 
         AddXp(xp);
@@ -1675,6 +1679,26 @@ public sealed class DairyGame
 
     /// <summary>Quality needed for the next grade, or null at the top.</summary>
     public float? NextQuality => GradeCap + 1 < Grades.QualityNeed.Length ? Grades.QualityNeed[GradeCap + 1] : null;
+
+    // ----- XP ticks while making milk -----
+    private float pendingTickXp;
+    private double nextXpTick;
+
+    /// <summary>The last XP tick, for the HUD's little "+xp" (amount, when).</summary>
+    public (int Amount, double At) LastXpTick { get; private set; }
+
+    public double Now => now;
+
+    private void TickXp()
+    {
+        if (now < nextXpTick) return;
+        nextXpTick = now + 60;
+        var n = (int)Math.Floor(pendingTickXp);
+        if (n <= 0) return;
+        pendingTickXp -= n;
+        AddXp(n);
+        LastXpTick = (n, now);
+    }
 
     private void AddXp(int amount)
     {
