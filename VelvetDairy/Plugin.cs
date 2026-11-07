@@ -98,7 +98,8 @@ public sealed class Plugin : IDalamudPlugin
         });
 
         PluginInterface.UiBuilder.Draw += windowSystem.Draw;
-        ChatGui.ChatMessage += OnChat;
+        chatHandler = m => OnChat(m);
+        ChatGui.ChatMessage += chatHandler;
 
         PluginInterface.UiBuilder.OpenMainUi += MainWindow.Toggle;
         PluginInterface.UiBuilder.OpenConfigUi += MainWindow.Toggle;
@@ -132,7 +133,7 @@ public sealed class Plugin : IDalamudPlugin
         PluginInterface.UiBuilder.OpenConfigUi -= MainWindow.Toggle;
         PluginInterface.UiBuilder.OpenMainUi -= MainWindow.Toggle;
         PluginInterface.UiBuilder.Draw -= windowSystem.Draw;
-        ChatGui.ChatMessage -= OnChat;
+        if (chatHandler != null) ChatGui.ChatMessage -= chatHandler;
         CommandManager.RemoveHandler(Command);
         windowSystem.RemoveAllWindows();
         fonts.Dispose();
@@ -198,12 +199,25 @@ public sealed class Plugin : IDalamudPlugin
         }
     }
 
-    /// <summary>Sending a chat message (say, party, FC, tells...) counts as being awake. Only that you sent one is used.</summary>
-    private void OnChat(Dalamud.Game.Text.XivChatType type, int timestamp, ref Dalamud.Game.Text.SeStringHandling.SeString sender,
-        ref Dalamud.Game.Text.SeStringHandling.SeString message, ref bool isHandled)
+    private IChatGui.OnHandleableChatMessageDelegate? chatHandler;
+
+    /// <summary>Sending a chat message (say, party, FC, tells...) counts as being awake. Only the sender's name is looked at.</summary>
+    private void OnChat(object message)
     {
-        if (type == Dalamud.Game.Text.XivChatType.TellOutgoing) { Game.Touch(); return; }
-        var me = ObjectTable.LocalPlayer?.Name.TextValue;
-        if (!string.IsNullOrEmpty(me) && sender.TextValue.Contains(me, System.StringComparison.Ordinal)) Game.Touch();
+        try
+        {
+            var me = ObjectTable.LocalPlayer?.Name.TextValue;
+            if (string.IsNullOrEmpty(me)) return;
+            var sender = message.GetType().GetProperty("Sender")?.GetValue(message);
+            if (sender == null) return;
+            var text = sender.GetType().GetProperty("TextValue")?.GetValue(sender) as string
+                       ?? sender.GetType().GetMethod("ExtractText", System.Type.EmptyTypes)?.Invoke(sender, null) as string
+                       ?? sender.ToString() ?? "";
+            if (text.Contains(me, System.StringComparison.Ordinal)) Game.Touch();
+        }
+        catch
+        {
+            // Never let chat handling break anything
+        }
     }
 }
