@@ -66,7 +66,7 @@ A small card with your milk bottle, grade, needs and status. Drag it where you l
 
 Milk is for people who are actually playing:
 
-- After **15 minutes** with no activity (moving, turning, targeting, emotes, typing, mouse or plugin clicks) you start **dozing**: milk comes in at half speed and stalls don't start a new milking.
+- After **15 minutes** with no activity (moving or turning your character, targeting, emotes, sending a chat message, or clicking in Velvet Dairy's windows; moving the mouse or pressing keys alone doesn't count) you start **dozing**: milk comes in at half speed and stalls don't start a new milking.
 - After **30 minutes** you're **asleep**: milking stops, and you make no milk, XP or dairy XP until you do anything at all.
 - After **12 hours** of making milk in one day you're **tired**: half speed until the next day.
 - Stalls only milk you while you're **sitting on the stall's own seat**, not near it.

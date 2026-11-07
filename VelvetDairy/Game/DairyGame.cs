@@ -342,12 +342,6 @@ public sealed class DairyGame
         lastRot = me.Rotation;
         lastTarget = target;
         myLastEmote = emote;
-        foreach (var k in Plugin.KeyState.GetValidVirtualKeys())
-            if (Plugin.KeyState[k])
-            {
-                Touch();
-                break;
-            }
 
         var w = Wake;
         if (w != lastWake)

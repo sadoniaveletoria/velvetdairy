@@ -23,7 +23,6 @@ public sealed class Plugin : IDalamudPlugin
     [PluginService] internal static IFramework Framework { get; private set; } = null!;
     [PluginService] internal static ITextureProvider TextureProvider { get; private set; } = null!;
     [PluginService] internal static IPluginLog Log { get; private set; } = null!;
-    [PluginService] internal static IKeyState KeyState { get; private set; } = null!;
 
     private const string Command = "/vdairy";
 
@@ -99,7 +98,8 @@ public sealed class Plugin : IDalamudPlugin
         });
 
         PluginInterface.UiBuilder.Draw += windowSystem.Draw;
-        PluginInterface.UiBuilder.Draw += WatchUiInput;
+        ChatGui.ChatMessage += OnChat;
+
         PluginInterface.UiBuilder.OpenMainUi += MainWindow.Toggle;
         PluginInterface.UiBuilder.OpenConfigUi += MainWindow.Toggle;
         Framework.Update += OnFrameworkUpdate;
@@ -132,7 +132,7 @@ public sealed class Plugin : IDalamudPlugin
         PluginInterface.UiBuilder.OpenConfigUi -= MainWindow.Toggle;
         PluginInterface.UiBuilder.OpenMainUi -= MainWindow.Toggle;
         PluginInterface.UiBuilder.Draw -= windowSystem.Draw;
-        PluginInterface.UiBuilder.Draw -= WatchUiInput;
+        ChatGui.ChatMessage -= OnChat;
         CommandManager.RemoveHandler(Command);
         windowSystem.RemoveAllWindows();
         fonts.Dispose();
@@ -198,17 +198,12 @@ public sealed class Plugin : IDalamudPlugin
         }
     }
 
-    private float mouseTravel;
-
-    /// <summary>Mouse movement and clicks count as being at the keyboard (checked each UI frame).</summary>
-    private void WatchUiInput()
+    /// <summary>Sending a chat message (say, party, FC, tells...) counts as being awake. Only that you sent one is used.</summary>
+    private void OnChat(Dalamud.Game.Text.XivChatType type, int timestamp, ref Dalamud.Game.Text.SeStringHandling.SeString sender,
+        ref Dalamud.Game.Text.SeStringHandling.SeString message, ref bool isHandled)
     {
-        var io = Dalamud.Bindings.ImGui.ImGui.GetIO();
-        mouseTravel += io.MouseDelta.Length();
-        if (mouseTravel > 40 || Dalamud.Bindings.ImGui.ImGui.IsAnyMouseDown())
-        {
-            mouseTravel = 0;
-            Game.Touch();
-        }
+        if (type == Dalamud.Game.Text.XivChatType.TellOutgoing) { Game.Touch(); return; }
+        var me = ObjectTable.LocalPlayer?.Name.TextValue;
+        if (!string.IsNullOrEmpty(me) && sender.TextValue.Contains(me, System.StringComparison.Ordinal)) Game.Touch();
     }
 }

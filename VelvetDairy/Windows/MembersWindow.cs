@@ -84,6 +84,9 @@ public sealed class MembersWindow : Window
 
     public override void Draw()
     {
+        // Clicking in Velvet Dairy's own windows counts as being awake (mouse movement alone doesn't)
+        if (ImGui.IsWindowHovered(ImGuiHoveredFlags.ChildWindows) && ImGui.IsMouseClicked(ImGuiMouseButton.Left)) G.Touch();
+
         var mine = G.Net.Mine;
         if (mine == null)
         {
