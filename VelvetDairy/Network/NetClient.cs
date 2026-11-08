@@ -274,8 +274,9 @@ public sealed class NetClient : IDisposable
             charHash = MyCharHash(),
             houseId = here?.HouseId.ToString(),
             pos = g.Position(),
-            dairyXp = g.TakeDairyXp(),
-            pumped = g.TakePumped(),
+            // Held until you're awake: the server only counts them then
+            dairyXp = g.Wake == DairyGame.Wakefulness.Awake ? g.TakeDairyXp() : 0,
+            pumped = g.Wake == DairyGame.Wakefulness.Awake ? g.TakePumped() : null,
             atCreamery = g.AtCreamery,
             awake = g.Wake == DairyGame.Wakefulness.Awake,
             status = new MemberStatus
@@ -513,7 +514,7 @@ public sealed class NetClient : IDisposable
     public void Fill(BuyOrder o, int grade, Action<FillReply> ok, Action<string> failed)
     {
         var here = Estate.Current();
-        Call<FillReply>("POST", $"/v1/orders/{o.Id}/fill", new { grade, houseId = here?.HouseId.ToString() }, r =>
+        Call<FillReply>("POST", $"/v1/orders/{o.Id}/fill", new { grade, houseId = here?.HouseId.ToString(), pos = plugin.Game.Position() }, r =>
         {
             RefreshOrders(o.DairyId);
             Poke();

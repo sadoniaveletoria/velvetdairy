@@ -69,7 +69,11 @@ public class FarmSave
     public int DayOrders { get; set; }
     public int DayCare { get; set; }
     public int DayHand { get; set; }
-    public int DayClaimed { get; set; }               // bitmask of claimed goals
+    public int DayClaimed { get; set; }               // bitmask of claimed goals (cow goals bits 0-3, farmer goals bits 8-11)
+    public int DayGrooms { get; set; }                // farmer goals
+    public int DayCleans { get; set; }
+    public int DayDelivered { get; set; }             // customer orders, visitor orders, buy-order deliveries, contract shipments
+    public int DayCowsMilked { get; set; }
 
     // ----- Progress -----
     public int Xp { get; set; }
@@ -236,6 +240,7 @@ public class FarmStats
     public int CoinsEarned { get; set; }
     public int CareTasks { get; set; }
     public int BestGrade { get; set; } = -1;
+    public int BestStallTier { get; set; }            // best stall tier you've upgraded to (network dairies keep stalls on the server)
     public float BestSessionOz { get; set; }
     public int DailiesDone { get; set; }
     public int TimesDumped { get; set; }

@@ -74,12 +74,13 @@ public sealed class GuideWindow : Window
             "You get +1 XP for every 0.2 oz of milk you make (more at better grades), plus a bonus when you're emptied at a stall or by hand, plus daily goals, orders and care.",
             "Max level is 100, and each level takes longer than the last: the first ten go by in an evening or two, the 90s take days each. Your cow level makes milk come 4% faster per level up to level 50 (about three times a new cow), and unlocks shop items and upgrades. Farmer and bull levels climb the same way.",
             "Farmers level separately: hand milking pay, filling jugs, deliveries and contracts give farmer XP, and farmer levels unlock bigger farmer tanks to buy in the Shop. Bulls have their own level too, for things coming later.",
-            "Daily goals (Progress tab) reset each day and pay coins and XP.",
+            "Daily goals (Progress tab) reset each day and pay coins and XP. Cows and farmers each have their own four; if you're both, you get both sets.",
         }),
         new("Staying awake", new[]
         {
             "Milk is for people who are actually playing. Moving or turning, targeting, emotes, sending a chat message and clicking in Velvet Dairy's windows keep you awake. Moving the mouse alone doesn't.",
             "After 15 minutes with none of that you start dozing: milk at half speed, and stalls don't start a new milking.",
+            "Resting on furniture in your dairy holds it off: you start dozing at 30 minutes and fall asleep at 45. Need bars and treat boosts wait while you're dozing, asleep or logged out.",
             "After 30 minutes you're asleep: milking stops and you make no milk or XP until you do anything at all.",
             "After 12 hours of making milk in one day you're tired: half speed until the next day (14 hours with the Steady producer upgrade).",
         }),

@@ -525,7 +525,7 @@ async function myDairy(env, me) {
   const d = await env.DB.prepare("SELECT * FROM dairies WHERE id = ?").bind(mem.dairy_id).first();
   const t = now();
   const members = (await env.DB.prepare(`
-      SELECT m.install, m.role, m.name, m.world_name, m.status, i.last_seen
+      SELECT m.install, m.role, m.name, m.world_name, m.status, i.last_seen, i.version
       FROM members m LEFT JOIN installs i ON i.id = m.install WHERE m.dairy_id = ? ORDER BY m.joined`).bind(d.id).all()).results;
   const stalls = (await env.DB.prepare(
     "SELECT s.*, COALESCE(c.until, 0) AS clean_until FROM stalls s LEFT JOIN stall_clean c ON c.stall_id = s.id WHERE s.dairy_id = ? ORDER BY s.created")
@@ -544,7 +544,7 @@ async function myDairy(env, me) {
     you: { id: me.id, role: primaryRole(mem.role), roles: roleList(mem.role), isOwner: !!mem.is_owner },
     members: members.map(m => ({
       id: m.install, name: m.name, world: m.world_name, role: primaryRole(m.role), roles: roleList(m.role), isOwner: m.install === d.owner,
-      online: (m.last_seen || 0) >= t - ONLINE_WINDOW, lastSeen: m.last_seen || 0, status: safeParse(m.status),
+      online: (m.last_seen || 0) >= t - ONLINE_WINDOW, lastSeen: m.last_seen || 0, version: m.version || "", status: safeParse(m.status),
     })),
     stalls: stalls.map(s => ({ id: s.id, name: s.name, x: s.x, y: s.y, z: s.z, tier: s.tier, cleanUntil: s.clean_until > t ? s.clean_until : 0 })),
     progress: await progressOut(env, d.id, stalls.length),
@@ -1217,7 +1217,7 @@ async function fillOrder(env, me, id, request) {
 
   const d = await env.DB.prepare("SELECT * FROM dairies WHERE id = ?").bind(o.dairy_id).first();
   if (!d || !d.is_public) fail(409, "That dairy isn't taking deliveries.");
-  const here = await dairyAt(env, b.houseId);
+  const here = (await dairyInArea(env, b.pos)) || (await dairyAt(env, b.houseId));
   if (!here || here.id !== d.id) fail(400, `Deliveries are made in person: go to ${d.name} first.`);
 
   const day = today();

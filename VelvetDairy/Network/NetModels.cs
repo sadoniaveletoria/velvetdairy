@@ -243,6 +243,7 @@ public sealed class MemberInfo
     public bool IsOwner { get; set; }
     public bool Online { get; set; }
     public long LastSeen { get; set; }      // unix seconds their plugin last checked in (0 = never)
+    public string Version { get; set; } = "";   // their plugin version, as of their last check-in
 
     public List<string> AllRoles => VelvetDairy.Game.Roles.From(Roles, Role);
     public bool Has(string role) => AllRoles.Contains(role);

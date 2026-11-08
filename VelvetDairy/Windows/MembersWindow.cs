@@ -189,6 +189,13 @@ public sealed class MembersWindow : Window
                 DrawLevels(m);
 
                 ImGui.TableNextColumn();
+                if (Outdated(m) && Reports(m))
+                {
+                    ImGui.TextColored(Theme.Warn, "Old version");
+                    if (ImGui.IsItemHovered()) ImGui.SetTooltip($"They're on {m.Version}; the newest is {Plugin.Version}.");
+                    ImGui.SameLine();
+                }
+
                 if (!m.Online)
                 {
                     ImGui.TextColored(Theme.InkSoft, m.LastSeen > 0 ? $"Seen {Ago(m.LastSeen)}" : "Offline");
@@ -215,7 +222,8 @@ public sealed class MembersWindow : Window
                 else ImGui.TextColored(Theme.InkSoft, "-");
 
                 ImGui.TableNextColumn();
-                if (m.Has("cow") && m.Status is { Quality: > 0 } q)
+                if (m.Has("cow") && !Reports(m)) ImGui.TextColored(Theme.InkSoft, "-");
+                else if (m.Has("cow") && m.Status is { } q)
                 {
                     var cap = Grades.Cap(q.Quality);
                     ImGui.TextColored(Theme.GradeColor(cap), $"{q.Quality:N0}");
@@ -226,7 +234,7 @@ public sealed class MembersWindow : Window
                 else ImGui.TextColored(Theme.InkSoft, "-");
 
                 ImGui.TableNextColumn();
-                if (m.Status is { TotalOz: > 0 } t) ImGui.TextColored(Theme.Ink, $"{t.TotalOz:N0} oz");
+                if (Reports(m) && m.Status is { } t) ImGui.TextColored(t.TotalOz > 0 ? Theme.Ink : Theme.InkSoft, $"{t.TotalOz:N0} oz");
                 else ImGui.TextColored(Theme.InkSoft, "-");
                 if (ImGui.IsItemHovered()) ImGui.SetTooltip("All the milk they've ever given (stalls and hand milking).");
 
@@ -259,13 +267,30 @@ public sealed class MembersWindow : Window
     }
 
     /// <summary>Their level in each role they hold, e.g. "Cow 12 · Farmer 4". Levels come from their plugin (last time it checked in).</summary>
+    /// <summary>The first version whose plugin reports levels, quality and milk given.</summary>
+    private static readonly Version DetailsSince = new(0, 9, 6, 0);
+
+    private static Version? VersionOf(MemberInfo m) => Version.TryParse(m.Version, out var v) ? v : null;
+
+    /// <summary>Their plugin reports the details shown here (levels, quality, milk given).</summary>
+    private static bool Reports(MemberInfo m) => m.Status != null && VersionOf(m) is { } v && v >= DetailsSince;
+
+    private static bool Outdated(MemberInfo m) =>
+        VersionOf(m) is { } v && Version.TryParse(Plugin.Version, out var mine) && v < mine;
+
+    private static void NeedsUpdate(MemberInfo m)
+    {
+        ImGui.TextColored(Theme.Warn, "Needs update");
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip(m.Version.Length > 0 ? $"They're on {m.Version}. Their levels, quality and milk given show once they update (newest: {Plugin.Version})." : "Shows once they've played with the newest version.");
+    }
+
     private static void DrawLevels(MemberInfo m)
     {
         var st = m.Status;
-        if (st == null || (st.Level == 0 && st.FarmerLevel == 0 && st.BullLevel == 0))
+        if (!Reports(m) || st == null)
         {
-            ImGui.TextColored(Theme.InkSoft, "-");
-            if (ImGui.IsItemHovered()) ImGui.SetTooltip("Shows once they've played with this version.");
+            NeedsUpdate(m);
             return;
         }
 

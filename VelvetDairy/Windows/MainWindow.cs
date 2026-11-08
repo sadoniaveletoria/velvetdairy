@@ -554,6 +554,13 @@ public sealed partial class MainWindow : Window
 
     private void DrawBarn(Vector2 min, Vector2 max)
     {
+        // Not a cow? The barn is your work instead: the herd, the stalls, your tank and your goals
+        if (!G.ProducesMilk && G.Networked && (G.IsFarmer || F.NetMember?.IsOwner == true))
+        {
+            DrawFarmBarn(min, max);
+            return;
+        }
+
         var blocked = G.Blocked();
         var milkH = 200f;
         var topMax = new Vector2(max.X, max.Y - milkH - 14);
@@ -572,6 +579,22 @@ public sealed partial class MainWindow : Window
             var dl = ImGui.GetWindowDrawList();
             dl.AddText(min + new Vector2(28, -4), Ui.U(Theme.Warn), blocked);
         }
+    }
+
+    private void DrawFarmBarn(Vector2 min, Vector2 max)
+    {
+        var mid = (min.X + max.X) / 2;
+        Panel("##farmherd", min, new Vector2(mid - 7, max.Y), "Your herd", w =>
+        {
+            DrawHandMilkCows(w);
+            DrawCleanStalls(w);
+        }, true);
+        Panel("##farmwork", new Vector2(mid + 7, min.Y), max, G.IsFarmer ? $"Farmer level {G.FarmerLevel}" : "Your work", w =>
+        {
+            DrawFarmerTankSummary(w);
+            SubHeading("Today's goals", w);
+            DrawDaily(w);
+        }, true);
     }
 
     private void DrawBottleCard(Vector2 min, Vector2 max)
@@ -1499,19 +1522,25 @@ public sealed partial class MainWindow : Window
         ImGui.TextColored(Theme.InkSoft, $"New goals in {Mins(G.UntilReset)}.");
         Gap(4);
         var goals = G.Goals();
-        for (var i = 0; i < goals.Count; i++)
+        if (goals.Count == 0) Ui.Wrapped("Take a role (Roles tab) to get daily goals.", Theme.InkSoft, width);
+        foreach (var farmer in new[] { false, true })
         {
-            var g = goals[i];
-            var done = g.Have >= g.Need;
-            var claimed = G.Claimed(i);
-            var tip = claimed ? null : done ? $"+{DairyGame.GoalCoins} coins, +{DairyGame.GoalXp} xp" : "Not done yet.";
-            if (ListRow(null, g.Name, claimed ? Theme.InkSoft : Theme.Ink, new[] { new Line($"{Math.Min(g.Have, g.Need):0} / {g.Need:0}", Theme.InkSoft) },
-                    new[] { new Btn($"##claim{i}", claimed ? "Claimed" : "Claim", "sage", done && !claimed, tip) }, width,
-                    g.Have / g.Need, done ? Theme.SageDeep : Theme.BlueDeep) == 0)
-                G.Claim(i);
-        }
+            var set = goals.Where(x => x.Farmer == farmer).ToList();
+            if (set.Count == 0) continue;
+            if (goals.Any(x => x.Farmer != farmer)) SubHeading(farmer ? "Farmer goals" : "Cow goals", width);
+            foreach (var g in set)
+            {
+                var done = g.Have >= g.Need;
+                var claimed = G.Claimed(g);
+                var tip = claimed ? null : done ? $"+{DairyGame.GoalCoins} coins, +{DairyGame.GoalXp} {(g.Farmer ? "farmer" : "cow")} xp" : "Not done yet.";
+                if (ListRow(null, g.Name, claimed ? Theme.InkSoft : Theme.Ink, new[] { new Line($"{Math.Min(g.Have, g.Need):0} / {g.Need:0}", Theme.InkSoft) },
+                        new[] { new Btn($"##claim{g.Bit}", claimed ? "Claimed" : "Claim", "sage", done && !claimed, tip) }, width,
+                        g.Have / g.Need, done ? Theme.SageDeep : Theme.BlueDeep) == 0)
+                    G.Claim(g);
+            }
 
-        Ui.Wrapped($"Finish all four for {DairyGame.AllGoalsCoins} bonus coins.", Theme.InkSoft, width);
+            Ui.Wrapped($"Finish all four {(farmer ? "farmer" : "cow")} goals for {DairyGame.AllGoalsCoins} bonus coins.", Theme.InkSoft, width);
+        }
 
         SubHeading("Recent", width);
         foreach (var line in F.Log!.Take(14)) Ui.Wrapped(line, Theme.InkSoft, width);

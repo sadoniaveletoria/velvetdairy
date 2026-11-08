@@ -291,7 +291,7 @@ public static class Awards
         new Award("order25", "Regular supplier", "Fill 25 creamery orders.", f => f.Stats.OrdersFilled >= 25),
         new Award("care50", "Well kept", "Do 50 care tasks.", f => f.Stats.CareTasks >= 50),
         new Award("daily7", "Routine", "Finish 7 daily goals.", f => f.Stats.DailiesDone >= 7),
-        new Award("gilded", "Gilded", "Upgrade a stall to Gilded.", f => f.Stalls != null && f.Stalls.Any(s => s.Tier >= 4)),
+        new Award("gilded", "Gilded", "Upgrade a stall to Gilded.", f => f.Stats.BestStallTier >= 4 || (f.Stalls != null && f.Stalls.Any(s => s.Tier >= 4))),
         new Award("rich", "Well off", "Earn 5,000 coins.", f => f.Stats.CoinsEarned >= 5000),
     };
 }

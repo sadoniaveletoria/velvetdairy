@@ -414,6 +414,7 @@ public sealed class DairyGame
         Touch();
         Net.ShipToContract(grade, oz, r =>
         {
+            F.DayDelivered++;
             F.Tank![grade] = Math.Max(0, F.Tank[grade] - r.Shipped);
             AddFarmerXp(Math.Max(1, r.Shipped / 2));
             plugin.SaveConfig();
@@ -505,10 +506,16 @@ public sealed class DairyGame
     /// <summary>Seconds since you last did something.</summary>
     public double IdleSeconds => now - lastActive;
 
+    /// <summary>Resting on furniture in your dairy holds off dozing for 30 minutes (asleep at 45).</summary>
+    public const double SeatedDozeAfter = 30 * 60;
+    public const double SeatedSleepAfter = 45 * 60;
+
+    private bool RestingInDairy => Where.InDairy && Where.Seated;
+
     public Wakefulness Wake =>
         Dev && !F.DevCanSleep ? Wakefulness.Awake
-        : IdleSeconds >= SleepAfter ? Wakefulness.Asleep
-        : IdleSeconds >= DozeAfter ? Wakefulness.Dozing
+        : IdleSeconds >= (RestingInDairy ? SeatedSleepAfter : SleepAfter) ? Wakefulness.Asleep
+        : IdleSeconds >= (RestingInDairy ? SeatedDozeAfter : DozeAfter) ? Wakefulness.Dozing
         : Wakefulness.Awake;
 
     /// <summary>After 12 hours of making milk in one day, milk comes in at half speed until tomorrow.</summary>
@@ -535,7 +542,7 @@ public sealed class DairyGame
         var w = Wake;
         if (w != lastWake)
         {
-            if (w == Wakefulness.Dozing) Say("You're dozing off. Milk comes in at half speed until you do something.", 2);
+            if (w == Wakefulness.Dozing) Say("You're dozing off. Milk comes in at half speed until you do something (move, emote, chat or click).", 2);
             else if (w == Wakefulness.Asleep)
             {
                 Stop("You fell asleep.");
@@ -550,12 +557,16 @@ public sealed class DairyGame
     {
         now += dt;
         if (!F.StockPaidOut && Blocked() == null) PayOutOldStock();
+        var wasInDairy = Where.InDairy;
         Where = Locate();
+        // Tell the server right away when you arrive or leave, so jugs, chores and hand milking pay count at once
+        if (Networked && Where.InDairy != wasInDairy) Net.Poke();
         WatchActivity();
         if (Networked) WatchCreamery();
 
         if (Blocked() != null || Paused)
         {
+            HoldBoost(dt);
             Cow.LastTickUtc = DateTime.UtcNow;
             return;
         }
@@ -654,7 +665,14 @@ public sealed class DairyGame
         if (away.TotalMinutes < 1) return;
 
         Cow.LastTickUtc = DateTime.UtcNow;
+        HoldBoost(away.TotalSeconds);   // a treat boost waits while you're away, like the need bars
         CheckSpoil();
+    }
+
+    /// <summary>A treat boost only runs while you're awake and playing: push its end back by time spent otherwise.</summary>
+    private void HoldBoost(double seconds)
+    {
+        if (Cow.BoostUntilUtc > DateTime.UtcNow) Cow.BoostUntilUtc = Cow.BoostUntilUtc.AddSeconds(seconds);
     }
 
     private void Simulate(float seconds)
@@ -664,6 +682,7 @@ public sealed class DairyGame
         var fullBefore = FullBottles;
         var cushion = Owned("cushion") > 0;
         WatchRest();
+        if (Wake != Wakefulness.Awake) HoldBoost(seconds);
 
         // Need bars drain as the bonus wears off, only while you're awake; asleep, dozing or logged out they wait
         if (Wake == Wakefulness.Awake)
@@ -967,10 +986,9 @@ public sealed class DairyGame
         // Tell the server now, so the farmer's plugin sees the milking has started
         if (Networked) Net.Poke();
         nextTestStroke = now + 1.5;
-        var emotes = string.Join(", ", F.HandEmotes!);
         Say(fh.IsTest
             ? "The test farmhand starts milking you."
-            : $"{fh.Name} can milk you now. Each {emotes} on you draws milk.", 0);
+            : $"{fh.Name} is milking you. Milk flows while they keep their Milk emote going.", 0);
         return true;
     }
 
@@ -1076,8 +1094,8 @@ public sealed class DairyGame
         Active = null;
         if (s == null) return;
         autoHold = true;
-        // Tell the server now, so a farmer's plugin can end their milking emote
-        if (s.Kind == SessionKind.Hand && Networked) Net.Poke();
+        // Tell the server now: a farmer's plugin can end their milking emote, and the milk reaches the dairy tank before you walk off
+        if (Networked) Net.Poke();
 
         if (s.Extracted < 0.05f)
         {
@@ -1352,6 +1370,7 @@ public sealed class DairyGame
         // There's no "stop emote" in the game; any other emote ends the loop, so give a quiet pat (no chat text)
         if (Emotes.Looping(me) != 0 && !Emotes.Perform("/pet motion")) Emotes.Perform("/pet");
         StopWatchingMilking();
+        F.DayCowsMilked++;
         Say($"{cow} is empty.", 1);
     }
 
@@ -1414,6 +1433,7 @@ public sealed class DairyGame
             cleaning = false;
             s.CleanUntil = until;
             AddFarmerXp(Catalog.CleanXp);
+            F.DayCleans++;
             EarnDairyXp(2);
             Say($"You clean {s.Name}. Cows milked there get +{Catalog.CleanBonus * 100:0}% for an hour. +{Catalog.CleanXp} farmer xp", 1);
             plugin.SaveConfig();
@@ -1459,6 +1479,7 @@ public sealed class DairyGame
             grooming = false;
             groomReady[cowId] = now + 15 * 60;
             AddFarmerXp(Catalog.GroomXp);
+            F.DayGrooms++;
             EarnDairyXp(2);
             Say($"You groom {cowName}. Their Happy bar gets 30 more minutes. +{Catalog.GroomXp} farmer xp", 1);
         }, e =>
@@ -1970,11 +1991,17 @@ public sealed class DairyGame
         if (Networked)
         {
             // Paid from the dairy fund on the server
-            Net.UpgradeStall(s.Id, next, () => Say($"{s.Name} is now a {Catalog.StallTierNames[next].ToLowerInvariant()} (paid from the dairy fund).", 1), e => Fail(e));
+            Net.UpgradeStall(s.Id, next, () =>
+            {
+                F.Stats.BestStallTier = Math.Max(F.Stats.BestStallTier, next);
+                Say($"{s.Name} is now a {Catalog.StallTierNames[next].ToLowerInvariant()} (paid from the dairy fund).", 1);
+                plugin.SaveConfig();
+            }, e => Fail(e));
             return true;
         }
 
         s.Tier = next;
+        F.Stats.BestStallTier = Math.Max(F.Stats.BestStallTier, next);
         F.Coins -= price;
         Say($"{s.Name} is now a {Catalog.StallTierNames[s.Tier].ToLowerInvariant()}.", 1);
         plugin.SaveConfig();
@@ -2024,9 +2051,12 @@ public sealed class DairyGame
         F.NextOrderUtc = DateTime.UtcNow.AddMinutes(20);
     }
 
+    /// <summary>Delivering is farmer work, so orders grow with your farmer level (the owner's with their best level).</summary>
+    private int DeliveryLevel => IsFarmer ? FarmerLevel : Math.Max(Level, FarmerLevel);
+
     private Order NewOrder()
     {
-        var lvl = Level;
+        var lvl = DeliveryLevel;
         var maxGrade = BestTankGrade();   // orders ask for grades your dairy has
         var grade = rng.Next(0, maxGrade + 1);
         var oz = 4 * rng.Next(2, 3 + Math.Min(6, lvl / 3));
@@ -2049,7 +2079,7 @@ public sealed class DairyGame
         var t = Net.Progress?.Tank?.ByGrade;
         for (var g = 0; g < Grades.Count; g++)
             if ((t != null && g < t.Count && t[g] >= 8) || F.Tank![g] >= 8) best = g;
-        return Math.Min(best, 2 + Level / 10);
+        return Math.Min(best, 2 + DeliveryLevel / 10);
     }
 
     public bool CanFill(Order o) => OzAtOrAbove(o.MinGrade) >= o.Oz;
@@ -2075,6 +2105,7 @@ public sealed class DairyGame
         else AddXp(o.Xp);
         F.Stats.OrdersFilled++;
         F.DayOrders++;
+        F.DayDelivered++;
         EaseTaint(Catalog.TaintPerOrder);
         AddQuality(Grades.QualityPerOrder);
         if (F.Orders.Count < 3 && DateTime.UtcNow >= F.NextOrderUtc) F.NextOrderUtc = DateTime.UtcNow.AddMinutes(20);
@@ -2328,6 +2359,7 @@ public sealed class DairyGame
         {
             F.Stats.OrdersFilled++;
             F.DayOrders++;
+            F.DayDelivered++;
             EaseTaint(Catalog.TaintPerOrder);
             AddQuality(Grades.QualityPerOrder);
             Say($"Delivered {r.Oz} oz to {r.Dairy}. Your {r.Coins} coins are on the way.", 1);
@@ -2397,32 +2429,49 @@ public sealed class DairyGame
     // Daily goals
     // =================================================================
 
-    public sealed record Goal(string Name, float Have, float Need);
+    public sealed record Goal(string Name, float Have, float Need, int Bit, bool Farmer);
 
-    public IReadOnlyList<Goal> Goals() => new[]
+    /// <summary>Your daily goals: a set for cows and a separate set for farmers (you get both if you're both).</summary>
+    public IReadOnlyList<Goal> Goals()
     {
-        new Goal("Give 10 oz of milk", F.DayOz, 10),
-        CanCarry ? new Goal("Fill a creamery order", F.DayOrders, 1) : new Goal("Get milked at a stall", F.DayStall, 1),
-        new Goal("Do 3 care tasks", F.DayCare, 3),
-        new Goal("Get hand milked", F.DayHand, 1),
-    };
+        var list = new List<Goal>();
+        if (ProducesMilk)
+        {
+            list.Add(new Goal("Give 10 oz of milk", F.DayOz, 10, 0, false));
+            list.Add(new Goal("Get milked at a stall", F.DayStall, 1, 1, false));
+            list.Add(new Goal("Do 3 care tasks", F.DayCare, 3, 2, false));
+            list.Add(new Goal("Get hand milked", F.DayHand, 1, 3, false));
+        }
 
-    public bool Claimed(int i) => (F.DayClaimed & (1 << i)) != 0;
+        if (IsFarmer)
+        {
+            list.Add(new Goal("Groom 2 cows", F.DayGrooms, 2, 8, true));
+            list.Add(new Goal("Clean a stall", F.DayCleans, 1, 9, true));
+            list.Add(new Goal("Fill an order or ship to the contract", F.DayDelivered, 1, 10, true));
+            list.Add(new Goal("Hand milk a cow until they're empty", F.DayCowsMilked, 1, 11, true));
+        }
+
+        return list;
+    }
+
+    public bool Claimed(Goal g) => (F.DayClaimed & (1 << g.Bit)) != 0;
     public const int GoalCoins = 30;
     public const int GoalXp = 40;
     public const int AllGoalsCoins = 60;
 
-    public bool Claim(int i)
+    public bool Claim(Goal g)
     {
-        var g = Goals()[i];
-        if (Claimed(i) || g.Have < g.Need) return false;
-        F.DayClaimed |= 1 << i;
+        if (Claimed(g) || g.Have < g.Need) return false;
+        F.DayClaimed |= 1 << g.Bit;
         Earn(GoalCoins);
-        AddXp(GoalXp);
+        if (g.Farmer) AddFarmerXp(GoalXp);
+        else AddXp(GoalXp);
         F.Stats.DailiesDone++;
-        var all = Enumerable.Range(0, Goals().Count).All(Claimed);
+        // Each set has its own bonus for finishing all four
+        var all = Goals().Where(x => x.Farmer == g.Farmer).All(Claimed);
         if (all) Earn(AllGoalsCoins);
-        Say(all ? $"All daily goals done! +{GoalCoins + AllGoalsCoins} coins" : $"Daily goal done. +{GoalCoins} coins, +{GoalXp} xp", 1);
+        var set = g.Farmer ? "farmer" : "cow";
+        Say(all ? $"All {set} goals done! +{GoalCoins + AllGoalsCoins} coins" : $"Daily goal done. +{GoalCoins} coins, +{GoalXp} {set} xp", 1);
         plugin.SaveConfig();
         return true;
     }
@@ -2441,6 +2490,10 @@ public sealed class DairyGame
         F.DayAwakeMinutes = 0;
         F.DayStall = 0;
         F.DayClaimed = 0;
+        F.DayGrooms = 0;
+        F.DayCleans = 0;
+        F.DayDelivered = 0;
+        F.DayCowsMilked = 0;
     }
 
     // =================================================================
@@ -2491,6 +2544,7 @@ public sealed class DairyGame
 
     private void AddXp(int amount)
     {
+        if (!ProducesMilk) return;   // cow xp is only for cows; farmer work gives farmer xp
         var before = Level;
         F.Xp += amount;
         var after = Level;
