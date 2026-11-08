@@ -257,21 +257,6 @@ public sealed partial class MainWindow : Window
         var cw = Ui.Measure(fonts.Heading, coins).X;
         Ui.Icon(dl, "coin", new Vector2(right - cw - 22, o.Y + 36), 16);
         Ui.Text(dl, fonts.Heading, coins, new Vector2(right, o.Y + 24), Theme.Ink, 1f);
-        var where = G.Where;
-        var dairy = G.DairyName;
-        var chip = (G.Dev ? "DEV - " : "") + (G.Paused ? "Paused" : where.InDairy ? where.Why : dairy.Length == 0 ? "No dairy yet" : $"Away from {dairy}");
-        if (G.Networked && (G.MyRoles.Count != 1 || !G.IsCow) && !G.Paused) chip = $"{G.Role} · {chip}";
-        if (G.Net.UpdateVersion is { } nv) chip = $"Update {nv} available · {chip}";
-        chip = chip.TrimEnd('.');
-        var chipColor = G.Paused ? Theme.InkSoft : where.InDairy ? Theme.SageDeep : Theme.RoseDeep;
-        var cs = Ui.Measure(fonts.Label, chip.ToUpperInvariant());
-        var cmin = new Vector2(right - cs.X - 38, o.Y + 56);
-        var cmax = new Vector2(right, o.Y + 56 + cs.Y + 6);
-        dl.AddRectFilled(cmin, cmax, Ui.U(chipColor, 0.12f), 99);
-        dl.AddRect(cmin, cmax, Ui.U(chipColor, 0.6f), 99, ImDrawFlags.None, 1f);
-        dl.AddCircleFilled(new Vector2(cmin.X + 11, (cmin.Y + cmax.Y) / 2), 3.5f, Ui.U(chipColor));
-        Ui.Text(dl, fonts.Label, chip.ToUpperInvariant(), new Vector2(cmin.X + 20, cmin.Y + 3), chipColor);
-
         // How many people are playing right now
         if (G.Net.Last != null)
         {
