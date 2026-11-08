@@ -989,7 +989,7 @@ public sealed partial class MainWindow : Window
 
     private void DrawShop(Vector2 min, Vector2 max)
     {
-        var sub = SubTabs("shop", new[] { "Feed & treats", "Upgrades", "Bottles" }, min, max.X - min.X);
+        var sub = SubTabs("shop", G.CanCarry ? new[] { "Feed & treats", "Upgrades", "Bottles", "Farmer tank" } : new[] { "Feed & treats", "Upgrades", "Bottles" }, min, max.X - min.X);
         var mid = (min.X + max.X) / 2;
         switch (Sub("shop"))
         {
@@ -1001,20 +1001,51 @@ public sealed partial class MainWindow : Window
                 Panel("##upgrades", sub, new Vector2(mid - 7, max.Y), "Comfort and care", w => DrawUpgradeShop(w, false));
                 Panel("##looks", new Vector2(mid + 7, sub.Y), max, "Things to wear", w => DrawUpgradeShop(w, true), true);
                 break;
-            default:
+            case 2:
                 Panel("##bottleshop", sub, new Vector2(mid - 7, max.Y), "Bottles", DrawBottleShop);
                 Panel("##bottlenow", new Vector2(mid + 7, sub.Y), max, "Your bottles now", DrawBottleSummary, true);
+                break;
+            default:
+                Panel("##tankshop", sub, new Vector2(mid - 7, max.Y), "Farmer tank", DrawFarmerTankShop);
+                Panel("##tanknow", new Vector2(mid + 7, sub.Y), max, "What you carry now", DrawFarmerTankSummary, true);
                 break;
         }
     }
 
-    private static readonly string[] BottleUpgrades = { "bottle", "rack" };
+    private static readonly string[] BottleUpgrades = { "bottle", "rack", "farmtank" };
+
+    private void DrawFarmerTankShop(float width)
+    {
+        Ui.Wrapped("Farmers and owners carry milk from the dairy tank to customers, other dairies and the Grand Creamery. A bigger tank carries more per trip. New sizes unlock with your farmer level.",
+            Theme.InkSoft, width);
+        Gap(6);
+        UpgradeRow(Catalog.Upgrades.First(u => u.Id == "farmtank"), width);
+        Gap(6);
+        SubHeading("Sizes", width);
+        var tank = Catalog.Upgrades.First(u => u.Id == "farmtank");
+        for (var i = 0; i < Catalog.FarmerTankSizes.Length; i++)
+        {
+            var owned = i <= G.FarmerTankTier;
+            ImGui.TextColored(owned ? Theme.SageDeep : Theme.InkSoft,
+                $"{Catalog.FarmerTankNames[i]} · {Catalog.FarmerTankSizes[i]} oz" + (i == 0 ? " · everyone starts with it" : $" · farmer level {tank.Unlocks[i - 1]}, {tank.Prices[i - 1]:N0} coins"));
+        }
+    }
+
+    private void DrawFarmerTankSummary(float width)
+    {
+        ImGui.TextColored(Theme.Ink, $"{G.FarmerTankName} · holds {G.MaxCarry} oz");
+        ImGui.TextColored(Theme.InkSoft, $"Carrying {G.Carried:0.#} oz · farmer level {G.FarmerLevel}");
+        var cur = ImGui.GetCursorScreenPos();
+        Ui.Bar(ImGui.GetWindowDrawList(), cur + new Vector2(0, 6), cur + new Vector2(Math.Min(width, 360), 14), G.MaxCarry > 0 ? Math.Clamp(G.Carried / G.MaxCarry, 0, 1) : 0, Theme.BlueDeep);
+        ImGui.Dummy(new Vector2(width, 20));
+        Ui.Wrapped("Fill it at your dairy (Creamery > Jugs). Farmer xp comes from hand milking pay, filling jugs, deliveries and contracts.", Theme.InkSoft, width);
+    }
 
     private void DrawBottleShop(float width)
     {
         Ui.Wrapped("Bigger bottles hold more each; extra bottles start filling when the one before is full.", Theme.InkSoft, width);
         Gap(6);
-        foreach (var u in Catalog.Upgrades.Where(u => BottleUpgrades.Contains(u.Id))) UpgradeRow(u, width);
+        foreach (var u in Catalog.Upgrades.Where(u => u.Id is "bottle" or "rack")) UpgradeRow(u, width);
     }
 
     private void DrawBottleSummary(float width)
@@ -1376,7 +1407,7 @@ public sealed partial class MainWindow : Window
         var nextRank = Leveling.NextRank(lvl);
         if (nextRank != null) ImGui.TextColored(Theme.InkSoft, $"Next rank: {nextRank}");
 
-        DrawRoleLevel("Farmer level", F.FarmerXp, Theme.SageDeep, $"Hand milking pay, jugs, deliveries and contracts. Carry {G.MaxCarry} oz.", width);
+        DrawRoleLevel("Farmer level", F.FarmerXp, Theme.SageDeep, $"Hand milking pay, jugs, deliveries and contracts. Unlocks bigger farmer tanks ({G.FarmerTankName}, {G.MaxCarry} oz now).", width);
         DrawRoleLevel("Bull level", F.BullXp, Theme.HoneyDeep, "Bulls are a role only for now. More is coming in new updates.", width);
 
         SubHeading("Milk quality", width);

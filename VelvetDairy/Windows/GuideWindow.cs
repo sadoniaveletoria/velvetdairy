@@ -34,7 +34,7 @@ public sealed class GuideWindow : Window
             "Bull: a role only for now. More is coming in new updates.",
             "Owner: runs the dairy. Marks out where it is, sets up stalls, invites farmers, cows and bulls, spends the dairy fund and posts buy orders. The owner can also play any mix of roles.",
             "You can hold several roles at once (a Cow + Farmer + Bull can take care of everyone). Add cow or bull to yourself any time on Dairy > Overview. Farmer is given by a farmer or the owner. Only the owner takes roles away.",
-            "Each role has its own level: cow level (milk speed and shop unlocks), farmer level (more milk you can carry) and bull level. Adding or losing a role never loses its progress.",
+            "Each role has its own level: cow level (milk speed and shop unlocks), farmer level (unlocks bigger farmer tanks) and bull level. Adding or losing a role never loses its progress.",
             "You belong to one dairy at a time. Invites show up on the Dairy tab; accepting one leaves your old dairy.",
         }),
         new("Your cow", new[]
@@ -68,7 +68,7 @@ public sealed class GuideWindow : Window
         {
             "You get +1 XP for every 0.1 oz of milk you make (more at better grades), plus a bonus when you're emptied at a stall or by hand, plus daily goals, orders and care.",
             "Each level needs 30 more XP than the last. Your cow level makes milk come faster and unlocks shop items and upgrades. Max level is 30.",
-            "Farmers level separately: hand milking pay, filling jugs, deliveries and contracts give farmer XP, and each farmer level lets you carry 8 oz more. Bulls have their own level too, for things coming later.",
+            "Farmers level separately: hand milking pay, filling jugs, deliveries and contracts give farmer XP, and farmer levels unlock bigger farmer tanks to buy in the Shop. Bulls have their own level too, for things coming later.",
             "Daily goals (Progress tab) reset each day and pay coins and XP.",
         }),
         new("Staying awake", new[]
@@ -98,7 +98,7 @@ public sealed class GuideWindow : Window
         }),
         new("Jugs and deliveries", new[]
         {
-            "Farmers and the owner fill jugs from the dairy tank (Creamery > Jugs), up to 192 oz at a time, inside the dairy.",
+            "Farmers and the owner fill jugs from the dairy tank (Creamery > Jugs), inside the dairy, up to what their farmer tank holds: a 32 oz milk pail at first, up to a 256 oz tanker cart (Shop > Farmer tank, unlocked by farmer level).",
             "Customer orders (Creamery tab): the creamery's customers want milk of a grade. Deliver from your jugs for coins and XP.",
             "Deliveries: other public dairies' buy orders and two creamery visitor orders a day per dairy. Go there in person and deliver from your jugs. Milk from buy orders goes into the buying dairy's tank.",
             "Owners of public dairies can post buy orders (Creamery > Deliveries): the coins are held until a delivery fills it or you cancel.",

@@ -70,7 +70,7 @@ public sealed record FeedItem(
     float Hunger = 0, float Thirst = 0, float Comfort = 0, float Mood = 0, float Richness = 0, int BoostMinutes = 0, float Quality = 0);
 
 /// <summary>Something you buy once or in levels.</summary>
-public sealed record Upgrade(string Id, string Name, string Icon, int[] Prices, int[] Unlocks, string Desc, bool Cosmetic = false)
+public sealed record Upgrade(string Id, string Name, string Icon, int[] Prices, int[] Unlocks, string Desc, bool Cosmetic = false, bool Farmer = false)
 {
     public int MaxLevel => Prices.Length;
 }
@@ -98,6 +98,9 @@ public static class Catalog
         new Upgrade("cushion", "Plush bedding", "cushion", new[] { 250 }, new[] { 4 }, "Comfort drops half as fast. Resting restores more."),
         new Upgrade("bottle", "Bigger bottle", "bottle", new[] { 180, 450, 1000, 2200 }, new[] { 3, 8, 14, 21 }, "Each bottle holds more."),
         new Upgrade("rack", "Extra bottle", "milk", new[] { 300, 800, 1800, 3500 }, new[] { 6, 12, 19, 25 }, "One more bottle. When one fills, the next one starts."),
+        // Farmers (and owners) buy a bigger tank to carry milk from the dairy tank; unlocks go by farmer level
+        new Upgrade("farmtank", "Bigger farmer tank", "bucket", new[] { 200, 500, 1200, 2500, 5000 }, new[] { 2, 5, 10, 16, 22 },
+            "Carry more milk from the dairy tank to customers, other dairies and the Grand Creamery.", Farmer: true),
         new Upgrade("trough", "Clean trough", "water", new[] { 160 }, new[] { 5 }, "Thirst drops a third slower."),
         new Upgrade("bell", "Bell collar", "bell", new[] { 80 }, new[] { 3 }, "A brass bell. Mood drops a little slower.", true),
         new Upgrade("ribbon", "Show ribbon", "ribbon", new[] { 600 }, new[] { 15 }, "Wear your ribbon. +5% creamery prices.", true),
@@ -125,6 +128,10 @@ public static class Catalog
     public const float TaintPerOrder = 25f;    // each creamery delivery
 
     // Your bottles: size tier 1 is what you start with, the "bottle" upgrade raises it
+    // Farmer tanks: what you carry milk in (Bigger farmer tank upgrades)
+    public static readonly string[] FarmerTankNames = { "Milk pail", "Milk can", "Carrying churn", "Hand cart", "Dairy wagon", "Tanker cart" };
+    public static readonly int[] FarmerTankSizes = { 32, 64, 96, 144, 192, 256 };
+
     public static readonly string[] BottleNames = { "", "Milk bottle", "Cream jar", "Dairy jug", "Big jug", "Milk churn" };
     // Milk is sized at about five times a real person's yield: roughly 125-150 oz a day with good care
     public static readonly float[] BottleSizes = { 0, 8, 12, 20, 32, 48 };

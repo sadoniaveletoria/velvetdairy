@@ -282,8 +282,10 @@ public sealed class DairyGame
     /// <summary>Farmers and owners carry jugs from the dairy's tank and deliver them; cows just get milked.</summary>
     public bool CanCarry => Networked && F.NetMember != null && (F.NetMember.IsOwner || IsFarmer);
 
-    /// <summary>How much milk you can carry: 192 oz, plus 8 for each farmer level.</summary>
-    public int MaxCarry => 192 + 8 * (FarmerLevel - 1);
+    /// <summary>How much milk you can carry: your farmer tank (bought in the Shop, like a cow's bottles).</summary>
+    public int FarmerTankTier => Math.Min(Owned("farmtank"), Catalog.FarmerTankSizes.Length - 1);
+    public string FarmerTankName => Catalog.FarmerTankNames[FarmerTankTier];
+    public int MaxCarry => Catalog.FarmerTankSizes[FarmerTankTier];
     public float Carried => F.Tank!.Sum();
 
     public string? TakeJugProblem(int grade, int oz)
@@ -291,7 +293,7 @@ public sealed class DairyGame
         if (Blocked() != null) return Blocked();
         if (!CanCarry) return "Only farmers and the owner fill jugs from the dairy tank.";
         if (!Where.InDairy) return "Go to your dairy to fill jugs from its tank.";
-        if (Carried + oz > MaxCarry) return $"You can carry up to {MaxCarry} oz at a time.";
+        if (Carried + oz > MaxCarry) return $"Your {FarmerTankName.ToLowerInvariant()} holds {MaxCarry} oz. Buy a bigger farmer tank in the Shop.";
         var inTank = Net.Progress?.Tank?.ByGrade is { } t && grade < t.Count ? t[grade] : 0;
         if (inTank < oz) return $"The tank has {inTank:0.#} oz of Grade {Grades.Name(grade)}.";
         return null;
@@ -1471,7 +1473,9 @@ public sealed class DairyGame
         if (Blocked() != null) return Blocked();
         var have = Owned(u.Id);
         if (have >= u.MaxLevel) return "Owned.";
-        if (Level < u.Unlocks[have]) return $"Unlocks at level {u.Unlocks[have]}.";
+        if (u.Farmer && !CanCarry) return "For farmers and dairy owners.";
+        var lvl = u.Farmer ? FarmerLevel : Level;
+        if (lvl < u.Unlocks[have]) return $"Unlocks at {(u.Farmer ? "farmer " : "")}level {u.Unlocks[have]}.";
         if (F.Coins < u.Prices[have]) return "Not enough coins.";
         return null;
     }
@@ -2053,7 +2057,12 @@ public sealed class DairyGame
         if (amount <= 0) return;
         var before = FarmerLevel;
         F.FarmerXp += amount;
-        for (var l = before + 1; l <= FarmerLevel; l++) Say($"Farmer level {l}! You can carry {MaxCarry} oz of milk now.", 1);
+        for (var l = before + 1; l <= FarmerLevel; l++)
+        {
+            var tank = Catalog.Upgrades.First(u => u.Id == "farmtank");
+            var unlock = Array.IndexOf(tank.Unlocks, l);
+            Say($"Farmer level {l}!" + (unlock >= 0 ? $" Unlocked: {Catalog.FarmerTankNames[unlock + 1]} ({Catalog.FarmerTankSizes[unlock + 1]} oz) in the Shop." : ""), 1);
+        }
     }
 
     private void CheckAwards()
