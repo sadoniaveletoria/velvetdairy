@@ -27,8 +27,16 @@ public static class PenumbraLink
     public static Dictionary<string, string>? Mods() => Try(() =>
         Plugin.PluginInterface.GetIpcSubscriber<Dictionary<string, string>>("Penumbra.GetModList").InvokeFunc());
 
-    /// <summary>Turns the mod on for your character, keeping the options you picked for it in Penumbra. Null on success, or why not.</summary>
-    public static string? Enable(string modDir)
+    /// <summary>A mod's option groups: group name -> (its options, whether only one can be on at a time). Null if not found.</summary>
+    public static List<(string Group, string[] Options, bool Single)>? Groups(string modDir) => Try(() =>
+        Plugin.PluginInterface.GetIpcSubscriber<string, string, IReadOnlyDictionary<string, (string[], int)>?>("Penumbra.GetAvailableModSettings.V5")
+            .InvokeFunc(modDir, "")?.Select(kv => (kv.Key, kv.Value.Item1, kv.Value.Item2 == 0)).ToList());
+
+    /// <summary>
+    /// Turns the mod on for your character. Groups you picked options for use those; the rest keep what you set in Penumbra.
+    /// Null on success, or why not.
+    /// </summary>
+    public static string? Enable(string modDir, IReadOnlyDictionary<string, List<string>>? picked = null)
     {
         try
         {
@@ -43,6 +51,9 @@ public static class PenumbraLink
                 if (cur.Item2 is { } s)
                     foreach (var (group, list) in s.Item3) options[group] = list;
             }
+
+            if (picked != null)
+                foreach (var (group, list) in picked) options[group] = list;
 
             var ec = Plugin.PluginInterface
                 .GetIpcSubscriber<int, string, string, (bool, bool, int, IReadOnlyDictionary<string, IReadOnlyList<string>>), string, int, int>("Penumbra.SetTemporaryModSettingsPlayer.V5")

@@ -1215,7 +1215,7 @@ public sealed class DairyGame
         var delay = 0.0;
         if (F.MilkModDir.Length > 0 && !milkModOn)
         {
-            var why = PenumbraLink.Enable(F.MilkModDir);
+            var why = PenumbraLink.Enable(F.MilkModDir, F.MilkModOptions);
             if (why != null) Fail($"Milking animation: {why}");
             else
             {

@@ -147,6 +147,84 @@ public sealed partial class MainWindow
     }
 
     private System.Collections.Generic.List<(string Dir, string Name)>? modList;
+    private System.Collections.Generic.List<(string Group, string[] Options, bool Single)>? modGroups;
+    private string modGroupsFor = "";
+
+    /// <summary>The picked mod's options (like which animation it uses), chosen just for milking.</summary>
+    private void DrawMilkModOptions()
+    {
+        if (F.MilkModDir.Length == 0) return;
+        if (modGroups == null || modGroupsFor != F.MilkModDir)
+        {
+            modGroups = PenumbraLink.Groups(F.MilkModDir) ?? new();
+            modGroupsFor = F.MilkModDir;
+        }
+
+        if (modGroups.Count == 0) return;
+        ImGui.TextColored(Theme.InkSoft, "Options while milking (anything left as set in Penumbra keeps your Penumbra choice):");
+        var changed = false;
+        foreach (var (group, options, single) in modGroups)
+        {
+            if (options.Length == 0) continue;
+            F.MilkModOptions.TryGetValue(group, out var picked);
+            if (single)
+            {
+                var label = picked is { Count: > 0 } ? picked[0] : "As set in Penumbra";
+                ImGui.SetNextItemWidth(260);
+                if (ImGui.BeginCombo($"{group}##mmg{group}", label))
+                {
+                    if (ImGui.Selectable($"As set in Penumbra##mmgdef{group}", picked == null))
+                    {
+                        F.MilkModOptions.Remove(group);
+                        changed = true;
+                    }
+
+                    foreach (var o in options)
+                        if (ImGui.Selectable($"{o}##mmo{group}{o}", picked is { Count: > 0 } && picked[0] == o))
+                        {
+                            F.MilkModOptions[group] = new System.Collections.Generic.List<string> { o };
+                            changed = true;
+                        }
+
+                    ImGui.EndCombo();
+                }
+            }
+            else
+            {
+                ImGui.TextColored(Theme.Ink, group);
+                var custom = picked != null;
+                if (ImGui.Checkbox($"Choose for milking##mmgc{group}", ref custom))
+                {
+                    if (custom) F.MilkModOptions[group] = new System.Collections.Generic.List<string>();
+                    else F.MilkModOptions.Remove(group);
+                    changed = true;
+                }
+
+                if (F.MilkModOptions.TryGetValue(group, out var on))
+                {
+                    ImGui.Indent();
+                    foreach (var o in options)
+                    {
+                        var b = on.Contains(o);
+                        if (ImGui.Checkbox($"{o}##mmc{group}{o}", ref b))
+                        {
+                            if (b) on.Add(o);
+                            else on.Remove(o);
+                            changed = true;
+                        }
+                    }
+
+                    ImGui.Unindent();
+                }
+            }
+        }
+
+        if (changed)
+        {
+            G.EndMilkMod();
+            plugin.SaveConfig();
+        }
+    }
 
     /// <summary>For farmers: a Penumbra mod switched on only while the Milk button's emote plays (say, one that turns it into a massage).</summary>
     private void DrawMilkMod(float width)
@@ -170,6 +248,8 @@ public sealed partial class MainWindow
             {
                 G.EndMilkMod();
                 F.MilkModDir = "";
+                F.MilkModOptions.Clear();
+                modGroups = null;
                 plugin.SaveConfig();
             }
 
@@ -177,7 +257,9 @@ public sealed partial class MainWindow
                 if (ImGui.Selectable($"{name}##mm{dir}", dir == F.MilkModDir))
                 {
                     G.EndMilkMod();
+                    if (dir != F.MilkModDir) F.MilkModOptions.Clear();
                     F.MilkModDir = dir;
+                    modGroups = null;
                     plugin.SaveConfig();
                 }
 
@@ -185,7 +267,13 @@ public sealed partial class MainWindow
         }
 
         ImGui.SameLine();
-        if (ImGui.SmallButton("Refresh##milkmodrefresh")) modList = PenumbraLink.Sorted();
+        if (ImGui.SmallButton("Refresh##milkmodrefresh"))
+        {
+            modList = PenumbraLink.Sorted();
+            modGroups = null;
+        }
+
+        DrawMilkModOptions();
         var redraw = F.MilkModRedraw;
         if (ImGui.Checkbox("Redraw me first (if the animation doesn't change)##milkmodredraw", ref redraw))
         {
