@@ -227,6 +227,7 @@ async function route(request, env) {
     ["POST", /^\/v1\/members\/([0-9a-f]{32})\/roles$/, m => changeRoles(env, me, m[1], request)],
     ["POST", /^\/v1\/stalls$/, () => addStall(env, me, request)],
     ["DELETE", /^\/v1\/stalls\/([0-9a-f]{24})$/, m => removeStall(env, me, m[1])],
+    ["PUT", /^\/v1\/stalls\/([0-9a-f]{24})$/, m => moveStall(env, me, m[1], request)],
     ["POST", /^\/v1\/stalls\/([0-9a-f]{24})\/tier$/, m => upgradeStall(env, me, m[1], request)],
     ["GET", /^\/v1\/orders\/mine$/, () => myOrders(env, me)],
     ["POST", /^\/v1\/orders$/, () => postOrder(env, me, request)],
@@ -823,6 +824,22 @@ async function removeStall(env, me, id) {
   const d = await ownedDairy(env, me);
   const r = await env.DB.prepare("DELETE FROM stalls WHERE id = ? AND dairy_id = ? RETURNING id").bind(id, d.id).first();
   if (!r) fail(404, "That stall is already gone.");
+  return { ok: true };
+}
+
+/** The owner moves a stall to a new seat; it keeps its name and tier. */
+async function moveStall(env, me, id, request) {
+  const b = await body(request);
+  const d = await ownedDairy(env, me);
+  const num = v => {
+    const x = Number(v);
+    if (!Number.isFinite(x) || Math.abs(x) > 5000) fail(400, "Bad position.");
+    return x;
+  };
+  const name = b.name != null ? clean(b.name, 24) : null;
+  const r = await env.DB.prepare("UPDATE stalls SET x = ?, y = ?, z = ?, name = COALESCE(?, name) WHERE id = ? AND dairy_id = ? RETURNING id")
+    .bind(num(b.x), num(b.y), num(b.z), name || null, id, d.id).first();
+  if (!r) fail(404, "That stall is gone.");
   return { ok: true };
 }
 

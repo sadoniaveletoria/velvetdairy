@@ -1403,6 +1403,46 @@ public sealed class DairyGame
         return true;
     }
 
+    /// <summary>Null when you can move this stall to the seat you're sitting on (it keeps its tier).</summary>
+    public string? MoveStallProblem(Stall s)
+    {
+        if (Blocked() != null) return Blocked();
+        if (Networked && !IsOwner) return "Only the dairy's owner moves stalls.";
+        if (!Where.InDairy) return "Stalls go inside your dairy. " + Where.Why;
+        if (!Where.Seated) return "Sit on the seat you want this stall to move to.";
+        if (Where.AtStall == s) return "It's already here.";
+        if (Where.AtStall != null) return $"That seat is already {Where.AtStall.Name}.";
+        return null;
+    }
+
+    public void MoveStall(Stall s)
+    {
+        var p = MoveStallProblem(s);
+        if (p != null)
+        {
+            Fail(p);
+            return;
+        }
+
+        var me = Plugin.ObjectTable.LocalPlayer!;
+        var pos = me.Position;
+        if (Active?.Stall == s) Stop("Stall moved.");
+        if (Networked)
+        {
+            Net.MoveStall(s.Id, pos.X, pos.Y, pos.Z, () => Say($"{s.Name} moved here (still a {Catalog.StallTierNames[s.Tier].ToLowerInvariant()}).", 1), e => Fail(e));
+            return;
+        }
+
+        s.X = pos.X;
+        s.Y = pos.Y;
+        s.Z = pos.Z;
+        Say($"{s.Name} moved here.", 1);
+        plugin.SaveConfig();
+    }
+
+    /// <summary>Is this stall inside the dairy's area? (After moving the dairy, stalls left outside stop working until moved.)</summary>
+    public bool StallInArea(Stall s) => F.NetMember?.Area is not { } a || a.Contains(new Vector3(s.X, s.Y, s.Z));
+
     public void RemoveStall(Stall s)
     {
         if (Active?.Stall == s) Stop("Stall removed.");

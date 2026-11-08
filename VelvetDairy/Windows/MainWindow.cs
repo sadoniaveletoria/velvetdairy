@@ -1268,10 +1268,24 @@ public sealed partial class MainWindow : Window
         foreach (var s in G.Stalls.ToList())
         {
             var here = G.Where.AtStall == s;
-            if (Row($"##rmstall{s.Id}", "bucket", s.Name + (here ? "  ·  you're here" : ""),
-                    $"{Catalog.StallTierNames[s.Tier]} · milked you {s.Sessions} time(s)", "Remove", "cream", !G.Networked || G.IsOwner,
-                    G.Networked && !G.IsOwner ? "Only the owner can remove stalls." : "Forget this stall.", width))
-                G.RemoveStall(s);
+            var inArea = !G.Networked || G.StallInArea(s);
+            var owner = !G.Networked || G.IsOwner;
+            var buttons = new List<Btn>();
+            if (owner)
+            {
+                var mp = G.MoveStallProblem(s);
+                buttons.Add(new Btn($"##mvstall{s.Id}", "Move here", "blue", mp == null, mp ?? "Move this stall to the seat you're sitting on. It keeps its name and tier."));
+                buttons.Add(new Btn($"##rmstall{s.Id}", "Remove", "cream", true, "Forget this stall."));
+            }
+
+            var clicked = ListRow(Ico("bucket"), s.Name + (here ? "  ·  you're here" : ""), inArea ? Theme.Ink : Theme.InkSoft,
+                new[]
+                {
+                    new Line($"{Catalog.StallTierNames[s.Tier]} · milked you {s.Sessions} time(s)", Theme.InkSoft),
+                    new Line(inArea ? "" : "Outside the dairy's area: it won't work until you move it.", Theme.RoseDeep),
+                }, buttons, width);
+            if (clicked == 0) G.MoveStall(s);
+            else if (clicked == 1) G.RemoveStall(s);
         }
 
         if (G.Networked && !G.IsOwner) return;

@@ -162,6 +162,12 @@ await test("only the owner sets up stalls, everyone sees them", async () => {
   assert.equal((await call(alice, "POST", `/v1/stalls/${r.data.id}/tier`, { tier: 3 })).status, 400, "tier 3 needs level 5");
   assert.equal((await call(alice, "POST", "/v1/stalls", { name: "Stall 2", x: 2, y: 0, z: 0 })).status, 200);
   assert.equal((await call(alice, "POST", "/v1/stalls", { x: 3, y: 0, z: 0 })).status, 400, "level 1 has 2 slots");
+  // The owner moves a stall to a new seat; it keeps its tier
+  assert.equal((await call(bob, "PUT", `/v1/stalls/${r.data.id}`, { x: 9, y: 0, z: 9 })).status, 403, "only the owner moves stalls");
+  assert.equal((await call(alice, "PUT", `/v1/stalls/${r.data.id}`, { x: 9, y: 1, z: 9 })).status, 200);
+  const moved = (await call(carl, "GET", "/v1/dairy/mine")).data.stalls.find(x => x.id === r.data.id);
+  assert.equal(moved.x, 9);
+  assert.equal(moved.tier, 2);
   const p = (await call(bob, "GET", "/v1/dairy/mine")).data.progress;
   assert.equal(p.fund, 500 - 150 - 200);
   assert.equal(p.level, 1);
