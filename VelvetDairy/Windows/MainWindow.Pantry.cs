@@ -94,7 +94,7 @@ public sealed partial class MainWindow
         var wait = G.QualityTreatWait;
         ImGui.TextColored(wait > TimeSpan.Zero ? Theme.HoneyDeep : Theme.SageDeep,
             wait > TimeSpan.Zero ? $"Next quality treat in {DairyGame.Wait(wait)}" : "A quality treat is ready");
-        Ui.Wrapped($"Quality treats (biscuits, alfalfa, starclover) raise your milk quality toward the next grade. You can have one every {Grades.QualityTreatHours:0} hours.",
+        Ui.Wrapped($"Quality treats (biscuits, alfalfa, starclover) raise your milk quality toward the next grade. You can have one every hour.",
             Theme.InkSoft, width);
         Gap(6);
         if (F.Cow.BoostUntilUtc > DateTime.UtcNow)

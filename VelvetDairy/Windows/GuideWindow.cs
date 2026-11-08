@@ -43,7 +43,7 @@ public sealed class GuideWindow : Window
             "Care happens inside your dairy (Barn tab): Drink and Stretch are free; feed comes from your Pantry.",
             "Pantry tab: everything you own. Eat it, sell back what you don't need for half price, or hide it from your lists.",
             "Shop tab: Feed & treats (everyday feed, quality treats), Upgrades (comfort, care and things to wear) and Bottles.",
-            "Quality treats (cream biscuit, golden alfalfa, star clover) raise your milk quality toward the next grade. You can have one every 4 hours.",
+            "Quality treats (cream biscuit, golden alfalfa, star clover) raise your milk quality toward the next grade and make milk come 30% faster for 30 minutes. You can have one every hour.",
             "Clover, salt licks and the Velvet blend give a short boost that makes milk come in faster.",
         }),
         new("Milk and bottles", new[]

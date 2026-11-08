@@ -43,7 +43,7 @@ public static class Grades
     /// Quality treats share one cooldown so they can't be spammed: at most 6 a day, usually 3-4.
     /// Over three full days that's roughly 600 quality from treats on top of ~2,000 from milking and ~240 from deliveries.
     /// </summary>
-    public const double QualityTreatHours = 4;
+    public const double QualityTreatHours = 1;
 
     /// <summary>Best grade your milk quality allows.</summary>
     public static int Cap(float quality)
@@ -85,9 +85,9 @@ public static class Catalog
         new FeedItem("salt", "Salt lick", "salt", 20, 4, "Mood and richness, but it makes you thirsty. Short milk boost.", Thirst: -12, Mood: 14, Richness: 10, BoostMinutes: 10),
         new FeedItem("premium", "Velvet blend", "premium", 45, 8, "The best feed money buys. Long milk boost.", Hunger: 40, Mood: 10, Richness: 32, BoostMinutes: 30),
         // Quality treats: raise your milk quality score so better grades unlock sooner
-        new FeedItem("biscuit", "Cream biscuit", "biscuit", 30, 1, "A rich little treat. Builds your milk quality.", Hunger: 4, Mood: 6, Quality: 20),
-        new FeedItem("alfalfa", "Golden alfalfa", "alfalfa", 80, 1, "Prized hay. Builds your milk quality a lot.", Hunger: 12, Richness: 8, Quality: 50),
-        new FeedItem("starclover", "Star clover", "starclover", 200, 1, "Rare and sweet. A big step up in milk quality.", Mood: 15, Richness: 12, Quality: 100),
+        new FeedItem("biscuit", "Cream biscuit", "biscuit", 30, 1, "A rich little treat. Builds your milk quality and speeds up your milk for 30 minutes.", Hunger: 4, Mood: 6, Quality: 20, BoostMinutes: 30),
+        new FeedItem("alfalfa", "Golden alfalfa", "alfalfa", 80, 1, "Prized hay. Builds your milk quality a lot and speeds up your milk for 30 minutes.", Hunger: 12, Richness: 8, Quality: 50, BoostMinutes: 30),
+        new FeedItem("starclover", "Star clover", "starclover", 200, 1, "Rare and sweet. A big step up in milk quality, and faster milk for 30 minutes.", Mood: 15, Richness: 12, Quality: 100, BoostMinutes: 30),
     };
 
     public static FeedItem? FeedById(string id) => Feed.FirstOrDefault(f => f.Id == id);

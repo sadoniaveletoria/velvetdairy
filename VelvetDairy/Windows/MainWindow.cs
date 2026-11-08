@@ -811,7 +811,7 @@ public sealed partial class MainWindow : Window
         if (ImGui.IsMouseHoveringRect(p, p + new Vector2(width, 56)))
             ImGui.SetTooltip((need is { } q ? $"Grade {Grades.Name(cap + 1)} unlocks at {q:0} quality.\n" : "Every grade is unlocked.\n") +
                              $"Each oz you're milked: +{Grades.QualityPerOz:0} (+{Grades.QualityPerOzHand:0.#} by hand). Each delivery: +{Grades.QualityPerOrder:0}.\n" +
-                             $"Quality treats in the Shop add more (one every {Grades.QualityTreatHours:0} hours): Cream biscuit +20, Golden alfalfa +50, Star clover +100.");
+                             $"Quality treats in the Shop add more (one every hour): Cream biscuit +20, Golden alfalfa +50, Star clover +100.");
         ImGui.SetCursorScreenPos(p);
         ImGui.Dummy(new Vector2(width, 60));
     }
@@ -1080,7 +1080,7 @@ public sealed partial class MainWindow : Window
     private void DrawFeedShop(float width, bool treats)
     {
         Ui.Wrapped(treats
-                ? $"Treats raise your milk quality toward the next grade. You can have one every {Grades.QualityTreatHours:0} hours."
+                ? $"Treats raise your milk quality toward the next grade. You can have one every hour."
                 : "Bought anywhere, eaten only in your dairy. Manage what you own in the Pantry.", Theme.InkSoft, width);
         Gap(6);
         var hiddenCount = 0;
