@@ -391,6 +391,7 @@ async function heartbeat(env, me, request) {
       milk: num(st.milk), cap: num(st.cap), grade: Math.max(0, Math.min(4, Math.floor(num(st.grade)))), spoiled: !!st.spoiled,
       inDairy: !!st.inDairy, level: Math.floor(num(st.level)),
       farmerLevel: Math.floor(num(st.farmerLevel)), bullLevel: Math.floor(num(st.bullLevel)),
+      quality: Math.floor(num(st.quality)), totalOz: Math.floor(num(st.totalOz)),
       emotes: Array.isArray(st.emotes) ? st.emotes.slice(0, 8).map(e => clean(e, 24)).filter(Boolean) : [],
       handBy: clean(st.handBy, 40),
       milking: clean(st.milking, 40),   // a farmer: the cow they pressed Milk on (hand milking only counts then)
@@ -543,7 +544,7 @@ async function myDairy(env, me) {
     you: { id: me.id, role: primaryRole(mem.role), roles: roleList(mem.role), isOwner: !!mem.is_owner },
     members: members.map(m => ({
       id: m.install, name: m.name, world: m.world_name, role: primaryRole(m.role), roles: roleList(m.role), isOwner: m.install === d.owner,
-      online: (m.last_seen || 0) >= t - ONLINE_WINDOW, status: safeParse(m.status),
+      online: (m.last_seen || 0) >= t - ONLINE_WINDOW, lastSeen: m.last_seen || 0, status: safeParse(m.status),
     })),
     stalls: stalls.map(s => ({ id: s.id, name: s.name, x: s.x, y: s.y, z: s.z, tier: s.tier, cleanUntil: s.clean_until > t ? s.clean_until : 0 })),
     progress: await progressOut(env, d.id, stalls.length),

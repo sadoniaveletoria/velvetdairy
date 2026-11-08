@@ -30,7 +30,7 @@ public sealed class MembersWindow : Window
     {
         this.plugin = plugin;
         this.fonts = fonts;
-        Size = new Vector2(620, 520);
+        Size = new Vector2(860, 520);
         SizeCondition = ImGuiCond.FirstUseEver;
         SizeConstraints = new WindowSizeConstraints { MinimumSize = new Vector2(480, 300), MaximumSize = new Vector2(1400, 1200) };
     }
@@ -140,7 +140,7 @@ public sealed class MembersWindow : Window
         var tableH = Math.Max(120, ImGui.GetContentRegionAvail().Y - invitesH);
         const ImGuiTableFlags flags = ImGuiTableFlags.RowBg | ImGuiTableFlags.BordersInnerH | ImGuiTableFlags.ScrollY | ImGuiTableFlags.Sortable |
                                       ImGuiTableFlags.Resizable | ImGuiTableFlags.SizingStretchProp;
-        if (ImGui.BeginTable("##members", 6, flags, new Vector2(0, tableH)))
+        if (ImGui.BeginTable("##members", 8, flags, new Vector2(0, tableH)))
         {
             ImGui.TableSetupScrollFreeze(0, 1);
             ImGui.TableSetupColumn("Name", ImGuiTableColumnFlags.DefaultSort, 2.2f);
@@ -148,6 +148,8 @@ public sealed class MembersWindow : Window
             ImGui.TableSetupColumn("Levels", ImGuiTableColumnFlags.None, 1.6f);
             ImGui.TableSetupColumn("Status", ImGuiTableColumnFlags.None, 1.4f);
             ImGui.TableSetupColumn("Milk", ImGuiTableColumnFlags.None, 1.6f);
+            ImGui.TableSetupColumn("Quality", ImGuiTableColumnFlags.None, 1f);
+            ImGui.TableSetupColumn("Given", ImGuiTableColumnFlags.None, 1f);
             ImGui.TableSetupColumn("", ImGuiTableColumnFlags.NoSort | ImGuiTableColumnFlags.WidthFixed, 34);
             ImGui.TableHeadersRow();
 
@@ -164,8 +166,10 @@ public sealed class MembersWindow : Window
             {
                 1 => m => m.RoleText,
                 2 => m => TopLevel(m),
-                3 => m => (m.Online ? 0 : 2) - (m.Status?.InDairy == true ? 1 : 0),
+                3 => m => m.Online ? (m.Status?.InDairy == true ? long.MinValue : long.MinValue + 1) : -m.LastSeen,
                 4 => m => m.Has("cow") && m.Status is { Cap: > 0 } s ? s.Milk / s.Cap : -1f,
+                5 => m => m.Has("cow") ? m.Status?.Quality ?? 0 : -1,
+                6 => m => m.Status?.TotalOz ?? 0,
                 _ => m => m.Name,
             };
             var rows = (asc ? shown.OrderBy(key) : shown.OrderByDescending(key)).ThenBy(m => m.Name).ToList();
@@ -185,7 +189,12 @@ public sealed class MembersWindow : Window
                 DrawLevels(m);
 
                 ImGui.TableNextColumn();
-                if (!m.Online) ImGui.TextColored(Theme.InkSoft, "Offline");
+                if (!m.Online)
+                {
+                    ImGui.TextColored(Theme.InkSoft, m.LastSeen > 0 ? $"Seen {Ago(m.LastSeen)}" : "Offline");
+                    if (m.LastSeen > 0 && ImGui.IsItemHovered())
+                        ImGui.SetTooltip($"Last online {DateTimeOffset.FromUnixTimeSeconds(m.LastSeen).ToLocalTime():MMM d, h:mm tt}");
+                }
                 else if (m.Status?.InDairy == true) ImGui.TextColored(Theme.SageDeep, "In the dairy");
                 else ImGui.TextColored(Theme.HoneyDeep, "Online");
 
@@ -204,6 +213,22 @@ public sealed class MembersWindow : Window
                     }
                 }
                 else ImGui.TextColored(Theme.InkSoft, "-");
+
+                ImGui.TableNextColumn();
+                if (m.Has("cow") && m.Status is { Quality: > 0 } q)
+                {
+                    var cap = Grades.Cap(q.Quality);
+                    ImGui.TextColored(Theme.GradeColor(cap), $"{q.Quality:N0}");
+                    if (ImGui.IsItemHovered())
+                        ImGui.SetTooltip($"Milk quality {q.Quality:N0}: up to Grade {Grades.Name(cap)}" +
+                                         (cap + 1 < Grades.QualityNeed.Length ? $" (Grade {Grades.Name(cap + 1)} at {Grades.QualityNeed[cap + 1]:N0})" : ""));
+                }
+                else ImGui.TextColored(Theme.InkSoft, "-");
+
+                ImGui.TableNextColumn();
+                if (m.Status is { TotalOz: > 0 } t) ImGui.TextColored(Theme.Ink, $"{t.TotalOz:N0} oz");
+                else ImGui.TextColored(Theme.InkSoft, "-");
+                if (ImGui.IsItemHovered()) ImGui.SetTooltip("All the milk they've ever given (stalls and hand milking).");
 
                 ImGui.TableNextColumn();
                 var canAct = G.IsOwner || G.IsFarmer || G.CanRemove(m);
@@ -257,6 +282,15 @@ public sealed class MembersWindow : Window
         Part("farmer", "Farmer", st.FarmerLevel);
         Part("bull", "Bull", st.BullLevel);
         if (first) ImGui.TextColored(Theme.InkSoft, "-");
+    }
+
+    private static string Ago(long unix)
+    {
+        var d = DateTimeOffset.UtcNow - DateTimeOffset.FromUnixTimeSeconds(unix);
+        if (d.TotalMinutes < 60) return $"{Math.Max(1, (int)d.TotalMinutes)}m ago";
+        if (d.TotalHours < 24) return $"{(int)d.TotalHours}h ago";
+        if (d.TotalDays < 30) return $"{(int)d.TotalDays}d ago";
+        return DateTimeOffset.FromUnixTimeSeconds(unix).ToLocalTime().ToString("MMM d");
     }
 
     private static int TopLevel(MemberInfo m)

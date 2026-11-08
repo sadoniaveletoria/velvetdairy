@@ -242,6 +242,7 @@ public sealed class MemberInfo
     public List<string> Roles { get; set; } = new();
     public bool IsOwner { get; set; }
     public bool Online { get; set; }
+    public long LastSeen { get; set; }      // unix seconds their plugin last checked in (0 = never)
 
     public List<string> AllRoles => VelvetDairy.Game.Roles.From(Roles, Role);
     public bool Has(string role) => AllRoles.Contains(role);
@@ -260,6 +261,8 @@ public sealed class MemberStatus
     public int Level { get; set; }          // cow level
     public int FarmerLevel { get; set; }
     public int BullLevel { get; set; }
+    public int Quality { get; set; }        // milk quality score (cows)
+    public int TotalOz { get; set; }        // all the milk they've ever given
     public List<string> Emotes { get; set; } = new();   // the emotes this cow's farmers milk her with
     public string HandBy { get; set; } = "";            // the farmer milking her right now, if any
     public bool AnyEmote { get; set; } = true;          // any looping emote milks them (not only their list)
