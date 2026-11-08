@@ -1397,7 +1397,8 @@ public sealed partial class MainWindow : Window
         if (ImGui.Button("Add emote") && newEmote.Trim().Length > 1)
         {
             var cmd = newEmote.Trim().StartsWith('/') ? newEmote.Trim() : "/" + newEmote.Trim();
-            if (!F.HandEmotes.Contains(cmd)) F.HandEmotes.Add(cmd);
+            if (cmd.Equals("/kneel", StringComparison.OrdinalIgnoreCase)) G.Notify("/kneel doesn't work for hand milking. Try /beesknees or another dance.", 2);
+            else if (!F.HandEmotes.Contains(cmd)) F.HandEmotes.Add(cmd);
             newEmote = "";
             plugin.SaveConfig();
         }

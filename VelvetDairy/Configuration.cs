@@ -109,8 +109,9 @@ public class FarmSave
         if (HandEmotes == null || HandEmotes.Count == 0) HandEmotes = new List<string>(DefaultHandEmotes);
         // The old defaults were one-shot gestures the game doesn't report for other players; swap them for a looping one
         if (HandEmotes.Count == 3 && HandEmotes.Contains("/pet") && HandEmotes.Contains("/comfort") && HandEmotes.Contains("/hug")) HandEmotes = new List<string>(DefaultHandEmotes);
-        // /kneel turned out not to work for hand milking; move anyone still on that default to /beesknees
-        if (HandEmotes.Count == 1 && HandEmotes[0] == "/kneel") HandEmotes = new List<string>(DefaultHandEmotes);
+        // /kneel doesn't work for hand milking at all, so it's never a milking emote
+        HandEmotes.RemoveAll(e => e.Trim().Equals("/kneel", StringComparison.OrdinalIgnoreCase) || e.Trim().Equals("kneel", StringComparison.OrdinalIgnoreCase));
+        if (HandEmotes.Count == 0) HandEmotes = new List<string>(DefaultHandEmotes);
         if (Tank == null || Tank.Length != Game.Grades.Count) Tank = new float[Game.Grades.Count];
         Orders ??= new List<Order>();
         Log ??= new List<string>();

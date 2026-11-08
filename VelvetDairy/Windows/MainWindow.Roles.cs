@@ -198,7 +198,8 @@ public sealed partial class MainWindow
             lines.Add(new Line($"Milk them with a looping emote, e.g. {emotes}", Theme.BlueDeep));
             // Target first; once they're your target the button becomes Milk (does their first looping milking emote for you)
             var targeted = Plugin.TargetManager.Target is Dalamud.Game.ClientState.Objects.SubKinds.IPlayerCharacter tp && tp.Name.TextValue.Equals(c.Name, StringComparison.OrdinalIgnoreCase);
-            var milkEmote = st?.Emotes is { Count: > 0 } list ? list[0] : "/beesknees";
+            // /beesknees unless this cow only allows emotes from their own list
+            var milkEmote = st?.Emotes is { Count: > 0 } list ? list[0] : DairyGame.MilkEmote;
             var buttons = Array.Empty<Btn>();
             if (near >= 0 && c.Online)
             {
@@ -206,7 +207,7 @@ public sealed partial class MainWindow
                 else
                 {
                     var close = near <= G.HandRange;
-                    buttons = new[] { new Btn($"##milk{c.Id}", "Milk", "rose", close, close ? $"Does {milkEmote} for you (as if you typed it). Hold still; milk flows until they're empty." : $"Get within {G.HandRange:0} yalms of them first.") };
+                    buttons = new[] { new Btn($"##milk{c.Id}", "Milk", "rose", close, close ? $"Does {milkEmote} for you (as if you typed it). Hold still; it stops on its own when they're empty." : $"Get within {G.HandRange:0} yalms of them first.") };
                 }
             }
 
@@ -221,7 +222,7 @@ public sealed partial class MainWindow
                         break;
                     }
             }
-            else if (clicked == 0 && !Emotes.Perform(milkEmote)) G.Notify($"{milkEmote} isn't an emote the game knows. Ask them to fix their milking emotes (Roles > Cow).", 2);
+            else if (clicked == 0 && !G.MilkCow(c.Name, milkEmote, st?.Milk ?? 0)) G.Notify($"{milkEmote} isn't an emote the game knows. Ask them to fix their milking emotes (Roles > Cow).", 2);
         }
 
         Ui.Wrapped("You get 25% of what the cow is paid, on top of their pay, plus farmer xp.", Theme.InkSoft, width);

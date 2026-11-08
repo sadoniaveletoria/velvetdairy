@@ -106,7 +106,7 @@ public static class Emotes
     {
         var cmd = command.Trim();
         if (!cmd.StartsWith('/')) cmd = "/" + cmd;
-        if (Find(cmd) == 0) return false;
+        if (Find(cmd.Split(' ')[0]) == 0) return false;
         var ui = FFXIVClientStructs.FFXIV.Client.UI.UIModule.Instance();
         if (ui == null) return false;
         var text = FFXIVClientStructs.FFXIV.Client.System.String.Utf8String.FromString(cmd);

@@ -556,6 +556,7 @@ public sealed class DairyGame
         }
 
         WatchFarmhands();
+        WatchMyMilking();
 
         simAccum += dt;
         if (simAccum >= 1.0)
@@ -1030,6 +1031,8 @@ public sealed class DairyGame
         Active = null;
         if (s == null) return;
         autoHold = true;
+        // Tell the server now, so a farmer's plugin can end their milking emote
+        if (s.Kind == SessionKind.Hand && Networked) Net.Poke();
 
         if (s.Extracted < 0.05f)
         {
@@ -1145,6 +1148,78 @@ public sealed class DairyGame
         return new FarmhandSight(true, Vector3.Distance(me.Position, o.Position), Emotes.Looping(o), o.TargetObjectId == me.GameObjectId);
     }
 
+    /// <summary>
+    /// The emotes a farmer's Milk button can use on you, best first: /beesknees whenever it counts
+    /// (you allow any looping emote, or it's on your list), then your own list.
+    /// </summary>
+    public List<string> MilkEmotesForFarmers()
+    {
+        var list = F.HandEmotes!.Where(x => !x.Trim().Equals("/kneel", StringComparison.OrdinalIgnoreCase)).ToList();
+        var bees = list.Any(x => x.Trim().Equals(MilkEmote, StringComparison.OrdinalIgnoreCase));
+        if (F.AnyLoopEmote || bees)
+        {
+            list.RemoveAll(x => x.Trim().Equals(MilkEmote, StringComparison.OrdinalIgnoreCase));
+            list.Insert(0, MilkEmote);
+        }
+
+        return list;
+    }
+
+    public const string MilkEmote = "/beesknees";
+
+    // ----- Farmer side: stop the milking emote once the cow is empty -----
+    private string? milkingCow;
+    private ushort milkingEmote;
+    private double milkingSince, milkingEndsAt, nextMilkingCheck;
+
+    /// <summary>
+    /// Milk button: does the emote for you, then ends it on its own once the cow should be empty
+    /// (from their milk and the hand milking speed, or sooner when their plugin says they're done).
+    /// </summary>
+    public bool MilkCow(string cowName, string emote, float cowMilk)
+    {
+        if (!Emotes.Perform(emote)) return false;
+        milkingCow = cowName;
+        milkingEmote = Emotes.Find(emote.Split(' ')[0]);
+        milkingSince = now;
+        // A little extra so they're really empty (Udder balm only makes it faster)
+        milkingEndsAt = now + Math.Clamp(cowMilk / Catalog.HandSpeed, 5, 3600) + 3;
+        nextMilkingCheck = now + 5;
+        return true;
+    }
+
+    public bool MilkingSomeone => milkingCow != null;
+
+    private void WatchMyMilking()
+    {
+        if (milkingCow == null) return;
+        var me = Plugin.ObjectTable.LocalPlayer;
+        // Give the emote a moment to start; after that, stopping or switching emotes yourself ends it here too
+        if (me == null || (now - milkingSince > 3 && Emotes.Looping(me) != milkingEmote))
+        {
+            milkingCow = null;
+            return;
+        }
+
+        var done = now >= milkingEndsAt;
+        if (!done && now >= nextMilkingCheck)
+        {
+            nextMilkingCheck = now + 5;
+            Net.RefreshMine();
+            var st = Net.Mine?.Members.FirstOrDefault(m => m.Name.Equals(milkingCow, StringComparison.OrdinalIgnoreCase))?.Status;
+            var myName = me.Name.TextValue;
+            // Their plugin reports right away when a hand milking ends
+            if (st != null && now - milkingSince > 15 && (st.Milk < 0.1f || !st.HandBy.Equals(myName, StringComparison.OrdinalIgnoreCase))) done = true;
+        }
+
+        if (!done) return;
+        var cow = milkingCow;
+        milkingCow = null;
+        // There's no "stop emote" in the game; any other emote ends the loop, so give a quiet pat (no chat text)
+        if (Emotes.Looping(me) == milkingEmote) Emotes.Perform("/pet motion");
+        Say($"{cow} is empty.", 1);
+    }
+
     public HashSet<ushort> HandEmoteIds() => F.HandEmotes!.Select(Emotes.Find).Where(id => id != 0).ToHashSet();
 
     private bool handFlowing;
@@ -1162,6 +1237,7 @@ public sealed class DairyGame
         if (!sight.Present || sight.Emote == 0) return Fail("They aren't doing an emote right now.");
         var cmd = Emotes.Command(sight.Emote);
         if (cmd.Length == 0) return Fail("That emote has no text command.");
+        if (cmd.Equals("/kneel", StringComparison.OrdinalIgnoreCase)) return Fail("/kneel doesn't work for hand milking.");
         if (F.HandEmotes!.Any(e => e.Equals(cmd, StringComparison.OrdinalIgnoreCase))) return Fail($"{cmd} is already a milking emote.");
         F.HandEmotes!.Add(cmd);
         Say($"{cmd} now counts as a milking emote.", 1);
