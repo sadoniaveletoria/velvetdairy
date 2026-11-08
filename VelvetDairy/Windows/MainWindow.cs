@@ -851,7 +851,7 @@ public sealed partial class MainWindow : Window
                 ? "Stay seated. Getting up stops the stall."
                 : s.Hand!.IsTest
                     ? $"The test farmhand milks you every few seconds. {s.Strokes} strokes so far."
-                    : $"{s.Hand.Name} is milking you while they hold a looping emote (within {G.HandRange:0.#} y{(G.HandNeedsTarget ? ", targeting you" : "")}).";
+                    : $"{s.Hand.Name} is milking you while they keep their Milk emote going (within {G.HandRange:0.#} y{(G.HandNeedsTarget ? ", targeting you" : "")}).";
             if (ListRow(Ico(s.Kind == SessionKind.Stall ? "bucket" : "ribbon"), who, Theme.Ink,
                     new[] { new Line($"{s.Extracted * s.Yield:0.#} oz collected · Grade {Grades.Name(s.Grade)}", Theme.GradeColor(s.Grade)), new Line(hint, Theme.InkSoft) },
                     new[] { new Btn("##stop", "Stop", "cream") }, width, s.Progress, Theme.BlueDeep) == 0)
@@ -1319,8 +1319,8 @@ public sealed partial class MainWindow : Window
 
     private void DrawFarmhands(float width)
     {
-        Ui.Wrapped("Only a registered farmhand of your dairy can hand milk you. They don't need the plugin: you see their emotes, so they just stand close, " +
-                   "target you and hold a looping emote (like /beesknees) until you're empty.", Theme.InkSoft, width);
+        Ui.Wrapped("Only a farmer of your dairy can hand milk you: they stand close, target you and press Milk (Roles > Farmer). " +
+                   "Just doing an emote near you never counts. It flows until you're empty.", Theme.InkSoft, width);
         Gap(6);
         var reg = G.RegisterProblem();
         var hasTest = F.Farmhands!.Any(f => f.IsTest);

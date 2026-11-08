@@ -279,6 +279,7 @@ public sealed class NetClient : IDisposable
                 Emotes = g.IsCow ? g.MilkEmotesForFarmers() : new List<string>(),
                 HandBy = g.Active is { Kind: VelvetDairy.Game.SessionKind.Hand, Hand: { IsTest: false } h } ? h.Name : "",
                 AnyEmote = F.AnyLoopEmote,
+                Milking = g.MilkingCowName ?? "",
             },
         };
         Call<HeartbeatReply>("POST", "/v1/heartbeat", body, r =>

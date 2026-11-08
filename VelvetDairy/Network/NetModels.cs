@@ -261,6 +261,7 @@ public sealed class MemberStatus
     public List<string> Emotes { get; set; } = new();   // the emotes this cow's farmers milk her with
     public string HandBy { get; set; } = "";            // the farmer milking her right now, if any
     public bool AnyEmote { get; set; } = true;          // any looping emote milks them (not only their list)
+    public string Milking { get; set; } = "";           // a farmer: the cow they pressed Milk on right now
 }
 
 public sealed class StallInfo

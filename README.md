@@ -13,7 +13,7 @@ The first time you open Velvet Dairy, a short walkthrough explains the game and 
 - **Care only works inside your dairy.** Eating, drinking and stretching are locked anywhere else. The Barn tab and the HUD tell you why.
 - **Milking only works inside your dairy too.**
   - **Stalls**: sit on a chair, bench or bed in your dairy and register it as a stall. Sitting in it milks you (automatically, or press Start).
-  - **Hand milking**: only a **registered farmhand of your dairy** can do it. They stand within 3 y, target you and use one of the milking emotes (`/pet`, `/comfort`, `/hug` by default; you can change the list). Each emote draws 1 oz. Hand milking gives one grade higher and more xp.
+  - **Hand milking**: only a **registered farmhand of your dairy** can do it. They stand within 3 y, target you and press **Milk** (Roles > Farmer); only the Milk button counts, never an emote someone happens to do near you. It uses one of the milking emotes (`/pet`, `/comfort`, `/hug` by default; you can change the list). Each emote draws 1 oz. Hand milking gives one grade higher and more xp.
 - **Shopping, the creamery and goals work anywhere.**
 
 ## Your needs (bonuses)

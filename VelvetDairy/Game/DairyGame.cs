@@ -1243,6 +1243,7 @@ public sealed class DairyGame
 
     private void StopWatchingMilking()
     {
+        if (milkingCow != null && Networked) Net.Poke();
         milkingCow = null;
         pendingEmote = null;
         EndMilkMod();
@@ -1278,6 +1279,8 @@ public sealed class DairyGame
         pendingEmote = emote;
         pendingEmoteAt = now + delay;
         milkingCow = cowName;
+        // Tell the server right away: the cow's plugin only counts a farmer who pressed Milk on them
+        if (Networked) Net.Poke();
         milkingEmote = 0;   // read back from your character once the loop starts (the game's id can differ from the command's)
         milkingSince = now + delay;
         // Only a safety net: the real end comes from the cow's plugin. Their milk keeps growing and the figure here
@@ -1289,6 +1292,7 @@ public sealed class DairyGame
     }
 
     public bool MilkingSomeone => milkingCow != null;
+    public string? MilkingCowName => milkingCow;
 
     private void WatchMyMilking()
     {
@@ -1474,6 +1478,31 @@ public sealed class DairyGame
         s.Present && s.Emote != 0 && s.Distance <= HandRange && (!HandNeedsTarget || s.TargetingYou) &&
         (F.AnyLoopEmote || HandEmoteIds().Contains(s.Emote));
 
+    private double nextIntentCheck;
+
+    /// <summary>
+    /// Did this farmer press Milk on you? A looping emote alone never milks anyone: their plugin has to say they mean you.
+    /// When someone is looping near you and we haven't heard yet, ask the server again (every few seconds).
+    /// </summary>
+    private bool PressedMilkOnMe(Farmhand f)
+    {
+        // Test farmhands, and farmhands in a dairy that isn't on the network (you start those yourself)
+        if (f.IsTest || !Networked) return true;
+        var myName = Plugin.ObjectTable.LocalPlayer?.Name.TextValue ?? "";
+        var st = Net.Mine?.Members.FirstOrDefault(m => m.Name.Equals(f.Name, StringComparison.OrdinalIgnoreCase))?.Status;
+        if (st != null && myName.Length > 0 && st.Milking.Equals(myName, StringComparison.OrdinalIgnoreCase)) return true;
+        if (now >= nextIntentCheck)
+        {
+            nextIntentCheck = now + 3;
+            Net.RefreshMine();
+        }
+
+        return false;
+    }
+
+    /// <summary>A farmer milking you: holding the loop close by, and they pressed Milk on you.</summary>
+    private bool MilkingMe(Farmhand f, FarmhandSight s) => Milking(s) && PressedMilkOnMe(f);
+
     /// <summary>Adds whatever emote this farmhand is doing right now to the milking emotes.</summary>
     public bool RecordEmote(Farmhand fh)
     {
@@ -1518,7 +1547,7 @@ public sealed class DairyGame
         {
             foreach (var f in Farmhands.Where(f => !f.IsTest))
             {
-                if (!Milking(Sight(f))) continue;
+                if (!MilkingMe(f, Sight(f))) continue;
                 var why = HandProblem(f);
                 if (why != null)
                 {
@@ -1541,7 +1570,7 @@ public sealed class DairyGame
 
         // Milk flows while the farmer keeps a milking emote going, close by and targeting you
         var fhand = s.Hand;
-        handFlowing = Milking(Sight(fhand));
+        handFlowing = MilkingMe(fhand, Sight(fhand));
         if (handFlowing) s.LastActivity = now;
     }
 
