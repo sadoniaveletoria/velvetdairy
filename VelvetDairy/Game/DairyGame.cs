@@ -2116,7 +2116,7 @@ public sealed class DairyGame
         var after = Level;
         for (var l = before + 1; l <= after; l++)
         {
-            var unlocks = Leveling.UnlocksAt(l).ToList();
+            var unlocks = Leveling.UnlocksAt(l, Networked).ToList();
             Say($"Cow level {l}! You're a {Leveling.Rank(l)}." + (unlocks.Count > 0 ? " Unlocked: " + string.Join(", ", unlocks) : ""), 1);
         }
     }

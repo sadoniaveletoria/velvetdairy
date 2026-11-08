@@ -192,12 +192,18 @@ public static class Leveling
     }
 
     /// <summary>What a level gives you (shown when you level up and on the Progress tab).</summary>
-    public static IEnumerable<string> UnlocksAt(int level)
+    /// <summary>What a cow level unlocks. Farmer tanks go by farmer level; on the network, stalls go by dairy level.</summary>
+    public static IEnumerable<string> UnlocksAt(int level, bool networked = false)
     {
         foreach (var f in Catalog.Feed.Where(f => f.Unlock == level && level > 1)) yield return f.Name;
         foreach (var u in Catalog.Upgrades)
+        {
+            if (u.Farmer || (networked && u.Id == "stallkit")) continue;
             for (var i = 0; i < u.Unlocks.Length; i++)
                 if (u.Unlocks[i] == level) yield return u.MaxLevel > 1 ? $"{u.Name} {i + 1}" : u.Name;
+        }
+
+        if (networked) yield break;
         for (var t = 2; t < Catalog.StallTierUnlock.Length; t++)
             if (Catalog.StallTierUnlock[t] == level) yield return Catalog.StallTierNames[t];
     }

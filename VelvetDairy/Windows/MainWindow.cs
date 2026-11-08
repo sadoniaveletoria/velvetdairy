@@ -1435,7 +1435,7 @@ public sealed partial class MainWindow : Window
         var shown = 0;
         for (var l = lvl + 1; l <= Leveling.MaxLevel && shown < 5; l++)
         {
-            var u = Leveling.UnlocksAt(l).ToList();
+            var u = Leveling.UnlocksAt(l, G.Networked).ToList();
             if (u.Count == 0) continue;
             ImGui.TextColored(Theme.Ink, $"Lv {l}");
             ImGui.SameLine(56);
