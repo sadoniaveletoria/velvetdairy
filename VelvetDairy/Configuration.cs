@@ -37,7 +37,8 @@ public class FarmSave
     public List<Stall>? Stalls { get; set; }
     public List<Farmhand>? Farmhands { get; set; }
     public List<string>? HandEmotes { get; set; }     // emote commands a farmhand uses to milk you
-    public bool AutoHand { get; set; } = true;        // a farmer of your dairy starts hand milking you just by using one of your emotes
+    public bool AutoHand { get; set; } = true;
+    public bool AnyLoopEmote { get; set; } = true;    // any looping emote from a farmer counts, not just the ones listed        // a farmer of your dairy starts hand milking you just by using one of your emotes
     public float HandRange { get; set; } = 3f;
     public float StallRange { get; set; } = 0.9f;
     public bool DevCanSleep { get; set; }          // developer: let the anti-AFK rules apply to you for testing
@@ -98,7 +99,7 @@ public class FarmSave
     public string Seal { get; set; } = "";            // signature of the progress above (see Game/Integrity.cs)
     public int EditsCaught { get; set; }              // times an edited save was caught and undone
 
-    public static readonly string[] DefaultHandEmotes = { "/pet", "/comfort", "/hug" };
+    public static readonly string[] DefaultHandEmotes = { "/kneel" };
 
     public void EnsureDefaults()
     {
@@ -106,6 +107,8 @@ public class FarmSave
         HiddenFeed ??= new List<string>();
         Farmhands ??= new List<Farmhand>();
         if (HandEmotes == null || HandEmotes.Count == 0) HandEmotes = new List<string>(DefaultHandEmotes);
+        // The old defaults were one-shot gestures the game doesn't report for other players; swap them for a looping one
+        if (HandEmotes.Count == 3 && HandEmotes.Contains("/pet") && HandEmotes.Contains("/comfort") && HandEmotes.Contains("/hug")) HandEmotes = new List<string>(DefaultHandEmotes);
         if (Tank == null || Tank.Length != Game.Grades.Count) Tank = new float[Game.Grades.Count];
         Orders ??= new List<Order>();
         Log ??= new List<string>();

@@ -118,6 +118,7 @@ public static class Catalog
 
     public const float HandYield = 1.25f;
     public const float HandStrokeOz = 1f;
+    public const float HandSpeed = 0.35f;        // oz per second while a farmer keeps milking (a looping emote, close, targeting you)
     public const float BottleOz = 8f;    // a cup: what the creamery buys by
 
     // Spoiling: full bottles left this long go bad and have to be dumped

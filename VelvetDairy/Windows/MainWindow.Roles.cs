@@ -92,7 +92,15 @@ public sealed partial class MainWindow
     private void DrawCowEmotes(float width)
     {
         SubHeading("Being hand milked", width);
-        Ui.Wrapped("A farmer of your dairy milks you by standing close, targeting you and using one of these emotes. Each emote is a stroke.", Theme.InkSoft, width);
+        Ui.Wrapped("A farmer of your dairy milks you by standing close, targeting you and holding a looping emote (like /kneel). Milk flows until you're empty or they stop.", Theme.InkSoft, width);
+        var any = F.AnyLoopEmote;
+        if (ImGui.Checkbox("Any looping emote counts##anyloop", ref any))
+        {
+            F.AnyLoopEmote = any;
+            plugin.SaveConfig();
+        }
+
+        if (ImGui.IsItemHovered()) ImGui.SetTooltip("Off: only the emotes listed below. One-shot gestures like /pet can't be seen by the plugin; use looping ones.");
         var auto = F.AutoHand;
         if (ImGui.Checkbox("Farmers can start milking me without asking##autohand", ref auto))
         {
@@ -101,7 +109,7 @@ public sealed partial class MainWindow
         }
 
         if (ImGui.IsItemHovered())
-            ImGui.SetTooltip("On: a farmer's first milking emote starts it. Off: you start it yourself (right-click them > Velvet Dairy > Let them milk me, or Barn > Milking).");
+            ImGui.SetTooltip("On: a farmer holding a milking emote on you starts it. Off: you start it yourself (right-click them > Velvet Dairy > Let them milk me, or Barn > Milking).");
         DrawEmotes(width);
     }
 
@@ -128,7 +136,7 @@ public sealed partial class MainWindow
         if (shown == 0) ImGui.TextColored(Theme.InkSoft, "Every farmer tank is unlocked.");
 
         SubHeading("What farmers do", width);
-        Ui.Wrapped("Hand milk your dairy's cows: stand close, target them and use a milking emote. You get 25% of what the cow is paid, on top.", Theme.Ink, width);
+        Ui.Wrapped("Hand milk your dairy's cows: stand close, target them and hold a looping emote (like /kneel) until they're empty. You get 25% of what the cow is paid, on top.", Theme.Ink, width);
         Ui.Wrapped("Fill your farmer tank from the dairy tank (Creamery > Jugs) and deliver it: customer orders, other dairies' buy and visitor orders, and the weekly contract at the Grand Creamery.", Theme.Ink, width);
         Ui.Wrapped("Invite people and give them roles, the farmer role included.", Theme.Ink, width);
 
@@ -146,7 +154,7 @@ public sealed partial class MainWindow
             return;
         }
 
-        Ui.Wrapped("Stand within 3 yalms of a cow, target her and use one of her milking emotes. Her plugin starts the milking (unless she turned that off) and every emote is a stroke.",
+        Ui.Wrapped("Stand within 3 yalms of a cow, target her and hold a looping emote like /kneel (one-shot gestures like /pet don't count). Her plugin starts the milking (unless she turned that off) and milk flows until she's empty or you stop.",
             Theme.Ink, width);
         Gap(4);
         var mine = G.Net.Mine;
@@ -186,8 +194,8 @@ public sealed partial class MainWindow
                 }
             }
 
-            var emotes = st?.Emotes is { Count: > 0 } e ? string.Join("  ", e) : "/pet  /comfort  /hug";
-            lines.Add(new Line($"Milk her with: {emotes}", Theme.BlueDeep));
+            var emotes = st?.Emotes is { Count: > 0 } e ? string.Join("  ", e) : "/kneel";
+            lines.Add(new Line($"Milk her with a looping emote, e.g. {emotes}", Theme.BlueDeep));
             var buttons = Array.Empty<Btn>();
             if (near >= 0 && c.Online)
                 buttons = new[] { new Btn($"##tgt{c.Id}", "Target her", "blue", true, "Targets her so your emotes count.") };

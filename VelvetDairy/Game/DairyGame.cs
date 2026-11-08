@@ -954,15 +954,25 @@ public sealed class DairyGame
         }
         else
         {
-            if (s.Hand!.IsTest && now >= nextTestStroke)
+            if (s.Hand!.IsTest)
             {
-                nextTestStroke = now + 2.5;
-                Stroke(s.Hand);
+                handFlowing = true;
+                s.LastActivity = now;
             }
 
-            if (now - s.LastActivity > 45)
+            if (handFlowing)
             {
-                Finish("Your farmhand stopped.");
+                Draw(Catalog.HandSpeed * dt);
+                if (now >= nextSquirt)
+                {
+                    nextSquirt = now + 2.5;
+                    s.Strokes++;
+                    Stroked?.Invoke();
+                }
+            }
+            else if (now - s.LastActivity > 20)
+            {
+                Finish("Your farmer stopped.");
                 return;
             }
         }
@@ -1112,6 +1122,14 @@ public sealed class DairyGame
 
     public HashSet<ushort> HandEmoteIds() => F.HandEmotes!.Select(Emotes.Find).Where(id => id != 0).ToHashSet();
 
+    private bool handFlowing;
+    private double nextHandHint, nextSquirt;
+
+    /// <summary>Is this farmer milking you right now: a looping emote (yours, or any if allowed), close, and targeting you?</summary>
+    private bool Milking(FarmhandSight s) =>
+        s.Present && s.Emote != 0 && s.Distance <= HandRange && (!HandNeedsTarget || s.TargetingYou) &&
+        (F.AnyLoopEmote || HandEmoteIds().Contains(s.Emote));
+
     /// <summary>Adds whatever emote this farmhand is doing right now to the milking emotes.</summary>
     public bool RecordEmote(Farmhand fh)
     {
@@ -1142,7 +1160,9 @@ public sealed class DairyGame
                 foreach (var o in Plugin.ObjectTable)
                 {
                     if (o is not IPlayerCharacter pc || pc.GameObjectId == me.GameObjectId) continue;
-                    var fh = wanted.FirstOrDefault(f => f.WorldId == pc.HomeWorld.RowId && f.Name.Equals(pc.Name.TextValue, StringComparison.OrdinalIgnoreCase));
+                    // Match by name (a member's listed world can be where they registered, not their home world)
+                    var fh = wanted.FirstOrDefault(f => f.Name.Equals(pc.Name.TextValue, StringComparison.OrdinalIgnoreCase) && (f.WorldId == 0 || f.WorldId == pc.HomeWorld.RowId))
+                             ?? wanted.FirstOrDefault(f => f.Name.Equals(pc.Name.TextValue, StringComparison.OrdinalIgnoreCase));
                     if (fh != null) handObjects[Key(fh)] = pc;
                 }
             }
@@ -1153,17 +1173,20 @@ public sealed class DairyGame
         {
             foreach (var f in Farmhands.Where(f => !f.IsTest))
             {
-                var k = Key(f);
-                var seen = Sight(f);
-                var before = lastEmote.GetValueOrDefault(k);
-                lastEmote[k] = seen.Emote;
-                if (!seen.Present || seen.Emote == 0 || seen.Emote == before || seen.Distance > HandRange) continue;
-                if (HandNeedsTarget && !seen.TargetingYou) continue;
-                if (!HandEmoteIds().Contains(seen.Emote)) continue;
-                if (HandProblem(f) != null) continue;
-                if (!StartHand(f)) continue;
-                lastStroke[k] = now;
-                Stroke(f);
+                if (!Milking(Sight(f))) continue;
+                var why = HandProblem(f);
+                if (why != null)
+                {
+                    if (now >= nextHandHint)
+                    {
+                        nextHandHint = now + 20;
+                        Say($"{f.Name} wants to milk you, but: {why}", 2);
+                    }
+
+                    continue;
+                }
+
+                if (StartHand(f)) Say($"{f.Name} is milking you.", 1);
                 return;
             }
         }
@@ -1171,23 +1194,10 @@ public sealed class DairyGame
         var s = Active;
         if (s?.Kind != SessionKind.Hand || s.Hand!.IsTest) return;
 
+        // Milk flows while the farmer keeps a milking emote going, close by and targeting you
         var fhand = s.Hand;
-        var key = Key(fhand);
-        var sight = Sight(fhand);
-        var prev = lastEmote.GetValueOrDefault(key);
-        lastEmote[key] = sight.Emote;
-
-        if (!sight.Present || sight.Emote == 0 || sight.Distance > HandRange) return;
-        if (HandNeedsTarget && !sight.TargetingYou) return;
-        if (!HandEmoteIds().Contains(sight.Emote)) return;
-
-        // A new emote counts at once; one that keeps going counts again every 2.5 seconds
-        var last = lastStroke.GetValueOrDefault(key, -99);
-        if (prev != sight.Emote || now - last >= 2.5)
-        {
-            lastStroke[key] = now;
-            Stroke(fhand);
-        }
+        handFlowing = Milking(Sight(fhand));
+        if (handFlowing) s.LastActivity = now;
     }
 
     // =================================================================
