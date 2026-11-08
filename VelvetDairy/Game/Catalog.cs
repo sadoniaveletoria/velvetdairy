@@ -115,7 +115,7 @@ public static class Catalog
         new Upgrade("deeprest", "Deep rest", "cushion", new[] { 900 }, new[] { 16 }, "Resting in your dairy speeds up milk by 75% instead of 50%."),
         new Upgrade("halter", "Silk halter", "ribbon", new[] { 1000 }, new[] { 17 }, "A soft silk halter. +3% pay.", true),
         new Upgrade("steady", "Steady producer", "milk", new[] { 1200 }, new[] { 18 }, "You get tired after 14 hours of milk a day instead of 12."),
-        new Upgrade("heifer", "Prize heifer sash", "ribbon", new[] { 1600 }, new[] { 20 }, "Milk quality builds 10% faster.", true),
+        new Upgrade("heifer", "Prize show sash", "ribbon", new[] { 1600 }, new[] { 20 }, "Milk quality builds 10% faster.", true),
         new Upgrade("lavender", "Lavender bedding", "cushion", new[] { 1800 }, new[] { 23 }, "Mood drops half as fast."),
         new Upgrade("mist", "Cooling mist", "water", new[] { 2000 }, new[] { 24 }, "Full bottles keep 96 hours before they spoil instead of 72."),
         new Upgrade("velvetbell", "Velvet bell", "bell", new[] { 2600 }, new[] { 26 }, "A velvet-wrapped bell. +5% pay.", true),
