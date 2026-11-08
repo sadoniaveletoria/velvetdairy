@@ -179,6 +179,12 @@ public sealed class NetClient : IDisposable
     }
 
     /// <summary>Forces the next heartbeat and dairy refresh to happen right away.</summary>
+    /// <summary>Makes the next heartbeat (and inbox check) happen within this many seconds.</summary>
+    public void BeatWithin(double seconds)
+    {
+        if (nextBeat > Now + seconds) nextBeat = Now + seconds;
+    }
+
     public void Poke()
     {
         nextBeat = 0;

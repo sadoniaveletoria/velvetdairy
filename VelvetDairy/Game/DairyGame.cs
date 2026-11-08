@@ -235,10 +235,11 @@ public sealed class DairyGame
                     F.Coins += i.Coins;
                     break;
                 case "groom":
-                    // A farmer groomed you: Happy gets 30 more minutes (keeps your treat's bonus if one is going)
+                    // A farmer groomed you: you're Happy (+5%) even without a treat, and the bar gets 30 more minutes.
+                    // A bigger treat bonus that's still going is kept.
                     if (IsCow)
                     {
-                        if (Cow.Mood <= 0 || Cow.HappyBonus <= 0) Cow.HappyBonus = Catalog.GroomHappy;
+                        Cow.HappyBonus = Cow.Mood <= 0 ? Catalog.GroomHappy : Math.Max(Cow.HappyBonus, Catalog.GroomHappy);
                         Cow.Mood = Fill(Cow.Mood);
                     }
 
@@ -1541,6 +1542,10 @@ public sealed class DairyGame
                 }
             }
         }
+
+        // A farmer close by and targeting you may be grooming or milking you: check in with the server sooner
+        if (Networked && Farmhands.Any(f => !f.IsTest && Sight(f) is { Present: true, TargetingYou: true } s && s.Distance <= HandRange))
+            Net.BeatWithin(10);
 
         // A farmer of your dairy can start milking you just by targeting you and using one of your milking emotes
         if (Active == null && F.AutoHand && Networked && ProducesMilk)
