@@ -274,6 +274,18 @@ public sealed partial class MainWindow
         }
 
         DrawMilkModOptions();
+
+        ImGui.SetNextItemWidth(160);
+        var em = F.MilkButtonEmote;
+        if (ImGui.InputTextWithHint("Milk button emote##milkbtnemote", DairyGame.MilkEmote, ref em, 30))
+        {
+            F.MilkButtonEmote = em.Trim();
+            plugin.SaveConfig();
+        }
+
+        if (ImGui.IsItemHovered()) ImGui.SetTooltip("The emote the Milk button does: use the one your animation mod changes. It has to be a looping one. Empty = /beesknees.\nIf a cow only accepts their own list of emotes and yours isn't on it, the button uses theirs.");
+        var typed = F.MilkButtonEmote.Length == 0 ? "" : F.MilkButtonEmote.StartsWith('/') ? F.MilkButtonEmote : "/" + F.MilkButtonEmote;
+        if (typed.Length > 0 && Emotes.Find(typed) == 0) ImGui.TextColored(Theme.Warn, $"{typed} isn't an emote the game knows, so the Milk button uses /beesknees.");
         var redraw = F.MilkModRedraw;
         if (ImGui.Checkbox("Redraw me first (if the animation doesn't change)##milkmodredraw", ref redraw))
         {
@@ -369,8 +381,8 @@ public sealed partial class MainWindow
             lines.Add(new Line($"Milk them with a looping emote, e.g. {emotes}", Theme.BlueDeep));
             // Target first; once they're your target the button becomes Milk (does their first looping milking emote for you)
             var targeted = Plugin.TargetManager.Target is Dalamud.Game.ClientState.Objects.SubKinds.IPlayerCharacter tp && tp.Name.TextValue.Equals(c.Name, StringComparison.OrdinalIgnoreCase);
-            // /beesknees unless this cow only allows emotes from their own list
-            var milkEmote = st?.Emotes is { Count: > 0 } list ? list[0] : DairyGame.MilkEmote;
+            // Your Milk emote (Roles > Farmer) if this cow accepts it; otherwise /beesknees or their first one
+            var milkEmote = G.MilkEmoteFor(st);
             var buttons = Array.Empty<Btn>();
             if (near >= 0 && c.Online)
             {

@@ -1180,6 +1180,20 @@ public sealed class DairyGame
 
     public const string MilkEmote = "/beesknees";
 
+    /// <summary>
+    /// The emote your Milk button does on this cow: your own pick (Roles > Farmer) when they accept it,
+    /// otherwise /beesknees or the first one on their list.
+    /// </summary>
+    public string MilkEmoteFor(MemberStatus? st)
+    {
+        var mine = F.MilkButtonEmote.Trim();
+        if (mine.Length > 0 && !mine.StartsWith('/')) mine = "/" + mine;
+        var theirs = st?.Emotes is { Count: > 0 } list ? list[0] : MilkEmote;
+        if (mine.Length == 0 || Emotes.Find(mine) == 0) return theirs;
+        if (st == null || st.AnyEmote || st.Emotes.Any(e => e.Trim().Equals(mine, StringComparison.OrdinalIgnoreCase))) return mine;
+        return theirs;
+    }
+
     // ----- Farmer side: stop the milking emote once the cow is empty -----
     private string? milkingCow;
     private ushort milkingEmote;

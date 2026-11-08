@@ -278,6 +278,7 @@ public sealed class NetClient : IDisposable
                 InDairy = g.Where.InDairy, Level = g.Level,
                 Emotes = g.IsCow ? g.MilkEmotesForFarmers() : new List<string>(),
                 HandBy = g.Active is { Kind: VelvetDairy.Game.SessionKind.Hand, Hand: { IsTest: false } h } ? h.Name : "",
+                AnyEmote = F.AnyLoopEmote,
             },
         };
         Call<HeartbeatReply>("POST", "/v1/heartbeat", body, r =>

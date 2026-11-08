@@ -392,6 +392,7 @@ async function heartbeat(env, me, request) {
       inDairy: !!st.inDairy, level: Math.floor(num(st.level)),
       emotes: Array.isArray(st.emotes) ? st.emotes.slice(0, 8).map(e => clean(e, 24)).filter(Boolean) : [],
       handBy: clean(st.handBy, 40),
+      anyEmote: st.anyEmote === undefined ? true : !!st.anyEmote,   // older plugins don't say; any looping emote is their default
     });
     if (status !== mem.status) await env.DB.prepare("UPDATE members SET status = ? WHERE install = ?").bind(status, me.id).run();
   }
