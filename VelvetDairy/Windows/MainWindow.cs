@@ -1308,7 +1308,7 @@ public sealed partial class MainWindow : Window
     private void DrawFarmhands(float width)
     {
         Ui.Wrapped("Only a registered farmhand of your dairy can hand milk you. They don't need the plugin: you see their emotes, so they just stand close, " +
-                   "target you and hold a looping emote (like /kneel) until you're empty.", Theme.InkSoft, width);
+                   "target you and hold a looping emote (like /beesknees) until you're empty.", Theme.InkSoft, width);
         Gap(6);
         var reg = G.RegisterProblem();
         var hasTest = F.Farmhands!.Any(f => f.IsTest);

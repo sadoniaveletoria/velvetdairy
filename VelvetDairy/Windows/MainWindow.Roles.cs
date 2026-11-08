@@ -92,7 +92,7 @@ public sealed partial class MainWindow
     private void DrawCowEmotes(float width)
     {
         SubHeading("Being hand milked", width);
-        Ui.Wrapped("A farmer of your dairy milks you by standing close, targeting you and holding a looping emote (like /kneel). Milk flows until you're empty or they stop.", Theme.InkSoft, width);
+        Ui.Wrapped("A farmer of your dairy milks you by standing close, targeting you and holding a looping emote (like /beesknees). Milk flows until you're empty or they stop.", Theme.InkSoft, width);
         var any = F.AnyLoopEmote;
         if (ImGui.Checkbox("Any looping emote counts##anyloop", ref any))
         {
@@ -136,7 +136,7 @@ public sealed partial class MainWindow
         if (shown == 0) ImGui.TextColored(Theme.InkSoft, "Every farmer tank is unlocked.");
 
         SubHeading("What farmers do", width);
-        Ui.Wrapped("Hand milk your dairy's cows: stand close, target them and hold a looping emote (like /kneel) until they're empty. You get 25% of what the cow is paid, on top.", Theme.Ink, width);
+        Ui.Wrapped("Hand milk your dairy's cows: stand close, target them and hold a looping emote (like /beesknees) until they're empty. You get 25% of what the cow is paid, on top.", Theme.Ink, width);
         Ui.Wrapped("Fill your farmer tank from the dairy tank (Creamery > Jugs) and deliver it: customer orders, other dairies' buy and visitor orders, and the weekly contract at the Grand Creamery.", Theme.Ink, width);
         Ui.Wrapped("Invite people and give them roles, the farmer role included.", Theme.Ink, width);
 
@@ -154,7 +154,7 @@ public sealed partial class MainWindow
             return;
         }
 
-        Ui.Wrapped("Stand within 3 yalms of a cow, press Target, then Milk (or hold any looping emote like /kneel yourself; one-shot gestures like /pet don't count). Their plugin starts the milking (unless they turned that off) and milk flows until they're empty or you stop.",
+        Ui.Wrapped("Stand within 3 yalms of a cow, press Target, then Milk (or hold any looping emote like /beesknees yourself; one-shot gestures like /pet don't count). Their plugin starts the milking (unless they turned that off) and milk flows until they're empty or you stop.",
             Theme.Ink, width);
         Gap(4);
         var mine = G.Net.Mine;
@@ -194,11 +194,11 @@ public sealed partial class MainWindow
                 }
             }
 
-            var emotes = st?.Emotes is { Count: > 0 } e ? string.Join("  ", e) : "/kneel";
+            var emotes = st?.Emotes is { Count: > 0 } e ? string.Join("  ", e) : "/beesknees";
             lines.Add(new Line($"Milk them with a looping emote, e.g. {emotes}", Theme.BlueDeep));
             // Target first; once they're your target the button becomes Milk (does their first looping milking emote for you)
             var targeted = Plugin.TargetManager.Target is Dalamud.Game.ClientState.Objects.SubKinds.IPlayerCharacter tp && tp.Name.TextValue.Equals(c.Name, StringComparison.OrdinalIgnoreCase);
-            var milkEmote = st?.Emotes is { Count: > 0 } list ? list[0] : "/kneel";
+            var milkEmote = st?.Emotes is { Count: > 0 } list ? list[0] : "/beesknees";
             var buttons = Array.Empty<Btn>();
             if (near >= 0 && c.Online)
             {
