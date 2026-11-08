@@ -534,7 +534,17 @@ public sealed partial class MainWindow
             Ui.Wrapped("A second spot just for your dairy's members, like your home or apartment. Members can be milked, rest and do chores there, " +
                        "and it counts as being in the dairy. Visitors, the directory and deliveries only ever see the public area above.", Theme.InkSoft, width);
             var pa = F.NetMember?.PrivateArea;
-            ImGui.TextColored(pa != null ? Theme.Ink : Theme.InkSoft, pa != null ? $"{pa.Zone}{(pa.House.Length > 0 ? " (inside a house)" : "")} · {pa.Width:0} × {pa.Length:0} y" : "None yet.");
+            ImGui.TextColored(pa != null ? Theme.Ink : Theme.InkSoft, pa == null ? "None yet."
+                : pa.WholeHouse ? $"A whole house in {pa.Zone}" : $"{pa.Zone}{(pa.House.Length > 0 ? " (inside a house)" : "")} · {pa.Width:0} × {pa.Length:0} y");
+            if (G.Draft == null)
+            {
+                var why = G.WholeHouseProblem();
+                if (Ui.Button("##wholehouse", "Use this whole house", new Vector2(190, 30), "sage", why == null,
+                        why ?? "Anywhere inside the house or apartment you're in counts. Nothing to draw."))
+                    G.UseWholeHouseAsPrivate();
+                ImGui.SameLine();
+            }
+
             DrawAreaEditor(width, false, true);
             if (pa != null && G.Draft == null)
             {
@@ -559,7 +569,7 @@ public sealed partial class MainWindow
         var id = privatePlace ? "priv" : "pub";
         if (d == null || G.DraftPrivate != privatePlace)
         {
-            var label = registering ? "Start marking here" : privatePlace ? (F.NetMember?.PrivateArea != null ? "Move or resize" : "Mark it here") : "Move or resize";
+            var label = registering ? "Start marking here" : privatePlace ? "Draw the borders" : "Move or resize";
             if (Ui.Button($"##startarea{id}", label, new Vector2(190, 30), "blue", d == null,
                     d != null ? "Finish or cancel the other box first." : privatePlace
                         ? "Go to your home or apartment first. Starts a box centered on you; you can change everything before saving."

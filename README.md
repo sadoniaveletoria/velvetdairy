@@ -65,7 +65,7 @@ If you ship your own sounds with the plugin, put them in `VelvetDairy/Assets/sou
 A small card with your milk bottle, grade, needs and status. Drag it where you like, lock it in Settings, and double-click or right-click it to open the main window. `/vdairy hud` shows or hides it.
 
 ## Private place
-An owner can give the dairy a second spot just for its members, like their home or apartment (Dairy > Listing > **Private place**: go there, **Mark it here**, size the box, **Save private place**).
+An owner can give the dairy a second spot just for its members, like their home or apartment (Dairy > Listing > **Private place**). Go there and either press **Use this whole house** (anywhere inside that house or apartment counts) or **Draw the borders** (size a box like the dairy area, then **Save private place**).
 - Members count as being in the dairy there: milking, stalls, resting, care, grooming, cleaning, jugs and dairy XP all work.
 - Visitors, the directory, deliveries and buy orders only ever see the public area. The server never tells non-members it exists.
 - It can't overlap another dairy. **Remove** takes it away again (stalls there stop working).

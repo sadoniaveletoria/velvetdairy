@@ -1707,7 +1707,7 @@ public sealed class DairyGame
 
     private static bool SameArea(DairyArea? a, DairyArea? b) =>
         a == null ? b == null : b != null && a.Territory == b.Territory && a.World == b.World && a.House == b.House &&
-                                 a.X == b.X && a.Y == b.Y && a.Z == b.Z && a.Width == b.Width && a.Length == b.Length && a.Rot == b.Rot && a.Height == b.Height;
+                                 a.X == b.X && a.Y == b.Y && a.Z == b.Z && a.Width == b.Width && a.Length == b.Length && a.Rot == b.Rot && a.Height == b.Height && a.WholeHouse == b.WholeHouse;
 
     /// <summary>Where you are, for the server to tell which dairy (if any) you're standing in.</summary>
     public object? Position()
@@ -1743,6 +1743,7 @@ public sealed class DairyGame
         if (me == null) return;
         DraftPrivate = privatePlace;
         var cur = privatePlace ? F.NetMember?.PrivateArea : F.NetMember?.Area;
+        if (cur is { WholeHouse: true }) cur = null;   // drawing borders replaces a whole-house place with a box
         if (cur != null && InArea(cur, me) || cur != null && Plugin.ClientState.TerritoryType == cur.Territory && me.CurrentWorld.RowId == cur.World)
         {
             Draft = cur.Copy();
@@ -1800,6 +1801,7 @@ public sealed class DairyGame
         if (DraftPrivate)
         {
             var area = Draft;
+            area.WholeHouse = false;
             Net.SetPrivatePlace(area, () =>
             {
                 F.NetMember!.PrivateArea = area;
@@ -1811,6 +1813,44 @@ public sealed class DairyGame
         }
 
         PublishDairy(F.NetMember.Dairy, Draft);
+    }
+
+    /// <summary>The whole house or apartment you're in becomes the dairy's private place (no box to draw).</summary>
+    public string? WholeHouseProblem()
+    {
+        if (F.NetMember?.IsOwner != true) return "Only the owner sets the private place.";
+        if (Estate.Current() == null) return "Go inside your house or apartment first.";
+        return null;
+    }
+
+    public void UseWholeHouseAsPrivate()
+    {
+        var p = WholeHouseProblem();
+        var me = Plugin.ObjectTable.LocalPlayer;
+        if (p != null || me == null)
+        {
+            if (p != null) Fail(p);
+            return;
+        }
+
+        var area = new DairyArea
+        {
+            Territory = Plugin.ClientState.TerritoryType,
+            World = me.CurrentWorld.RowId,
+            House = Estate.Current()!.Value.HouseId.ToString(),
+            X = me.Position.X, Y = me.Position.Y, Z = me.Position.Z,
+            Width = 10, Length = 10,
+            MapId = Plugin.ClientState.MapId,
+            Zone = Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.TerritoryType>().GetRowOrDefault(Plugin.ClientState.TerritoryType)?.PlaceName.ValueNullable?.Name.ExtractText() ?? "",
+            WholeHouse = true,
+        };
+        Draft = null;
+        Net.SetPrivatePlace(area, () =>
+        {
+            F.NetMember!.PrivateArea = area;
+            Say("This whole house is now your dairy's private place. Members count as in the dairy anywhere inside it.", 1);
+            plugin.SaveConfig();
+        }, e => Fail(e));
     }
 
     public void RemovePrivatePlace()

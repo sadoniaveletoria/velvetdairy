@@ -242,6 +242,7 @@ CREATE TABLE IF NOT EXISTS dairy_private (
   height    REAL NOT NULL,
   rot       REAL NOT NULL DEFAULT 0,
   map_id    INTEGER NOT NULL DEFAULT 0,
-  zone      TEXT NOT NULL DEFAULT ''
+  zone      TEXT NOT NULL DEFAULT '',
+  whole     INTEGER NOT NULL DEFAULT 0      -- 1 = the whole house or apartment counts (no box)
 );
 CREATE INDEX IF NOT EXISTS private_where ON dairy_private(territory, world, house);

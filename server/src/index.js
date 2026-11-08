@@ -304,8 +304,9 @@ function inArea(a, p) {
   return Math.abs(along) <= a.length / 2 && Math.abs(across) <= a.width / 2;
 }
 
-/** Do two boxes overlap on the ground? (separating axis test) */
+/** Do two boxes overlap on the ground? (separating axis test) A whole-house place overlaps anything in that house. */
 function overlaps(a, b) {
+  if (a.whole || b.whole) return true;   // callers only compare boxes in the same zone, world and house
   const ca = corners(a), cb = corners(b);
   for (const poly of [ca, cb]) {
     for (let i = 0; i < 4; i++) {
@@ -334,12 +335,13 @@ function readArea(v) {
     width: num(v.width, AREA_MIN, AREA_MAX, "width"), length: num(v.length, AREA_MIN, AREA_MAX, "length"),
     height: num(v.height ?? 6, 1, AREA_HEIGHT_MAX, "height"), rot: num(v.rot ?? 0, -10, 10, "facing"),
     mapId: int(v.mapId ?? 0, 0, 100000, "map"), zone: clean(v.zone, 60),
+    whole: v.wholeHouse === true ? 1 : 0,
   };
 }
 
 const areaRow = r => r && ({
   territory: r.territory, world: r.world, house: r.house, x: r.x, y: r.y, z: r.z,
-  width: r.width, length: r.length, height: r.height, rot: r.rot, mapId: r.map_id, zone: r.zone,
+  width: r.width, length: r.length, height: r.height, rot: r.rot, mapId: r.map_id, zone: r.zone, wholeHouse: !!r.whole,
 });
 
 /**
@@ -357,7 +359,7 @@ async function dairyInArea(env, pos, memberOf = null) {
   if (!memberOf) return null;
   const priv = await env.DB.prepare("SELECT * FROM dairy_private WHERE dairy_id = ? AND territory = ? AND world = ? AND house = ?")
     .bind(memberOf, territory, world, house).first();
-  if (!priv || !inArea(priv, p)) return null;
+  if (!priv || !(priv.whole || inArea(priv, p))) return null;
   const d = await env.DB.prepare("SELECT * FROM dairies WHERE id = ?").bind(memberOf).first();
   return d ? { ...d, in_private: 1 } : null;
 }
@@ -618,6 +620,7 @@ async function putDairy(env, me, request) {
   const name = clean(b.name, 32);
   if (!name) fail(400, "Give your dairy a name.");
   const area = readArea(b.area);
+  if (area) area.whole = 0;   // whole-house is for private places only
   const existing = await env.DB.prepare("SELECT * FROM dairies WHERE owner = ?").bind(me.id).first();
   const ownerRoles = Array.isArray(b.roles) ? roleList(b.roles.join(",")) : PLAY_ROLES.includes(b.role) ? roleList(b.role) : ["cow"];
   const role = roleText(ownerRoles);
@@ -686,13 +689,14 @@ async function putPrivate(env, me, request) {
   const d = await ownedDairy(env, me);
   const area = readArea((await body(request)).area);
   if (!area) fail(400, "Mark out the private place first.");
+  if (area.whole && !area.house) fail(400, "Go inside the house or apartment to use the whole of it.");
   if ((await boxesAt(env, area, d.id)).some(r => overlaps(r, area))) fail(409, "That overlaps another dairy. Move or shrink the box.");
-  await env.DB.prepare(`INSERT INTO dairy_private (dairy_id, territory, world, house, x, y, z, width, length, height, rot, map_id, zone)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  await env.DB.prepare(`INSERT INTO dairy_private (dairy_id, territory, world, house, x, y, z, width, length, height, rot, map_id, zone, whole)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(dairy_id) DO UPDATE SET territory = excluded.territory, world = excluded.world, house = excluded.house,
       x = excluded.x, y = excluded.y, z = excluded.z, width = excluded.width, length = excluded.length, height = excluded.height,
-      rot = excluded.rot, map_id = excluded.map_id, zone = excluded.zone`)
-    .bind(d.id, area.territory, area.world, area.house, area.x, area.y, area.z, area.width, area.length, area.height, area.rot, area.mapId, area.zone).run();
+      rot = excluded.rot, map_id = excluded.map_id, zone = excluded.zone, whole = excluded.whole`)
+    .bind(d.id, area.territory, area.world, area.house, area.x, area.y, area.z, area.width, area.length, area.height, area.rot, area.mapId, area.zone, area.whole).run();
   return { ok: true };
 }
 

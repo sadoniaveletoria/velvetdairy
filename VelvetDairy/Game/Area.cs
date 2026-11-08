@@ -22,6 +22,7 @@ public class DairyArea
     public float Rot { get; set; }              // which way it faces (radians, like the game)
     public uint MapId { get; set; }
     public string Zone { get; set; } = "";
+    public bool WholeHouse { get; set; }        // anywhere inside the house (or apartment) counts, no box (private places only)
 
     public const float MinSize = 4, MaxSize = 80;
 
@@ -40,6 +41,7 @@ public class DairyArea
 
     public bool Contains(Vector3 p)
     {
+        if (WholeHouse) return true;   // the house match is checked by whoever asks
         if (MathF.Abs(p.Y - Y) > Height) return false;
         var d = p - Center;
         var along = d.X * MathF.Sin(Rot) + d.Z * MathF.Cos(Rot);

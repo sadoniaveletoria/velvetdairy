@@ -278,6 +278,10 @@ await test("private place: members count as in the dairy there, nobody else sees
   assert.ok(hb.here && hb.here.mine && hb.here.private, "a member there is in their dairy");
   assert.equal(hb.here.isPublic, false);
   assert.equal((await beat(dana, { pos: at })).data.here, null, "a visitor there isn't anywhere");
+  // The whole house: anywhere inside it counts, no box
+  assert.equal((await call(alice, "PUT", "/v1/dairy/private", { area: { ...priv, house: "", wholeHouse: true } })).status, 400, "only inside a house");
+  assert.equal((await call(alice, "PUT", "/v1/dairy/private", { area: { ...priv, wholeHouse: true } })).status, 200);
+  assert.ok((await beat(bob, { pos: { ...at, x: 900, z: -900 }, awake: true })).data.here?.private, "far corner of the house still counts");
   assert.equal((await call(alice, "DELETE", "/v1/dairy/private")).status, 200);
   assert.equal((await beat(bob, { pos: at, awake: true })).data.here, null, "gone once removed");
   await beat(bob, { houseId: ELSEWHERE, awake: true });
