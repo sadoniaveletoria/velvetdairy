@@ -392,6 +392,22 @@ public sealed class NetClient : IDisposable
 
     // ----- Dairy -----
 
+    public void SetPrivatePlace(VelvetDairy.Game.DairyArea area, Action ok, Action<string> failed) =>
+        Call<object>("PUT", "/v1/dairy/private", new { area }, _ =>
+        {
+            RefreshMine();
+            Poke();
+            ok();
+        }, failed);
+
+    public void RemovePrivatePlace(Action ok, Action<string> failed) =>
+        Call<object>("DELETE", "/v1/dairy/private", null, _ =>
+        {
+            RefreshMine();
+            Poke();
+            ok();
+        }, failed);
+
     public void PutDairy(object body, Action<string> ok, Action<string> failed) =>
         Call<IdReply>("PUT", "/v1/dairy", body, r =>
         {

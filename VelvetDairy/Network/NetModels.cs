@@ -36,6 +36,7 @@ public sealed class HereInfo
     public string Name { get; set; } = "";
     public bool IsPublic { get; set; }
     public bool Mine { get; set; }
+    public bool Private { get; set; }   // you're in your dairy's private place
 }
 
 public sealed class MembershipInfo
@@ -223,6 +224,7 @@ public sealed class MyDairyInfo
     public int Plot { get; set; }
     public int Room { get; set; }
     public VelvetDairy.Game.DairyArea? Area { get; set; }
+    public VelvetDairy.Game.DairyArea? PrivateArea { get; set; }   // members only: the dairy's private place (a home or apartment)
 }
 
 public sealed class YouInfo

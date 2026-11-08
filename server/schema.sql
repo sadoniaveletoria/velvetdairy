@@ -228,3 +228,20 @@ CREATE TABLE IF NOT EXISTS grooms (
   at      INTEGER NOT NULL,
   PRIMARY KEY (farmer, cow)
 );
+
+-- A dairy's private place (a home or apartment): works like the dairy for its members, but visitors, the directory
+-- and deliveries never see it. Same shape as dairy_area.
+CREATE TABLE IF NOT EXISTS dairy_private (
+  dairy_id  TEXT PRIMARY KEY,
+  territory INTEGER NOT NULL,
+  world     INTEGER NOT NULL,
+  house     TEXT NOT NULL DEFAULT '',
+  x REAL NOT NULL, y REAL NOT NULL, z REAL NOT NULL,
+  width     REAL NOT NULL,
+  length    REAL NOT NULL,
+  height    REAL NOT NULL,
+  rot       REAL NOT NULL DEFAULT 0,
+  map_id    INTEGER NOT NULL DEFAULT 0,
+  zone      TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS private_where ON dairy_private(territory, world, house);

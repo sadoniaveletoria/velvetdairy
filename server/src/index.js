@@ -234,6 +234,8 @@ async function route(request, env) {
     ["POST", /^\/v1\/stalls\/([0-9a-f]{24})\/tier$/, m => upgradeStall(env, me, m[1], request)],
     ["POST", /^\/v1\/stalls\/([0-9a-f]{24})\/clean$/, m => cleanStall(env, me, m[1])],
     ["POST", /^\/v1\/groom$/, () => groom(env, me, request)],
+    ["PUT", /^\/v1\/dairy\/private$/, () => putPrivate(env, me, request)],
+    ["DELETE", /^\/v1\/dairy\/private$/, () => deletePrivate(env, me)],
     ["GET", /^\/v1\/orders\/mine$/, () => myOrders(env, me)],
     ["POST", /^\/v1\/orders$/, () => postOrder(env, me, request)],
     ["GET", /^\/v1\/dairies\/([0-9a-f]{24})\/orders$/, m => dairyOrders(env, me, m[1])],
@@ -340,15 +342,32 @@ const areaRow = r => r && ({
   width: r.width, length: r.length, height: r.height, rot: r.rot, mapId: r.map_id, zone: r.zone,
 });
 
-/** The dairy whose box contains this position, if any. */
-async function dairyInArea(env, pos) {
+/**
+ * The dairy whose box contains this position, if any. With `memberOf` (a dairy id), that dairy's private place
+ * counts too: only its own members ever find themselves "in" a private place.
+ */
+async function dairyInArea(env, pos, memberOf = null) {
   if (!pos || typeof pos !== "object") return null;
   const territory = Number(pos.territory), world = Number(pos.world), house = pos.house ? String(pos.house) : "";
   const p = { x: Number(pos.x), y: Number(pos.y), z: Number(pos.z) };
   if (!Number.isFinite(territory) || !Number.isFinite(world) || !Number.isFinite(p.x)) return null;
   const rows = (await env.DB.prepare("SELECT * FROM dairy_area WHERE territory = ? AND world = ? AND house = ?").bind(territory, world, house).all()).results;
   const hit = rows.find(r => inArea(r, p));
-  return hit ? await env.DB.prepare("SELECT * FROM dairies WHERE id = ?").bind(hit.dairy_id).first() : null;
+  if (hit) return await env.DB.prepare("SELECT * FROM dairies WHERE id = ?").bind(hit.dairy_id).first();
+  if (!memberOf) return null;
+  const priv = await env.DB.prepare("SELECT * FROM dairy_private WHERE dairy_id = ? AND territory = ? AND world = ? AND house = ?")
+    .bind(memberOf, territory, world, house).first();
+  if (!priv || !inArea(priv, p)) return null;
+  const d = await env.DB.prepare("SELECT * FROM dairies WHERE id = ?").bind(memberOf).first();
+  return d ? { ...d, in_private: 1 } : null;
+}
+
+/** Every box (public areas and private places) in this zone, world and house, except the given dairy's own. */
+async function boxesAt(env, a, exceptDairy) {
+  const q = "WHERE territory = ? AND world = ? AND house = ?";
+  const pub = (await env.DB.prepare(`SELECT * FROM dairy_area ${q}`).bind(a.territory, a.world, a.house).all()).results;
+  const priv = (await env.DB.prepare(`SELECT * FROM dairy_private ${q}`).bind(a.territory, a.world, a.house).all()).results;
+  return [...pub, ...priv].filter(r => r.dairy_id !== exceptDairy);
 }
 
 async function dairyAt(env, hid) {
@@ -374,7 +393,8 @@ const notice = (env, install, note) => addInbox(env, install, "notice", 0, 0, 0,
 async function heartbeat(env, me, request) {
   const b = await body(request);
   const t = now();
-  const here = (await dairyInArea(env, b.pos)) || (await dairyAt(env, b.houseId));
+  const home = await membership(env, me.id);
+  const here = (await dairyInArea(env, b.pos, home ? home.dairy_id : null)) || (await dairyAt(env, b.houseId));
   const charHash = isHash(b.charHash) ? b.charHash : me.char_hash;
   if (t - me.last_seen >= HEARTBEAT_MIN || (here?.id ?? null) !== me.at_dairy || charHash !== me.char_hash) {
     await env.DB.prepare("UPDATE installs SET last_seen = ?, at_dairy = ?, version = ?, char_hash = ? WHERE id = ?")
@@ -456,7 +476,7 @@ async function heartbeat(env, me, request) {
       WHERE i.to_hash = ? AND i.status = 'pending' AND i.expires >= ?`).bind(charHash, t).all()).results : [];
   return {
     online: await onlineCount(env),
-    here: here ? { id: here.id, name: here.name, isPublic: !!here.is_public, mine: !!mem && mem.dairy_id === here.id } : null,
+    here: here ? { id: here.id, name: here.name, isPublic: !!here.is_public && !here.in_private, mine: !!mem && mem.dairy_id === here.id, private: !!here.in_private } : null,
     membership: mem ? { dairyId: mem.dairy_id, dairy: mem.dairy_name, role: primaryRole(mem.role), roles: roleList(mem.role), isOwner: !!mem.is_owner, level: (await progressOf(env, mem.dairy_id)).level } : null,
     dairyXp,
     pumped,
@@ -540,6 +560,7 @@ async function myDairy(env, me) {
       houseId: d.house_id, world: d.world, worldName: d.world_name, district: d.district, districtKind: d.district_kind,
       ward: d.ward, plot: d.plot, room: d.room,
       area: areaRow(await env.DB.prepare("SELECT * FROM dairy_area WHERE dairy_id = ?").bind(d.id).first()),
+      privateArea: areaRow(await env.DB.prepare("SELECT * FROM dairy_private WHERE dairy_id = ?").bind(d.id).first()),
     },
     you: { id: me.id, role: primaryRole(mem.role), roles: roleList(mem.role), isOwner: !!mem.is_owner },
     members: members.map(m => ({
@@ -604,8 +625,7 @@ async function putDairy(env, me, request) {
   let hid, world, ward, plot, room, districtKind;
   if (area) {
     // A box anywhere: it can't overlap another dairy's box in the same zone, world and house
-    const others = (await env.DB.prepare("SELECT * FROM dairy_area WHERE territory = ? AND world = ? AND house = ?")
-      .bind(area.territory, area.world, area.house).all()).results.filter(r => !existing || r.dairy_id !== existing.id);
+    const others = await boxesAt(env, area, existing ? existing.id : null);
     if (others.some(r => overlaps(r, area))) fail(409, "That overlaps another dairy. Move or shrink your box.");
     hid = `area:${me.id}`;
     world = area.world; ward = 0; plot = 0; room = 0; districtKind = 0;
@@ -661,6 +681,27 @@ async function putDairy(env, me, request) {
   return { id };
 }
 
+/** The owner sets their dairy's private place (a home or apartment): only members ever count as "in" it. */
+async function putPrivate(env, me, request) {
+  const d = await ownedDairy(env, me);
+  const area = readArea((await body(request)).area);
+  if (!area) fail(400, "Mark out the private place first.");
+  if ((await boxesAt(env, area, d.id)).some(r => overlaps(r, area))) fail(409, "That overlaps another dairy. Move or shrink the box.");
+  await env.DB.prepare(`INSERT INTO dairy_private (dairy_id, territory, world, house, x, y, z, width, length, height, rot, map_id, zone)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(dairy_id) DO UPDATE SET territory = excluded.territory, world = excluded.world, house = excluded.house,
+      x = excluded.x, y = excluded.y, z = excluded.z, width = excluded.width, length = excluded.length, height = excluded.height,
+      rot = excluded.rot, map_id = excluded.map_id, zone = excluded.zone`)
+    .bind(d.id, area.territory, area.world, area.house, area.x, area.y, area.z, area.width, area.length, area.height, area.rot, area.mapId, area.zone).run();
+  return { ok: true };
+}
+
+async function deletePrivate(env, me) {
+  const d = await ownedDairy(env, me);
+  await env.DB.prepare("DELETE FROM dairy_private WHERE dairy_id = ?").bind(d.id).run();
+  return { ok: true };
+}
+
 async function deleteDairy(env, me) {
   const d = await ownedDairy(env, me);
   await refundOpenOrders(env, me.id, "Your dairy was closed, so this buy order was cancelled.");
@@ -675,6 +716,7 @@ async function deleteDairy(env, me) {
     env.DB.prepare("DELETE FROM tank_contrib WHERE dairy_id = ?").bind(d.id),
     env.DB.prepare("DELETE FROM contracts WHERE dairy_id = ?").bind(d.id),
     env.DB.prepare("DELETE FROM dairy_area WHERE dairy_id = ?").bind(d.id),
+    env.DB.prepare("DELETE FROM dairy_private WHERE dairy_id = ?").bind(d.id),
     env.DB.prepare("DELETE FROM contract_contrib WHERE dairy_id = ?").bind(d.id),
     env.DB.prepare("UPDATE invites SET status = 'cancelled' WHERE dairy_id = ? AND status = 'pending'").bind(d.id),
     env.DB.prepare("DELETE FROM dairies WHERE id = ?").bind(d.id),

@@ -268,6 +268,21 @@ await test("farmer chores: clean a stall (fresh an hour, again at half), groom a
   await beat(carl, { houseId: ELSEWHERE, awake: true });
 });
 
+await test("private place: members count as in the dairy there, nobody else sees it", async () => {
+  const priv = { territory: 340, world: 40, house: "5555", x: 0, y: 0, z: 0, width: 10, length: 10, height: 6, rot: 0, mapId: 0, zone: "Mist" };
+  const at = { territory: 340, world: 40, house: "5555", x: 1, y: 0, z: 1 };
+  assert.equal((await call(bob, "PUT", "/v1/dairy/private", { area: priv })).status, 403, "only the owner sets it");
+  assert.equal((await call(alice, "PUT", "/v1/dairy/private", { area: priv })).status, 200);
+  assert.ok((await call(bob, "GET", "/v1/dairy/mine")).data.dairy.privateArea, "members get the private place");
+  const hb = (await beat(bob, { pos: at, awake: true })).data;
+  assert.ok(hb.here && hb.here.mine && hb.here.private, "a member there is in their dairy");
+  assert.equal(hb.here.isPublic, false);
+  assert.equal((await beat(dana, { pos: at })).data.here, null, "a visitor there isn't anywhere");
+  assert.equal((await call(alice, "DELETE", "/v1/dairy/private")).status, 200);
+  assert.equal((await beat(bob, { pos: at, awake: true })).data.here, null, "gone once removed");
+  await beat(bob, { houseId: ELSEWHERE, awake: true });
+});
+
 await test("farmer removes a bull; can't remove the owner", async () => {
   assert.equal((await call(bob, "DELETE", `/v1/members/${alice.id}`)).status, 400);
   assert.equal((await call(bob, "DELETE", `/v1/members/${carl.id}`)).status, 200);

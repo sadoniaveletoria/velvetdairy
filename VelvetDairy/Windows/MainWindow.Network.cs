@@ -528,6 +528,19 @@ public sealed partial class MainWindow
             var a = F.NetMember?.Area;
             ImGui.TextColored(Theme.InkSoft, a != null ? $"{a.Zone} · {a.Width:0} × {a.Length:0} y" : "Your dairy is an older house dairy. Mark out an area to move it anywhere.");
             DrawAreaEditor(width, false);
+
+            Gap(10);
+            SubHeading("Private place", width);
+            Ui.Wrapped("A second spot just for your dairy's members, like your home or apartment. Members can be milked, rest and do chores there, " +
+                       "and it counts as being in the dairy. Visitors, the directory and deliveries only ever see the public area above.", Theme.InkSoft, width);
+            var pa = F.NetMember?.PrivateArea;
+            ImGui.TextColored(pa != null ? Theme.Ink : Theme.InkSoft, pa != null ? $"{pa.Zone}{(pa.House.Length > 0 ? " (inside a house)" : "")} · {pa.Width:0} × {pa.Length:0} y" : "None yet.");
+            DrawAreaEditor(width, false, true);
+            if (pa != null && G.Draft == null)
+            {
+                ImGui.SameLine();
+                if (Ui.Button("##removeprivate", "Remove", new Vector2(110, 30), "cream", true, "Takes the private place away. Stalls there stop working.")) G.RemovePrivatePlace();
+            }
         }
         else
         {
@@ -540,14 +553,18 @@ public sealed partial class MainWindow
     }
 
     /// <summary>Mark out (or move and resize) the dairy's box; the box is drawn on the ground while this is open.</summary>
-    private void DrawAreaEditor(float width, bool registering)
+    private void DrawAreaEditor(float width, bool registering, bool privatePlace = false)
     {
         var d = G.Draft;
-        if (d == null)
+        var id = privatePlace ? "priv" : "pub";
+        if (d == null || G.DraftPrivate != privatePlace)
         {
-            if (Ui.Button("##startarea", registering ? "Start marking here" : "Move or resize", new Vector2(190, 30), "blue", true,
-                    "Starts a box centered on you, facing the way you face. You can change everything before saving."))
-                G.StartDraft();
+            var label = registering ? "Start marking here" : privatePlace ? (F.NetMember?.PrivateArea != null ? "Move or resize" : "Mark it here") : "Move or resize";
+            if (Ui.Button($"##startarea{id}", label, new Vector2(190, 30), "blue", d == null,
+                    d != null ? "Finish or cancel the other box first." : privatePlace
+                        ? "Go to your home or apartment first. Starts a box centered on you; you can change everything before saving."
+                        : "Starts a box centered on you, facing the way you face. You can change everything before saving."))
+                G.StartDraft(privatePlace);
             return;
         }
 
@@ -579,7 +596,8 @@ public sealed partial class MainWindow
                     problem ?? (dairyName.Trim().Length == 0 ? "Give your dairy a name first." : "Saves this area as your dairy. It can't overlap another dairy.")))
                 G.RegisterDairyHere(dairyName);
         }
-        else if (Ui.Button("##savearea", "Save area", new Vector2(160, 30), "rose", true, "Moves your dairy to this box. Stalls outside the new box stop working."))
+        else if (Ui.Button($"##savearea{id}", privatePlace ? "Save private place" : "Save area", new Vector2(180, 30), "rose", true,
+                     privatePlace ? "Saves this box as your dairy's private place. It can't overlap another dairy." : "Moves your dairy to this box. Stalls outside the new box stop working."))
             G.SaveDraft();
     }
 

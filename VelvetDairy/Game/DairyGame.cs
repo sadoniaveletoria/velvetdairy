@@ -168,10 +168,11 @@ public sealed class DairyGame
     public void OnMyDairy(MyDairyReply? r)
     {
         if (r?.Dairy == null || F.NetMember == null) return;
-        if (F.NetMember.HouseId != r.Dairy.HouseId || !SameArea(F.NetMember.Area, r.Dairy.Area))
+        if (F.NetMember.HouseId != r.Dairy.HouseId || !SameArea(F.NetMember.Area, r.Dairy.Area) || !SameArea(F.NetMember.PrivateArea, r.Dairy.PrivateArea))
         {
             F.NetMember.HouseId = r.Dairy.HouseId;
             F.NetMember.Area = r.Dairy.Area;
+            F.NetMember.PrivateArea = r.Dairy.PrivateArea;
             plugin.SaveConfig();
         }
 
@@ -606,11 +607,18 @@ public sealed class DairyGame
 
         string why;
         var inDairy = false;
+        var inPrivate = false;
         if (Networked)
         {
             var m = F.NetMember;
             var here = Estate.Current();
             if (m == null) why = "You aren't in a dairy yet. Mark out your own or accept an invite (Dairy tab).";
+            else if (m.PrivateArea is { } priv && InArea(priv, me))
+            {
+                inDairy = true;
+                inPrivate = true;
+                why = $"In {m.Dairy}'s private place.";
+            }
             else if (m.Area is { } area)
             {
                 if (InArea(area, me))
@@ -652,6 +660,7 @@ public sealed class DairyGame
                 .FirstOrDefault();
         }
 
+        InPrivatePlace = inPrivate;
         return new Whereabouts(true, inHouse, inDairy, seated, at, why);
     }
 
@@ -1691,6 +1700,10 @@ public sealed class DairyGame
 
     /// <summary>The box being set up (drawn on the ground while it's set).</summary>
     public DairyArea? Draft { get; private set; }
+    /// <summary>The box being marked is the dairy's private place, not its public area.</summary>
+    public bool DraftPrivate { get; private set; }
+    /// <summary>You're in your dairy's private place (members only; visitors never see it).</summary>
+    public bool InPrivatePlace { get; private set; }
 
     private static bool SameArea(DairyArea? a, DairyArea? b) =>
         a == null ? b == null : b != null && a.Territory == b.Territory && a.World == b.World && a.House == b.House &&
@@ -1724,11 +1737,12 @@ public sealed class DairyGame
     }
 
     /// <summary>Starts marking out the dairy: your current box if you're there, or a new one centered on you.</summary>
-    public void StartDraft()
+    public void StartDraft(bool privatePlace = false)
     {
         var me = Plugin.ObjectTable.LocalPlayer;
         if (me == null) return;
-        var cur = F.NetMember?.Area;
+        DraftPrivate = privatePlace;
+        var cur = privatePlace ? F.NetMember?.PrivateArea : F.NetMember?.Area;
         if (cur != null && InArea(cur, me) || cur != null && Plugin.ClientState.TerritoryType == cur.Territory && me.CurrentWorld.RowId == cur.World)
         {
             Draft = cur.Copy();
@@ -1783,7 +1797,31 @@ public sealed class DairyGame
             return;
         }
 
+        if (DraftPrivate)
+        {
+            var area = Draft;
+            Net.SetPrivatePlace(area, () =>
+            {
+                F.NetMember!.PrivateArea = area;
+                Draft = null;
+                Say("Your dairy's private place is saved. Members count as in the dairy there; visitors never see it.", 1);
+                plugin.SaveConfig();
+            }, e => Fail(e));
+            return;
+        }
+
         PublishDairy(F.NetMember.Dairy, Draft);
+    }
+
+    public void RemovePrivatePlace()
+    {
+        if (F.NetMember?.IsOwner != true) return;
+        Net.RemovePrivatePlace(() =>
+        {
+            F.NetMember!.PrivateArea = null;
+            Say("The private place is removed. Stalls there stop working.", 1);
+            plugin.SaveConfig();
+        }, e => Fail(e));
     }
 
     public void RenameDairy(string name)
@@ -1871,7 +1909,12 @@ public sealed class DairyGame
     }
 
     /// <summary>Is this stall inside the dairy's area? (After moving the dairy, stalls left outside stop working until moved.)</summary>
-    public bool StallInArea(Stall s) => F.NetMember?.Area is not { } a || a.Contains(new Vector3(s.X, s.Y, s.Z));
+    public bool StallInArea(Stall s)
+    {
+        var p = new Vector3(s.X, s.Y, s.Z);
+        if (F.NetMember?.PrivateArea is { } priv && priv.Contains(p)) return true;
+        return F.NetMember?.Area is not { } a || a.Contains(p);
+    }
 
     public void RemoveStall(Stall s)
     {

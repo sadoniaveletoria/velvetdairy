@@ -93,6 +93,7 @@ public sealed class GuideWindow : Window
             "5. Stalls: sit on a seat inside the box and press Add on Dairy > Stalls. The first stall is free; more come from the dairy fund and dairy levels.",
             "6. Invite people: right-click a player > Velvet Dairy > Invite as cow, bull or farmer, or target them and use the Members panel. For people already in your dairy, the same menu (or Manage members) gives them more roles.",
             "You can move or resize the box any time, even to a different zone: Dairy > Listing > Move or resize. To move a stall, sit on its new seat and press Move here on Dairy > Stalls; it keeps its name and tier. Stalls left outside a moved box stop working until you move them.",
+            "You can also give the dairy a private place just for members, like your home or apartment (Dairy > Listing > Private place). Members are in the dairy there, so milking, stalls, resting and chores all work; visitors, the directory and deliveries only ever see the public area.",
         }),
         new("Your dairy", new[]
         {

@@ -146,6 +146,7 @@ public class NetMember
     public string HouseId { get; set; } = "";
     public int Level { get; set; } = 1;
     public VelvetDairy.Game.DairyArea? Area { get; set; }   // the dairy's box (null for older house-only dairies)
+    public VelvetDairy.Game.DairyArea? PrivateArea { get; set; }   // its private place, for members (null = none)
 }
 
 [Serializable]
