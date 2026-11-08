@@ -196,18 +196,32 @@ public sealed partial class MainWindow
 
             var emotes = st?.Emotes is { Count: > 0 } e ? string.Join("  ", e) : "/kneel";
             lines.Add(new Line($"Milk her with a looping emote, e.g. {emotes}", Theme.BlueDeep));
+            // Target her first; once she's your target the button becomes Milk her (does her first looping milking emote for you)
+            var targeted = Plugin.TargetManager.Target is Dalamud.Game.ClientState.Objects.SubKinds.IPlayerCharacter tp && tp.Name.TextValue.Equals(c.Name, StringComparison.OrdinalIgnoreCase);
+            var milkEmote = st?.Emotes is { Count: > 0 } list ? list[0] : "/kneel";
             var buttons = Array.Empty<Btn>();
             if (near >= 0 && c.Online)
-                buttons = new[] { new Btn($"##tgt{c.Id}", "Target her", "blue", true, "Targets her so your emotes count.") };
+            {
+                if (!targeted) buttons = new[] { new Btn($"##tgt{c.Id}", "Target her", "blue", true, "Targets her so your milking counts.") };
+                else
+                {
+                    var close = near <= G.HandRange;
+                    buttons = new[] { new Btn($"##milk{c.Id}", "Milk her", "rose", close, close ? $"Does {milkEmote} for you (as if you typed it). Hold still; milk flows until she's empty." : $"Get within {G.HandRange:0} yalms of her first.") };
+                }
+            }
+
             var clicked = ListRow(Ico("milk"), c.Name, c.Online ? Theme.Ink : Theme.InkSoft, lines, buttons, width,
                 c.Online && st is { Cap: > 0 } s ? s.Milk / s.Cap : -1, Theme.BlueDeep);
-            if (clicked == 0)
+            if (clicked == 0 && !targeted)
+            {
                 foreach (var o in Plugin.ObjectTable)
                     if (o is Dalamud.Game.ClientState.Objects.SubKinds.IPlayerCharacter pc && pc.Name.TextValue.Equals(c.Name, StringComparison.OrdinalIgnoreCase))
                     {
                         Plugin.TargetManager.Target = pc;
                         break;
                     }
+            }
+            else if (clicked == 0 && !Emotes.Perform(milkEmote)) G.Notify($"{milkEmote} isn't an emote the game knows. Ask her to fix her milking emotes (Roles > Cow).", 2);
         }
 
         Ui.Wrapped("You get 25% of what she's paid, on top of her pay, plus farmer xp.", Theme.InkSoft, width);

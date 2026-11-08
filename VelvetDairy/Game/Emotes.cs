@@ -86,4 +86,21 @@ public static class Emotes
         if (o is not ICharacter || o.Address == nint.Zero) return "-";
         return ((CSCharacter*)o.Address)->Mode.ToString();
     }
+
+    /// <summary>
+    /// Does an emote for you, exactly as if you typed it (only ever from a button you pressed, like Milk her).
+    /// Returns false when the text isn't a known emote command.
+    /// </summary>
+    public static unsafe bool Perform(string command)
+    {
+        var cmd = command.Trim();
+        if (!cmd.StartsWith('/')) cmd = "/" + cmd;
+        if (Find(cmd) == 0) return false;
+        var ui = FFXIVClientStructs.FFXIV.Client.UI.UIModule.Instance();
+        if (ui == null) return false;
+        var text = FFXIVClientStructs.FFXIV.Client.System.String.Utf8String.FromString(cmd);
+        ui->ProcessChatBoxEntry(text);
+        text->Dtor(true);
+        return true;
+    }
 }
