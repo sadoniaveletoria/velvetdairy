@@ -164,6 +164,7 @@ public class Stall
     public float Z { get; set; }
     public int Tier { get; set; } = 1;   // 1..4
     public int Sessions { get; set; }
+    public long CleanUntil { get; set; }  // unix seconds: freshly cleaned by a farmer until then (networked dairies)
 }
 
 [Serializable]

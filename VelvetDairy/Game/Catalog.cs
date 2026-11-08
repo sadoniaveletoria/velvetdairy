@@ -160,6 +160,13 @@ public static class Catalog
 
     public const float HandYield = 1.25f;
     public const float HandStrokeOz = 1f;
+    // ----- Farmer chores -----
+    public const float CleanBonus = 0.10f;      // a freshly cleaned stall milks 10% faster and gives 10% more xp (never less than its tier)
+    public const int CleanXp = 25;              // farmer xp per stall cleaned (each stall: once an hour, again when half an hour is left)
+    public const int GroomXp = 20;              // farmer xp per groom (each cow: once every 15 minutes)
+    public const float GroomHappy = 0.05f;      // Happy bonus a groom gives a cow who has none going
+    public const float StallSitRange = 1.5f;    // someone sitting this close to a stall is using it
+
     public const float HandSpeed = 0.35f;        // oz per second while a farmer keeps milking (a looping emote, close, targeting you)
     public const float BottleOz = 8f;    // a cup: what the creamery buys by
 

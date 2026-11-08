@@ -270,6 +270,12 @@ public sealed class StallInfo
     public float Y { get; set; }
     public float Z { get; set; }
     public int Tier { get; set; }
+    public long CleanUntil { get; set; }   // unix seconds; a farmer cleaned it and it's fresh until then (0 = not fresh)
+}
+
+public sealed class CleanReply
+{
+    public long Until { get; set; }
 }
 
 public sealed class SentInvite

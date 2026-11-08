@@ -212,3 +212,19 @@ CREATE TABLE IF NOT EXISTS dairy_area (
   zone      TEXT NOT NULL DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS area_where ON dairy_area(territory, world, house);
+
+-- A farmer cleaned this stall: cows milked here get a bonus until `until`. Stalls never get worse than their tier.
+CREATE TABLE IF NOT EXISTS stall_clean (
+  stall_id  TEXT PRIMARY KEY,
+  dairy_id  TEXT NOT NULL,
+  until     INTEGER NOT NULL,
+  by_name   TEXT NOT NULL DEFAULT ''
+);
+
+-- When a farmer last groomed a cow (one groom per farmer per cow every 15 minutes).
+CREATE TABLE IF NOT EXISTS grooms (
+  farmer  TEXT NOT NULL,
+  cow     TEXT NOT NULL,
+  at      INTEGER NOT NULL,
+  PRIMARY KEY (farmer, cow)
+);

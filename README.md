@@ -85,6 +85,7 @@ When the network is up, dairies are shared between players:
 
 - **Owners** mark out their dairy anywhere: stand in the middle of the spot (a field, a corner of a city, or a room in any house), then size and turn a box that's drawn on the ground while you set it up. Boxes can't overlap another dairy in the same zone and world, and each player can own or belong to one dairy at a time. Owners can move or resize it later (Dairy > Listing).
 - Owners invite **farmers, cows and bulls**, set up and upgrade the dairy's stalls, and choose a play role for themselves (any role, or none). Owners get an extra **owner HUD** showing who's online, who's in the dairy and how full each cow is.
+- **Farmer chores** (Roles > Farmer): **Groom** a cow you're next to (20 farmer xp; their Happy bar gets 30 more minutes; once every 15 min per cow). **Clean** a stall nobody is sitting on (25 farmer xp; cows milked there get +10% speed and xp for an hour; it can be freshened again with half an hour left). Stalls never drop below their tier.
 - **Several roles at once**: a member can be a cow, farmer and bull together. Anyone can add cow or bull to themselves; farmer is given by a farmer or the owner; only the owner takes roles away. Each role has its own level (cow, farmer, bull), and progress is never lost when roles change.
 - **Farmers** hand milk the dairy's cows and can invite cows and bulls (not other farmers).
 - **Cows** make milk and get milked in the dairy's stalls or by its farmers. **Bulls** are a role only for now.

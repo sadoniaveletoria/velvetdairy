@@ -44,6 +44,9 @@ const FARMER_CUT = 0.25;            // a farmer gets this share of what the cow 
 const FARMER_DAILY_COINS = 4500;
 const COW_DAILY_HAND_OZ = 800;
 const MAX_TAKE_OZ = 96;
+const CLEAN_SECONDS = 3600;         // a cleaned stall stays fresh this long
+const CLEAN_AGAIN_SECONDS = 1800;   // and can be cleaned again once this much (or less) is left
+const GROOM_COOLDOWN = 900;         // one groom per farmer per cow every 15 minutes
 // Developer (same phrase hash as the plugin's dev mode)
 const DEV_KEY_HASH = "7d4e0a8c4a26de8d2843e2a563f667d74beda3b81ffa447c22bd40d93b5af76f";
 // Weekly contracts
@@ -229,6 +232,8 @@ async function route(request, env) {
     ["DELETE", /^\/v1\/stalls\/([0-9a-f]{24})$/, m => removeStall(env, me, m[1])],
     ["PUT", /^\/v1\/stalls\/([0-9a-f]{24})$/, m => moveStall(env, me, m[1], request)],
     ["POST", /^\/v1\/stalls\/([0-9a-f]{24})\/tier$/, m => upgradeStall(env, me, m[1], request)],
+    ["POST", /^\/v1\/stalls\/([0-9a-f]{24})\/clean$/, m => cleanStall(env, me, m[1])],
+    ["POST", /^\/v1\/groom$/, () => groom(env, me, request)],
     ["GET", /^\/v1\/orders\/mine$/, () => myOrders(env, me)],
     ["POST", /^\/v1\/orders$/, () => postOrder(env, me, request)],
     ["GET", /^\/v1\/dairies\/([0-9a-f]{24})\/orders$/, m => dairyOrders(env, me, m[1])],
@@ -518,7 +523,9 @@ async function myDairy(env, me) {
   const members = (await env.DB.prepare(`
       SELECT m.install, m.role, m.name, m.world_name, m.status, i.last_seen
       FROM members m LEFT JOIN installs i ON i.id = m.install WHERE m.dairy_id = ? ORDER BY m.joined`).bind(d.id).all()).results;
-  const stalls = (await env.DB.prepare("SELECT * FROM stalls WHERE dairy_id = ? ORDER BY created").bind(d.id).all()).results;
+  const stalls = (await env.DB.prepare(
+    "SELECT s.*, COALESCE(c.until, 0) AS clean_until FROM stalls s LEFT JOIN stall_clean c ON c.stall_id = s.id WHERE s.dairy_id = ? ORDER BY s.created")
+    .bind(d.id).all()).results;
   const canInvite = mem.is_owner || hasRole(mem, "farmer");
   const invites = canInvite ? (await env.DB.prepare(
     "SELECT id, to_name, role, expires FROM invites WHERE dairy_id = ? AND status = 'pending' AND expires >= ? ORDER BY created")
@@ -535,7 +542,7 @@ async function myDairy(env, me) {
       id: m.install, name: m.name, world: m.world_name, role: primaryRole(m.role), roles: roleList(m.role), isOwner: m.install === d.owner,
       online: (m.last_seen || 0) >= t - ONLINE_WINDOW, status: safeParse(m.status),
     })),
-    stalls: stalls.map(s => ({ id: s.id, name: s.name, x: s.x, y: s.y, z: s.z, tier: s.tier })),
+    stalls: stalls.map(s => ({ id: s.id, name: s.name, x: s.x, y: s.y, z: s.z, tier: s.tier, cleanUntil: s.clean_until > t ? s.clean_until : 0 })),
     progress: await progressOut(env, d.id, stalls.length),
     invites: invites.map(i => ({ id: i.id, name: i.to_name, role: i.role, expires: i.expires })),
   };
@@ -868,6 +875,46 @@ async function upgradeStall(env, me, id, request) {
     fail(409, "That stall changed; refresh and try again.");
   }
   return { ok: true };
+}
+
+// ---------------------------------------------------------------- farmer chores
+
+/** A farmer (or the owner) cleans a stall in their dairy: fresh for an hour, again once half an hour is left. */
+async function cleanStall(env, me, id) {
+  const mem = await membership(env, me.id);
+  if (!mem) fail(400, "Join a dairy first.");
+  if (!mem.is_owner && !hasRole(mem, "farmer")) fail(403, "Only farmers and the owner clean stalls.");
+  if (!inOwnDairy(me, mem)) fail(400, "Go to your dairy to clean its stalls.");
+  const s = await env.DB.prepare("SELECT id FROM stalls WHERE id = ? AND dairy_id = ?").bind(id, mem.dairy_id).first();
+  if (!s) fail(404, "That stall is gone.");
+  const t = now();
+  const c = await env.DB.prepare("SELECT until FROM stall_clean WHERE stall_id = ?").bind(id).first();
+  if (c && c.until - t > CLEAN_AGAIN_SECONDS) fail(400, `That stall is still clean. It can be cleaned again in ${Math.ceil((c.until - t - CLEAN_AGAIN_SECONDS) / 60)} min.`);
+  const until = t + CLEAN_SECONDS;
+  await env.DB.prepare(`INSERT INTO stall_clean (stall_id, dairy_id, until, by_name) VALUES (?, ?, ?, ?)
+    ON CONFLICT(stall_id) DO UPDATE SET until = excluded.until, by_name = excluded.by_name`).bind(id, mem.dairy_id, until, mem.name || "").run();
+  return { ok: true, until };
+}
+
+/** A farmer grooms a cow of their dairy: the cow's plugin gets a Happy top-up through their inbox. */
+async function groom(env, me, request) {
+  const b = await body(request);
+  const mem = await membership(env, me.id);
+  if (!mem || !hasRole(mem, "farmer")) fail(403, "Only farmers groom cows.");
+  if (!inOwnDairy(me, mem)) fail(400, "Go to your dairy to groom its cows.");
+  const cowId = String(b.cow || "");
+  if (cowId === me.id) fail(400, "You can't groom yourself.");
+  const cow = await env.DB.prepare(`SELECT install, name FROM members WHERE install = ? AND dairy_id = ? AND ${ROLE_SQL}`)
+    .bind(cowId, mem.dairy_id, "cow").first();
+  if (!cow) fail(400, "That cow isn't in your dairy.");
+  const t = now();
+  const last = await env.DB.prepare("SELECT at FROM grooms WHERE farmer = ? AND cow = ?").bind(me.id, cow.install).first();
+  if (last && t - last.at < GROOM_COOLDOWN) fail(400, `You can groom ${cow.name} again in ${Math.ceil((GROOM_COOLDOWN - (t - last.at)) / 60)} min.`);
+  await env.DB.batch([
+    env.DB.prepare(`INSERT INTO grooms (farmer, cow, at) VALUES (?, ?, ?) ON CONFLICT(farmer, cow) DO UPDATE SET at = excluded.at`).bind(me.id, cow.install, t),
+    inboxStmt(env, cow.install, "groom", 0, 0, 0, `${mem.name || "A farmer"} groomed you. Happy +30 min.`),
+  ]);
+  return { ok: true, next: t + GROOM_COOLDOWN };
 }
 
 // ---------------------------------------------------------------- pay, tank jugs

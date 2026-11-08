@@ -120,6 +120,7 @@ public sealed partial class MainWindow
         RoleNote("farmer", width);
         LevelHeader(F.FarmerXp, $"Farmer level {G.FarmerLevel}", Theme.SageDeep, width);
         DrawHandMilkCows(width);
+        DrawCleanStalls(width);
 
         SubHeading("Coming up", width);
         var tank = Catalog.Upgrades.First(u => u.Id == "farmtank");
@@ -141,7 +142,38 @@ public sealed partial class MainWindow
         Ui.Wrapped("Invite people and give them roles, the farmer role included.", Theme.Ink, width);
 
         SubHeading("How to earn farmer xp", width);
-        Ui.Wrapped("Hand milking pay, filling jugs, customer orders, deliveries and contract shipments.", Theme.InkSoft, width);
+        Ui.Wrapped($"Grooming cows ({Catalog.GroomXp} each, every 15 min per cow), cleaning stalls ({Catalog.CleanXp} each), hand milking pay, filling jugs, customer orders, deliveries and contract shipments.", Theme.InkSoft, width);
+    }
+
+    /// <summary>For farmers and the owner: clean the dairy's stalls for a bonus to cows milked there.</summary>
+    private void DrawCleanStalls(float width)
+    {
+        SubHeading("Clean the stalls", width);
+        if (!G.Networked || F.NetMember == null || (!F.NetMember.IsOwner && !G.IsFarmer))
+        {
+            Ui.Wrapped("Farmers and the owner clean the dairy's stalls.", Theme.InkSoft, width);
+            return;
+        }
+
+        Ui.Wrapped($"Walk up to a stall nobody is sitting on and press Clean. Cows milked there get +{Catalog.CleanBonus * 100:0}% speed and xp for an hour. It can be freshened up again once half an hour is left.", Theme.Ink, width);
+        if (G.Stalls.Count == 0)
+        {
+            ImGui.TextColored(Theme.InkSoft, "Your dairy has no stalls yet.");
+            return;
+        }
+
+        foreach (var s in G.Stalls)
+        {
+            var lines = new System.Collections.Generic.List<Line>();
+            var d = G.DistanceTo(s);
+            lines.Add(new Line(DairyGame.Fresh(s) ? $"Fresh for {DairyGame.Wait(DairyGame.FreshLeft(s))}" : "Not cleaned lately (normal speed)",
+                DairyGame.Fresh(s) ? Theme.SageDeep : Theme.InkSoft));
+            if (G.StallTaken(s)) lines.Add(new Line("Someone is sitting on it", Theme.RoseDeep));
+            else if (d >= 0) lines.Add(new Line(d <= G.HandRange ? "Right here" : $"{d:0} y away", Theme.InkSoft));
+            var why = G.CleanProblem(s);
+            var buttons = new[] { new Btn($"##clean{s.Id}", "Clean", "sage", why == null, why ?? $"+{Catalog.CleanXp} farmer xp") };
+            if (ListRow(Ico("bucket"), $"{s.Name} · {Catalog.StallTierNames[Math.Clamp(s.Tier, 1, 4)]}", Theme.Ink, lines, buttons, width) == 0) G.CleanStall(s);
+        }
     }
 
     /// <summary>For farmers: the dairy's cows, whether they're close, and which emotes milk each of them.</summary>
@@ -203,12 +235,16 @@ public sealed partial class MainWindow
             var buttons = Array.Empty<Btn>();
             if (near >= 0 && c.Online)
             {
-                if (!targeted) buttons = new[] { new Btn($"##tgt{c.Id}", "Target", "blue", true, "Targets them so your milking counts.") };
+                Btn first;
+                if (!targeted) first = new Btn($"##tgt{c.Id}", "Target", "blue", true, "Targets them so your milking counts.");
                 else
                 {
                     var close = near <= G.HandRange;
-                    buttons = new[] { new Btn($"##milk{c.Id}", "Milk", "rose", close, close ? $"Does {milkEmote} for you (as if you typed it). Hold still; it stops on its own when they're empty." : $"Get within {G.HandRange:0} yalms of them first.") };
+                    first = new Btn($"##milk{c.Id}", "Milk", "rose", close, close ? $"Does {milkEmote} for you (as if you typed it). Hold still; it stops on its own when they're empty." : $"Get within {G.HandRange:0} yalms of them first.");
                 }
+
+                var groomWhy = G.GroomProblem(c.Name, c.Id, near);
+                buttons = new[] { first, new Btn($"##groom{c.Id}", "Groom", "sage", groomWhy == null, groomWhy ?? $"Brush them down: their Happy bar gets 30 more minutes, you get {Catalog.GroomXp} farmer xp. Once every 15 minutes per cow.") };
             }
 
             var clicked = ListRow(Ico("milk"), c.Name, c.Online ? Theme.Ink : Theme.InkSoft, lines, buttons, width,
@@ -222,6 +258,7 @@ public sealed partial class MainWindow
                         break;
                     }
             }
+            else if (clicked == 1) G.Groom(c.Name, c.Id, near);
             else if (clicked == 0 && !G.MilkCow(c.Name, milkEmote, st?.Milk ?? 0)) G.Notify($"{milkEmote} isn't an emote the game knows. Ask them to fix their milking emotes (Roles > Cow).", 2);
         }
 

@@ -185,6 +185,7 @@ public sealed class DairyGame
             s.Y = si.Y;
             s.Z = si.Z;
             s.Tier = Math.Clamp(si.Tier, 1, 4);
+            s.CleanUntil = si.CleanUntil;
             stalls.Add(s);
         }
 
@@ -232,6 +233,15 @@ public sealed class DairyGame
                     break;
                 case "refund":
                     F.Coins += i.Coins;
+                    break;
+                case "groom":
+                    // A farmer groomed you: Happy gets 30 more minutes (keeps your treat's bonus if one is going)
+                    if (IsCow)
+                    {
+                        if (Cow.Mood <= 0 || Cow.HappyBonus <= 0) Cow.HappyBonus = Catalog.GroomHappy;
+                        Cow.Mood = Fill(Cow.Mood);
+                    }
+
                     break;
                 case "milk":
                     var g = Math.Clamp(i.Grade, 0, Grades.Count - 1);
@@ -895,7 +905,7 @@ public sealed class DairyGame
         var p = StallProblem();
         if (p != null) return Fail(p);
         Begin(SessionKind.Stall, Where.AtStall, null);
-        Say($"The {Catalog.StallTierNames[Where.AtStall!.Tier].ToLowerInvariant()} starts milking you.", 0);
+        Say($"The {(Fresh(Where.AtStall!) ? "freshly cleaned " : "")}{Catalog.StallTierNames[Where.AtStall!.Tier].ToLowerInvariant()} starts milking you.", 0);
         return true;
     }
 
@@ -977,7 +987,7 @@ public sealed class DairyGame
             }
             else return;
 
-            Draw(Catalog.StallSpeed[Math.Clamp(s.Stall!.Tier, 1, 4)] * (Owned("letdown") > 0 ? 1.1f : 1f) * dt);
+            Draw(Catalog.StallSpeed[Math.Clamp(s.Stall!.Tier, 1, 4)] * (Owned("letdown") > 0 ? 1.1f : 1f) * (Fresh(s.Stall) ? 1f + Catalog.CleanBonus : 1f) * dt);
         }
         else
         {
@@ -1062,7 +1072,8 @@ public sealed class DairyGame
             F.Stats.StallSessions++;
             F.DayStall++;
             s.Stall!.Sessions++;
-            xp = (int)Math.Round(collected * Leveling.XpPerOzStall * Leveling.StallXpBonus[Math.Clamp(s.Stall.Tier, 1, 4)] * Leveling.GradeBonus(s.Grade));
+            xp = (int)Math.Round(collected * Leveling.XpPerOzStall * Leveling.StallXpBonus[Math.Clamp(s.Stall.Tier, 1, 4)] * Leveling.GradeBonus(s.Grade) *
+                                 (Fresh(s.Stall) ? 1f + Catalog.CleanBonus : 1f));
         }
         else
         {
@@ -1218,6 +1229,120 @@ public sealed class DairyGame
         // There's no "stop emote" in the game; any other emote ends the loop, so give a quiet pat (no chat text)
         if (Emotes.Looping(me) == milkingEmote) Emotes.Perform("/pet motion");
         Say($"{cow} is empty.", 1);
+    }
+
+    // ----- Farmer chores: cleaning stalls and grooming cows -----
+
+    public static long UnixNow => DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+
+    /// <summary>Was this stall cleaned by a farmer recently?</summary>
+    public static bool Fresh(Stall s) => s.CleanUntil > UnixNow;
+    public static TimeSpan FreshLeft(Stall s) => TimeSpan.FromSeconds(Math.Max(0, s.CleanUntil - UnixNow));
+    /// <summary>Time until it can be cleaned again (it can once half an hour or less of freshness is left).</summary>
+    public static TimeSpan CleanWait(Stall s) => TimeSpan.FromSeconds(Math.Max(0, s.CleanUntil - UnixNow - 1800));
+
+    /// <summary>Is anyone sitting on this stall right now?</summary>
+    public bool StallTaken(Stall s)
+    {
+        var at = new Vector3(s.X, s.Y, s.Z);
+        foreach (var o in Plugin.ObjectTable)
+            if (o is IPlayerCharacter pc && Emotes.InPositionLoop(pc) && Vector3.Distance(pc.Position, at) <= Catalog.StallSitRange) return true;
+        return false;
+    }
+
+    public float DistanceTo(Stall s)
+    {
+        var me = Plugin.ObjectTable.LocalPlayer;
+        return me == null ? -1 : Vector3.Distance(me.Position, new Vector3(s.X, s.Y, s.Z));
+    }
+
+    public string? CleanProblem(Stall s)
+    {
+        var b = Blocked();
+        if (b != null) return b;
+        if (!Networked || F.NetMember == null) return "Cleaning stalls is for networked dairies.";
+        if (!F.NetMember.IsOwner && !IsFarmer) return "Only farmers and the owner clean stalls.";
+        if (!Where.InDairy) return "Go to your dairy first.";
+        var d = DistanceTo(s);
+        if (d < 0 || d > HandRange) return $"Walk up to {s.Name} first (within {HandRange:0} yalms).";
+        if (StallTaken(s)) return "Someone is sitting on it. Clean it when it's free.";
+        var w = CleanWait(s);
+        if (w > TimeSpan.Zero) return $"It's still clean. You can freshen it up again in {Wait(w)}.";
+        return null;
+    }
+
+    private bool cleaning;
+
+    public void CleanStall(Stall s)
+    {
+        var p = CleanProblem(s);
+        if (p != null)
+        {
+            Fail(p);
+            return;
+        }
+
+        if (cleaning) return;
+        cleaning = true;
+        Touch();
+        Net.CleanStall(s.Id, until =>
+        {
+            cleaning = false;
+            s.CleanUntil = until;
+            AddFarmerXp(Catalog.CleanXp);
+            EarnDairyXp(2);
+            Say($"You clean {s.Name}. Cows milked there get +{Catalog.CleanBonus * 100:0}% for an hour. +{Catalog.CleanXp} farmer xp", 1);
+            plugin.SaveConfig();
+        }, e =>
+        {
+            cleaning = false;
+            Fail(e);
+        });
+    }
+
+    private readonly Dictionary<string, double> groomReady = new();
+
+    public double GroomWait(string cowId) => groomReady.TryGetValue(cowId, out var t) ? Math.Max(0, t - now) : 0;
+
+    public string? GroomProblem(string cowName, string cowId, float distance)
+    {
+        var b = Blocked();
+        if (b != null) return b;
+        if (!IsFarmer) return "Only farmers groom cows.";
+        if (!Where.InDairy) return "Go to your dairy first.";
+        if (distance < 0 || distance > HandRange) return $"Get within {HandRange:0} yalms of {cowName} first.";
+        var w = GroomWait(cowId);
+        if (w > 0) return $"You can groom {cowName} again in {Wait(TimeSpan.FromSeconds(w))}.";
+        return null;
+    }
+
+    private bool grooming;
+
+    public void Groom(string cowName, string cowId, float distance)
+    {
+        var p = GroomProblem(cowName, cowId, distance);
+        if (p != null)
+        {
+            Fail(p);
+            return;
+        }
+
+        if (grooming) return;
+        grooming = true;
+        Touch();
+        Net.Groom(cowId, () =>
+        {
+            grooming = false;
+            groomReady[cowId] = now + 15 * 60;
+            AddFarmerXp(Catalog.GroomXp);
+            EarnDairyXp(2);
+            Say($"You groom {cowName}. Their Happy bar gets 30 more minutes. +{Catalog.GroomXp} farmer xp", 1);
+        }, e =>
+        {
+            grooming = false;
+            groomReady[cowId] = now + 60;   // the server knows the real wait; don't spam it
+            Fail(e);
+        });
     }
 
     public HashSet<ushort> HandEmoteIds() => F.HandEmotes!.Select(Emotes.Find).Where(id => id != 0).ToHashSet();

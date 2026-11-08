@@ -246,6 +246,28 @@ await test("dairy XP: only in the dairy, capped per member per day", async () =>
   assert.equal(board.dairies[0].weekXp, 720);
 });
 
+await test("farmer chores: clean a stall (fresh an hour, again at half), groom a cow (15 min each)", async () => {
+  const stall = (await call(alice, "GET", "/v1/dairy/mine")).data.stalls[0];
+  assert.equal(stall.cleanUntil, 0, "not cleaned yet");
+  await beat(bob, { houseId: ELSEWHERE, awake: true });
+  assert.equal((await call(bob, "POST", `/v1/stalls/${stall.id}/clean`)).status, 400, "only inside the dairy");
+  await beat(bob, { houseId: HOUSE, awake: true });
+  await beat(carl, { houseId: HOUSE, awake: true });
+  assert.equal((await call(carl, "POST", `/v1/stalls/${stall.id}/clean`)).status, 403, "bulls don't clean");
+  assert.equal((await call(bob, "POST", `/v1/stalls/${stall.id}/clean`)).status, 200);
+  assert.equal((await call(bob, "POST", `/v1/stalls/${stall.id}/clean`)).status, 400, "still clean");
+  assert.ok((await call(carl, "GET", "/v1/dairy/mine")).data.stalls.find(x => x.id === stall.id).cleanUntil > 0, "everyone sees it's fresh");
+
+  assert.equal((await call(carl, "POST", "/v1/groom", { cow: alice.id })).status, 403, "only farmers groom");
+  assert.equal((await call(bob, "POST", "/v1/groom", { cow: carl.id })).status, 400, "only cows get groomed");
+  assert.equal((await call(bob, "POST", "/v1/groom", { cow: alice.id })).status, 200);
+  assert.equal((await call(bob, "POST", "/v1/groom", { cow: alice.id })).status, 400, "15 minutes per cow");
+  const items = (await call(alice, "POST", "/v1/inbox/claim")).data.items;
+  assert.ok(items.some(i => i.kind === "groom"), "the cow hears about it");
+  await beat(bob, { houseId: ELSEWHERE, awake: true });
+  await beat(carl, { houseId: ELSEWHERE, awake: true });
+});
+
 await test("farmer removes a bull; can't remove the owner", async () => {
   assert.equal((await call(bob, "DELETE", `/v1/members/${alice.id}`)).status, 400);
   assert.equal((await call(bob, "DELETE", `/v1/members/${carl.id}`)).status, 200);

@@ -461,6 +461,16 @@ public sealed class NetClient : IDisposable
     public void RemoveStall(string id, Action<string> failed) => Call<object>("DELETE", $"/v1/stalls/{id}", null, _ => Poke(), failed);
 
     /// <summary>Owner: moves a stall to a new seat (keeps its name and tier).</summary>
+    public void CleanStall(string id, Action<long> ok, Action<string> failed) =>
+        Call<CleanReply>("POST", $"/v1/stalls/{id}/clean", new { }, r =>
+        {
+            RefreshMine();
+            ok(r.Until);
+        }, failed);
+
+    public void Groom(string cowId, Action ok, Action<string> failed) =>
+        Call<object>("POST", "/v1/groom", new { cow = cowId }, _ => ok(), failed);
+
     public void MoveStall(string id, float x, float y, float z, Action ok, Action<string> failed) =>
         Call<object>("PUT", $"/v1/stalls/{id}", new { x, y, z }, _ =>
         {
