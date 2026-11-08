@@ -379,7 +379,15 @@ async function heartbeat(env, me, request) {
   // Share a little status with your own dairy (milk, grade...) so the owner's HUD can show it
   const mem = await membership(env, me.id);
   if (mem && b.status && typeof b.status === "object") {
-    const status = JSON.stringify(b.status).slice(0, 300);
+    // Only known fields, kept small: what a member shares with their own dairy
+    const st = b.status || {};
+    const num = v => Number.isFinite(Number(v)) ? Math.round(Number(v) * 10) / 10 : 0;
+    const status = JSON.stringify({
+      milk: num(st.milk), cap: num(st.cap), grade: Math.max(0, Math.min(4, Math.floor(num(st.grade)))), spoiled: !!st.spoiled,
+      inDairy: !!st.inDairy, level: Math.floor(num(st.level)),
+      emotes: Array.isArray(st.emotes) ? st.emotes.slice(0, 8).map(e => clean(e, 24)).filter(Boolean) : [],
+      handBy: clean(st.handBy, 40),
+    });
     if (status !== mem.status) await env.DB.prepare("UPDATE members SET status = ? WHERE install = ?").bind(status, me.id).run();
   }
 

@@ -20,6 +20,7 @@ public sealed partial class MainWindow
                 {
                     RoleNote("cow", w);
                     DrawCowLevel(w);
+                    DrawCowEmotes(w);
                 });
                 Panel("##cowquality", new Vector2(mid + 7, top.Y), max, "Milk quality", DrawMilkQuality, true);
                 break;
@@ -87,12 +88,30 @@ public sealed partial class MainWindow
             Theme.InkSoft, width);
     }
 
+    /// <summary>The emotes your farmers milk you with, and whether they can start without asking.</summary>
+    private void DrawCowEmotes(float width)
+    {
+        SubHeading("Being hand milked", width);
+        Ui.Wrapped("A farmer of your dairy milks you by standing close, targeting you and using one of these emotes. Each emote is a stroke.", Theme.InkSoft, width);
+        var auto = F.AutoHand;
+        if (ImGui.Checkbox("Farmers can start milking me without asking##autohand", ref auto))
+        {
+            F.AutoHand = auto;
+            plugin.SaveConfig();
+        }
+
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip("On: a farmer's first milking emote starts it. Off: you start it yourself (right-click them > Velvet Dairy > Let them milk me, or Barn > Milking).");
+        DrawEmotes(width);
+    }
+
     // ----- Farmer -----
 
     private void DrawFarmerRole(float width)
     {
         RoleNote("farmer", width);
         LevelHeader(F.FarmerXp, $"Farmer level {G.FarmerLevel}", Theme.SageDeep, width);
+        DrawHandMilkCows(width);
 
         SubHeading("Coming up", width);
         var tank = Catalog.Upgrades.First(u => u.Id == "farmtank");
@@ -115,6 +134,75 @@ public sealed partial class MainWindow
 
         SubHeading("How to earn farmer xp", width);
         Ui.Wrapped("Hand milking pay, filling jugs, customer orders, deliveries and contract shipments.", Theme.InkSoft, width);
+    }
+
+    /// <summary>For farmers: the dairy's cows, whether they're close, and which emotes milk each of them.</summary>
+    private void DrawHandMilkCows(float width)
+    {
+        SubHeading("Hand milk a cow", width);
+        if (!G.IsFarmer)
+        {
+            Ui.Wrapped("Only farmers hand milk. A farmer or the owner can give you the farmer role.", Theme.InkSoft, width);
+            return;
+        }
+
+        Ui.Wrapped("Stand within 3 yalms of a cow, target her and use one of her milking emotes. Her plugin starts the milking (unless she turned that off) and every emote is a stroke.",
+            Theme.Ink, width);
+        Gap(4);
+        var mine = G.Net.Mine;
+        var me = Plugin.ObjectTable.LocalPlayer;
+        var myName = me?.Name.TextValue ?? "";
+        var cows = mine?.Members.Where(m => m.Has("cow") && !m.Name.Equals(myName, StringComparison.OrdinalIgnoreCase)).ToList() ?? new();
+        if (cows.Count == 0)
+        {
+            ImGui.TextColored(Theme.InkSoft, "No other cows in your dairy yet.");
+            return;
+        }
+
+        foreach (var c in cows.OrderByDescending(c => c.Online).ThenBy(c => c.Name))
+        {
+            var near = -1f;
+            if (me != null)
+                foreach (var o in Plugin.ObjectTable)
+                    if (o is Dalamud.Game.ClientState.Objects.SubKinds.IPlayerCharacter pc && pc.Name.TextValue.Equals(c.Name, StringComparison.OrdinalIgnoreCase))
+                    {
+                        near = Vector3.Distance(me.Position, pc.Position);
+                        break;
+                    }
+
+            var st = c.Status;
+            var lines = new System.Collections.Generic.List<Line>();
+            if (!c.Online) lines.Add(new Line("Offline", Theme.InkSoft));
+            else
+            {
+                lines.Add(new Line(near < 0 ? (st?.InDairy == true ? "In the dairy, not near you" : "Not in the dairy") : near <= G.HandRange ? $"Right here ({near:0.#} y)" : $"{near:0} y away",
+                    near >= 0 && near <= G.HandRange ? Theme.SageDeep : Theme.InkSoft));
+                if (st != null)
+                {
+                    lines.Add(new Line(st.Spoiled ? "Her milk spoiled; she has to dump it first." : $"{st.Milk:0.#} / {st.Cap:0} oz · Grade {Grades.Name(Math.Clamp(st.Grade, 0, Grades.Count - 1))}",
+                        st.Spoiled ? Theme.Warn : Theme.InkSoft));
+                    if (st.HandBy.Length > 0)
+                        lines.Add(new Line(st.HandBy.Equals(myName, StringComparison.OrdinalIgnoreCase) ? "You're milking her" : $"Being milked by {st.HandBy}", Theme.RoseDeep));
+                }
+            }
+
+            var emotes = st?.Emotes is { Count: > 0 } e ? string.Join("  ", e) : "/pet  /comfort  /hug";
+            lines.Add(new Line($"Milk her with: {emotes}", Theme.BlueDeep));
+            var buttons = Array.Empty<Btn>();
+            if (near >= 0 && c.Online)
+                buttons = new[] { new Btn($"##tgt{c.Id}", "Target her", "blue", true, "Targets her so your emotes count.") };
+            var clicked = ListRow(Ico("milk"), c.Name, c.Online ? Theme.Ink : Theme.InkSoft, lines, buttons, width,
+                c.Online && st is { Cap: > 0 } s ? s.Milk / s.Cap : -1, Theme.BlueDeep);
+            if (clicked == 0)
+                foreach (var o in Plugin.ObjectTable)
+                    if (o is Dalamud.Game.ClientState.Objects.SubKinds.IPlayerCharacter pc && pc.Name.TextValue.Equals(c.Name, StringComparison.OrdinalIgnoreCase))
+                    {
+                        Plugin.TargetManager.Target = pc;
+                        break;
+                    }
+        }
+
+        Ui.Wrapped("You get 25% of what she's paid, on top of her pay, plus farmer xp.", Theme.InkSoft, width);
     }
 
     // ----- Bull -----

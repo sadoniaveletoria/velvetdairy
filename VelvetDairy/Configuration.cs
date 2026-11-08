@@ -37,6 +37,7 @@ public class FarmSave
     public List<Stall>? Stalls { get; set; }
     public List<Farmhand>? Farmhands { get; set; }
     public List<string>? HandEmotes { get; set; }     // emote commands a farmhand uses to milk you
+    public bool AutoHand { get; set; } = true;        // a farmer of your dairy starts hand milking you just by using one of your emotes
     public float HandRange { get; set; } = 3f;
     public float StallRange { get; set; } = 0.9f;
     public bool DevCanSleep { get; set; }          // developer: let the anti-AFK rules apply to you for testing

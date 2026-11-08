@@ -1148,6 +1148,26 @@ public sealed class DairyGame
             }
         }
 
+        // A farmer of your dairy can start milking you just by targeting you and using one of your milking emotes
+        if (Active == null && F.AutoHand && Networked && ProducesMilk)
+        {
+            foreach (var f in Farmhands.Where(f => !f.IsTest))
+            {
+                var k = Key(f);
+                var seen = Sight(f);
+                var before = lastEmote.GetValueOrDefault(k);
+                lastEmote[k] = seen.Emote;
+                if (!seen.Present || seen.Emote == 0 || seen.Emote == before || seen.Distance > HandRange) continue;
+                if (HandNeedsTarget && !seen.TargetingYou) continue;
+                if (!HandEmoteIds().Contains(seen.Emote)) continue;
+                if (HandProblem(f) != null) continue;
+                if (!StartHand(f)) continue;
+                lastStroke[k] = now;
+                Stroke(f);
+                return;
+            }
+        }
+
         var s = Active;
         if (s?.Kind != SessionKind.Hand || s.Hand!.IsTest) return;
 

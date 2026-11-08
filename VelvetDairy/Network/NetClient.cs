@@ -276,6 +276,8 @@ public sealed class NetClient : IDisposable
             {
                 Milk = (float)Math.Round(F.Cow.Milk, 1), Cap = g.Capacity, Grade = g.CurrentGrade, Spoiled = g.Spoiled,
                 InDairy = g.Where.InDairy, Level = g.Level,
+                Emotes = g.IsCow ? F.HandEmotes!.ToList() : new List<string>(),
+                HandBy = g.Active is { Kind: VelvetDairy.Game.SessionKind.Hand, Hand: { IsTest: false } h } ? h.Name : "",
             },
         };
         Call<HeartbeatReply>("POST", "/v1/heartbeat", body, r =>

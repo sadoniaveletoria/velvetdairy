@@ -258,10 +258,10 @@ public sealed partial class MainWindow
                 break;
             case 2:
                 Panel("##stalls", top, new Vector2(mid - 7, max.Y), "Stalls", DrawStalls);
-                Panel("##stallside", new Vector2(mid + 7, top.Y), max, G.IsOwner ? "Stall upgrades" : "Milking emotes", w =>
+                Panel("##stallside", new Vector2(mid + 7, top.Y), max, G.IsOwner ? "Stall upgrades" : "Hand milking", w =>
                 {
                     if (G.IsOwner) DrawStallUpgrades(w);
-                    if (G.IsCow || G.IsFarmer) DrawEmotes(w);
+                    else Ui.Wrapped("Cows: your milking emotes are on Roles > Cow. Farmers: the dairy's cows and the emotes that milk them are on Roles > Farmer.", Theme.InkSoft, w);
                 }, true);
                 break;
             default:

@@ -55,7 +55,8 @@ public sealed class GuideWindow : Window
         new("Getting milked", new[]
         {
             "Stalls: sit on one of your dairy's stalls (on the seat itself, not next to it) and the milking machine empties your bottles. Better stall tiers get more milk out.",
-            "Hand milking: a farmer of your dairy stands close, targets you and uses a milking emote. It gets more out than a basic stall and pays the farmer a share on top of your pay.",
+            "Hand milking: a farmer of your dairy stands within 3 yalms, targets you and uses one of your milking emotes (by default /pet, /comfort or /hug; change them on Roles > Cow). The first emote starts it, and every emote is a stroke. It gets more out than a basic stall and pays the farmer a share on top of your pay. You can turn off 'Farmers can start milking me without asking' on Roles > Cow and start it yourself instead.",
+            "Farmers: Roles > Farmer > Hand milk a cow lists your dairy's cows, how close they are, how full, and which emotes milk each of them.",
             "You're paid the moment you're milked: per ounce, by your grade, plus 2% for each dairy level and your looks bonus (Creamery > Your pay).",
         }),
         new("Grades and pay", new[]

@@ -258,6 +258,8 @@ public sealed class MemberStatus
     public bool Spoiled { get; set; }
     public bool InDairy { get; set; }
     public int Level { get; set; }
+    public List<string> Emotes { get; set; } = new();   // the emotes this cow's farmers milk her with
+    public string HandBy { get; set; } = "";            // the farmer milking her right now, if any
 }
 
 public sealed class StallInfo
