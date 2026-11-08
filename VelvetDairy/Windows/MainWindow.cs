@@ -33,9 +33,9 @@ public sealed partial class MainWindow : Window
     private FarmSave F => plugin.Config.Farm;
     private DairyGame G => plugin.Game;
 
-    public const int TabBarn = 0, TabPantry = 1, TabShop = 2, TabCreamery = 3, TabDairy = 4, TabDairies = 5, TabProgress = 6, TabSettings = 7;
+    public const int TabBarn = 0, TabPantry = 1, TabShop = 2, TabCreamery = 3, TabDairy = 4, TabDairies = 5, TabRoles = 6, TabProgress = 7, TabSettings = 8;
 
-    private static readonly string[] Tabs = { "Barn", "Pantry", "Shop", "Creamery", "Dairy", "Dairies", "Progress", "Settings" };
+    private static readonly string[] Tabs = { "Barn", "Pantry", "Shop", "Creamery", "Dairy", "Dairies", "Roles", "Progress", "Settings" };
     private int tab;
     private bool ticked18;
     private string dairyName = "";
@@ -195,6 +195,7 @@ public sealed partial class MainWindow : Window
                 case TabCreamery: DrawCreamery(bodyMin, bodyMax); break;
                 case TabDairy: DrawDairy(bodyMin, bodyMax); break;
                 case TabDairies: DrawNetwork(bodyMin, bodyMax); break;
+                case TabRoles: DrawRoles(bodyMin, bodyMax); break;
                 case TabProgress: DrawProgress(bodyMin, bodyMax); break;
                 default: DrawSettings(bodyMin, bodyMax); break;
             }
@@ -710,7 +711,6 @@ public sealed partial class MainWindow : Window
         }
 
         ImGui.SetCursorScreenPos(new Vector2(p.X, y + 2));
-        QualityBar(width);
         var notes = new List<(string, Vector4)>();
         var where = G.Where;
         if (G.Paused) notes.Add(("The game is paused (Developer settings).", Theme.InkSoft));
@@ -1389,7 +1389,7 @@ public sealed partial class MainWindow : Window
     private void DrawProgress(Vector2 min, Vector2 max)
     {
         var third = (max.X - min.X - 28) / 3;
-        Panel("##level", min, new Vector2(min.X + third, max.Y), "Cow level", DrawLevel);
+        Panel("##level", min, new Vector2(min.X + third, max.Y), "Your levels", DrawLevelsSummary);
         Panel("##daily", new Vector2(min.X + third + 14, min.Y), new Vector2(min.X + third * 2 + 14, max.Y), "Today", DrawDaily, true);
         Panel("##awards", new Vector2(max.X - third, min.Y), max, "Awards", DrawAwards);
     }
@@ -1406,11 +1406,10 @@ public sealed partial class MainWindow : Window
         Ui.Wrapped(about, Theme.InkSoft, width);
     }
 
-    private void DrawLevel(float width)
+    private void DrawCowLevel(float width)
     {
         var dl = ImGui.GetWindowDrawList();
         var (lvl, into, need) = Leveling.FromXp(F.Xp);
-        // Cow level first (the main one), then farmer and bull
         var p = ImGui.GetCursorScreenPos();
         Ui.Seal(dl, p + new Vector2(44, 44), 42, $"{lvl}", Theme.RoseDeep);
         Ui.Text(dl, fonts.Heading, Leveling.Rank(lvl), p + new Vector2(100, 14), Theme.Ink);
@@ -1420,12 +1419,6 @@ public sealed partial class MainWindow : Window
         ImGui.Dummy(new Vector2(width, 96));
         var nextRank = Leveling.NextRank(lvl);
         if (nextRank != null) ImGui.TextColored(Theme.InkSoft, $"Next rank: {nextRank}");
-
-        DrawRoleLevel("Farmer level", F.FarmerXp, Theme.SageDeep, $"Hand milking pay, jugs, deliveries and contracts. Unlocks bigger farmer tanks ({G.FarmerTankName}, {G.MaxCarry} oz now).", width);
-        DrawRoleLevel("Bull level", F.BullXp, Theme.HoneyDeep, "Bulls are a role only for now. More is coming in new updates.", width);
-
-        SubHeading("Milk quality", width);
-        QualityBar(width);
 
         SubHeading("Coming up", width);
         var shown = 0;
@@ -1441,9 +1434,18 @@ public sealed partial class MainWindow : Window
 
         if (shown == 0) ImGui.TextColored(Theme.InkSoft, "Everything is unlocked.");
 
-        SubHeading("How to earn xp", width);
-        Ui.Wrapped("Cow: +1 xp for every 0.1 oz of milk you make, a bonus when you're emptied (stall or hand), daily goals and care. " +
-                   "Farmer: hand milking pay, filling jugs, deliveries and contracts. Each role keeps its own level.", Theme.InkSoft, width);
+        SubHeading("How to earn cow xp", width);
+        Ui.Wrapped("+1 xp for every 0.1 oz of milk you make (more at better grades), a bonus when you're emptied at a stall or by hand, daily goals and care.", Theme.InkSoft, width);
+    }
+
+    /// <summary>Progress tab: every role's level at a glance (details on the Roles tab), plus totals.</summary>
+    private void DrawLevelsSummary(float width)
+    {
+        DrawRoleLevel("Cow level", F.Xp, Theme.RoseDeep, Leveling.Rank(G.Level), width);
+        DrawRoleLevel("Farmer level", F.FarmerXp, Theme.SageDeep, $"{G.FarmerTankName} · carries {G.MaxCarry} oz", width);
+        DrawRoleLevel("Bull level", F.BullXp, Theme.HoneyDeep, "More is coming in new updates.", width);
+        Gap(4);
+        if (ImGui.SmallButton("Details on the Roles tab##toroles")) tab = TabRoles;
 
         SubHeading("Totals", width);
         var st = F.Stats;
