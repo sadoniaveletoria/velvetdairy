@@ -657,7 +657,7 @@ public sealed partial class MainWindow : Window
         if (!milking && ImGui.IsMouseHoveringRect(new Vector2(cx - ls.X / 2, y), new Vector2(cx + ls.X / 2, y + ls.Y)))
         {
             var tip = "Milk speed\n" + string.Join("\n", G.RateParts().Select(r => $"  {r.Name}: x{r.Multiplier:0.00}"));
-            tip += "\nFed, Watered, Comfy and Happy each add a bonus for 30 minutes; all four make you Contented. Level, treats and resting add more.";
+            tip += "\nFed, Watered, Comfy and Happy each add a bonus while their bar lasts; all four make you Contented. Level, treats and resting add more.";
             ImGui.SetTooltip(tip);
         }
 
@@ -711,7 +711,7 @@ public sealed partial class MainWindow : Window
         {
             ("hay", "Fed", cow.Hunger, cow.FedBonus, Theme.HoneyDeep, "Eat feed from your pantry. Better food gives a bigger bonus (hay +4% up to Golden mash +15%)."),
             ("water", "Watered", cow.Thirst, cow.WaterBonus, Theme.BlueDeep, "Drink at the trough (free, +4%) or have a Mineral block (+8%)."),
-            ("cushion", "Comfy", cow.Comfort, cow.ComfortBonus, Theme.RoseDeep, "Rest on furniture in your dairy. Bedding upgrades make it bigger and last longer."),
+            ("cushion", "Comfy", cow.Comfort, cow.ComfortBonus, Theme.RoseDeep, "Sit on furniture in your dairy and press Rest. Bedding upgrades make it bigger and last longer."),
             ("clover", "Happy", cow.Mood, cow.HappyBonus, Theme.SageDeep, "Have a treat: clover, salt lick, cream clover or a quality treat."),
         };
 
@@ -742,7 +742,7 @@ public sealed partial class MainWindow : Window
 
         if (cow.Taint > 0)
             notes.Add(("Your milk tastes off after the dump (one grade lower). Care tasks, milkings and creamery deliveries wear it off.", Theme.RoseDeep));
-        if (notes.Count == 0) notes.Add((G.Contented ? "Contented! Every bonus is going." : "Bonuses last 30 minutes of play and wait while you're asleep or away. Running out never hurts.", Theme.SageDeep));
+        if (notes.Count == 0) notes.Add((G.Contented ? "Contented! Every bonus is going." : "Each use adds 30 minutes to a bar (up to an hour), then it drains as the bonus wears off. Bars wait while you're asleep or away, and running out never hurts.", Theme.SageDeep));
         foreach (var (t, c) in notes) Ui.Wrapped(t, c, width);
     }
 
@@ -756,15 +756,16 @@ public sealed partial class MainWindow : Window
         }
 
         var ok = problem == null;
-        var wcd = G.WaterCooldown;
-        if (Row("##drink", "water", "Drink", wcd > 0 ? $"Ready in {wcd:0}s" : $"Free · Watered +{Catalog.TroughBonus * 100:0}%", "Drink", "blue",
-                ok && wcd <= 0, problem, width))
+        var wcd = G.DrinkWait;
+        if (Row("##drink", "water", "Drink", wcd > TimeSpan.Zero ? $"Ready in {DairyGame.Wait(wcd)}" : $"Free · Watered +{Catalog.TroughBonus * 100:0}%, +30m", "Drink", "blue",
+                ok && wcd <= TimeSpan.Zero, problem, width))
             G.Drink();
 
-        var scd = G.StretchCooldown;
-        if (Row("##stretch", "cushion", "Stretch", scd > 0 ? $"Ready in {Mins(TimeSpan.FromSeconds(scd))}" : "Free · Comfy for 30m", "Stretch", "rose",
-                ok && scd <= 0, problem, width))
-            G.Stretch();
+        var rcd = G.RestWait;
+        var restProblem = G.RestProblem();
+        if (Row("##rest", "cushion", "Rest", rcd > TimeSpan.Zero ? $"Ready in {DairyGame.Wait(rcd)}" : restProblem != null && ok ? "Sit on furniture first" : $"Free · Comfy +{G.ComfyNow * 100:0}%, +30m", "Rest", "rose",
+                restProblem == null && rcd <= TimeSpan.Zero, restProblem, width))
+            G.Rest();
 
         var shown = 0;
         foreach (var item in Catalog.Feed)
@@ -773,9 +774,13 @@ public sealed partial class MainWindow : Window
             var have = G.Count(item.Id);
             if (have <= 0 && !F.CareShowEmpty) continue;   // only what's in your pantry
             shown++;
-            var wait = item.Quality > 0 ? G.QualityTreatWait : TimeSpan.Zero;
+            var wait = item.HoldDays > 0 ? TimeSpan.Zero : G.FeedWait(item);
+            var qwait = item.Quality > 0 ? G.QualityTreatWait : TimeSpan.Zero;
+            var qualityHeld = qwait > wait;
+            if (qualityHeld) wait = qwait;
             var waiting = wait > TimeSpan.Zero;
-            var tip = problem ?? (have <= 0 ? "Buy more in the Shop." : waiting ? $"Quality treats share a {Grades.QualityTreatHours:0}-hour cooldown." : item.Desc);
+            var tip = problem ?? (have <= 0 ? "Buy more in the Shop." : qualityHeld ? $"Quality treats share a {Grades.QualityTreatHours:0}-hour cooldown." :
+                waiting ? $"Eating, drinking, resting and treats each wait {Catalog.NeedCooldownMinutes:0} minutes between uses." : item.Desc);
             var sub = waiting ? $"{have} left · ready in {DairyGame.Wait(wait)}" : $"{have} left · {Effects(item)}";
             if (Row($"##feed{item.Id}", item.Icon, item.Name, sub, "Eat", "honey", ok && have > 0 && !waiting, tip, width))
                 G.UseFeed(item.Id);
@@ -826,6 +831,7 @@ public sealed partial class MainWindow : Window
         if (f.Fed != 0) parts.Add($"Fed +{f.Fed * 100:0}%");
         if (f.Water != 0) parts.Add($"Watered +{f.Water * 100:0}%");
         if (f.Happy != 0) parts.Add($"Happy +{f.Happy * 100:0}%");
+        if (f.Fed != 0 || f.Water != 0 || f.Happy != 0) parts.Add("+30m");
         if (f.BoostMinutes != 0) parts.Add($"boost {f.BoostMinutes}m");
         if (f.HoldDays != 0) parts.Add($"no grade slip for {f.HoldDays} days");
         if (f.Quality != 0) parts.Add($"+{f.Quality:0} milk quality");

@@ -39,9 +39,9 @@ public sealed class GuideWindow : Window
         }),
         new("Your cow", new[]
         {
-            "Cows have four bonuses: Fed (eat food), Watered (drink), Comfy (rest on furniture in your dairy) and Happy (have a treat). Each one makes milk come faster for 30 minutes, and better food and treats give bigger bonuses. All four at once makes you Contented, +10% more.",
+            "Cows have four bonuses: Fed (eat food), Watered (drink), Comfy (rest on furniture in your dairy) and Happy (have a treat). Each use fills half its bar (30 minutes, up to a full hour), then the bar drains as the bonus wears off. Eating, drinking, resting and treats each have a 15-minute cooldown. Using one again adds time, not a bigger bonus; better food and treats give bigger bonuses. All four at once makes you Contented, +10% more.",
             "Bonuses only count down while you're awake and playing; they wait while you're asleep or logged out. When one runs out you're just plain: it never slows you down or lowers your grade. The newest food or treat of a kind replaces the last.",
-            "Care happens inside your dairy (Barn tab): Drink and Stretch are free; feed comes from your Pantry.",
+            "Care happens inside your dairy (Barn tab): Drink and Rest (sitting on furniture) are free; feed comes from your Pantry.",
             "Pantry tab: everything you own. Eat it, sell back what you don't need for half price, or hide it from your lists.",
             "Shop tab: Feed & treats (everyday feed, quality treats), Upgrades (comfort, care and things to wear) and Bottles. Cow levels unlock new feed and cow upgrades all the way to level 30: faster stall and hand milking, deeper rest, longer before you tire or spoil, faster quality, and wearables that raise your pay.",
             "Quality treats (cream biscuit, golden alfalfa, star clover) raise your milk quality toward the next grade and make milk come 30% faster for 30 minutes. You can have one every hour.",

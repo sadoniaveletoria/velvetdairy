@@ -17,12 +17,12 @@ The first time you open Velvet Dairy, a short walkthrough explains the game and 
 - **Shopping, the creamery and goals work anywhere.**
 
 ## Your needs (bonuses)
-Fed, Watered, Comfy and Happy are **30-minute milk bonuses**. They count down only while you're awake and playing (they wait while you're asleep, dozing or logged out). Running out just makes you plain: no penalty, and needs never touch your grade.
+Fed, Watered, Comfy and Happy are **milk bonuses with a bar**. Each use adds half a bar (30 minutes, up to a full hour) and has a **15-minute cooldown**; using one again adds time, not a bigger bonus. The bar drains as the bonus wears off, only while you're awake and playing (they wait while you're asleep, dozing or logged out). Running out just makes you plain: no penalty, and needs never touch your grade.
 - **Fed**: eat food. Meadow hay +4%, Sweet grain +7%, Honey oats +9%, Velvet blend +12%, Golden mash +15% (Golden alfalfa +6%).
-- **Watered**: the trough (free) +4%, Mineral block +8%. Clean trough makes it last 1.5×.
-- **Comfy**: rest on furniture in your dairy; it stays full while you sit and lasts 30 min after you get up. +4%, Plush bedding +7% and twice as long, Lavender bedding +3% more. Stretch (free, every 5 min) refreshes it.
+- **Watered**: the trough (free) +4%, Mineral block +8%. Clean trough makes it drain 1.5× slower.
+- **Comfy**: sit on furniture in your dairy and press **Rest** (free). +4%, Plush bedding +7% and drains half as fast, Lavender bedding +3% more.
 - **Happy**: treats. Salt lick +4%, Cream biscuit +4%, Fresh clover +5%, Cream clover +8%, Star clover +10%. Bell collar and Lavender bedding make it last longer.
-- The newest food or treat of a kind replaces the last (a plain snack won't replace a better bonus that's more than half left).
+- The newest food or treat of a kind sets the bonus.
 - **Dry-off tonic** (150 coins): stops your grade slipping for 7 days while you're away. Usable anywhere.
 
 ## Milk
@@ -140,7 +140,7 @@ The save-signing key comes from the `VELVET_INTEGRITY_KEY` repository secret; lo
 1. Settings: tick 18+ and open the barn.
 2. Go into a house. **Dairy** tab → name it → **Register here**. The header chip turns green.
 3. Sit on a chair or bed → **Add the seat I'm on**. Stand up, sit again: milking starts by itself. Stand up to stop.
-4. Barn tab: try **Drink**, **Stretch** and **Eat**. Leave the house: they lock and say why.
+4. Barn tab: try **Drink**, **Rest** (while sitting) and **Eat**. Leave the house: they lock and say why.
 5. Settings → Developer → **Add test farmhand**. Barn tab → **Test**. It milks you every 2.5 s.
 6. Creamery tab: sell a bottle and deliver an order. Shop: buy hay.
 7. Settings → Developer (dev builds only): **Fill me up**, **+500 coins** and **Reset needs** speed things up. **Spoil my milk now** and **Spoils in 1 minute** test spoiling. **What the plugin sees** shows the house, seat, stall and your emote.

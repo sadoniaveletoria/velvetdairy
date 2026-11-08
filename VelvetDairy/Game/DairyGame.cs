@@ -650,22 +650,16 @@ public sealed class DairyGame
         var m = seconds / 60f;
         if (Cow.Milk > Capacity) Cow.Milk = Capacity;
         var fullBefore = FullBottles;
-        var resting = Where.InDairy && Where.Seated;
         var cushion = Owned("cushion") > 0;
 
-        // Need bonuses run for 30 minutes of awake play; asleep, dozing or logged out they wait
+        // Need bars drain as the bonus wears off, only while you're awake; asleep, dozing or logged out they wait
         if (Wake == Wakefulness.Awake)
         {
             var step = 100f / Catalog.NeedMinutes * m;
             Cow.Hunger = Clamp(Cow.Hunger - step);
             Cow.Thirst = Clamp(Cow.Thirst - step / (Owned("trough") > 0 ? 1.5f : 1f));
             Cow.Mood = Clamp(Cow.Mood - step / ((Owned("lavender") > 0 ? 2f : 1f) * (Owned("bell") > 0 ? 1.2f : 1f)));
-            if (resting)
-            {
-                Cow.Comfort = 100f;
-                Cow.ComfortBonus = ComfyNow;
-            }
-            else Cow.Comfort = Clamp(Cow.Comfort - step / (cushion ? 2f : 1f));
+            Cow.Comfort = Clamp(Cow.Comfort - step / (cushion ? 2f : 1f));
         }
 
         if (!Overfull && Active == null && ProducesMilk)
@@ -694,8 +688,6 @@ public sealed class DairyGame
     // Care (dairy only)
     // =================================================================
 
-    private double waterReady;
-    private double stretchReady;
 
     public string? CareProblem()
     {
@@ -716,15 +708,13 @@ public sealed class DairyGame
 
         if (item.Quality > 0 && QualityTreatWait > TimeSpan.Zero)
             return Fail($"You can have another quality treat in {Wait(QualityTreatWait)}.");
-        // Don't let a plain snack wipe out a better bonus that's still going
-        bool Worse(float give, float have, float left) => give > 0 && left > 50 && have > give;
-        if (item.Quality <= 0 && item.HoldDays <= 0 &&
-            (Worse(item.Fed, Cow.FedBonus, Cow.Hunger) || Worse(item.Water, Cow.WaterBonus, Cow.Thirst) || Worse(item.Happy, Cow.HappyBonus, Cow.Mood)))
-            return Fail("You're still enjoying something better. Have it when that wears off.");
+        var wait = FeedWait(item);
+        if (wait > TimeSpan.Zero) return Fail($"You can have that in {Wait(wait)}.");
         F.Pantry[id] = Count(id) - 1;
-        if (item.Fed > 0) { Cow.Hunger = 100; Cow.FedBonus = item.Fed; }
-        if (item.Water > 0) { Cow.Thirst = 100; Cow.WaterBonus = item.Water; }
-        if (item.Happy > 0) { Cow.Mood = 100; Cow.HappyBonus = item.Happy; }
+        var cd = DateTime.UtcNow.AddMinutes(Catalog.NeedCooldownMinutes);
+        if (item.Fed > 0) { Cow.Hunger = Fill(Cow.Hunger); Cow.FedBonus = item.Fed; Cow.FedReadyUtc = cd; }
+        if (item.Water > 0) { Cow.Thirst = Fill(Cow.Thirst); Cow.WaterBonus = item.Water; Cow.WaterReadyUtc = cd; }
+        if (item.Happy > 0) { Cow.Mood = Fill(Cow.Mood); Cow.HappyBonus = item.Happy; Cow.HappyReadyUtc = cd; }
         if (item.HoldDays > 0)
         {
             var from = Cow.FreshHoldUntilUtc > DateTime.UtcNow ? Cow.FreshHoldUntilUtc : DateTime.UtcNow;
@@ -757,31 +747,55 @@ public sealed class DairyGame
 
     public static string Wait(TimeSpan t) => t.TotalHours >= 1 ? $"{(int)t.TotalHours}h {t.Minutes}m" : t.TotalMinutes >= 1 ? $"{t.Minutes}m" : $"{Math.Max(1, t.Seconds)}s";
 
-    public double WaterCooldown => Math.Max(0, waterReady - now);
-    public double StretchCooldown => Math.Max(0, stretchReady - now);
+    private static TimeSpan Left(DateTime ready) => ready > DateTime.UtcNow ? ready - DateTime.UtcNow : TimeSpan.Zero;
+    public TimeSpan EatWait => Left(Cow.FedReadyUtc);
+    public TimeSpan DrinkWait => Left(Cow.WaterReadyUtc);
+    public TimeSpan RestWait => Left(Cow.ComfyReadyUtc);
+    public TimeSpan TreatWait => Left(Cow.HappyReadyUtc);
+
+    /// <summary>How long until this food or treat can be had again (the longest of the cooldowns it uses).</summary>
+    public TimeSpan FeedWait(FeedItem item)
+    {
+        var w = TimeSpan.Zero;
+        if (item.Fed > 0 && EatWait > w) w = EatWait;
+        if (item.Water > 0 && DrinkWait > w) w = DrinkWait;
+        if (item.Happy > 0 && TreatWait > w) w = TreatWait;
+        return w;
+    }
+
+    /// <summary>Each use adds half a bar (30 minutes), up to full.</summary>
+    private static float Fill(float bar) => Math.Min(100f, bar + Catalog.NeedFill);
 
     public bool Drink()
     {
         var p = CareProblem();
         if (p != null) return Fail(p);
-        if (WaterCooldown > 0) return Fail("Give it a moment.");
-        if (Cow.Thirst >= 95 && Cow.WaterBonus >= Catalog.TroughBonus) return Fail("You're not thirsty.");
-        Cow.Thirst = 100;
-        if (Cow.WaterBonus <= Catalog.TroughBonus || Cow.Thirst <= 0) Cow.WaterBonus = Catalog.TroughBonus;
-        waterReady = now + 20;
+        if (DrinkWait > TimeSpan.Zero) return Fail($"You can drink again in {Wait(DrinkWait)}.");
+        Cow.Thirst = Fill(Cow.Thirst);
+        Cow.WaterBonus = Catalog.TroughBonus;
+        Cow.WaterReadyUtc = DateTime.UtcNow.AddMinutes(Catalog.NeedCooldownMinutes);
         CareDone("You drink from the trough.");
         return true;
     }
 
-    public bool Stretch()
+    /// <summary>Settle in on furniture in your dairy for the Comfy bonus.</summary>
+    public string? RestProblem()
     {
         var p = CareProblem();
+        if (p != null) return p;
+        if (!Where.Seated) return "Sit on a chair, bench or bed in your dairy first.";
+        return null;
+    }
+
+    public bool Rest()
+    {
+        var p = RestProblem();
         if (p != null) return Fail(p);
-        if (StretchCooldown > 0) return Fail("You stretched a moment ago.");
-        Cow.Comfort = 100;
-        if (Cow.ComfortBonus <= 0) Cow.ComfortBonus = ComfyNow;
-        stretchReady = now + 300;
-        CareDone("You stretch out and shake off the stiffness.");
+        if (RestWait > TimeSpan.Zero) return Fail($"You can rest again in {Wait(RestWait)}.");
+        Cow.Comfort = Fill(Cow.Comfort);
+        Cow.ComfortBonus = ComfyNow;
+        Cow.ComfyReadyUtc = DateTime.UtcNow.AddMinutes(Catalog.NeedCooldownMinutes);
+        CareDone("You settle in and get comfy.");
         return true;
     }
 

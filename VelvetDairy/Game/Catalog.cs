@@ -98,8 +98,9 @@ public sealed record Upgrade(string Id, string Name, string Icon, int[] Prices, 
 
 public static class Catalog
 {
-    // Each need is a 30-minute milk bonus. Food sets Fed, the trough or a mineral block sets Watered, resting sets Comfy,
-    // treats set Happy. The newest one of a kind replaces the last. All four at once: Contented on top.
+    // Each need is a milk bonus. Each use adds 30 minutes (half the bar, up to an hour) and has a 15-minute cooldown.
+    // Food sets Fed, the trough or a mineral block sets Watered, resting sets Comfy, treats set Happy.
+    // Using one again adds time, not more bonus; the newest one of a kind sets the bonus. All four at once: Contented on top.
     public static readonly IReadOnlyList<FeedItem> Feed = new[]
     {
         new FeedItem("hay", "Meadow hay", "hay", 4, 1, "Plain and filling.", Fed: 0.04f),
@@ -184,7 +185,9 @@ public static class Catalog
     public const float RestBonus = 0.5f;        // resting in your dairy
 
     // ----- Need bonuses -----
-    public const float NeedMinutes = 30f;       // how long a need bonus lasts (awake play only)
+    public const float NeedMinutes = 60f;       // a full need bar (awake play only)
+    public const float NeedFill = 50f;          // each use adds half a bar: 30 minutes
+    public const double NeedCooldownMinutes = 15; // eat, drink, rest and treat each wait this long between uses
     public const float TroughBonus = 0.04f;     // Watered from the trough
     public const float ComfyBonus = 0.04f;      // Comfy from resting (Plush bedding 0.07, + Lavender bedding 0.03)
     public const float ComfyCushion = 0.07f;

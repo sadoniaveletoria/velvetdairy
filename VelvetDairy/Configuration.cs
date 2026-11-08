@@ -182,7 +182,7 @@ public class Farmhand
 [Serializable]
 public class CowState
 {
-    // Needs are 30-minute bonuses: 100 = a fresh bonus, 0 = plain (no bonus, never a penalty).
+    // Need bars: 100 = an hour of bonus left, 0 = plain (no bonus, never a penalty). Each use adds half a bar.
     // They only tick down while you're awake and logged in.
     public float Hunger { get; set; }    // Fed
     public float Thirst { get; set; }    // Watered
@@ -193,6 +193,10 @@ public class CowState
     public float WaterBonus { get; set; }
     public float ComfortBonus { get; set; }
     public float HappyBonus { get; set; }
+    public DateTime FedReadyUtc { get; set; } = DateTime.MinValue;     // 15-minute cooldowns: eat, drink, rest, treat
+    public DateTime WaterReadyUtc { get; set; } = DateTime.MinValue;
+    public DateTime ComfyReadyUtc { get; set; } = DateTime.MinValue;
+    public DateTime HappyReadyUtc { get; set; } = DateTime.MinValue;
     public DateTime? LastMilkedUtc { get; set; }        // freshness: grade slips if you go days without being milked
     public DateTime FreshHoldUntilUtc { get; set; } = DateTime.MinValue;   // Dry-off tonic: no slipping until then
     public float Milk { get; set; } = 3;       // oz waiting to be milked (across all your bottles)
