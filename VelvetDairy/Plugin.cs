@@ -35,6 +35,8 @@ public sealed class Plugin : IDalamudPlugin
     public NetClient Net { get; }
     public OwnerHudWindow OwnerHud { get; }
     public MembersWindow Members { get; }
+    public GuideWindow Guide { get; }
+    public TutorialWindow Tutorial { get; }
 
     /// <summary>This build's version, sent to the network so old versions can be told to update.</summary>
     public static string Version { get; } = typeof(Plugin).Assembly.GetName().Version?.ToString() ?? "0";
@@ -79,6 +81,10 @@ public sealed class Plugin : IDalamudPlugin
         windowSystem.AddWindow(OwnerHud);
         Members = new MembersWindow(this, fonts);
         windowSystem.AddWindow(Members);
+        Guide = new GuideWindow(this, fonts);
+        windowSystem.AddWindow(Guide);
+        Tutorial = new TutorialWindow(this, fonts);
+        windowSystem.AddWindow(Tutorial);
         contextMenu = new ContextMenuHandler(this);
 
         switch (integrity)
@@ -95,7 +101,7 @@ public sealed class Plugin : IDalamudPlugin
 
         CommandManager.AddHandler(Command, new CommandInfo(OnCommand)
         {
-            HelpMessage = "Open Velvet Dairy. \"/vdairy hud\" shows or hides the milk bottle HUD.",
+            HelpMessage = "Open Velvet Dairy. \"/vdairy hud\" shows or hides the HUD, \"/vdairy guide\" opens How to play, \"/vdairy tutorial\" runs the walkthrough.",
         });
 
         PluginInterface.UiBuilder.Draw += windowSystem.Draw;
@@ -114,6 +120,7 @@ public sealed class Plugin : IDalamudPlugin
         Game.Update(dt);
         Sounds.Update();
         Net.Update();
+        Tutorial.CheckFirstRun();
 
         // Needs and milk change every second; write them out now and then
         saveTimer += dt;
@@ -168,7 +175,11 @@ public sealed class Plugin : IDalamudPlugin
     private void OnCommand(string command, string args)
     {
         var a = args.Trim();
-        if (a.Equals("hud", StringComparison.OrdinalIgnoreCase))
+        if (a.Equals("guide", StringComparison.OrdinalIgnoreCase) || a.Equals("help", StringComparison.OrdinalIgnoreCase))
+            Guide.Open();
+        else if (a.Equals("tutorial", StringComparison.OrdinalIgnoreCase))
+            Tutorial.Start();
+        else if (a.Equals("hud", StringComparison.OrdinalIgnoreCase))
         {
             Config.Farm.ShowHud = !Config.Farm.ShowHud;
             SaveConfig();

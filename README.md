@@ -4,6 +4,10 @@ You play the cow. Keep yourself fed and comfortable inside your dairy, get milke
 
 This is a fresh rebuild. It uses a new save section, so the old prototype's herd and settings are ignored.
 
+## New here?
+
+The first time you open Velvet Dairy, a short walkthrough explains the game and lets you pick a path: join a dairy, or start your own (it walks owners through choosing a role, naming the dairy, marking out its area, the first stall and inviting people). The full **How to play** guide is the **?** in the main window, or `/vdairy guide`. `/vdairy tutorial` runs the walkthrough again.
+
 ## The rules
 - **Your dairy is a house.** Register it from inside (yours, your FC's or a friend's). You can limit it to part of the house with the range slider.
 - **Care only works inside your dairy.** Eating, drinking and stretching are locked anywhere else. The Barn tab and the HUD tell you why.

@@ -86,7 +86,8 @@ public class FarmSave
     public string VisitDay { get; set; } = "";
     public float DayAwakeMinutes { get; set; }
     public int DayStall { get; set; }                 // stall milkings today (daily goal for cows)
-    public bool StockPaidOut { get; set; }            // old sellable milk was paid out when milk started paying at milking time        // minutes of milk-making today (tired after 12 h)        // bonus orders at other dairies, per day
+    public bool StockPaidOut { get; set; }
+    public bool TutorialDone { get; set; }             // the first-run walkthrough was shown            // old sellable milk was paid out when milk started paying at milking time        // minutes of milk-making today (tired after 12 h)        // bonus orders at other dairies, per day
     public List<string>? VisitOrdersDone { get; set; }
 
     // ----- Save protection -----
@@ -124,7 +125,7 @@ public class NetMember
     public bool IsOwner { get; set; }
     public string HouseId { get; set; } = "";
     public int Level { get; set; } = 1;
-    public DairyArea? Area { get; set; }             // the dairy's box (null for older house-only dairies)
+    public VelvetDairy.Game.DairyArea? Area { get; set; }   // the dairy's box (null for older house-only dairies)
 }
 
 [Serializable]

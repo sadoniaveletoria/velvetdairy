@@ -255,6 +255,16 @@ public sealed partial class MainWindow : Window
             Ui.Text(dl, fonts.Small, online, new Vector2(ox, o.Y + 27), Theme.SageDeep);
         }
 
+        // "?" opens How to play
+        var qc = new Vector2(right - cw - 40 - (G.Net.Last != null ? Ui.Measure(fonts.Small, $"{G.Net.Last.Online:N0} online").X + 34 : 0) - 14, o.Y + 35);
+        ImGui.SetCursorScreenPos(qc - new Vector2(13, 13));
+        if (ImGui.InvisibleButton("##guidebtn", new Vector2(26, 26))) plugin.Guide.Open();
+        var qh = ImGui.IsItemHovered();
+        if (qh) ImGui.SetTooltip("How to play (/vdairy guide)");
+        dl.AddCircleFilled(qc, 12f, Ui.U(qh ? Theme.Rose : Theme.Paper));
+        dl.AddCircle(qc, 12f, Ui.U(Theme.RoseDeep, 0.6f), 0, 1.5f);
+        Ui.Text(dl, fonts.Small, "?", qc, Theme.RoseDeep, 0.5f, 0.5f);
+
         return h;
     }
 
@@ -512,7 +522,7 @@ public sealed partial class MainWindow : Window
         Panel("##gate", pmin, pmin + new Vector2(w, h), "Adults only", width =>
         {
             Ui.Wrapped("Velvet Dairy is an adult roleplay game. You play the cow: keep yourself fed and comfortable inside your dairy, " +
-                       "get milked in your stalls or by a farmhand you trust, and sell what you make to the creamery.", Theme.Ink, width);
+                       "get milked in your dairy's stalls or by a farmer you trust, and get paid for every ounce.", Theme.Ink, width);
             Gap(10);
             Ui.Wrapped("Everything happens in this window and your own chat log. Nothing is ever said in public chat, and nothing moves your character for you.", Theme.InkSoft, width);
             Gap(14);
