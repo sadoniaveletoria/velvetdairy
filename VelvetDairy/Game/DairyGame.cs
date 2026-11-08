@@ -931,6 +931,8 @@ public sealed class DairyGame
         var p = HandProblem(fh);
         if (p != null) return Fail(p);
         Begin(SessionKind.Hand, null, fh);
+        // Tell the server now, so the farmer's plugin sees the milking has started
+        if (Networked) Net.Poke();
         nextTestStroke = now + 1.5;
         var emotes = string.Join(", ", F.HandEmotes!);
         Say(fh.IsTest
@@ -1200,6 +1202,7 @@ public sealed class DairyGame
         EndMilkMod();
     }
     private double milkingSince, milkingEndsAt, nextMilkingCheck;
+    private bool sawMilking;   // the cow's plugin has reported that you're milking them
 
     /// <summary>
     /// Milk button: does the emote for you, then ends it on its own once the cow should be empty
@@ -1231,8 +1234,10 @@ public sealed class DairyGame
         milkingCow = cowName;
         milkingEmote = 0;   // read back from your character once the loop starts (the game's id can differ from the command's)
         milkingSince = now + delay;
-        // A little extra so they're really empty (Udder balm only makes it faster)
-        milkingEndsAt = now + Math.Clamp(cowMilk / Catalog.HandSpeed, 5, 3600) + 3;
+        // Only a safety net: the real end comes from the cow's plugin. Their milk keeps growing and the figure here
+        // can be a minute old, so leave plenty of room (Udder balm only makes it faster)
+        milkingEndsAt = now + delay + Math.Clamp(cowMilk / Catalog.HandSpeed * 1.5 + 60, 120, 3600);
+        sawMilking = false;
         nextMilkingCheck = now + 5;
         return true;
     }
@@ -1284,8 +1289,11 @@ public sealed class DairyGame
             Net.RefreshMine();
             var st = Net.Mine?.Members.FirstOrDefault(m => m.Name.Equals(milkingCow, StringComparison.OrdinalIgnoreCase))?.Status;
             var myName = me.Name.TextValue;
-            // Their plugin reports right away when a hand milking ends
-            if (st != null && now - milkingSince > 15 && (st.Milk < 0.1f || !st.HandBy.Equals(myName, StringComparison.OrdinalIgnoreCase))) done = true;
+            // Their plugin reports right away when a hand milking starts and ends. Only an end counts:
+            // until they've reported you milking them, an old "nobody's milking" means nothing.
+            var byMe = st != null && st.HandBy.Equals(myName, StringComparison.OrdinalIgnoreCase);
+            if (byMe) sawMilking = true;
+            else if (sawMilking && st != null) done = true;
         }
 
         if (!done) return;
