@@ -256,7 +256,7 @@ public sealed class DairyGame
 
     /// <summary>How long until full bottles spoil, or null if they aren't all full.</summary>
     public TimeSpan? SpoilsIn => Cow.Spoiled || Cow.FullSinceUtc == null ? null
-        : Cow.FullSinceUtc.Value.AddHours(Catalog.SpoilHours) - DateTime.UtcNow;
+        : Cow.FullSinceUtc.Value.AddHours(SpoilHours) - DateTime.UtcNow;
     public int Owned(string upgrade) => F.Upgrades.GetValueOrDefault(upgrade);
     public int Count(string item) => F.Pantry.GetValueOrDefault(item);
     public float NeedsAverage => (Cow.Hunger + Cow.Thirst + Cow.Comfort + Cow.Mood) / 4f;
@@ -266,7 +266,11 @@ public sealed class DairyGame
     public int CareGrade => Grades.FromState(Cow, false);
     public bool Overfull => Cow.Milk >= Capacity - 0.01f;
     public int MaxStalls => Networked ? Net.Progress?.StallSlots ?? 2 : 1 + Owned("stallkit");
-    public float PriceBonus => 1f + (Owned("ribbon") > 0 ? 0.05f : 0) + (Owned("cap") > 0 ? 0.10f : 0);
+    public float PriceBonus => 1f + (Owned("ribbon") > 0 ? 0.05f : 0) + (Owned("cap") > 0 ? 0.10f : 0) +
+                               (Owned("halter") > 0 ? 0.03f : 0) + (Owned("velvetbell") > 0 ? 0.05f : 0) + (Owned("velvetchamp") > 0 ? 0.10f : 0);
+
+    /// <summary>Hours full bottles keep before spoiling (Cooling mist makes it 96).</summary>
+    public double SpoilHours => Owned("mist") > 0 ? 96 : Catalog.SpoilHours;
     public float TankTotal => F.Tank!.Sum();
 
     // =================================================================
@@ -450,10 +454,10 @@ public sealed class DairyGame
         if (Level > 1) parts.Add(new RatePart($"Level {Level}", 1f + Catalog.LevelBonus * (Level - 1)));
         if (Contented) parts.Add(new RatePart("Contented (all needs 75+)", 1f + Catalog.ContentBonus));
         if (BoostLeft > TimeSpan.Zero) parts.Add(new RatePart("Treat boost", 1f + Catalog.TreatBonus));
-        if (includeResting && Where.InDairy && Where.Seated && Wake == Wakefulness.Awake) parts.Add(new RatePart("Resting in your dairy", 1f + Catalog.RestBonus));
+        if (includeResting && Where.InDairy && Where.Seated && Wake == Wakefulness.Awake) parts.Add(new RatePart("Resting in your dairy", 1f + (Owned("deeprest") > 0 ? 0.75f : Catalog.RestBonus)));
         if (includeResting && Wake == Wakefulness.Dozing) parts.Add(new RatePart("Dozing (no activity for 15 min)", 0.5f));
         if (includeResting && Wake == Wakefulness.Asleep) parts.Add(new RatePart("Asleep (no activity for 30 min)", 0f));
-        if (Tired) parts.Add(new RatePart($"Tired ({TiredAfterHours} h milking today)", 0.5f));
+        if (Tired) parts.Add(new RatePart($"Tired ({TiredHours} h milking today)", 0.5f));
         if (Math.Abs(MilkSpeed - 1f) > 0.01f) parts.Add(new RatePart("Milk speed setting", MilkSpeed));
         return parts;
     }
@@ -492,7 +496,8 @@ public sealed class DairyGame
         : Wakefulness.Awake;
 
     /// <summary>After 12 hours of making milk in one day, milk comes in at half speed until tomorrow.</summary>
-    public bool Tired => F.DayAwakeMinutes >= TiredAfterHours * 60;
+    public int TiredHours => Owned("steady") > 0 ? 14 : TiredAfterHours;
+    public bool Tired => F.DayAwakeMinutes >= TiredHours * 60;
 
     /// <summary>Something real happened (a click in the plugin, care, a farmer's stroke...).</summary>
     public void Touch() => lastActive = now;
@@ -657,7 +662,7 @@ public sealed class DairyGame
 
         // Mood drifts toward how well you're kept, and drops a little on its own
         var target = (Cow.Hunger + Cow.Thirst + Cow.Comfort) / 3f;
-        var moodDecay = Owned("bell") > 0 ? 0.17f : 0.2f;
+        var moodDecay = (Owned("bell") > 0 ? 0.17f : 0.2f) * (Owned("lavender") > 0 ? 0.5f : 1f);
         Cow.Mood = Clamp(Cow.Mood - moodDecay * m + (target - Cow.Mood) * 0.01f * m);
         Cow.Richness = Math.Max(0, Cow.Richness - 0.2f * m);
 
@@ -796,7 +801,7 @@ public sealed class DairyGame
             return;
         }
 
-        var left = Cow.FullSinceUtc.Value.AddHours(Catalog.SpoilHours) - DateTime.UtcNow;
+        var left = Cow.FullSinceUtc.Value.AddHours(SpoilHours) - DateTime.UtcNow;
         if (left <= TimeSpan.Zero)
         {
             Cow.Spoiled = true;
@@ -950,7 +955,7 @@ public sealed class DairyGame
             }
             else return;
 
-            Draw(Catalog.StallSpeed[Math.Clamp(s.Stall!.Tier, 1, 4)] * dt);
+            Draw(Catalog.StallSpeed[Math.Clamp(s.Stall!.Tier, 1, 4)] * (Owned("letdown") > 0 ? 1.1f : 1f) * dt);
         }
         else
         {
@@ -962,7 +967,7 @@ public sealed class DairyGame
 
             if (handFlowing)
             {
-                Draw(Catalog.HandSpeed * dt);
+                Draw(Catalog.HandSpeed * (Owned("udderbalm") > 0 ? 1.15f : 1f) * dt);
                 if (now >= nextSquirt)
                 {
                     nextSquirt = now + 2.5;
@@ -2078,6 +2083,7 @@ public sealed class DairyGame
     private void AddQuality(float amount)
     {
         var before = Grades.Cap(F.Quality);
+        if (amount > 0) amount *= 1f + (Owned("heifer") > 0 ? 0.1f : 0) + (Owned("champion") > 0 ? 0.2f : 0);
         F.Quality += amount;
         var after = Grades.Cap(F.Quality);
         for (var g = before + 1; g <= after; g++)
@@ -2189,7 +2195,7 @@ public sealed class DairyGame
         if (!Dev) return;
         Stop();
         Cow.Milk = Capacity;
-        Cow.FullSinceUtc = DateTime.UtcNow.AddHours(-Catalog.SpoilHours).AddSeconds(-1);
+        Cow.FullSinceUtc = DateTime.UtcNow.AddHours(-SpoilHours).AddSeconds(-1);
     }
 
     /// <summary>Testing: fill every bottle with only a minute left before it spoils.</summary>
@@ -2198,7 +2204,7 @@ public sealed class DairyGame
         if (!Dev) return;
         Stop();
         Cow.Milk = Capacity;
-        Cow.FullSinceUtc = DateTime.UtcNow.AddHours(-Catalog.SpoilHours).AddMinutes(1);
+        Cow.FullSinceUtc = DateTime.UtcNow.AddHours(-SpoilHours).AddMinutes(1);
         spoilWarned = 1;
     }
 

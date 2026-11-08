@@ -42,7 +42,7 @@ public sealed class GuideWindow : Window
             "Cows have four needs: hunger, thirst, comfort and mood. Keep them up and your milk comes faster and stays good. They drop slowly while you play, and gently while you're logged out (never below 20).",
             "Care happens inside your dairy (Barn tab): Drink and Stretch are free; feed comes from your Pantry.",
             "Pantry tab: everything you own. Eat it, sell back what you don't need for half price, or hide it from your lists.",
-            "Shop tab: Feed & treats (everyday feed, quality treats), Upgrades (comfort, care and things to wear) and Bottles.",
+            "Shop tab: Feed & treats (everyday feed, quality treats), Upgrades (comfort, care and things to wear) and Bottles. Cow levels unlock new feed and cow upgrades all the way to level 30: faster stall and hand milking, deeper rest, longer before you tire or spoil, faster quality, and wearables that raise your pay.",
             "Quality treats (cream biscuit, golden alfalfa, star clover) raise your milk quality toward the next grade and make milk come 30% faster for 30 minutes. You can have one every hour.",
             "Clover, salt licks and the Velvet blend give a short boost that makes milk come in faster.",
         }),
@@ -50,7 +50,7 @@ public sealed class GuideWindow : Window
         {
             "Milk fills your bottles while you're awake and logged in. No milk is made while you're logged out.",
             "Bottles: milk bottle 8 oz, cream jar 12, dairy jug 20, big jug 32, milk churn 48. Bigger bottle upgrades make each one hold more; Extra bottle upgrades add more bottles (up to 5, the 5th at level 25).",
-            "Full bottles spoil after 72 hours (real time, logged in or not). Empty them before you log off for a while. Spoiled milk has to be dumped (HUD button) for no pay, and it lowers your grade until you care for yourself, get milked and the dairy delivers again.",
+            "Full bottles spoil after 72 hours (real time, logged in or not; 96 with the Cooling mist upgrade). Empty them before you log off for a while. Spoiled milk has to be dumped (HUD button) for no pay, and it lowers your grade until you care for yourself, get milked and the dairy delivers again.",
         }),
         new("Getting milked", new[]
         {
@@ -77,7 +77,7 @@ public sealed class GuideWindow : Window
             "Milk is for people who are actually playing. Moving or turning, targeting, emotes, sending a chat message and clicking in Velvet Dairy's windows keep you awake. Moving the mouse alone doesn't.",
             "After 15 minutes with none of that you start dozing: milk at half speed, and stalls don't start a new milking.",
             "After 30 minutes you're asleep: milking stops and you make no milk or XP until you do anything at all.",
-            "After 12 hours of making milk in one day you're tired: half speed until the next day.",
+            "After 12 hours of making milk in one day you're tired: half speed until the next day (14 hours with the Steady producer upgrade).",
         }),
         new("Starting a dairy (owners)", new[]
         {

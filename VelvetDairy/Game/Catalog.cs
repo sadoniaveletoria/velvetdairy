@@ -84,6 +84,10 @@ public static class Catalog
         new FeedItem("clover", "Fresh clover", "clover", 15, 3, "A treat. Lifts your mood and speeds up your milk for a while.", Hunger: 6, Mood: 22, BoostMinutes: 15),
         new FeedItem("salt", "Salt lick", "salt", 20, 4, "Mood and richness, but it makes you thirsty. Short milk boost.", Thirst: -12, Mood: 14, Richness: 10, BoostMinutes: 10),
         new FeedItem("premium", "Velvet blend", "premium", 45, 8, "The best feed money buys. Long milk boost.", Hunger: 40, Mood: 10, Richness: 32, BoostMinutes: 30),
+        new FeedItem("honeyoats", "Honey oats", "grain", 18, 7, "Sweet and filling. A nicer everyday feed.", Hunger: 26, Mood: 8, Richness: 12),
+        new FeedItem("mineral", "Mineral block", "salt", 22, 11, "Richer milk without the salt lick's thirst.", Thirst: 20, Richness: 14),
+        new FeedItem("creamclover", "Cream clover", "clover", 35, 13, "A lush treat. Lifts your mood and speeds up your milk for 45 minutes.", Hunger: 8, Mood: 18, BoostMinutes: 45),
+        new FeedItem("goldenmash", "Golden mash", "premium", 70, 22, "A feast. Very filling, very rich, and a milk boost.", Hunger: 45, Richness: 30, BoostMinutes: 30),
         // Quality treats: raise your milk quality score so better grades unlock sooner
         new FeedItem("biscuit", "Cream biscuit", "biscuit", 30, 1, "A rich little treat. Builds your milk quality and speeds up your milk for 30 minutes.", Hunger: 4, Mood: 6, Quality: 20, BoostMinutes: 30),
         new FeedItem("alfalfa", "Golden alfalfa", "alfalfa", 80, 1, "Prized hay. Builds your milk quality a lot and speeds up your milk for 30 minutes.", Hunger: 12, Richness: 8, Quality: 50, BoostMinutes: 30),
@@ -105,6 +109,18 @@ public static class Catalog
         new Upgrade("bell", "Bell collar", "bell", new[] { 80 }, new[] { 3 }, "A brass bell. Mood drops a little slower.", true),
         new Upgrade("ribbon", "Show ribbon", "ribbon", new[] { 600 }, new[] { 15 }, "Wear your ribbon. +5% creamery prices.", true),
         new Upgrade("cap", "Gold-cap bottles", "coin", new[] { 1500 }, new[] { 25 }, "Bottles with your name on them. +10% creamery prices.", true),
+        // Cow perks and wearables for the higher cow levels
+        new Upgrade("udderbalm", "Udder balm", "cushion", new[] { 400 }, new[] { 9 }, "Hand milking by a farmer flows 15% faster."),
+        new Upgrade("letdown", "Easy let-down", "bucket", new[] { 600 }, new[] { 10 }, "Stall milking is 10% faster."),
+        new Upgrade("deeprest", "Deep rest", "cushion", new[] { 900 }, new[] { 16 }, "Resting in your dairy speeds up milk by 75% instead of 50%."),
+        new Upgrade("halter", "Silk halter", "ribbon", new[] { 1000 }, new[] { 17 }, "A soft silk halter. +3% pay.", true),
+        new Upgrade("steady", "Steady producer", "milk", new[] { 1200 }, new[] { 18 }, "You get tired after 14 hours of milk a day instead of 12."),
+        new Upgrade("heifer", "Prize heifer sash", "ribbon", new[] { 1600 }, new[] { 20 }, "Milk quality builds 10% faster.", true),
+        new Upgrade("lavender", "Lavender bedding", "cushion", new[] { 1800 }, new[] { 23 }, "Mood drops half as fast."),
+        new Upgrade("mist", "Cooling mist", "water", new[] { 2000 }, new[] { 24 }, "Full bottles keep 96 hours before they spoil instead of 72."),
+        new Upgrade("velvetbell", "Velvet bell", "bell", new[] { 2600 }, new[] { 26 }, "A velvet-wrapped bell. +5% pay.", true),
+        new Upgrade("champion", "Champion's ribbon", "ribbon", new[] { 3200 }, new[] { 28 }, "Milk quality builds 20% faster.", true),
+        new Upgrade("velvetchamp", "Velvet champion sash", "coin", new[] { 5000 }, new[] { 30 }, "The best cow in Eorzea. +10% pay.", true),
     };
 
     public static Upgrade? UpgradeById(string id) => Upgrades.FirstOrDefault(u => u.Id == id);
