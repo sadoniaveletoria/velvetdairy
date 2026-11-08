@@ -68,7 +68,12 @@ public sealed class DairyGame
     // Derived numbers
     // =================================================================
 
+    /// <summary>Your cow level (the main one: it unlocks the shop and speeds up milk).</summary>
     public int Level => Leveling.FromXp(F.Xp).Level;
+
+    /// <summary>Each role levels on its own; switching or adding roles never loses any of it.</summary>
+    public int FarmerLevel => Leveling.FromXp(F.FarmerXp).Level;
+    public int BullLevel => Leveling.FromXp(F.BullXp).Level;
 
     // ----- Settings only the developer can change; everyone else always gets the normal game -----
     public bool Dev => plugin.Dev;
@@ -94,10 +99,17 @@ public sealed class DairyGame
     public NetMember? Member => Networked ? F.NetMember : null;
 
     /// <summary>Your role: owner's play role or what you were invited as. Locally everyone is a cow.</summary>
-    public string Role => !Networked ? "cow" : F.NetMember?.Role ?? "cow";
+    /// <summary>Your roles in your dairy (several at once). Locally, and before joining a dairy, you're a cow.</summary>
+    public List<string> MyRoles => !Networked || F.NetMember == null ? new List<string> { "cow" } : Roles.From(F.NetMember.Roles, F.NetMember.Role);
+
+    public bool Has(string role) => MyRoles.Contains(role);
+
+    /// <summary>"Cow + Farmer" etc.</summary>
+    public string Role => Roles.Text(MyRoles);
     public bool IsOwner => !Networked || F.NetMember?.IsOwner == true;
-    public bool IsCow => Role == "cow";
-    public bool CanInvite => Networked && F.NetMember != null && (F.NetMember.IsOwner || F.NetMember.Role == "farmer");
+    public bool IsCow => Has("cow");
+    public bool IsFarmer => Has("farmer");
+    public bool CanInvite => Networked && F.NetMember != null && (F.NetMember.IsOwner || IsFarmer);
 
     /// <summary>Only cows make and give milk. Bulls and farmers keep their needs but have no bottle (yet).</summary>
     public bool ProducesMilk => IsCow;
@@ -138,14 +150,15 @@ public sealed class DairyGame
             plugin.SaveConfig();
         }
 
-        if (before == null || before.DairyId != m.DairyId || before.Role != m.Role || before.IsOwner != m.IsOwner || before.Dairy != m.Dairy)
+        var roles = m.AllRoles;
+        if (before == null || before.DairyId != m.DairyId || !before.Roles.SequenceEqual(roles) || before.IsOwner != m.IsOwner || before.Dairy != m.Dairy)
         {
             F.NetMember = new NetMember
             {
-                DairyId = m.DairyId, Dairy = m.Dairy, Role = m.Role, IsOwner = m.IsOwner, Level = m.Level,
+                DairyId = m.DairyId, Dairy = m.Dairy, Role = m.Role, Roles = roles, IsOwner = m.IsOwner, Level = m.Level,
                 HouseId = before?.DairyId == m.DairyId ? before.HouseId : "",
             };
-            if (before != null && before.Role != m.Role) Say($"You're now a {m.Role} at {m.Dairy}.", 1);
+            if (before != null && before.DairyId == m.DairyId && !before.Roles.SequenceEqual(roles)) Say($"Your roles at {m.Dairy}: {Roles.Text(roles)}.", 1);
             if (!ProducesMilk) Stop();
             plugin.SaveConfig();
         }
@@ -180,7 +193,7 @@ public sealed class DairyGame
         var me = Plugin.ObjectTable.LocalPlayer;
         var myName = me?.Name.TextValue ?? "";
         var farmers = new List<Farmhand>();
-        foreach (var m in r.Members.Where(m => m.Role == "farmer" && !m.Name.Equals(myName, StringComparison.OrdinalIgnoreCase)))
+        foreach (var m in r.Members.Where(m => m.Has("farmer") && !m.Name.Equals(myName, StringComparison.OrdinalIgnoreCase)))
         {
             var fh = netFarmers.FirstOrDefault(f => !f.IsTest && f.Name == m.Name && f.WorldName == m.World)
                      ?? new Farmhand { Name = m.Name, WorldName = m.World, WorldId = LookupWorld(m.World) };
@@ -213,8 +226,9 @@ public sealed class DairyGame
             switch (i.Kind)
             {
                 case "payout":
+                    // Payouts come from farmer work: hand milking shares and deliveries
                     Earn(i.Coins);
-                    AddXp(Math.Max(5, i.Coins / 8));
+                    AddFarmerXp(Math.Max(5, i.Coins / 8));
                     break;
                 case "refund":
                     F.Coins += i.Coins;
@@ -266,9 +280,10 @@ public sealed class DairyGame
     public float PayRate(int grade) => Grades.All[Math.Clamp(grade, 0, Grades.Count - 1)].Price * PriceBonus * DairyPayBonus;
 
     /// <summary>Farmers and owners carry jugs from the dairy's tank and deliver them; cows just get milked.</summary>
-    public bool CanCarry => Networked && F.NetMember != null && (F.NetMember.IsOwner || F.NetMember.Role == "farmer");
+    public bool CanCarry => Networked && F.NetMember != null && (F.NetMember.IsOwner || IsFarmer);
 
-    public const int MaxCarry = 192;
+    /// <summary>How much milk you can carry: 192 oz, plus 8 for each farmer level.</summary>
+    public int MaxCarry => 192 + 8 * (FarmerLevel - 1);
     public float Carried => F.Tank!.Sum();
 
     public string? TakeJugProblem(int grade, int oz)
@@ -295,6 +310,7 @@ public sealed class DairyGame
         Net.TakeFromTank(grade, oz, r =>
         {
             F.Tank![r.Grade] += r.Oz;
+            AddFarmerXp(Math.Max(1, r.Oz / 4));
             plugin.SaveConfig();
             Say($"Filled {r.Oz} oz of Grade {Grades.Name(r.Grade)} from the dairy tank ({r.Left:0.#} oz left).", 1);
         }, e => Fail(e));
@@ -379,6 +395,7 @@ public sealed class DairyGame
         Net.ShipToContract(grade, oz, r =>
         {
             F.Tank![grade] = Math.Max(0, F.Tank[grade] - r.Shipped);
+            AddFarmerXp(Math.Max(1, r.Shipped / 2));
             plugin.SaveConfig();
             Say(r.Finished ? $"Contract finished! The reward goes to {DairyName}." : $"Shipped {r.Shipped} oz to the contract ({r.OzDone:0} / {r.OzNeed} oz).", 1);
         }, e => Fail(e));
@@ -1226,7 +1243,8 @@ public sealed class DairyGame
             worldName = (area != null ? Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.World>().GetRowOrDefault(area.World)?.Name.ExtractText() : null)
                         ?? world?.Name.ExtractText() ?? "",
             dcName = world?.DataCenter.ValueNullable?.Name.ExtractText() ?? "",
-            role = F.OwnerRole,
+            role = F.OwnerRoles!.FirstOrDefault() ?? "none",
+            roles = F.OwnerRoles,
             area,
         };
         var isNew = F.NetMember?.IsOwner != true;
@@ -1600,7 +1618,8 @@ public sealed class DairyGame
         F.Orders!.Remove(o);
         if (Networked) Net.UseCarried(o.Oz);
         Earn(o.Coins);
-        AddXp(o.Xp);
+        if (CanCarry) AddFarmerXp(o.Xp);   // delivering is farmer work
+        else AddXp(o.Xp);
         F.Stats.OrdersFilled++;
         F.DayOrders++;
         EaseTaint(Catalog.TaintPerOrder);
@@ -1681,7 +1700,7 @@ public sealed class DairyGame
     }
 
     /// <summary>Roles you can invite: owners invite farmers, cows and bulls; farmers invite cows and bulls.</summary>
-    public string[] InvitableRoles => !CanInvite ? Array.Empty<string>() : F.NetMember!.IsOwner ? new[] { "cow", "bull", "farmer" } : new[] { "cow", "bull" };
+    public string[] InvitableRoles => !CanInvite ? Array.Empty<string>() : new[] { "cow", "bull", "farmer" };
 
     public void InvitePlayer(string name, uint world, string role)
     {
@@ -1702,7 +1721,7 @@ public sealed class DairyGame
     {
         var me = F.NetMember;
         if (me == null || m.IsOwner || m.Id == Net.Mine?.You?.Id) return false;
-        return me.IsOwner || (me.Role == "farmer" && m.Role is "cow" or "bull");
+        return me.IsOwner || (IsFarmer && !m.Has("farmer"));
     }
 
     public void RemoveMember(MemberInfo m)
@@ -1717,10 +1736,46 @@ public sealed class DairyGame
         Say($"{m.Name} was removed from {DairyName}.", 0);
     }
 
-    public void SetMemberRole(MemberInfo m, string role)
+    // ----- Roles: several at once. Anyone adds cow or bull to themselves; farmer is given by a farmer or the owner;
+    //       only the owner takes roles away. -----
+
+    public string? AddRoleProblem(MemberInfo? m, string role)
     {
-        if (F.NetMember?.IsOwner != true) return;
-        Net.SetRole(m.Id, role, e => Fail(e));
+        var me = F.NetMember;
+        if (!Networked || me == null) return "Join a dairy first.";
+        var self = m == null || m.Id == Net.Mine?.You?.Id;
+        var has = self ? MyRoles.Contains(role) : m!.Has(role);
+        if (has) return null;
+        if (me.IsOwner) return null;
+        if (role == "farmer") return self ? "Farmer is given by a farmer or the owner." : IsFarmer ? null : "Only farmers and the owner give the farmer role.";
+        return self || IsFarmer ? null : "Only the owner and farmers give others a role.";
+    }
+
+    public void AddRole(MemberInfo? m, string role)
+    {
+        var p = AddRoleProblem(m, role);
+        if (p != null)
+        {
+            Fail(p);
+            return;
+        }
+
+        var id = m?.Id ?? Net.Mine?.You?.Id;
+        if (id == null) return;
+        Net.ChangeRole(id, role, null, r => Say(m == null ? $"You're now a {Roles.Text(r)}." : $"{m.Name} is now a {Roles.Text(r)}.", 1), e => Fail(e));
+    }
+
+    public void RemoveRole(MemberInfo? m, string role)
+    {
+        if (F.NetMember?.IsOwner != true)
+        {
+            Fail("Only the owner can take a role away.");
+            return;
+        }
+
+        var id = m?.Id ?? Net.Mine?.You?.Id;
+        if (id == null) return;
+        Net.ChangeRole(id, null, role, r => Say(m == null ? $"Your roles: {Roles.Text(r)}." : $"{m.Name}: {Roles.Text(r)}.", 1), e => Fail(e));
     }
 
     public void AcceptInvite(InviteInfo inv) =>
@@ -1988,8 +2043,17 @@ public sealed class DairyGame
         for (var l = before + 1; l <= after; l++)
         {
             var unlocks = Leveling.UnlocksAt(l).ToList();
-            Say($"Level {l}! You're a {Leveling.Rank(l)}." + (unlocks.Count > 0 ? " Unlocked: " + string.Join(", ", unlocks) : ""), 1);
+            Say($"Cow level {l}! You're a {Leveling.Rank(l)}." + (unlocks.Count > 0 ? " Unlocked: " + string.Join(", ", unlocks) : ""), 1);
         }
+    }
+
+    /// <summary>Farmer xp: hand milking pay, filling jugs, deliveries and contracts.</summary>
+    private void AddFarmerXp(int amount)
+    {
+        if (amount <= 0) return;
+        var before = FarmerLevel;
+        F.FarmerXp += amount;
+        for (var l = before + 1; l <= FarmerLevel; l++) Say($"Farmer level {l}! You can carry {MaxCarry} oz of milk now.", 1);
     }
 
     private void CheckAwards()

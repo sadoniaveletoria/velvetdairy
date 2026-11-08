@@ -438,6 +438,15 @@ public sealed class NetClient : IDisposable
     public void SetRole(string id, string role, Action<string> failed) =>
         Call<object>("PUT", $"/v1/members/{id}/role", new { role }, _ => Poke(), failed);
 
+    /// <summary>Adds or removes one role (see the server for who may do what).</summary>
+    public void ChangeRole(string id, string? add, string? remove, Action<List<string>> ok, Action<string> failed) =>
+        Call<RolesReply>("POST", $"/v1/members/{id}/roles", new { add, remove }, r =>
+        {
+            Poke();
+            RefreshMine();
+            ok(r.Roles);
+        }, failed);
+
     // ----- Stalls -----
 
     public void AddStall(string name, float x, float y, float z, int limit, Action ok, Action<string> failed) =>

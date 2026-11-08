@@ -43,8 +43,11 @@ public sealed class MembershipInfo
     public string DairyId { get; set; } = "";
     public string Dairy { get; set; } = "";
     public string Role { get; set; } = "";
+    public List<string> Roles { get; set; } = new();
     public bool IsOwner { get; set; }
     public int Level { get; set; } = 1;
+
+    public List<string> AllRoles => VelvetDairy.Game.Roles.From(Roles, Role);
 }
 
 public sealed class InviteInfo
@@ -194,6 +197,11 @@ public sealed class HandPayReply
     public int Coins { get; set; }
 }
 
+public sealed class RolesReply
+{
+    public List<string> Roles { get; set; } = new();
+}
+
 public sealed class FundReply
 {
     public int Fund { get; set; }
@@ -221,6 +229,7 @@ public sealed class YouInfo
 {
     public string Id { get; set; } = "";
     public string Role { get; set; } = "";
+    public List<string> Roles { get; set; } = new();
     public bool IsOwner { get; set; }
 }
 
@@ -230,8 +239,13 @@ public sealed class MemberInfo
     public string Name { get; set; } = "";
     public string World { get; set; } = "";
     public string Role { get; set; } = "";
+    public List<string> Roles { get; set; } = new();
     public bool IsOwner { get; set; }
     public bool Online { get; set; }
+
+    public List<string> AllRoles => VelvetDairy.Game.Roles.From(Roles, Role);
+    public bool Has(string role) => AllRoles.Contains(role);
+    public string RoleText => VelvetDairy.Game.Roles.Text(AllRoles);
     public MemberStatus? Status { get; set; }
 }
 

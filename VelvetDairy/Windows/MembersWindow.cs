@@ -100,7 +100,7 @@ public sealed class MembersWindow : Window
         using (fonts.For(fonts.Heading, mine.Dairy?.Name ?? "")!.Push()) ImGui.TextColored(Theme.Ink, mine.Dairy?.Name ?? G.DairyName);
         ImGui.TextColored(Theme.InkSoft,
             $"{members.Count} members · {online} online · {here} in the dairy · " +
-            $"{members.Count(m => m.Role == "cow")} cows, {members.Count(m => m.Role == "farmer")} farmers, {members.Count(m => m.Role == "bull")} bulls");
+            $"{members.Count(m => m.Has("cow"))} cows, {members.Count(m => m.Has("farmer"))} farmers, {members.Count(m => m.Has("bull"))} bulls");
 
         // Invite your target
         var roles = G.InvitableRoles;
@@ -131,7 +131,7 @@ public sealed class MembersWindow : Window
 
         var f = search.Trim();
         var role = FilterRoles[roleFilter];
-        var shown = members.Where(m => (role == null || m.Role == role) && (!onlineOnly || m.Online) &&
+        var shown = members.Where(m => (role == null || m.Has(role)) && (!onlineOnly || m.Online) &&
                                        (f.Length == 0 || m.Name.Contains(f, StringComparison.OrdinalIgnoreCase) || m.World.Contains(f, StringComparison.OrdinalIgnoreCase)))
             .ToList();
 
@@ -161,9 +161,9 @@ public sealed class MembersWindow : Window
 
             Func<MemberInfo, IComparable> key = col switch
             {
-                1 => m => m.Role,
+                1 => m => m.RoleText,
                 2 => m => (m.Online ? 0 : 2) - (m.Status?.InDairy == true ? 1 : 0),
-                3 => m => m.Role == "cow" && m.Status is { Cap: > 0 } s ? s.Milk / s.Cap : -1f,
+                3 => m => m.Has("cow") && m.Status is { Cap: > 0 } s ? s.Milk / s.Cap : -1f,
                 _ => m => m.Name,
             };
             var rows = (asc ? shown.OrderBy(key) : shown.OrderByDescending(key)).ThenBy(m => m.Name).ToList();
@@ -177,7 +177,7 @@ public sealed class MembersWindow : Window
                 if (ImGui.IsItemHovered()) ImGui.SetTooltip(m.World);
 
                 ImGui.TableNextColumn();
-                ImGui.TextColored(RoleColor(m.Role), (m.IsOwner ? "Owner · " : "") + (m.Role == "none" ? "No role" : Cap1(m.Role)));
+                ImGui.TextColored(RoleColor(m.AllRoles.Count == 1 ? m.AllRoles[0] : ""), (m.IsOwner ? "Owner · " : "") + m.RoleText);
 
                 ImGui.TableNextColumn();
                 if (!m.Online) ImGui.TextColored(Theme.InkSoft, "Offline");
@@ -185,7 +185,7 @@ public sealed class MembersWindow : Window
                 else ImGui.TextColored(Theme.HoneyDeep, "Online");
 
                 ImGui.TableNextColumn();
-                if (m.Role == "cow" && m.Online && m.Status is { } st)
+                if (m.Has("cow") && m.Online && m.Status is { } st)
                 {
                     if (st.Spoiled) ImGui.TextColored(Theme.Warn, "Spoiled");
                     else
@@ -201,7 +201,7 @@ public sealed class MembersWindow : Window
                 else ImGui.TextColored(Theme.InkSoft, "-");
 
                 ImGui.TableNextColumn();
-                var canAct = (G.IsOwner && !m.IsOwner) || G.CanRemove(m);
+                var canAct = G.IsOwner || G.IsFarmer || G.CanRemove(m);
                 if (canAct && ImGui.SmallButton($"...##act{m.Id}"))
                 {
                     menuFor = m.Id;
@@ -241,10 +241,16 @@ public sealed class MembersWindow : Window
 
         ImGui.TextColored(Theme.InkSoft, m.Name);
         ImGui.Separator();
-        if (G.IsOwner && !m.IsOwner)
-            foreach (var r in new[] { "cow", "farmer", "bull" }.Where(r => r != m.Role))
-                if (ImGui.MenuItem($"Make {r}"))
-                    G.SetMemberRole(m, r);
+        // Give roles (owner: any; farmer: any to others), take them away (owner only)
+        foreach (var r in VelvetDairy.Game.Roles.All)
+        {
+            if (!m.Has(r))
+            {
+                var p = G.AddRoleProblem(m, r);
+                if (p == null && ImGui.MenuItem($"Give the {r} role")) G.AddRole(m, r);
+            }
+            else if (G.IsOwner && ImGui.MenuItem($"Take the {r} role away")) G.RemoveRole(m, r);
+        }
 
         if (G.CanRemove(m))
         {

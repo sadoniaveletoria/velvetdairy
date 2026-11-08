@@ -82,6 +82,7 @@ When the network is up, dairies are shared between players:
 
 - **Owners** mark out their dairy anywhere: stand in the middle of the spot (a field, a corner of a city, or a room in any house), then size and turn a box that's drawn on the ground while you set it up. Boxes can't overlap another dairy in the same zone and world, and each player can own or belong to one dairy at a time. Owners can move or resize it later (Dairy > Listing).
 - Owners invite **farmers, cows and bulls**, set up and upgrade the dairy's stalls, and choose a play role for themselves (any role, or none). Owners get an extra **owner HUD** showing who's online, who's in the dairy and how full each cow is.
+- **Several roles at once**: a member can be a cow, farmer and bull together. Anyone can add cow or bull to themselves; farmer is given by a farmer or the owner; only the owner takes roles away. Each role has its own level (cow, farmer, bull), and progress is never lost when roles change.
 - **Farmers** hand milk the dairy's cows and can invite cows and bulls (not other farmers).
 - **Cows** make milk and get milked in the dairy's stalls or by its farmers. **Bulls** are a role only for now.
 - Invite with right-click > Velvet Dairy, or target a player and use the Members panel on the Dairy tab.

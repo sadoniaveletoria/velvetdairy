@@ -30,9 +30,11 @@ public sealed class GuideWindow : Window
         new("Roles", new[]
         {
             "Cow: makes milk and gets milked. Paid per ounce at milking time. Cows care for themselves (food, water, comfort) to keep milk quality up.",
-            "Farmer: hand milks the dairy's cows (and gets a 25% share of what the cow is paid, on top), fills jugs from the dairy tank and delivers milk. Farmers can invite cows and bulls.",
+            "Farmer: hand milks the dairy's cows (and gets a 25% share of what the cow is paid, on top), fills jugs from the dairy tank and delivers milk. Farmers can invite and give roles to others, farmer included.",
             "Bull: a role only for now. More is coming in new updates.",
-            "Owner: runs the dairy. Marks out where it is, sets up stalls, invites farmers, cows and bulls, spends the dairy fund and posts buy orders. The owner also picks a play role for themselves: cow, farmer, bull or none.",
+            "Owner: runs the dairy. Marks out where it is, sets up stalls, invites farmers, cows and bulls, spends the dairy fund and posts buy orders. The owner can also play any mix of roles.",
+            "You can hold several roles at once (a Cow + Farmer + Bull can take care of everyone). Add cow or bull to yourself any time on Dairy > Overview. Farmer is given by a farmer or the owner. Only the owner takes roles away.",
+            "Each role has its own level: cow level (milk speed and shop unlocks), farmer level (more milk you can carry) and bull level. Adding or losing a role never loses its progress.",
             "You belong to one dairy at a time. Invites show up on the Dairy tab; accepting one leaves your old dairy.",
         }),
         new("Your cow", new[]
@@ -65,7 +67,8 @@ public sealed class GuideWindow : Window
         new("Levels and XP", new[]
         {
             "You get +1 XP for every 0.1 oz of milk you make (more at better grades), plus a bonus when you're emptied at a stall or by hand, plus daily goals, orders and care.",
-            "Each level needs 30 more XP than the last. Levels make your milk come faster and unlock shop items and upgrades. Max level is 30.",
+            "Each level needs 30 more XP than the last. Your cow level makes milk come faster and unlocks shop items and upgrades. Max level is 30.",
+            "Farmers level separately: hand milking pay, filling jugs, deliveries and contracts give farmer XP, and each farmer level lets you carry 8 oz more. Bulls have their own level too, for things coming later.",
             "Daily goals (Progress tab) reset each day and pay coins and XP.",
         }),
         new("Staying awake", new[]
@@ -82,7 +85,7 @@ public sealed class GuideWindow : Window
             "3. Stand in the middle and press Start marking here. A box is drawn on the ground: pink sides, blue front. Use Width, Length and Turn (and Face my way) until it covers your dairy. Height is how far up or down still counts.",
             "4. Press Register my dairy. Boxes can't overlap another dairy in the same zone and world.",
             "5. Stalls: sit on a seat inside the box and press Add on Dairy > Stalls. The first stall is free; more come from the dairy fund and dairy levels.",
-            "6. Invite people: right-click a player > Velvet Dairy > Invite as cow, bull or farmer, or target them and use the Members panel.",
+            "6. Invite people: right-click a player > Velvet Dairy > Invite as cow, bull or farmer, or target them and use the Members panel. For people already in your dairy, the same menu (or Manage members) gives them more roles.",
             "You can move or resize the box any time: Dairy > Listing > Move or resize.",
         }),
         new("Your dairy", new[]

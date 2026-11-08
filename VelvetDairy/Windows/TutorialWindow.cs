@@ -23,13 +23,12 @@ public sealed class TutorialWindow : Window
     private FarmSave F => plugin.Config.Farm;
     private DairyGame G => plugin.Game;
 
-    private static readonly string[] Roles = { "cow", "farmer", "bull", "none" };
+    private static readonly string[] RoleKeys = { "cow", "farmer", "bull" };
     private static readonly string[] RoleText =
     {
         "Cow: you make milk and get milked in your own dairy.",
         "Farmer: you hand milk your dairy's cows and deliver the milk.",
         "Bull: a role only for now (more is coming).",
-        "No role: you just run the dairy.",
     };
 
     public TutorialWindow(Plugin plugin, Fonts fonts) : base("Welcome to Velvet Dairy##VelvetDairyTutorial", ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.AlwaysAutoResize)
@@ -131,14 +130,18 @@ public sealed class TutorialWindow : Window
 
             case Step.OwnerRole:
                 Title("Your dairy, step 1: your role");
-                Para("As the owner you run the dairy, and you can also play in it. What do you want to be?");
-                var cur = Math.Max(0, Array.IndexOf(Roles, F.OwnerRole));
-                for (var i = 0; i < Roles.Length; i++)
-                    if (ImGui.RadioButton($"{RoleText[i]}##tutrole{i}", cur == i))
+                Para("As the owner you run the dairy, and you can also play in it. Pick any mix (or none). You can add or take away roles later, and your progress in each is kept.");
+                for (var i = 0; i < RoleKeys.Length; i++)
+                {
+                    var on = F.OwnerRoles!.Contains(RoleKeys[i]);
+                    if (ImGui.Checkbox($"{RoleText[i]}##tutrole{i}", ref on))
                     {
-                        F.OwnerRole = Roles[i];
+                        if (on) F.OwnerRoles.Add(RoleKeys[i]);
+                        else F.OwnerRoles.Remove(RoleKeys[i]);
+                        F.OwnerRoles = VelvetDairy.Game.Roles.Clean(F.OwnerRoles);
                         plugin.SaveConfig();
                     }
+                }
 
                 ImGui.Spacing();
                 if (Next()) step = F.NetMember?.IsOwner == true ? Step.OwnerStall : Step.OwnerListing;

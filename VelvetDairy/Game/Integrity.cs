@@ -61,6 +61,8 @@ public static partial class Integrity
         Add("stats", $"{N(st.TotalOz)},{st.StallSessions},{st.HandSessions},{st.OrdersFilled},{st.BottlesSold},{st.CoinsEarned},{st.CareTasks}," +
                      $"{st.BestGrade},{N(st.BestSessionOz)},{st.DailiesDone},{st.TimesDumped},{N(st.OzDumped)}");
         Add("starter", f.StarterGiven);
+        // Added later: only part of the signature once used, so older saves still check out
+        if (f.FarmerXp != 0 || f.BullXp != 0) Add("rolexp", $"{f.FarmerXp},{f.BullXp}");
         return sb.ToString();
     }
 

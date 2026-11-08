@@ -52,6 +52,15 @@ const CONTRACT_XP_PER_OZ = 1.5, CONTRACT_FUND_PER_OZ = 4;             // most mi
 const PUMP_PER_BEAT = 120;          // most oz one heartbeat can add to the dairy tank
 const MEMBER_DAILY_PUMP = 1500;     // most oz one member can add to a dairy tank per day
 const INVITE_ROLES = ["farmer", "cow", "bull"];
+const ROLE_ORDER = ["cow", "farmer", "bull"];
+
+// A member can hold several roles at once; they're stored as "cow,farmer,bull" ("none" or "" for none).
+const roleList = r => ROLE_ORDER.filter(x => String(r || "").split(",").includes(x));
+const hasRole = (mem, r) => !!mem && roleList(mem.role).includes(r);
+const roleText = list => list.length ? list.join(",") : "none";
+const primaryRole = r => roleList(r)[0] || "none";
+/** SQL test for "this member has role ?" on members.role */
+const ROLE_SQL = "(',' || role || ',') LIKE '%,' || ? || ',%'";
 
 export default {
   async fetch(request, env) {
@@ -215,6 +224,7 @@ async function route(request, env) {
     ["POST", /^\/v1\/members\/leave$/, () => leave(env, me)],
     ["DELETE", /^\/v1\/members\/([0-9a-f]{32})$/, m => removeMember(env, me, m[1])],
     ["PUT", /^\/v1\/members\/([0-9a-f]{32})\/role$/, m => setRole(env, me, m[1], request)],
+    ["POST", /^\/v1\/members\/([0-9a-f]{32})\/roles$/, m => changeRoles(env, me, m[1], request)],
     ["POST", /^\/v1\/stalls$/, () => addStall(env, me, request)],
     ["DELETE", /^\/v1\/stalls\/([0-9a-f]{24})$/, m => removeStall(env, me, m[1])],
     ["POST", /^\/v1\/stalls\/([0-9a-f]{24})\/tier$/, m => upgradeStall(env, me, m[1], request)],
@@ -429,7 +439,7 @@ async function heartbeat(env, me, request) {
   return {
     online: await onlineCount(env),
     here: here ? { id: here.id, name: here.name, isPublic: !!here.is_public, mine: !!mem && mem.dairy_id === here.id } : null,
-    membership: mem ? { dairyId: mem.dairy_id, dairy: mem.dairy_name, role: mem.role, isOwner: !!mem.is_owner, level: (await progressOf(env, mem.dairy_id)).level } : null,
+    membership: mem ? { dairyId: mem.dairy_id, dairy: mem.dairy_name, role: primaryRole(mem.role), roles: roleList(mem.role), isOwner: !!mem.is_owner, level: (await progressOf(env, mem.dairy_id)).level } : null,
     dairyXp,
     pumped,
     creamery: await creameryOf(env),
@@ -500,7 +510,7 @@ async function myDairy(env, me) {
       SELECT m.install, m.role, m.name, m.world_name, m.status, i.last_seen
       FROM members m LEFT JOIN installs i ON i.id = m.install WHERE m.dairy_id = ? ORDER BY m.joined`).bind(d.id).all()).results;
   const stalls = (await env.DB.prepare("SELECT * FROM stalls WHERE dairy_id = ? ORDER BY created").bind(d.id).all()).results;
-  const canInvite = mem.is_owner || mem.role === "farmer";
+  const canInvite = mem.is_owner || hasRole(mem, "farmer");
   const invites = canInvite ? (await env.DB.prepare(
     "SELECT id, to_name, role, expires FROM invites WHERE dairy_id = ? AND status = 'pending' AND expires >= ? ORDER BY created")
     .bind(d.id, t).all()).results : [];
@@ -511,9 +521,9 @@ async function myDairy(env, me) {
       ward: d.ward, plot: d.plot, room: d.room,
       area: areaRow(await env.DB.prepare("SELECT * FROM dairy_area WHERE dairy_id = ?").bind(d.id).first()),
     },
-    you: { id: me.id, role: mem.role, isOwner: !!mem.is_owner },
+    you: { id: me.id, role: primaryRole(mem.role), roles: roleList(mem.role), isOwner: !!mem.is_owner },
     members: members.map(m => ({
-      id: m.install, name: m.name, world: m.world_name, role: m.role, isOwner: m.install === d.owner,
+      id: m.install, name: m.name, world: m.world_name, role: primaryRole(m.role), roles: roleList(m.role), isOwner: m.install === d.owner,
       online: (m.last_seen || 0) >= t - ONLINE_WINDOW, status: safeParse(m.status),
     })),
     stalls: stalls.map(s => ({ id: s.id, name: s.name, x: s.x, y: s.y, z: s.z, tier: s.tier })),
@@ -568,7 +578,8 @@ async function putDairy(env, me, request) {
   if (!name) fail(400, "Give your dairy a name.");
   const area = readArea(b.area);
   const existing = await env.DB.prepare("SELECT * FROM dairies WHERE owner = ?").bind(me.id).first();
-  const role = PLAY_ROLES.includes(b.role) ? b.role : "cow";
+  const ownerRoles = Array.isArray(b.roles) ? roleList(b.roles.join(",")) : PLAY_ROLES.includes(b.role) ? roleList(b.role) : ["cow"];
+  const role = roleText(ownerRoles);
   const t = now();
   let hid, world, ward, plot, room, districtKind;
   if (area) {
@@ -660,8 +671,7 @@ async function invite(env, me, request) {
   if (!mem) fail(403, "Join or register a dairy first.");
   const role = String(b.role ?? "");
   if (!INVITE_ROLES.includes(role)) fail(400, "Bad role.");
-  if (!mem.is_owner && !(mem.role === "farmer" && (role === "cow" || role === "bull")))
-    fail(403, mem.role === "farmer" ? "Farmers can invite cows and bulls, not farmers." : "Only the owner and farmers can invite.");
+  if (!mem.is_owner && !hasRole(mem, "farmer")) fail(403, "Only the owner and farmers can invite.");
   if (!isHash(b.toHash)) fail(400, "Bad player.");
   const toName = clean(b.toName, 40);
 
@@ -694,6 +704,15 @@ async function acceptInvite(env, me, id, request) {
   const d = await env.DB.prepare("SELECT * FROM dairies WHERE id = ?").bind(i.dairy_id).first();
   if (!d) fail(404, "That dairy closed.");
   const old = await membership(env, me.id);
+  if (old && old.dairy_id === d.id) {
+    // Already in this dairy: the invite adds the role
+    await env.DB.batch([
+      env.DB.prepare("UPDATE members SET role = ? WHERE install = ?").bind(roleText(roleList(old.role + "," + i.role)), me.id),
+      env.DB.prepare("UPDATE invites SET status = 'accepted' WHERE id = ?").bind(id),
+    ]);
+    await notice(env, i.from_install, `${i.to_name} is now also a ${i.role} at ${d.name}.`);
+    return { ok: true, dairy: d.name, role: i.role, left: null };
+  }
   await env.DB.batch([
     env.DB.prepare("DELETE FROM members WHERE install = ?").bind(me.id),
     env.DB.prepare("INSERT INTO members (install, dairy_id, role, name, world_name, joined) VALUES (?, ?, ?, ?, ?, ?)")
@@ -734,11 +753,40 @@ async function removeMember(env, me, target) {
   const them = await membership(env, target);
   if (!mem || !them || them.dairy_id !== mem.dairy_id) fail(404, "They aren't in your dairy.");
   if (them.is_owner) fail(400, "The owner can't be removed.");
-  const allowed = mem.is_owner || (mem.role === "farmer" && (them.role === "cow" || them.role === "bull"));
+  const allowed = mem.is_owner || (hasRole(mem, "farmer") && !hasRole(them, "farmer"));
   if (!allowed) fail(403, "You can't remove them.");
   await env.DB.prepare("DELETE FROM members WHERE install = ?").bind(target).run();
   await notice(env, target, `You were removed from ${mem.dairy_name}.`);
   return { ok: true };
+}
+
+/**
+ * Add or remove one role. Anyone can add cow or bull to themselves; farmer is given by a farmer or the owner
+ * (owners can give themselves anything); only the owner takes roles away.
+ */
+async function changeRoles(env, me, target, request) {
+  const b = await body(request);
+  const mem = await membership(env, me.id);
+  if (!mem) fail(400, "Join a dairy first.");
+  const them = target === me.id ? mem : await membership(env, target);
+  if (!them || them.dairy_id !== mem.dairy_id) fail(404, "They aren't in your dairy.");
+  const add = b.add ? String(b.add) : null, remove = b.remove ? String(b.remove) : null;
+  const self = target === me.id;
+  let list = roleList(them.role);
+  if (add) {
+    if (!INVITE_ROLES.includes(add)) fail(400, "Bad role.");
+    const ok = mem.is_owner
+      || (add === "farmer" ? hasRole(mem, "farmer") && !self : self || hasRole(mem, "farmer"));
+    if (!ok) fail(403, add === "farmer" ? "Farmer is given by a farmer or the owner." : "Only the owner and farmers can give others a role.");
+    if (!list.includes(add)) list = roleList(list.concat(add).join(","));
+  }
+  if (remove) {
+    if (!mem.is_owner) fail(403, "Only the owner can take a role away.");
+    list = list.filter(r => r !== remove);
+  }
+  await env.DB.prepare("UPDATE members SET role = ? WHERE install = ?").bind(roleText(list), target).run();
+  if (!self) await notice(env, target, add ? `You're now also a ${add} at ${mem.dairy_name}.` : `You're no longer a ${remove} at ${mem.dairy_name}.`);
+  return { ok: true, roles: list };
 }
 
 async function setRole(env, me, target, request) {
@@ -811,7 +859,7 @@ async function takeFromTank(env, me, request) {
   const b = await body(request);
   const mem = await membership(env, me.id);
   if (!mem) fail(400, "Join a dairy first.");
-  if (!mem.is_owner && mem.role !== "farmer") fail(403, "Only farmers and the owner fill jugs from the dairy tank.");
+  if (!mem.is_owner && !hasRole(mem, "farmer")) fail(403, "Only farmers and the owner fill jugs from the dairy tank.");
   if (!inOwnDairy(me, mem)) fail(400, "Go to your dairy to fill jugs from its tank.");
   const grade = int(b.grade, 0, GRADES - 1, "grade");
   const oz = int(b.oz, 1, MAX_TAKE_OZ, "oz");
@@ -826,14 +874,14 @@ async function takeFromTank(env, me, request) {
 async function handPay(env, me, request) {
   const b = await body(request);
   const mem = await membership(env, me.id);
-  if (!mem || mem.role !== "cow") fail(400, "Only cows report hand milkings.");
+  if (!mem || !hasRole(mem, "cow")) fail(400, "Only cows report hand milkings.");
   if (!inOwnDairy(me, mem)) fail(400, "Hand milkings count inside your dairy.");
   const grade = int(b.grade, 0, GRADES - 1, "grade");
   const oz = Math.max(0, Math.min(200, Number(b.oz) || 0));
   if (oz <= 0) fail(400, "No milk.");
   const name = clean(b.farmer, 40), world = clean(b.world, 30);
   const farmer = await env.DB.prepare(
-    "SELECT install, name FROM members WHERE dairy_id = ? AND role = 'farmer' AND name = ? AND world_name = ?").bind(mem.dairy_id, name, world).first();
+    `SELECT install, name FROM members WHERE dairy_id = ? AND ${ROLE_SQL} AND name = ? AND world_name = ?`).bind(mem.dairy_id, "farmer", name, world).first();
   if (!farmer || farmer.install === me.id) fail(400, "That farmer isn't in your dairy.");
 
   const day = today();
@@ -886,7 +934,7 @@ async function shipToContract(env, me, request) {
   const b = await body(request);
   const mem = await membership(env, me.id);
   if (!mem) fail(400, "Join a dairy first.");
-  if (!mem.is_owner && mem.role !== "farmer") fail(403, "Only farmers and the owner ship milk to the contract.");
+  if (!mem.is_owner && !hasRole(mem, "farmer")) fail(403, "Only farmers and the owner ship milk to the contract.");
   const creamery = await creameryOf(env);
   if (creamery) {
     const seen = await env.DB.prepare("SELECT at FROM creamery_presence WHERE install = ?").bind(me.id).first();

@@ -81,13 +81,16 @@ public class FarmSave
     public bool ListPublic { get; set; } = true;      // your dairy shows its address in the directory
     public bool ListShowName { get; set; }            // your character name shows as the owner
     public string ListDescription { get; set; } = "";
-    public string OwnerRole { get; set; } = "cow";    // what you play in your own dairy: cow, farmer, bull or none
+    public string OwnerRole { get; set; } = "cow";    // older single role (kept for old saves)
+    public List<string>? OwnerRoles { get; set; }      // what you play in your own dairy: any of cow, farmer, bull
     public bool ShowOwnerHud { get; set; } = true;
     public string VisitDay { get; set; } = "";
     public float DayAwakeMinutes { get; set; }
     public int DayStall { get; set; }                 // stall milkings today (daily goal for cows)
     public bool StockPaidOut { get; set; }
-    public bool TutorialDone { get; set; }             // the first-run walkthrough was shown            // old sellable milk was paid out when milk started paying at milking time        // minutes of milk-making today (tired after 12 h)        // bonus orders at other dairies, per day
+    public bool TutorialDone { get; set; }
+    public int FarmerXp { get; set; }                  // each role levels on its own (Xp is the cow's)
+    public int BullXp { get; set; }             // the first-run walkthrough was shown            // old sellable milk was paid out when milk started paying at milking time        // minutes of milk-making today (tired after 12 h)        // bonus orders at other dairies, per day
     public List<string>? VisitOrdersDone { get; set; }
 
     // ----- Save protection -----
@@ -106,6 +109,7 @@ public class FarmSave
         Orders ??= new List<Order>();
         Log ??= new List<string>();
         VisitOrdersDone ??= new List<string>();
+        OwnerRoles ??= OwnerRole is "cow" or "farmer" or "bull" ? new List<string> { OwnerRole } : new List<string>();
         if (Math.Abs(StallRange - 1.6f) < 0.01f) StallRange = 0.9f;   // old default was loose enough to count sitting beside a stall
         if (!StarterGiven)
         {
@@ -122,6 +126,7 @@ public class NetMember
     public string DairyId { get; set; } = "";
     public string Dairy { get; set; } = "";
     public string Role { get; set; } = "";
+    public List<string> Roles { get; set; } = new();
     public bool IsOwner { get; set; }
     public string HouseId { get; set; } = "";
     public int Level { get; set; } = 1;

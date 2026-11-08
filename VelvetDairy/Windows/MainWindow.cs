@@ -233,7 +233,7 @@ public sealed partial class MainWindow : Window
         var where = G.Where;
         var dairy = G.DairyName;
         var chip = (G.Dev ? "DEV - " : "") + (G.Paused ? "Paused" : where.InDairy ? where.Why : dairy.Length == 0 ? "No dairy yet" : $"Away from {dairy}");
-        if (G.Networked && G.Role != "cow" && !G.Paused) chip = $"{G.Role} · {chip}";
+        if (G.Networked && (G.MyRoles.Count != 1 || !G.IsCow) && !G.Paused) chip = $"{G.Role} · {chip}";
         if (G.Net.UpdateVersion is { } nv) chip = $"Update {nv} available · {chip}";
         chip = chip.TrimEnd('.');
         var chipColor = G.Paused ? Theme.InkSoft : where.InDairy ? Theme.SageDeep : Theme.RoseDeep;
@@ -926,10 +926,10 @@ public sealed partial class MainWindow : Window
     private void DrawJugs(float width)
     {
         var tank = G.Net.Progress?.Tank;
-        Ui.Wrapped($"Fill jugs from your dairy's tank, then deliver them on Customer orders or to other dairies for your own coins. You can carry up to {DairyGame.MaxCarry} oz.",
+        Ui.Wrapped($"Fill jugs from your dairy's tank, then deliver them on Customer orders or to other dairies for your own coins. You can carry up to {G.MaxCarry} oz.",
             Theme.InkSoft, width);
         Gap(6);
-        ImGui.TextColored(Theme.Ink, $"Carrying {G.Carried:0.#} / {DairyGame.MaxCarry} oz");
+        ImGui.TextColored(Theme.Ink, $"Carrying {G.Carried:0.#} / {G.MaxCarry} oz");
         if (G.Carried > 0)
             ImGui.TextColored(Theme.InkSoft, string.Join(" · ", F.Tank!.Select((oz, g) => (oz, g)).Where(x => x.oz > 0.01f).Select(x => $"{Grades.Name(x.g)} {x.oz:0.#} oz")));
         Gap(6);
@@ -1344,15 +1344,28 @@ public sealed partial class MainWindow : Window
     private void DrawProgress(Vector2 min, Vector2 max)
     {
         var third = (max.X - min.X - 28) / 3;
-        Panel("##level", min, new Vector2(min.X + third, max.Y), "Level", DrawLevel);
+        Panel("##level", min, new Vector2(min.X + third, max.Y), "Cow level", DrawLevel);
         Panel("##daily", new Vector2(min.X + third + 14, min.Y), new Vector2(min.X + third * 2 + 14, max.Y), "Today", DrawDaily, true);
         Panel("##awards", new Vector2(max.X - third, min.Y), max, "Awards", DrawAwards);
+    }
+
+    /// <summary>A small level line for one role (each role levels on its own).</summary>
+    private void DrawRoleLevel(string title, int xp, Vector4 color, string about, float width)
+    {
+        var (lvl, into, need) = Leveling.FromXp(xp);
+        SubHeading($"{title} {lvl}", width);
+        var p = ImGui.GetCursorScreenPos();
+        Ui.Bar(ImGui.GetWindowDrawList(), p + new Vector2(0, 4), p + new Vector2(width, 12), need == 0 ? 1 : (float)into / need, color);
+        ImGui.Dummy(new Vector2(width, 16));
+        ImGui.TextColored(Theme.InkSoft, need == 0 ? "Max level" : $"{into} / {need} xp");
+        Ui.Wrapped(about, Theme.InkSoft, width);
     }
 
     private void DrawLevel(float width)
     {
         var dl = ImGui.GetWindowDrawList();
         var (lvl, into, need) = Leveling.FromXp(F.Xp);
+        // Cow level first (the main one), then farmer and bull
         var p = ImGui.GetCursorScreenPos();
         Ui.Seal(dl, p + new Vector2(44, 44), 42, $"{lvl}", Theme.RoseDeep);
         Ui.Text(dl, fonts.Heading, Leveling.Rank(lvl), p + new Vector2(100, 14), Theme.Ink);
@@ -1362,6 +1375,9 @@ public sealed partial class MainWindow : Window
         ImGui.Dummy(new Vector2(width, 96));
         var nextRank = Leveling.NextRank(lvl);
         if (nextRank != null) ImGui.TextColored(Theme.InkSoft, $"Next rank: {nextRank}");
+
+        DrawRoleLevel("Farmer level", F.FarmerXp, Theme.SageDeep, $"Hand milking pay, jugs, deliveries and contracts. Carry {G.MaxCarry} oz.", width);
+        DrawRoleLevel("Bull level", F.BullXp, Theme.HoneyDeep, "Bulls are a role only for now. More is coming in new updates.", width);
 
         SubHeading("Milk quality", width);
         QualityBar(width);
@@ -1381,7 +1397,8 @@ public sealed partial class MainWindow : Window
         if (shown == 0) ImGui.TextColored(Theme.InkSoft, "Everything is unlocked.");
 
         SubHeading("How to earn xp", width);
-        Ui.Wrapped("Stall milking: 5 xp per oz. Hand milking: 7.5 xp per oz + 10. Orders, daily goals and care tasks give xp too.", Theme.InkSoft, width);
+        Ui.Wrapped("Cow: +1 xp for every 0.1 oz of milk you make, a bonus when you're emptied (stall or hand), daily goals and care. " +
+                   "Farmer: hand milking pay, filling jugs, deliveries and contracts. Each role keeps its own level.", Theme.InkSoft, width);
 
         SubHeading("Totals", width);
         var st = F.Stats;

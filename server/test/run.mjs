@@ -71,7 +71,7 @@ await test("owner registers a dairy and joins it", async () => {
   assert.equal(r.status, 200);
   dairy = r.data.id;
   const hb = await beat(alice);
-  assert.deepEqual(hb.data.membership, { dairyId: dairy, dairy: "Rose Hollow", role: "cow", isOwner: true, level: 1 });
+  assert.deepEqual(hb.data.membership, { dairyId: dairy, dairy: "Rose Hollow", role: "cow", roles: ["cow"], isOwner: true, level: 1 });
 });
 
 await test("an address can only be registered once", async () => {
@@ -109,8 +109,10 @@ await test("owner invites a farmer; invite shows up for them; they accept", asyn
   assert.equal((await beat(bob)).data.membership.role, "farmer");
 });
 
-await test("farmers can invite cows and bulls but not farmers", async () => {
-  assert.equal((await call(bob, "POST", "/v1/invites", { toHash: dana.hash, toName: "Dana", role: "farmer" })).status, 403);
+await test("farmers can invite cows, bulls and farmers", async () => {
+  const f = await call(bob, "POST", "/v1/invites", { toHash: dana.hash, toName: "Dana", role: "farmer" });
+  assert.equal(f.status, 200);
+  assert.equal((await call(bob, "DELETE", `/v1/invites/${f.data.id}`)).status, 200);
   const r = await call(bob, "POST", "/v1/invites", { toHash: carl.hash, toName: "Carl Bull", role: "bull" });
   assert.equal(r.status, 200);
   await call(carl, "POST", `/v1/invites/${r.data.id}/accept`, { charHash: carl.hash, name: "Carl Bull" });
@@ -128,6 +130,22 @@ await test("members see the roster with roles and shared status", async () => {
   assert.deepEqual(names, ["Alice Cow:cow:true", "Bob Hand:farmer:false", "Carl Bull:bull:false"]);
   assert.equal(r.data.members[2].status.milk, 3.5);
   assert.equal(r.data.you.role, "farmer");
+});
+
+await test("several roles at once: self-add cow/bull, farmer is given, only the owner takes away", async () => {
+  let r = await call(carl, "POST", `/v1/members/${carl.id}/roles`, { add: "cow" });
+  assert.deepEqual(r.data.roles, ["cow", "bull"], "anyone can add cow to themselves");
+  assert.equal((await call(carl, "POST", `/v1/members/${carl.id}/roles`, { add: "farmer" })).status, 403, "can't make yourself a farmer");
+  assert.equal((await call(carl, "POST", `/v1/members/${carl.id}/roles`, { remove: "cow" })).status, 403, "only the owner takes roles away");
+  assert.deepEqual((await call(bob, "POST", `/v1/members/${carl.id}/roles`, { add: "farmer" })).data.roles, ["cow", "farmer", "bull"], "a farmer gives farmer");
+  assert.deepEqual((await beat(carl)).data.membership.roles, ["cow", "farmer", "bull"]);
+  assert.equal((await call(bob, "POST", `/v1/members/${carl.id}/roles`, { remove: "farmer" })).status, 403);
+  r = await call(alice, "POST", `/v1/members/${carl.id}/roles`, { remove: "farmer" });
+  r = await call(alice, "POST", `/v1/members/${carl.id}/roles`, { remove: "cow" });
+  assert.deepEqual(r.data.roles, ["bull"]);
+  // The owner gives themselves any role and can take it back
+  assert.deepEqual((await call(alice, "POST", `/v1/members/${alice.id}/roles`, { add: "farmer" })).data.roles, ["cow", "farmer"]);
+  assert.deepEqual((await call(alice, "POST", `/v1/members/${alice.id}/roles`, { remove: "farmer" })).data.roles, ["cow"]);
 });
 
 await test("only the owner sets up stalls, everyone sees them", async () => {

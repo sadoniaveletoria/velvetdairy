@@ -20,8 +20,6 @@ public sealed partial class MainWindow
     private bool dirPublicOnly;
     private int donateCoins = 100;
 
-    private static readonly string[] OwnerRoles = { "cow", "farmer", "bull", "none" };
-    private static readonly string[] RoleLabels = { "Cow (gets milked)", "Farmer (milks the cows)", "Bull", "No role (just run it)" };
 
     private static string Cap1(string s) => s.Length == 0 ? s : char.ToUpperInvariant(s[0]) + s[1..];
 
@@ -72,7 +70,7 @@ public sealed partial class MainWindow
         else
         {
             ImGui.TextColored(Theme.Ink, m.Dairy);
-            ImGui.TextColored(RoleColor(m.Role), m.IsOwner ? $"Owner · plays as {(m.Role == "none" ? "no role" : m.Role)}" : Cap1(m.Role));
+            ImGui.TextColored(Theme.Ink, m.IsOwner ? $"Owner · {G.Role}" : G.Role);
         }
 
         var visiting = G.VisitingDairy;
@@ -263,7 +261,7 @@ public sealed partial class MainWindow
                 Panel("##stallside", new Vector2(mid + 7, top.Y), max, G.IsOwner ? "Stall upgrades" : "Milking emotes", w =>
                 {
                     if (G.IsOwner) DrawStallUpgrades(w);
-                    if (G.Role is "cow" or "farmer") DrawEmotes(w);
+                    if (G.IsCow || G.IsFarmer) DrawEmotes(w);
                 }, true);
                 break;
             default:
@@ -312,20 +310,14 @@ public sealed partial class MainWindow
             else
             ImGui.TextColored(Theme.InkSoft, $"{mine.District}, Ward {mine.Ward}, {(mine.Room > 0 && Estate.FromId(ulong.TryParse(mine.HouseId, out var h) ? h : 0).Apartment ? $"apartment {mine.Room}" : $"Plot {mine.Plot}")} · {mine.WorldName}" +
                                              $" · {(mine.IsPublic ? "public" : "private")}");
-        ImGui.TextColored(RoleColor(m.Role), m.IsOwner ? $"You own it · you play as {(m.Role == "none" ? "no role" : m.Role)}" : $"You're a {m.Role} here");
+        ImGui.TextColored(Theme.Ink, m.IsOwner ? $"You own it · you play as {G.Role}" : $"You're a {G.Role} here");
         ImGui.TextColored(G.Where.InDairy ? Theme.SageDeep : Theme.RoseDeep, G.Where.Why);
         Gap(6);
 
-        if (m.IsOwner) ImGui.TextColored(Theme.InkSoft, "Change the name, listing or your role on the Listing tab.");
+        DrawMyRoles(width);
+        if (m.IsOwner) ImGui.TextColored(Theme.InkSoft, "Change the name or listing on the Listing tab.");
         else
         {
-            Ui.Wrapped(m.Role switch
-            {
-                "cow" => "Get milked in this dairy's stalls or by its farmers. Care and resting work while you're inside.",
-                "farmer" => "You hand milk this dairy's cows: stand close, target them and use a milking emote. You can invite cows and bulls (right-click a player).",
-                "bull" => "Bulls are a role for now. More to come.",
-                _ => "",
-            }, Theme.InkSoft, width);
             Gap(4);
             if (Ui.Button("##leavedairy", "Leave dairy", new Vector2(150, 30), "cream", ImGui.GetIO().KeyShift, "Hold Shift and click to leave."))
                 G.LeaveDairy();
@@ -507,9 +499,23 @@ public sealed partial class MainWindow
         b = F.ListShowName;
         if (ImGui.Checkbox("Show my character name as the owner", ref b)) { F.ListShowName = b; changed = true; }
 
-        var ri = Math.Max(0, Array.IndexOf(OwnerRoles, F.OwnerRole));
-        ImGui.SetNextItemWidth(Math.Min(260, width - 10));
-        if (ImGui.Combo("I play as##ownerrole", ref ri, RoleLabels, RoleLabels.Length)) { F.OwnerRole = OwnerRoles[ri]; changed = true; }
+        if (!owner)
+        {
+            ImGui.TextColored(Theme.Ink, "I play as (any mix):");
+            foreach (var r in Roles.All)
+            {
+                ImGui.SameLine();
+                var on = F.OwnerRoles!.Contains(r);
+                if (ImGui.Checkbox($"{Roles.Title(r)}##own{r}", ref on))
+                {
+                    if (on) F.OwnerRoles.Add(r);
+                    else F.OwnerRoles.Remove(r);
+                    F.OwnerRoles = Roles.Clean(F.OwnerRoles);
+                    changed = true;
+                }
+            }
+        }
+
         if (changed) plugin.SaveConfig();
 
         Gap(4);
@@ -577,6 +583,42 @@ public sealed partial class MainWindow
             G.SaveDraft();
     }
 
+    /// <summary>Your roles: what each does, add cow or bull yourself, owners can also add farmer or take roles off themselves.</summary>
+    private void DrawMyRoles(float width)
+    {
+        SubHeading("Your roles", width);
+        var mine = G.MyRoles;
+        foreach (var r in Roles.All)
+        {
+            var has = mine.Contains(r);
+            var desc = r switch
+            {
+                "cow" => "Make milk and get milked here; paid per ounce.",
+                "farmer" => "Hand milk cows, fill jugs, deliver, invite.",
+                _ => "A role only for now; more is coming.",
+            };
+            var buttons = new List<Btn>();
+            if (!has)
+            {
+                var p = G.AddRoleProblem(null, r);
+                buttons.Add(new Btn($"##addme{r}", "Add", "sage", p == null, p ?? $"Become a {r} too. You keep your other roles."));
+            }
+            else if (G.IsOwner)
+                buttons.Add(new Btn($"##rmme{r}", "Remove", "cream", ImGui.GetIO().KeyShift, "Hold Shift and click. Your progress as a " + r + " is kept."));
+
+            var clicked = ListRow(null, $"{Roles.Title(r)}{(has ? "  ·  yours" : "")}", has ? RoleColor(r) : Theme.InkSoft,
+                new[] { new Line(desc, Theme.InkSoft) }, buttons, width);
+            if (clicked == 0)
+            {
+                if (has) G.RemoveRole(null, r);
+                else G.AddRole(null, r);
+            }
+        }
+
+        if (!G.IsOwner) Ui.Wrapped("Add cow or bull any time. Farmer is given by a farmer or the owner. Only the owner takes roles away. Your progress in each role is always kept.", Theme.InkSoft, width);
+        Gap(4);
+    }
+
     private void DrawMemberSummary(float width)
     {
         var mine = G.Net.Mine;
@@ -607,20 +649,20 @@ public sealed partial class MainWindow
         var inside = online.Where(x => x.Status?.InDairy == true).ToList();
         ImGui.TextColored(Theme.Ink, $"{all.Count} member{(all.Count == 1 ? "" : "s")} · {online.Count} online · {inside.Count} in the dairy");
         ImGui.TextColored(Theme.InkSoft,
-            $"{all.Count(x => x.Role == "cow")} cows · {all.Count(x => x.Role == "farmer")} farmers · {all.Count(x => x.Role == "bull")} bulls" +
+            $"{all.Count(x => x.Has("cow"))} cows · {all.Count(x => x.Has("farmer"))} farmers · {all.Count(x => x.Has("bull"))} bulls" +
             (mine.Invites.Count > 0 ? $" · {mine.Invites.Count} invite(s) waiting" : ""));
 
-        var full = all.Count(x => x.Role == "cow" && x.Online && x.Status is { Cap: > 0 } st && (st.Spoiled || st.Milk >= st.Cap - 0.1f));
+        var full = all.Count(x => x.Has("cow") && x.Online && x.Status is { Cap: > 0 } st && (st.Spoiled || st.Milk >= st.Cap - 0.1f));
         if (full > 0) ImGui.TextColored(Theme.RoseDeep, $"{full} cow{(full == 1 ? "" : "s")} full and waiting to be milked");
 
         if (inside.Count > 0)
         {
-            var names = inside.Take(6).Select(x => $"{x.Name.Split(' ')[0]} ({x.Role})");
+            var names = inside.Take(6).Select(x => $"{x.Name.Split(' ')[0]} ({x.RoleText})");
             Ui.Wrapped("Here now: " + string.Join(", ", names) + (inside.Count > 6 ? $" and {inside.Count - 6} more" : ""), Theme.SageDeep, width);
         }
 
         Gap(6);
-        var manage = G.IsOwner || G.Role == "farmer" ? "Manage members" : "See members";
+        var manage = G.IsOwner || G.IsFarmer ? "Manage members" : "See members";
         if (Ui.Button("##openmembers", manage, new Vector2(200, 34), "blue", true,
                 "Opens the member list in its own window: search, filter by role, sort, change roles and remove."))
             plugin.Members.IsOpen = !plugin.Members.IsOpen;

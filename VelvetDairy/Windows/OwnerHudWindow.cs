@@ -68,7 +68,7 @@ public sealed class OwnerHudWindow : Window
         Ui.Text(dl, fonts.Label, $"OWNER · DAIRY LV {G.DairyLevel}", new Vector2(x, o.Y + 16), Theme.BlueDeep);
         Ui.Text(dl, fonts.Heading, mine.Dairy?.Name ?? F.NetMember!.Dairy, new Vector2(x, o.Y + 34), Theme.Ink);
 
-        var members = mine.Members.Where(m => m.Id != mine.You?.Id).OrderByDescending(m => m.Online).ThenBy(m => m.Role).ThenBy(m => m.Name).ToList();
+        var members = mine.Members.Where(m => m.Id != mine.You?.Id).OrderByDescending(m => m.Online).ThenBy(m => m.RoleText).ThenBy(m => m.Name).ToList();
         var online = members.Count(m => m.Online);
         var inside = members.Count(m => m.Online && m.Status?.InDairy == true);
         Ui.Text(dl, fonts.Small, $"{online} of {members.Count} online · {inside} here", new Vector2(right, o.Y + 20), Theme.SageDeep, 1f);
@@ -80,8 +80,8 @@ public sealed class OwnerHudWindow : Window
         {
             var dot = !m.Online ? Theme.InkSoft : m.Status?.InDairy == true ? Theme.SageDeep : Theme.HoneyDeep;
             dl.AddCircleFilled(new Vector2(x + 4, y + 9), 3.5f, Ui.U(dot));
-            Ui.Text(dl, fonts.Small, $"{m.Name.Split(' ')[0]} · {m.Role}", new Vector2(x + 14, y), m.Online ? Theme.Ink : Theme.InkSoft);
-            if (m.Role == "cow" && m.Online && m.Status is { } s)
+            Ui.Text(dl, fonts.Small, $"{m.Name.Split(' ')[0]} · {m.RoleText}", new Vector2(x + 14, y), m.Online ? Theme.Ink : Theme.InkSoft);
+            if (m.Has("cow") && m.Online && m.Status is { } s)
             {
                 if (s.Spoiled) Ui.Text(dl, fonts.Small, "spoiled", new Vector2(right, y), Theme.Warn, 1f);
                 else

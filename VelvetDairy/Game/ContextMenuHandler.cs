@@ -54,8 +54,13 @@ public sealed class ContextMenuHandler : IDisposable
             if (member == null)
                 foreach (var role in game.InvitableRoles)
                     items.Add(Item($"Invite to {game.DairyName} as a {role}", () => game.InvitePlayer(name, worldId, role)));
-            else if (game.CanRemove(member))
-                items.Add(Item($"Remove from {game.DairyName}", () => game.RemoveMember(member)));
+            else
+            {
+                foreach (var role in Roles.All)
+                    if (!member.Has(role) && game.AddRoleProblem(member, role) == null)
+                        items.Add(Item($"Give the {role} role", () => game.AddRole(member, role)));
+                if (game.CanRemove(member)) items.Add(Item($"Remove from {game.DairyName}", () => game.RemoveMember(member)));
+            }
 
             if (fh != null && game.ProducesMilk)
             {
@@ -64,7 +69,7 @@ public sealed class ContextMenuHandler : IDisposable
                 items.Add(Item("Use their current emote for milking", () => game.RecordEmote(fh)));
             }
 
-            if (items.Count == 0) items.Add(Item(member != null ? $"{member.Name} is a {member.Role} in your dairy" : "Nothing to do here", () => { }));
+            if (items.Count == 0) items.Add(Item(member != null ? $"{member.Name} is a {member.RoleText} in your dairy" : "Nothing to do here", () => { }));
             return items;
         }
 
