@@ -135,6 +135,7 @@ public sealed class Plugin : IDalamudPlugin
     {
         Framework.Update -= OnFrameworkUpdate;
         Game.Stop("Plugin unloaded.");
+        Game.EndMilkMod();
         Sounds.Dispose();
         Net.Dispose();
         contextMenu.Dispose();

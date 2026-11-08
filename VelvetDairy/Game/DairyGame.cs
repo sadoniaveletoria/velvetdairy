@@ -1181,6 +1181,24 @@ public sealed class DairyGame
     // ----- Farmer side: stop the milking emote once the cow is empty -----
     private string? milkingCow;
     private ushort milkingEmote;
+    private string? pendingEmote;
+    private double pendingEmoteAt;
+    private bool milkModOn;
+
+    /// <summary>Switches the milking animation mod back off (if we turned it on).</summary>
+    public void EndMilkMod()
+    {
+        if (!milkModOn) return;
+        milkModOn = false;
+        PenumbraLink.Disable(F.MilkModDir);
+    }
+
+    private void StopWatchingMilking()
+    {
+        milkingCow = null;
+        pendingEmote = null;
+        EndMilkMod();
+    }
     private double milkingSince, milkingEndsAt, nextMilkingCheck;
 
     /// <summary>
@@ -1189,10 +1207,30 @@ public sealed class DairyGame
     /// </summary>
     public bool MilkCow(string cowName, string emote, float cowMilk)
     {
-        if (!Emotes.Perform(emote)) return false;
+        if (Emotes.Find(emote.Split(' ')[0]) == 0) return false;
+        // Your milking animation mod goes on first, then the emote a moment later so the new animation loads
+        var delay = 0.0;
+        if (F.MilkModDir.Length > 0 && !milkModOn)
+        {
+            var why = PenumbraLink.Enable(F.MilkModDir);
+            if (why != null) Fail($"Milking animation: {why}");
+            else
+            {
+                milkModOn = true;
+                delay = 0.4;
+                if (F.MilkModRedraw)
+                {
+                    PenumbraLink.RedrawMe();
+                    delay = 1.5;
+                }
+            }
+        }
+
+        pendingEmote = emote;
+        pendingEmoteAt = now + delay;
         milkingCow = cowName;
         milkingEmote = 0;   // read back from your character once the loop starts (the game's id can differ from the command's)
-        milkingSince = now;
+        milkingSince = now + delay;
         // A little extra so they're really empty (Udder balm only makes it faster)
         milkingEndsAt = now + Math.Clamp(cowMilk / Catalog.HandSpeed, 5, 3600) + 3;
         nextMilkingCheck = now + 5;
@@ -1207,8 +1245,20 @@ public sealed class DairyGame
         var me = Plugin.ObjectTable.LocalPlayer;
         if (me == null)
         {
-            milkingCow = null;
+            StopWatchingMilking();
             return;
+        }
+
+        if (pendingEmote != null)
+        {
+            if (now < pendingEmoteAt) return;
+            var e = pendingEmote;
+            pendingEmote = null;
+            if (!Emotes.Perform(e))
+            {
+                StopWatchingMilking();
+                return;
+            }
         }
 
         var loop = Emotes.Looping(me);
@@ -1216,14 +1266,14 @@ public sealed class DairyGame
         {
             // Remember whichever loop you're actually in once it starts
             if (loop != 0) milkingEmote = loop;
-            else if (now - milkingSince > 5) milkingCow = null;   // it never started
+            else if (now - milkingSince > 5) StopWatchingMilking();   // it never started
             return;
         }
 
         // Stopping or switching emotes yourself ends it here too
         if (loop != milkingEmote)
         {
-            milkingCow = null;
+            StopWatchingMilking();
             return;
         }
 
@@ -1240,9 +1290,9 @@ public sealed class DairyGame
 
         if (!done) return;
         var cow = milkingCow;
-        milkingCow = null;
         // There's no "stop emote" in the game; any other emote ends the loop, so give a quiet pat (no chat text)
         if (Emotes.Looping(me) != 0 && !Emotes.Perform("/pet motion")) Emotes.Perform("/pet");
+        StopWatchingMilking();
         Say($"{cow} is empty.", 1);
     }
 

@@ -38,6 +38,8 @@ public class FarmSave
     public List<Farmhand>? Farmhands { get; set; }
     public List<string>? HandEmotes { get; set; }     // emote commands a farmhand uses to milk you
     public bool AutoHand { get; set; } = true;
+    public string MilkModDir { get; set; } = "";      // farmer: Penumbra mod switched on only while you milk (e.g. one that turns /beesknees into a massage)
+    public bool MilkModRedraw { get; set; }           // redraw your character after switching it on, if the animation doesn't change otherwise
     public bool AnyLoopEmote { get; set; } = true;    // any looping emote from a farmer counts, not just the ones listed        // a farmer of your dairy starts hand milking you just by using one of your emotes
     public float HandRange { get; set; } = 3f;
     public float StallRange { get; set; } = 0.9f;

@@ -120,6 +120,7 @@ public sealed partial class MainWindow
         RoleNote("farmer", width);
         LevelHeader(F.FarmerXp, $"Farmer level {G.FarmerLevel}", Theme.SageDeep, width);
         DrawHandMilkCows(width);
+        DrawMilkMod(width);
         DrawCleanStalls(width);
 
         SubHeading("Coming up", width);
@@ -143,6 +144,56 @@ public sealed partial class MainWindow
 
         SubHeading("How to earn farmer xp", width);
         Ui.Wrapped($"Grooming cows ({Catalog.GroomXp} each, every 15 min per cow), cleaning stalls ({Catalog.CleanXp} each), hand milking pay, filling jugs, customer orders, deliveries and contract shipments.", Theme.InkSoft, width);
+    }
+
+    private System.Collections.Generic.List<(string Dir, string Name)>? modList;
+
+    /// <summary>For farmers: a Penumbra mod switched on only while the Milk button's emote plays (say, one that turns it into a massage).</summary>
+    private void DrawMilkMod(float width)
+    {
+        if (!G.IsFarmer) return;
+        SubHeading("Milking animation (Penumbra)", width);
+        if (!PenumbraLink.Available)
+        {
+            Ui.Wrapped("Install Penumbra to use an animation mod (like one that turns /beesknees into a massage) only while you milk.", Theme.InkSoft, width);
+            return;
+        }
+
+        Ui.Wrapped("Pick a mod that changes your milking emote. The Milk button switches it on for your character just before the emote and back off when the cow is empty. Your Penumbra settings aren't changed. Others see it only if they sync your mods (like with Mare).",
+            Theme.InkSoft, width);
+        modList ??= PenumbraLink.Sorted();
+        var current = F.MilkModDir.Length == 0 ? "None" : modList.FirstOrDefault(m => m.Dir == F.MilkModDir).Name ?? F.MilkModDir;
+        ImGui.SetNextItemWidth(Math.Min(320, width - 120));
+        if (ImGui.BeginCombo("##milkmod", current))
+        {
+            if (ImGui.Selectable("None##milkmodnone", F.MilkModDir.Length == 0))
+            {
+                G.EndMilkMod();
+                F.MilkModDir = "";
+                plugin.SaveConfig();
+            }
+
+            foreach (var (dir, name) in modList)
+                if (ImGui.Selectable($"{name}##mm{dir}", dir == F.MilkModDir))
+                {
+                    G.EndMilkMod();
+                    F.MilkModDir = dir;
+                    plugin.SaveConfig();
+                }
+
+            ImGui.EndCombo();
+        }
+
+        ImGui.SameLine();
+        if (ImGui.SmallButton("Refresh##milkmodrefresh")) modList = PenumbraLink.Sorted();
+        var redraw = F.MilkModRedraw;
+        if (ImGui.Checkbox("Redraw me first (if the animation doesn't change)##milkmodredraw", ref redraw))
+        {
+            F.MilkModRedraw = redraw;
+            plugin.SaveConfig();
+        }
+
+        if (ImGui.IsItemHovered()) ImGui.SetTooltip("Some animation mods only show after your character reloads. This blinks you for a moment before the emote starts.");
     }
 
     /// <summary>For farmers and the owner: clean the dairy's stalls for a bonus to cows milked there.</summary>
