@@ -178,3 +178,21 @@ CREATE TABLE IF NOT EXISTS contract_contrib (
   oz       REAL NOT NULL DEFAULT 0,
   PRIMARY KEY (dairy_id, week, install)
 );
+
+-- Game-wide settings the developer sets (the Grand Creamery's location).
+CREATE TABLE IF NOT EXISTS settings (
+  key   TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
+
+-- Milk each install has taken from its dairy tank and not yet used (contracts and buy orders draw on it).
+CREATE TABLE IF NOT EXISTS carried (
+  install TEXT PRIMARY KEY,
+  oz      REAL NOT NULL DEFAULT 0
+);
+
+-- Last time each install's plugin said it was standing at the Grand Creamery.
+CREATE TABLE IF NOT EXISTS creamery_presence (
+  install TEXT PRIMARY KEY,
+  at      INTEGER NOT NULL
+);

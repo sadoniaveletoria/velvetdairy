@@ -56,6 +56,8 @@ public sealed partial class MainWindow : Window
     }
 
     private const float Pad = 18f;
+    private string creameryName = "";
+    private float creameryRadius = 8f;
 
     /// <summary>Opens the window on a tab (used by the HUDs).</summary>
     public void OpenTab(int i)
@@ -1537,6 +1539,20 @@ public sealed partial class MainWindow : Window
         var stall = F.StallRange;
         ImGui.SetNextItemWidth(200);
         if (ImGui.SliderFloat("Stall seat range (players: 0.9 y)", ref stall, 0.5f, 4f, "%.1f")) { F.StallRange = stall; changed = true; }
+        // The Grand Creamery: where weekly contracts are delivered, for everyone
+        ImGui.Spacing();
+        ImGui.TextColored(Theme.Ink, "Grand Creamery (weekly contract delivery point)");
+        var cr = G.Creamery;
+        ImGui.TextColored(Theme.InkSoft, cr != null ? $"Now: {cr.Name} · {cr.Zone} · radius {cr.Radius:0} y" : "Not set (contracts ship from each dairy).");
+        ImGui.SetNextItemWidth(220);
+        ImGui.InputTextWithHint("##creameryname", "Name (The Grand Creamery)", ref creameryName, 40);
+        ImGui.SameLine();
+        ImGui.SetNextItemWidth(120);
+        ImGui.SliderFloat("radius##creameryradius", ref creameryRadius, 3f, 30f, "%.0f y");
+        if (ImGui.Button("Set the Grand Creamery where I'm standing") && G.Networked) G.SetCreameryHere(creameryName, creameryRadius);
+        if (ImGui.IsItemHovered()) ImGui.SetTooltip("Saves your zone and position on the network for every player. Takes effect within a minute.");
+        ImGui.Spacing();
+
         var sleepy = F.DevCanSleep;
         if (ImGui.Checkbox("Let me doze and fall asleep (anti-AFK test)", ref sleepy)) { F.DevCanSleep = sleepy; changed = true; }
         ImGui.TextColored(Theme.InkSoft, $"Idle {(int)G.IdleSeconds}s · {G.Wake} · milk-making today {F.DayAwakeMinutes / 60f:0.0} h");

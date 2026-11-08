@@ -44,6 +44,8 @@ const FARMER_CUT = 0.25;            // a farmer gets this share of what the cow 
 const FARMER_DAILY_COINS = 3000;
 const COW_DAILY_HAND_OZ = 800;
 const MAX_TAKE_OZ = 96;
+// Developer (same phrase hash as the plugin's dev mode)
+const DEV_KEY_HASH = "7d4e0a8c4a26de8d2843e2a563f667d74beda3b81ffa447c22bd40d93b5af76f";
 // Weekly contracts
 const CONTRACT_BASE_OZ = 200, CONTRACT_OZ_PER_LEVEL = 40, CONTRACT_MAX_OZ = 1200;
 const CONTRACT_XP_PER_OZ = 1.5, CONTRACT_FUND_PER_OZ = 4;             // most milk a farmer or owner can carry out of the tank at once
@@ -225,6 +227,8 @@ async function route(request, env) {
     ["POST", /^\/v1\/dairy\/tank\/take$/, () => takeFromTank(env, me, request)],
     ["POST", /^\/v1\/handpay$/, () => handPay(env, me, request)],
     ["POST", /^\/v1\/dairy\/contract\/ship$/, () => shipToContract(env, me, request)],
+    ["POST", /^\/v1\/carry\/use$/, () => useCarried(env, me, request)],
+    ["PUT", /^\/v1\/dev\/creamery$/, () => setCreamery(env, request)],
     ["GET", /^\/v1\/leaderboard$/, () => leaderboard(env, me)],
     ["GET", /^\/v1\/inbox$/, () => inbox(env, me)],
     ["POST", /^\/v1\/inbox\/claim$/, () => claim(env, me)],
@@ -343,6 +347,10 @@ async function heartbeat(env, me, request) {
     }
   }
 
+  if (b.atCreamery === true)
+    await env.DB.prepare(`INSERT INTO creamery_presence (install, at) VALUES (?, ?)
+      ON CONFLICT(install) DO UPDATE SET at = excluded.at`).bind(me.id, t).run();
+
   const waiting = await env.DB.prepare("SELECT COUNT(*) AS n FROM inbox WHERE install = ? AND claimed IS NULL").bind(me.id).first();
   const invites = charHash ? (await env.DB.prepare(`
       SELECT i.id, i.role, d.name AS dairy, d.world_name AS world, d.is_public AS public
@@ -354,6 +362,8 @@ async function heartbeat(env, me, request) {
     membership: mem ? { dairyId: mem.dairy_id, dairy: mem.dairy_name, role: mem.role, isOwner: !!mem.is_owner, level: (await progressOf(env, mem.dairy_id)).level } : null,
     dairyXp,
     pumped,
+    creamery: await creameryOf(env),
+    carried: await carriedOf(env, me.id),
     invites: invites.map(i => ({ id: i.id, role: i.role, dairy: i.dairy, world: i.world })),
     inbox: waiting.n,
     time: t,
@@ -708,6 +718,7 @@ async function takeFromTank(env, me, request) {
   const r = await env.DB.prepare("UPDATE dairy_tank SET oz = oz - ? WHERE dairy_id = ? AND grade = ? AND oz >= ? RETURNING oz")
     .bind(oz, mem.dairy_id, grade, oz).first();
   if (!r) fail(400, `The tank doesn't have ${oz} oz of Grade ${gradeName(grade)}.`);
+  await env.DB.prepare(`INSERT INTO carried (install, oz) VALUES (?, ?) ON CONFLICT(install) DO UPDATE SET oz = oz + excluded.oz`).bind(me.id, oz).run();
   return { ok: true, oz, grade, left: Math.round(r.oz * 10) / 10 };
 }
 
@@ -770,13 +781,17 @@ async function contractOut(env, dairyId, level) {
   };
 }
 
-/** Farmers and the owner ship milk from the dairy tank to this week's contract. Finishing it pays out once. */
+/** Farmers and the owner bring jugs to the Grand Creamery and ship them to their dairy's contract. Finishing it pays out once. */
 async function shipToContract(env, me, request) {
   const b = await body(request);
   const mem = await membership(env, me.id);
   if (!mem) fail(400, "Join a dairy first.");
   if (!mem.is_owner && mem.role !== "farmer") fail(403, "Only farmers and the owner ship milk to the contract.");
-  if (!inOwnDairy(me, mem)) fail(400, "Go to your dairy to ship milk from its tank.");
+  const creamery = await creameryOf(env);
+  if (creamery) {
+    const seen = await env.DB.prepare("SELECT at FROM creamery_presence WHERE install = ?").bind(me.id).first();
+    if (!seen || seen.at < now() - ONLINE_WINDOW) fail(400, `Bring your jugs to ${creamery.name} to ship them.`);
+  } else if (!inOwnDairy(me, mem)) fail(400, "Go to your dairy to ship milk.");
   const grade = int(b.grade, 0, GRADES - 1, "grade");
   const p = await progressOf(env, mem.dairy_id);
   const c = await contractFor(env, mem.dairy_id, p.level);
@@ -784,17 +799,13 @@ async function shipToContract(env, me, request) {
   if (grade < c.min_grade) fail(400, `This contract needs Grade ${gradeName(c.min_grade)} or better.`);
   const want = Math.min(int(b.oz, 1, CONTRACT_MAX_OZ, "oz"), Math.ceil(c.oz_need - c.oz_done));
   if (want <= 0) fail(409, "This week's contract is already full.");
-
-  const took = await env.DB.prepare("UPDATE dairy_tank SET oz = oz - ? WHERE dairy_id = ? AND grade = ? AND oz >= ? RETURNING oz")
-    .bind(want, mem.dairy_id, grade, want).first();
-  if (!took) fail(400, `The tank doesn't have ${want} oz of Grade ${gradeName(grade)}.`);
+  if (!(await useCarriedOz(env, me.id, want))) fail(400, "You can only ship milk you've carried out of your dairy's tank.");
 
   const done = await env.DB.prepare(
     "UPDATE contracts SET oz_done = oz_done + ? WHERE dairy_id = ? AND week = ? AND completed IS NULL RETURNING oz_done, oz_need")
     .bind(want, mem.dairy_id, c.week).first();
   if (!done) {
-    // Someone finished it a moment ago: put the milk back
-    await env.DB.prepare("UPDATE dairy_tank SET oz = oz + ? WHERE dairy_id = ? AND grade = ?").bind(want, mem.dairy_id, grade).run();
+    await env.DB.prepare("UPDATE carried SET oz = oz + ? WHERE install = ?").bind(want, me.id).run();
     fail(409, "This week's contract was just finished.");
   }
 
@@ -821,6 +832,51 @@ async function shipToContract(env, me, request) {
   }
 
   return { ok: true, shipped: want, ozDone: Math.round(done.oz_done * 10) / 10, ozNeed: done.oz_need, finished };
+}
+
+// ---------------------------------------------------------------- carried milk and the Grand Creamery
+
+async function carriedOf(env, install) {
+  const r = await env.DB.prepare("SELECT oz FROM carried WHERE install = ?").bind(install).first();
+  return Math.round((r?.oz || 0) * 10) / 10;
+}
+
+/** Takes oz from what an install carries; false if they don't have that much. */
+async function useCarriedOz(env, install, oz) {
+  const r = await env.DB.prepare("UPDATE carried SET oz = oz - ? WHERE install = ? AND oz >= ? - 0.001 RETURNING oz").bind(oz, install, oz).first();
+  if (r && r.oz < 0) await env.DB.prepare("UPDATE carried SET oz = 0 WHERE install = ?").bind(install).run();
+  return !!r;
+}
+
+/** The plugin reports milk used on the creamery's own customer and visitor orders. */
+async function useCarried(env, me, request) {
+  const b = await body(request);
+  const oz = Math.max(0, Math.min(1000, Number(b.oz) || 0));
+  await env.DB.prepare("UPDATE carried SET oz = MAX(0, oz - ?) WHERE install = ?").bind(oz, me.id).run();
+  return { ok: true, carried: await carriedOf(env, me.id) };
+}
+
+async function creameryOf(env) {
+  const r = await env.DB.prepare("SELECT value FROM settings WHERE key = 'creamery'").first();
+  return r ? safeParse(r.value) : null;
+}
+
+/** Developer only: puts the Grand Creamery where the developer is standing. */
+async function setCreamery(env, request) {
+  const phrase = request.headers.get("X-VD-Dev") || "";
+  if (!phrase || (await sha256(phrase)) !== DEV_KEY_HASH) fail(403, "Developer only.");
+  const b = await body(request);
+  const value = {
+    name: clean(b.name, 40) || "The Grand Creamery",
+    territory: int(b.territory, 1, 100000, "territory"),
+    mapId: int(b.mapId ?? 0, 0, 100000, "map"),
+    zone: clean(b.zone, 60),
+    x: Number(b.x) || 0, y: Number(b.y) || 0, z: Number(b.z) || 0,
+    radius: Math.max(2, Math.min(50, Number(b.radius) || 8)),
+  };
+  await env.DB.prepare(`INSERT INTO settings (key, value) VALUES ('creamery', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`)
+    .bind(JSON.stringify(value)).run();
+  return { ok: true, creamery: value };
 }
 
 // ---------------------------------------------------------------- dairy fund and leaderboard
@@ -944,11 +1000,16 @@ async function fillOrder(env, me, id, request) {
   const delivered = me.deliver_day === day ? me.deliver_oz : 0;
   if (delivered + o.oz > DAILY_DELIVER_OZ) fail(400, `You can deliver up to ${DAILY_DELIVER_OZ} oz a day.`);
 
+  if (!(await useCarriedOz(env, me.id, o.oz))) fail(400, "Fill jugs from your dairy's tank first: you can only deliver milk you've carried out.");
+
   // Only one deliverer can win the order
   const won = await env.DB.prepare(
     "UPDATE orders SET status = 'filled', filled_by = ?, filled_at = ?, grade = ? WHERE id = ? AND status = 'open' RETURNING id")
     .bind(me.id, now(), grade, id).first();
-  if (!won) fail(409, "Someone already filled that order.");
+  if (!won) {
+    await env.DB.prepare("UPDATE carried SET oz = oz + ? WHERE install = ?").bind(o.oz, me.id).run();
+    fail(409, "Someone already filled that order.");
+  }
 
   await env.DB.batch([
     env.DB.prepare("UPDATE installs SET deliver_day = ?, deliver_oz = ? WHERE id = ?").bind(day, delivered + o.oz, me.id),

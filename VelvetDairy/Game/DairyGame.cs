@@ -303,6 +303,35 @@ public sealed class DairyGame
 
     public float TankOz(int grade) => Net.Progress?.Tank?.ByGrade is { } t && grade >= 0 && grade < t.Count ? t[grade] : 0;
 
+    /// <summary>The Grand Creamery (set by the developer), where contract milk is delivered.</summary>
+    public CreameryInfo? Creamery => Net.Last?.Creamery;
+
+    /// <summary>Standing at the Grand Creamery right now.</summary>
+    public bool AtCreamery
+    {
+        get
+        {
+            var c = Creamery;
+            var me = Plugin.ObjectTable.LocalPlayer;
+            if (c == null || me == null || Plugin.ClientState.TerritoryType != c.Territory) return false;
+            return Vector3.Distance(me.Position, new Vector3(c.X, c.Y, c.Z)) <= c.Radius;
+        }
+    }
+
+    private bool wasAtCreamery;
+
+    private void WatchCreamery()
+    {
+        var at = AtCreamery;
+        if (at && !wasAtCreamery)
+        {
+            Net.Poke();   // let the server know right away
+            if (CanCarry) Say($"You're at {Creamery!.Name}. Ship your jugs on Dairy > Contract.", 0);
+        }
+
+        wasAtCreamery = at;
+    }
+
     public string? ShipProblem(int grade, int oz)
     {
         var c = Net.Progress?.Contract;
@@ -310,11 +339,30 @@ public sealed class DairyGame
         if (c == null) return "Loading the contract...";
         if (c.Completed) return "This week's contract is done.";
         if (!CanCarry) return "Farmers and the owner ship milk to the contract.";
-        if (!Where.InDairy) return "Go to your dairy to ship milk from its tank.";
+        if (Creamery is { } cr) { if (!AtCreamery) return $"Bring your jugs to {cr.Name} ({cr.Zone}) to ship them."; }
+        else if (!Where.InDairy) return "Go to your dairy to ship milk.";
         if (grade < c.MinGrade) return $"This contract needs Grade {Grades.Name(c.MinGrade)} or better.";
         if (oz < 1) return "Nothing left to ship.";
-        if (TankOz(grade) < oz) return $"The tank has {TankOz(grade):0.#} oz of Grade {Grades.Name(grade)}.";
+        if (F.Tank![grade] < oz - 0.01f) return $"You carry {F.Tank[grade]:0.#} oz of Grade {Grades.Name(grade)}. Fill jugs at your dairy (Creamery > Jugs).";
         return null;
+    }
+
+    /// <summary>Developer: sets the Grand Creamery where you stand.</summary>
+    public void SetCreameryHere(string name, float radius)
+    {
+        var me = Plugin.ObjectTable.LocalPlayer;
+        if (!Dev || me == null) return;
+        var t = Plugin.ClientState.TerritoryType;
+        var zone = Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.TerritoryType>().GetRowOrDefault(t)?.PlaceName.ValueNullable?.Name.ExtractText() ?? "";
+        Net.SetCreamery(new
+        {
+            name = string.IsNullOrWhiteSpace(name) ? "The Grand Creamery" : name.Trim(),
+            territory = t,
+            mapId = Plugin.ClientState.MapId,
+            zone,
+            x = me.Position.X, y = me.Position.Y, z = me.Position.Z,
+            radius,
+        }, () => Say($"The Grand Creamery is now here ({zone}).", 1), e => Fail(e));
     }
 
     public void Ship(int grade, int oz)
@@ -328,8 +376,11 @@ public sealed class DairyGame
 
         Touch();
         Net.ShipToContract(grade, oz, r =>
-            Say(r.Finished ? $"Contract finished! The reward goes to {DairyName}." : $"Shipped {r.Shipped} oz to the contract ({r.OzDone:0} / {r.OzNeed} oz).", 1),
-            e => Fail(e));
+        {
+            F.Tank![grade] = Math.Max(0, F.Tank[grade] - r.Shipped);
+            plugin.SaveConfig();
+            Say(r.Finished ? $"Contract finished! The reward goes to {DairyName}." : $"Shipped {r.Shipped} oz to the contract ({r.OzDone:0} / {r.OzNeed} oz).", 1);
+        }, e => Fail(e));
     }
 
     /// <summary>Milk people had stored before milk paid at milking time: paid out once, at today's prices.</summary>
@@ -460,6 +511,7 @@ public sealed class DairyGame
         if (!F.StockPaidOut && Blocked() == null) PayOutOldStock();
         Where = Locate();
         WatchActivity();
+        if (Networked) WatchCreamery();
 
         if (Blocked() != null || Paused)
         {
@@ -1446,6 +1498,7 @@ public sealed class DairyGame
         }
 
         F.Orders!.Remove(o);
+        if (Networked) Net.UseCarried(o.Oz);
         Earn(o.Coins);
         AddXp(o.Xp);
         F.Stats.OrdersFilled++;

@@ -228,7 +228,7 @@ public sealed partial class MainWindow
                 break;
             case 1:
                 Panel("##contract", top, new Vector2(mid - 7, max.Y), "This week's creamery contract", DrawContract);
-                Panel("##contractship", new Vector2(mid + 7, top.Y), max, "Ship from the dairy tank", DrawContractShip, true);
+                Panel("##contractship", new Vector2(mid + 7, top.Y), max, "Deliver to the Grand Creamery", DrawContractShip, true);
                 break;
             case 2:
                 Panel("##stalls", top, new Vector2(mid - 7, max.Y), "Stalls", DrawStalls);
@@ -315,7 +315,7 @@ public sealed partial class MainWindow
             return;
         }
 
-        Ui.Wrapped("The Grand Creamery wants milk from your dairy every week. Ship it from the dairy tank; when it's full, the whole dairy is rewarded.", Theme.InkSoft, width);
+        Ui.Wrapped("The Grand Creamery wants milk from your dairy every week. Farmers and the owner fill jugs from the dairy tank and bring them there. When it's full, the whole dairy is rewarded.", Theme.InkSoft, width);
         Gap(8);
         using (fonts.For(fonts.Heading, $"{c.OzDone:0}")!.Push())
             ImGui.TextColored(c.Completed ? Theme.SageDeep : Theme.Ink, c.Completed ? "Done for this week!" : $"{c.OzDone:0} / {c.OzNeed} oz");
@@ -337,13 +337,51 @@ public sealed partial class MainWindow
         Ui.Wrapped("Contracts grow 40 oz with each dairy level. Higher levels ask for better grades: B from level 5, A from 10, S from 15.", Theme.InkSoft, width);
     }
 
+    private Dalamud.Game.Text.SeStringHandling.Payloads.MapLinkPayload? creameryLink;
+    private CreameryInfo? creameryLinkFor;
+
+    /// <summary>A map link to the Grand Creamery (made once per location).</summary>
+    private Dalamud.Game.Text.SeStringHandling.Payloads.MapLinkPayload? CreameryLink(CreameryInfo c)
+    {
+        if (creameryLinkFor == c) return creameryLink;
+        creameryLinkFor = c;
+        try
+        {
+            creameryLink = c.MapId > 0 ? new Dalamud.Game.Text.SeStringHandling.Payloads.MapLinkPayload(c.Territory, c.MapId, (int)(c.X * 1000), (int)(c.Z * 1000)) : null;
+        }
+        catch
+        {
+            creameryLink = null;
+        }
+
+        return creameryLink;
+    }
+
     private void DrawContractShip(float width)
     {
         var c = G.Net.Progress?.Contract;
         if (c == null) return;
+
+        // Where to deliver
+        var cr = G.Creamery;
+        if (cr != null)
+        {
+            var link = CreameryLink(cr);
+            ImGui.TextColored(Theme.Ink, cr.Name);
+            ImGui.TextColored(Theme.InkSoft, link != null ? $"{cr.Zone} ( {link.XCoord:0.0} , {link.YCoord:0.0} )" : cr.Zone);
+            ImGui.TextColored(G.AtCreamery ? Theme.SageDeep : Theme.RoseDeep, G.AtCreamery ? "You're here." : "Bring your jugs here to ship them.");
+            if (link != null)
+            {
+                if (ImGui.SmallButton("Show on map##creamerymap")) Plugin.GameGui.OpenMapWithMapLink(link);
+            }
+
+            Gap(6);
+        }
+        else Ui.Wrapped("Ship from your dairy for now (the Grand Creamery hasn't opened yet).", Theme.InkSoft, width);
+
         if (!G.CanCarry)
         {
-            Ui.Wrapped("Farmers and the owner ship milk to the contract. As a cow, every milking in the dairy fills the tank they ship from.", Theme.InkSoft, width);
+            Ui.Wrapped("Farmers and the owner deliver contract milk. As a cow, every milking in the dairy fills the tank they carry it from.", Theme.InkSoft, width);
             return;
         }
 
@@ -353,22 +391,22 @@ public sealed partial class MainWindow
             return;
         }
 
+        ImGui.TextColored(Theme.Ink, $"Your jugs: {G.Carried:0.#} oz");
+        if (G.Carried <= 0) Ui.Wrapped("Fill jugs at your dairy first (Creamery > Jugs).", Theme.InkSoft, width);
         var leftOz = (int)Math.Ceiling(c.Left);
         for (var g = Grades.Count - 1; g >= 0; g--)
         {
+            var have = F.Tank![g];
+            if (have < 0.05f) continue;
             var grade = g;
-            var have = G.TankOz(g);
-            var all = (int)Math.Min(Math.Floor(have), leftOz);
-            var p32 = G.ShipProblem(g, Math.Min(32, leftOz));
+            var all = (int)Math.Min(Math.Floor(have + 0.01f), leftOz);
             var pAll = G.ShipProblem(g, all);
             var ok = g >= c.MinGrade;
             var clicked = ListRow(cc => Ui.Seal(ImGui.GetWindowDrawList(), cc, 22, Grades.Name(grade), Theme.GradeColor(grade)),
-                $"Grade {Grades.Name(g)}", ok && have > 0 ? Theme.Ink : Theme.InkSoft,
-                new[] { new Line(ok ? $"{have:0.#} oz in the tank" : "Below this contract's grade", Theme.InkSoft) },
-                ok ? new[] { new Btn($"##ship32{g}", $"Ship {Math.Min(32, leftOz)}", "cream", p32 == null, p32), new Btn($"##shipall{g}", all > 0 ? $"Ship {all}" : "Ship", "blue", pAll == null && all > 0, pAll) }
-                   : Array.Empty<Btn>(), width);
-            if (clicked == 0) G.Ship(g, Math.Min(32, leftOz));
-            else if (clicked == 1) G.Ship(g, all);
+                $"Grade {Grades.Name(g)}", ok ? Theme.Ink : Theme.InkSoft,
+                new[] { new Line(ok ? $"You carry {have:0.#} oz" : "Below this contract's grade", Theme.InkSoft) },
+                ok ? new[] { new Btn($"##shipall{g}", $"Ship {all}", "blue", pAll == null && all > 0, pAll) } : Array.Empty<Btn>(), width);
+            if (clicked == 0) G.Ship(g, all);
         }
     }
 

@@ -190,8 +190,9 @@ public sealed class NetClient : IDisposable
     // Calls
     // =================================================================
 
-    private void Call<T>(string method, string path, object? body, Action<T> ok, Action<string>? failed = null) where T : class
+    private void Call<T>(string method, string path, object? body, Action<T> ok, Action<string>? failed = null, bool dev = false) where T : class
     {
+        var devPhrase = dev ? F.DevKey : "";
         var api = Api;
         if (api == null)
         {
@@ -208,6 +209,7 @@ public sealed class NetClient : IDisposable
                 using var req = new HttpRequestMessage(new HttpMethod(method), api + path);
                 req.Headers.Add("X-VD-Id", id);
                 req.Headers.Add("X-VD-Key", key);
+                if (devPhrase.Length > 0) req.Headers.Add("X-VD-Dev", devPhrase);
                 if (body != null) req.Content = new StringContent(JsonSerializer.Serialize(body, Json), Encoding.UTF8, "application/json");
                 using var res = await http.SendAsync(req);
                 var text = await res.Content.ReadAsStringAsync();
@@ -267,6 +269,7 @@ public sealed class NetClient : IDisposable
             houseId = here?.HouseId.ToString(),
             dairyXp = g.TakeDairyXp(),
             pumped = g.TakePumped(),
+            atCreamery = g.AtCreamery,
             awake = g.Wake == DairyGame.Wakefulness.Awake,
             status = new MemberStatus
             {
@@ -337,7 +340,19 @@ public sealed class NetClient : IDisposable
             ok(r);
         }, failed);
 
-    /// <summary>Ships milk from the dairy tank to this week's contract.</summary>
+    /// <summary>Developer: puts the Grand Creamery where you're standing (for everyone).</summary>
+    public void SetCreamery(object body, Action ok, Action<string> failed) =>
+        Call<IdReply>("PUT", "/v1/dev/creamery", body, _ =>
+        {
+            Poke();
+            ok();
+        }, failed, dev: true);
+
+    /// <summary>Milk used on the creamery's own customer and visitor orders (so it can't also go to a contract).</summary>
+    public void UseCarried(float oz) =>
+        Call<IdReply>("POST", "/v1/carry/use", new { oz = Math.Round(oz, 2) }, _ => { }, e => Plugin.Log.Debug($"Carry use: {e}"));
+
+    /// <summary>Ships milk from your jugs to this week's contract.</summary>
     public void ShipToContract(int grade, int oz, Action<ShipReply> ok, Action<string> failed) =>
         Call<ShipReply>("POST", "/v1/dairy/contract/ship", new { grade, oz }, r =>
         {

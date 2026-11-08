@@ -186,27 +186,36 @@ await test("dairy XP: only in the dairy, capped per member per day", async () =>
   assert.equal(pay.coins, hp.data.coins);
   await beat(alice);   // back out of the dairy
 
-  // Weekly contract: sized by level, shipped from the tank by farmers/owners, pays once
+  // Weekly contract: sized by level; shipped from carried jugs (at the Grand Creamery once it's set); pays once
   let c = (await call(alice, "GET", "/v1/dairy/mine")).data.progress.contract;
   assert.equal(c.ozNeed, 200, "sized when first seen (level 1)");
   assert.equal(c.minGrade, 0);
   assert.equal((await call(carl, "POST", "/v1/dairy/contract/ship", { grade: 0, oz: 5 })).status, 403, "bulls can't ship");
   await beat(bob, { houseId: HOUSE, awake: true });
-  let r = await call(bob, "POST", "/v1/dairy/contract/ship", { grade: 0, oz: 5 });
-  assert.equal(r.data.shipped, 5);
-  assert.equal((await call(bob, "POST", "/v1/dairy/contract/ship", { grade: 0, oz: 5 })).status, 400, "tank only had 6 oz of C");
-  // Fill the tank and finish it
+  let r = await call(bob, "POST", "/v1/dairy/contract/ship", { grade: 0, oz: 4 });
+  assert.equal(r.data.shipped, 4, "the 4 oz bob carried out earlier");
+  assert.equal((await call(bob, "POST", "/v1/dairy/contract/ship", { grade: 0, oz: 5 })).status, 400, "nothing left in his jugs");
   await beat(bob, { houseId: HOUSE, awake: true, pumped: [0, 120, 0, 0, 0] });
   await beat(bob, { houseId: HOUSE, awake: true, pumped: [0, 120, 0, 0, 0] });
+  for (const oz of [96, 96, 8]) assert.equal((await call(bob, "POST", "/v1/dairy/tank/take", { grade: 1, oz })).status, 200);
+  assert.equal((await beat(bob, { houseId: HOUSE, awake: true })).data.carried, 200);
+  // Once the Grand Creamery is set, shipping happens there
+  assert.equal((await call(alice, "PUT", "/v1/dev/creamery", { territory: 129, x: 1, y: 2, z: 3 })).status, 403, "developer only");
+  sqlite.exec(`INSERT INTO settings (key, value) VALUES ('creamery', '{"name":"Test Creamery","territory":129,"x":0,"y":0,"z":0,"radius":8}')`);
+  assert.equal((await beat(bob, { houseId: HOUSE })).data.creamery.name, "Test Creamery");
+  assert.equal((await call(bob, "POST", "/v1/dairy/contract/ship", { grade: 1, oz: 10 })).status, 400, "not at the creamery");
+  await beat(bob, { atCreamery: true });
   const fundBefore = (await call(alice, "GET", "/v1/dairy/mine")).data.progress.fund;
   r = await call(bob, "POST", "/v1/dairy/contract/ship", { grade: 1, oz: 500 });
-  assert.equal(r.data.shipped, 195, "only what's left is taken");
+  assert.equal(r.data.shipped, 196, "only what's left is taken");
   assert.equal(r.data.finished, true);
   assert.equal((await call(bob, "POST", "/v1/dairy/contract/ship", { grade: 1, oz: 1 })).status, 409, "done");
   c = (await call(alice, "GET", "/v1/dairy/mine")).data.progress;
   assert.equal(c.contract.completed, true);
   assert.equal(c.fund, fundBefore + 800);
-  assert.equal(c.tank.byGrade[1], 45);
+  assert.equal(c.tank.byGrade[1], 40);
+  assert.equal((await call(bob, "POST", "/v1/carry/use", { oz: 1 })).data.carried, 3);
+  sqlite.exec("DELETE FROM settings");
   await beat(bob);
   const board = (await call(dana, "GET", "/v1/leaderboard")).data;
   assert.equal(board.dairies[0].name, "Rose Hollow");
@@ -265,6 +274,8 @@ await test("delivery must be in person and meet the grade", async () => {
 });
 
 await test("delivery pays the seller and gives the owner the milk, once", async () => {
+  assert.equal((await call(dana, "POST", `/v1/orders/${orderId}/fill`, { grade: 2, houseId: HOUSE })).status, 400, "no carried milk");
+  sqlite.exec(`INSERT INTO carried (install, oz) VALUES ('${dana.id}', 16)`);
   assert.equal((await call(dana, "POST", `/v1/orders/${orderId}/fill`, { grade: 2, houseId: HOUSE })).status, 200);
   assert.equal((await call(carl, "POST", `/v1/orders/${orderId}/fill`, { grade: 2, houseId: HOUSE })).status, 409);
   const d = (await call(dana, "POST", "/v1/inbox/claim")).data.items;

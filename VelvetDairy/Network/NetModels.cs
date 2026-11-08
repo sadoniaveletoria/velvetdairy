@@ -13,6 +13,21 @@ public sealed class HeartbeatReply
     public List<InviteInfo> Invites { get; set; } = new();
     public int Inbox { get; set; }
     public int DairyXp { get; set; }
+    public CreameryInfo? Creamery { get; set; }
+    public float Carried { get; set; }
+}
+
+/// <summary>Where the Grand Creamery is (set by the developer): weekly contracts are delivered there.</summary>
+public sealed class CreameryInfo
+{
+    public string Name { get; set; } = "";
+    public uint Territory { get; set; }
+    public uint MapId { get; set; }
+    public string Zone { get; set; } = "";
+    public float X { get; set; }
+    public float Y { get; set; }
+    public float Z { get; set; }
+    public float Radius { get; set; } = 8;
 }
 
 public sealed class HereInfo
