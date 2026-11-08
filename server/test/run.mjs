@@ -317,10 +317,38 @@ await test("higher level dairies list first; delivery gives dairy XP", async () 
   assert.ok(list[0].level >= list[list.length - 1].level);
 });
 
+await test("a dairy can be a box anywhere; boxes can't overlap; standing inside counts", async () => {
+  const fay = player("Fay Field"), gus = player("Gus Field");
+  await beat(fay); await beat(gus);
+  const area = { territory: 134, world: 40, house: "", x: 100, y: 20, z: -50, width: 20, length: 12, height: 6, rot: 0.5, mapId: 15, zone: "Middle La Noscea" };
+  const body = (extra) => ({ name: "Meadow Stall", isPublic: true, showOwner: false, ownerName: "Fay Field", worldName: "Gilgamesh", dcName: "Aether", role: "farmer", area, ...extra });
+  const r = await call(fay, "PUT", "/v1/dairy", body());
+  assert.equal(r.status, 200);
+  // Gus can't put a box on top of it, but can next door
+  assert.equal((await call(gus, "PUT", "/v1/dairy", body({ name: "Copycat", area: { ...area, x: 108 } }))).status, 409);
+  assert.equal((await call(gus, "PUT", "/v1/dairy", body({ name: "Next Door", area: { ...area, x: 140 } }))).status, 200);
+  assert.equal((await call(gus, "PUT", "/v1/dairy", body({ name: "Next Door", area: { ...area, x: 140, world: 41 } }))).status, 200, "another world is fine");
+  // Standing inside the box counts as being there
+  let hb = await beat(gus, { pos: { territory: 134, world: 40, house: "", x: 103, y: 21, z: -48 } });
+  assert.equal(hb.data.here.name, "Meadow Stall");
+  hb = await beat(gus, { pos: { territory: 134, world: 40, house: "", x: 130, y: 21, z: -48 } });
+  assert.equal(hb.data.here, null, "outside the box");
+  hb = await beat(gus, { pos: { territory: 134, world: 40, house: "", x: 103, y: 40, z: -48 } });
+  assert.equal(hb.data.here, null, "too far above");
+  // Listed with its area for visitors; the owner's dairy has its box
+  const listed = (await call(gus, "GET", "/v1/dairies")).data.dairies.find(d => d.name === "Meadow Stall");
+  assert.equal(listed.area.zone, "Middle La Noscea");
+  assert.equal(listed.houseId, null);
+  assert.equal((await call(fay, "GET", "/v1/dairy/mine")).data.dairy.area.width, 20);
+  // Renaming keeps the box
+  assert.equal((await call(fay, "PUT", "/v1/dairy", { name: "Meadow Barn", isPublic: true, role: "farmer" })).status, 200);
+  assert.equal((await call(fay, "GET", "/v1/dairy/mine")).data.dairy.area.x, 100);
+});
+
 await test("stats work without logging in", async () => {
   const r = await call(null, "GET", "/v1/stats");
   assert.equal(r.status, 200);
-  assert.equal(r.data.online, 5);
+  assert.equal(r.data.online, 7, "five players plus Fay and Gus");
 });
 
 console.log(`\n${passed} passed`);

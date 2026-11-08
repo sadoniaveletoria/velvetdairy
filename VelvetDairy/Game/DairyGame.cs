@@ -155,9 +155,10 @@ public sealed class DairyGame
     public void OnMyDairy(MyDairyReply? r)
     {
         if (r?.Dairy == null || F.NetMember == null) return;
-        if (F.NetMember.HouseId != r.Dairy.HouseId)
+        if (F.NetMember.HouseId != r.Dairy.HouseId || !SameArea(F.NetMember.Area, r.Dairy.Area))
         {
             F.NetMember.HouseId = r.Dairy.HouseId;
+            F.NetMember.Area = r.Dairy.Area;
             plugin.SaveConfig();
         }
 
@@ -557,7 +558,16 @@ public sealed class DairyGame
         {
             var m = F.NetMember;
             var here = Estate.Current();
-            if (m == null) why = "You aren't in a dairy yet. Register your own estate or accept an invite (Dairy tab).";
+            if (m == null) why = "You aren't in a dairy yet. Mark out your own or accept an invite (Dairy tab).";
+            else if (m.Area is { } area)
+            {
+                if (InArea(area, me))
+                {
+                    inDairy = true;
+                    why = $"In {m.Dairy}.";
+                }
+                else why = Plugin.ClientState.TerritoryType == area.Territory && me.CurrentWorld.RowId == area.World ? $"Outside {m.Dairy}'s area." : $"You're away from {m.Dairy}.";
+            }
             else if (here == null) why = $"You're away from {m.Dairy}.";
             else if (m.HouseId.Length == 0) why = "Loading your dairy...";
             else if (!ulong.TryParse(m.HouseId, out var hid) || !Estate.Same(hid, here.Value.HouseId)) why = $"This isn't {m.Dairy}.";
@@ -1149,10 +1159,14 @@ public sealed class DairyGame
     public string? DairyHereProblem()
     {
         if (Blocked() != null) return Blocked();
-        var here = Estate.Current();
-        if (here == null) return "Go inside the house you want to use as your dairy.";
-        if (!Estate.IsOwnEstate(here.Value) && !Dev) return "You can only register your own estate: your house, your FC's house, your apartment or a shared estate.";
-        if (Networked && F.NetMember != null && !F.NetMember.IsOwner) return $"You're a member of {F.NetMember.Dairy}. Leave it first to start your own dairy.";
+        if (Networked)
+        {
+            if (F.NetMember != null && !F.NetMember.IsOwner) return $"You're a member of {F.NetMember.Dairy}. Leave it first to start your own dairy.";
+            if (Draft == null) return "Mark out your dairy's area first.";
+            return null;
+        }
+
+        if (Estate.Current() == null) return "Go inside the house you want to use as your dairy.";
         return null;
     }
 
@@ -1162,12 +1176,11 @@ public sealed class DairyGame
         var p = DairyHereProblem();
         if (p != null) return Fail(p);
         var me = Plugin.ObjectTable.LocalPlayer!;
-        var here = Estate.Current()!.Value;
         var clean = string.IsNullOrWhiteSpace(name) ? "My Dairy" : name.Trim();
 
         if (Networked)
         {
-            PublishDairy(clean, here);
+            PublishDairy(clean, Draft);
             return true;
         }
 
@@ -1191,49 +1204,136 @@ public sealed class DairyGame
             Stop("Dairy moved.");
         }
 
-        Say($"{F.Dairy.Name} is registered ({here.Describe}).", 1);
+        Say($"{F.Dairy.Name} is registered.", 1);
         plugin.SaveConfig();
         return true;
     }
 
     /// <summary>Sends your dairy and its listing settings to the network. Also used to save listing changes.</summary>
-    public void PublishDairy(string name, Address? at = null)
+    /// <summary>Sends your dairy to the network: a new or moved area, or just the name, listing and your role.</summary>
+    public void PublishDairy(string name, DairyArea? area = null)
     {
         var me = Plugin.ObjectTable.LocalPlayer;
         if (me == null) return;
-        Address addr;
-        if (at.HasValue) addr = at.Value;
-        else if (F.NetMember?.HouseId is { Length: > 0 } h && ulong.TryParse(h, out var hid))
-            addr = Estate.FromId(hid);
-        else
-        {
-            Fail("Go to your dairy to save it.");
-            return;
-        }
-
-        var world = Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.World>().GetRowOrDefault(addr.World);
+        var world = me.CurrentWorld.ValueNullable;
         var body = new
         {
-            houseId = addr.HouseId.ToString(),
             name,
             description = F.ListDescription,
             isPublic = F.ListPublic,
             showOwner = F.ListShowName,
             ownerName = me.Name.TextValue,
-            world = addr.World,
-            worldName = world?.Name.ExtractText() ?? "",
+            worldName = (area != null ? Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.World>().GetRowOrDefault(area.World)?.Name.ExtractText() : null)
+                        ?? world?.Name.ExtractText() ?? "",
             dcName = world?.DataCenter.ValueNullable?.Name.ExtractText() ?? "",
-            district = addr.District,
-            districtKind = addr.DistrictKind,
-            ward = addr.Ward,
-            plot = addr.Plot,
-            room = addr.Room,
             role = F.OwnerRole,
+            area,
         };
+        var isNew = F.NetMember?.IsOwner != true;
         Net.PutDairy(body, _ =>
         {
-            Say(F.NetMember?.IsOwner == true ? $"{name} is updated on the network." : $"{name} is registered on the network. You own it.", 1);
+            if (area != null) Draft = null;
+            Say(isNew ? $"{name} is registered on the network. You own it." : area != null ? $"{name}'s area is saved." : $"{name} is updated.", 1);
         }, e => Fail(e));
+    }
+
+    // ----- Marking out the dairy's area -----
+
+    /// <summary>The box being set up (drawn on the ground while it's set).</summary>
+    public DairyArea? Draft { get; private set; }
+
+    private static bool SameArea(DairyArea? a, DairyArea? b) =>
+        a == null ? b == null : b != null && a.Territory == b.Territory && a.World == b.World && a.House == b.House &&
+                                 a.X == b.X && a.Y == b.Y && a.Z == b.Z && a.Width == b.Width && a.Length == b.Length && a.Rot == b.Rot && a.Height == b.Height;
+
+    /// <summary>Where you are, for the server to tell which dairy (if any) you're standing in.</summary>
+    public object? Position()
+    {
+        var me = Plugin.ObjectTable.LocalPlayer;
+        if (me == null) return null;
+        return new
+        {
+            territory = Plugin.ClientState.TerritoryType,
+            world = me.CurrentWorld.RowId,
+            house = Estate.Current()?.HouseId.ToString() ?? "",
+            x = me.Position.X, y = me.Position.Y, z = me.Position.Z,
+        };
+    }
+
+    private static bool InArea(DairyArea a, Dalamud.Game.ClientState.Objects.SubKinds.IPlayerCharacter me)
+    {
+        if (Plugin.ClientState.TerritoryType != a.Territory || me.CurrentWorld.RowId != a.World) return false;
+        var house = Estate.Current();
+        if (a.House.Length > 0)
+        {
+            if (house == null || !ulong.TryParse(a.House, out var hid) || !Estate.Same(hid, house.Value.HouseId)) return false;
+        }
+        else if (house != null) return false;
+
+        return a.Contains(me.Position);
+    }
+
+    /// <summary>Starts marking out the dairy: your current box if you're there, or a new one centered on you.</summary>
+    public void StartDraft()
+    {
+        var me = Plugin.ObjectTable.LocalPlayer;
+        if (me == null) return;
+        var cur = F.NetMember?.Area;
+        if (cur != null && InArea(cur, me) || cur != null && Plugin.ClientState.TerritoryType == cur.Territory && me.CurrentWorld.RowId == cur.World)
+        {
+            Draft = cur.Copy();
+            return;
+        }
+
+        var house = Estate.Current();
+        Draft = new DairyArea
+        {
+            Territory = Plugin.ClientState.TerritoryType,
+            World = me.CurrentWorld.RowId,
+            House = house?.HouseId.ToString() ?? "",
+            X = me.Position.X, Y = me.Position.Y, Z = me.Position.Z,
+            Rot = me.Rotation,
+            MapId = Plugin.ClientState.MapId,
+            Zone = Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.TerritoryType>().GetRowOrDefault(Plugin.ClientState.TerritoryType)?.PlaceName.ValueNullable?.Name.ExtractText() ?? "",
+            Width = house != null ? 10 : 16,
+            Length = house != null ? 10 : 12,
+        };
+    }
+
+    public void CenterDraftOnMe()
+    {
+        var me = Plugin.ObjectTable.LocalPlayer;
+        if (Draft == null || me == null) return;
+        if (Plugin.ClientState.TerritoryType != Draft.Territory)
+        {
+            Fail("You're in a different zone now. Cancel and start again here.");
+            return;
+        }
+
+        Draft.X = me.Position.X;
+        Draft.Y = me.Position.Y;
+        Draft.Z = me.Position.Z;
+    }
+
+    public void FaceDraftMyWay()
+    {
+        var me = Plugin.ObjectTable.LocalPlayer;
+        if (Draft != null && me != null) Draft.Rot = me.Rotation;
+    }
+
+    public void CancelDraft() => Draft = null;
+
+    /// <summary>Saves a moved or resized area for the dairy you own.</summary>
+    public void SaveDraft()
+    {
+        if (Draft == null || F.NetMember?.IsOwner != true) return;
+        if (Plugin.ClientState.TerritoryType != Draft.Territory)
+        {
+            Fail("Go back to where you marked the area to save it.");
+            return;
+        }
+
+        PublishDairy(F.NetMember.Dairy, Draft);
     }
 
     public void RenameDairy(string name)

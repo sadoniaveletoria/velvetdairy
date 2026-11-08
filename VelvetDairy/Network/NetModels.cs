@@ -83,8 +83,9 @@ public sealed class DairyListing
     public int OpenOrders { get; set; }
     public int Level { get; set; } = 1;
     public int WeekXp { get; set; }
+    public VelvetDairy.Game.DairyArea? Area { get; set; }
 
-    public string Address => Ward is null ? "Private" : Room is > 0 && Plot is null ? $"{District}, Ward {Ward}, apartment {Room}" : $"{District}, Ward {Ward}, Plot {Plot}";
+    public string Address => Area != null ? Area.Zone : Ward is null ? "Private" : Room is > 0 && Plot is null ? $"{District}, Ward {Ward}, apartment {Room}" : $"{District}, Ward {Ward}, Plot {Plot}";
 }
 
 public sealed class MyDairyReply
@@ -213,6 +214,7 @@ public sealed class MyDairyInfo
     public int Ward { get; set; }
     public int Plot { get; set; }
     public int Room { get; set; }
+    public VelvetDairy.Game.DairyArea? Area { get; set; }
 }
 
 public sealed class YouInfo

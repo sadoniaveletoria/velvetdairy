@@ -196,3 +196,19 @@ CREATE TABLE IF NOT EXISTS creamery_presence (
   install TEXT PRIMARY KEY,
   at      INTEGER NOT NULL
 );
+
+-- Where a dairy is: a box anywhere in the world (open world, city, or inside a specific house).
+CREATE TABLE IF NOT EXISTS dairy_area (
+  dairy_id  TEXT PRIMARY KEY,
+  territory INTEGER NOT NULL,
+  world     INTEGER NOT NULL,
+  house     TEXT NOT NULL DEFAULT '',     -- the house's id when the box is inside a house, '' outdoors
+  x REAL NOT NULL, y REAL NOT NULL, z REAL NOT NULL,   -- center (y = floor height)
+  width     REAL NOT NULL,                -- side to side, yalms
+  length    REAL NOT NULL,                -- front to back, yalms
+  height    REAL NOT NULL,                -- how far above and below the floor still counts
+  rot       REAL NOT NULL DEFAULT 0,      -- which way it faces (radians, like the game's rotation)
+  map_id    INTEGER NOT NULL DEFAULT 0,
+  zone      TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS area_where ON dairy_area(territory, world, house);

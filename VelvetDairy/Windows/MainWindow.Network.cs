@@ -164,7 +164,7 @@ public sealed partial class MainWindow
             if (d.Owner.Length > 0) lines.Add(new Line($"Owner: {d.Owner}", Theme.InkSoft));
             if (d.Description.Length > 0) lines.Add(new Line(d.Description, Theme.Ink));
 
-            var canVisit = d.HouseId != null && d.World != null && d.Ward != null;
+            var canVisit = d.Area != null || (d.HouseId != null && d.World != null && d.Ward != null);
             var buttons = canVisit
                 ? new[]
                 {
@@ -187,6 +187,32 @@ public sealed partial class MainWindow
 
     private void Visit(DairyListing d)
     {
+        if (d.Area is { } ar && ar.House.Length == 0)
+        {
+            // Outdoors: flag it on the map and copy where it is
+            try
+            {
+                if (ar.MapId > 0)
+                {
+                    var link = new Dalamud.Game.Text.SeStringHandling.Payloads.MapLinkPayload(ar.Territory, ar.MapId, (int)(ar.X * 1000), (int)(ar.Z * 1000));
+                    Plugin.GameGui.OpenMapWithMapLink(link);
+                    ImGui.SetClipboardText($"{d.Name}: {ar.Zone} ( {link.XCoord:0.0} , {link.YCoord:0.0} ) {d.WorldName}");
+                    G.Notify($"{d.Name} is flagged on your map ({ar.Zone}, {d.WorldName}).", 0);
+                    return;
+                }
+            }
+            catch
+            {
+                // fall through to copying
+            }
+
+            ImGui.SetClipboardText($"{d.Name}: {ar.Zone}, {d.WorldName}");
+            G.Notify($"Copied: {ar.Zone}, {d.WorldName}", 0);
+            return;
+        }
+
+        if (d.Area is { House.Length: > 0 } inHouse && d.HouseId == null) d.HouseId = inHouse.House;
+
         if (!Lifestream.Installed || d.HouseId == null || !ulong.TryParse(d.HouseId, out var hid))
         {
             Copy(d);
@@ -194,7 +220,9 @@ public sealed partial class MainWindow
         }
 
         var addr = Estate.FromId(hid);
-        var err = Lifestream.GoTo(d.Name, d.World!.Value, d.DistrictKind, d.Ward!.Value, d.Plot ?? addr.Plot, d.Room ?? 0, addr.Apartment);
+        var err = d.Area != null
+            ? Lifestream.GoTo(d.Name, addr.World, addr.DistrictKind, addr.Ward, addr.Plot, addr.Room, addr.Apartment)
+            : Lifestream.GoTo(d.Name, d.World!.Value, d.DistrictKind, d.Ward!.Value, d.Plot ?? addr.Plot, d.Room ?? 0, addr.Apartment);
         if (err != null)
         {
             G.Notify(err, 2);
@@ -272,8 +300,7 @@ public sealed partial class MainWindow
 
         if (m == null)
         {
-            Ui.Wrapped("You aren't in a dairy yet. Go inside your own estate (your house, your FC's house, your apartment or a shared estate) and register it, " +
-                       "or wait for an owner or farmer to invite you.", Theme.Ink, width);
+            Ui.Wrapped("You aren't in a dairy yet. Start your own anywhere in the world (below), or wait for an owner or farmer to invite you.", Theme.Ink, width);
             Gap(6);
             DrawRegisterForm(width, false);
             return;
@@ -281,6 +308,8 @@ public sealed partial class MainWindow
 
         ImGui.TextColored(Theme.Ink, m.Dairy);
         if (mine != null)
+            if (mine.Area is { } ma) ImGui.TextColored(Theme.InkSoft, $"{ma.Zone}{(ma.House.Length > 0 ? " (in a house)" : "")} · {mine.WorldName} · {(mine.IsPublic ? "public" : "private")}");
+            else
             ImGui.TextColored(Theme.InkSoft, $"{mine.District}, Ward {mine.Ward}, {(mine.Room > 0 && Estate.FromId(ulong.TryParse(mine.HouseId, out var h) ? h : 0).Apartment ? $"apartment {mine.Room}" : $"Plot {mine.Plot}")} · {mine.WorldName}" +
                                              $" · {(mine.IsPublic ? "public" : "private")}");
         ImGui.TextColored(RoleColor(m.Role), m.IsOwner ? $"You own it · you play as {(m.Role == "none" ? "no role" : m.Role)}" : $"You're a {m.Role} here");
@@ -488,14 +517,64 @@ public sealed partial class MainWindow
         {
             if (Ui.Button("##savelisting", "Save changes", new Vector2(160, 30), "rose", dairyName.Trim().Length > 0, "Update your dairy's name, listing and your role."))
                 G.PublishDairy(dairyName.Trim());
+            Gap(10);
+            SubHeading("Dairy area", width);
+            var a = F.NetMember?.Area;
+            ImGui.TextColored(Theme.InkSoft, a != null ? $"{a.Zone} · {a.Width:0} × {a.Length:0} y" : "Your dairy is an older house dairy. Mark out an area to move it anywhere.");
+            DrawAreaEditor(width, false);
         }
         else
         {
+            SubHeading("Where is your dairy?", width);
+            Ui.Wrapped("Stand in the middle of where you want your dairy: a field, a corner of a city, or a room in any house. " +
+                       "Then size and turn the box until it covers your dairy. It's drawn on the ground while you set it up.", Theme.InkSoft, width);
+            Gap(4);
+            DrawAreaEditor(width, true);
+        }
+    }
+
+    /// <summary>Mark out (or move and resize) the dairy's box; the box is drawn on the ground while this is open.</summary>
+    private void DrawAreaEditor(float width, bool registering)
+    {
+        var d = G.Draft;
+        if (d == null)
+        {
+            if (Ui.Button("##startarea", registering ? "Start marking here" : "Move or resize", new Vector2(190, 30), "blue", true,
+                    "Starts a box centered on you, facing the way you face. You can change everything before saving."))
+                G.StartDraft();
+            return;
+        }
+
+        ImGui.TextColored(Theme.Ink, $"{(d.Zone.Length > 0 ? d.Zone : "Here")}{(d.House.Length > 0 ? " (inside this house)" : "")}");
+        ImGui.TextColored(Theme.InkSoft, "Pink edges are the sides; the blue edge is the front.");
+        var w = d.Width;
+        var l = d.Length;
+        var h = d.Height;
+        var turn = d.Rot * 180f / MathF.PI;
+        ImGui.SetNextItemWidth(Math.Min(260, width - 120));
+        if (ImGui.SliderFloat("Width##areaw", ref w, DairyArea.MinSize, DairyArea.MaxSize, "%.0f y")) d.Width = w;
+        ImGui.SetNextItemWidth(Math.Min(260, width - 120));
+        if (ImGui.SliderFloat("Length##areal", ref l, DairyArea.MinSize, DairyArea.MaxSize, "%.0f y")) d.Length = l;
+        ImGui.SetNextItemWidth(Math.Min(260, width - 120));
+        if (ImGui.SliderFloat("Turn##arear", ref turn, -180f, 180f, "%.0f°")) d.Rot = turn * MathF.PI / 180f;
+        ImGui.SetNextItemWidth(Math.Min(260, width - 120));
+        if (ImGui.SliderFloat("Height##areah", ref h, 2f, 20f, "%.0f y")) d.Height = h;
+        if (ImGui.IsItemHovered()) ImGui.SetTooltip("How far above or below the floor still counts as inside (stairs, lofts).");
+        if (ImGui.SmallButton("Center on me##areacenter")) G.CenterDraftOnMe();
+        ImGui.SameLine();
+        if (ImGui.SmallButton("Face my way##areaface")) G.FaceDraftMyWay();
+        ImGui.SameLine();
+        if (ImGui.SmallButton("Cancel##areacancel")) G.CancelDraft();
+        Gap(4);
+        if (registering)
+        {
             var problem = G.DairyHereProblem();
-            if (Ui.Button("##registernet", "Register here", new Vector2(160, 30), "rose", problem == null,
-                    problem ?? "Make the estate you're in your dairy. Nobody else can register it after you."))
+            if (Ui.Button("##registernet", "Register my dairy", new Vector2(190, 32), "rose", problem == null && dairyName.Trim().Length > 0,
+                    problem ?? (dairyName.Trim().Length == 0 ? "Give your dairy a name first." : "Saves this area as your dairy. It can't overlap another dairy.")))
                 G.RegisterDairyHere(dairyName);
         }
+        else if (Ui.Button("##savearea", "Save area", new Vector2(160, 30), "rose", true, "Moves your dairy to this box. Stalls outside the new box stop working."))
+            G.SaveDraft();
     }
 
     private void DrawMemberSummary(float width)

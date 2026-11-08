@@ -99,6 +99,7 @@ public sealed class Plugin : IDalamudPlugin
         });
 
         PluginInterface.UiBuilder.Draw += windowSystem.Draw;
+        PluginInterface.UiBuilder.Draw += DrawOverlay;
         chatHandler = m => OnChat(m);
         ChatGui.ChatMessage += chatHandler;
 
@@ -134,6 +135,7 @@ public sealed class Plugin : IDalamudPlugin
         PluginInterface.UiBuilder.OpenConfigUi -= MainWindow.Toggle;
         PluginInterface.UiBuilder.OpenMainUi -= MainWindow.Toggle;
         PluginInterface.UiBuilder.Draw -= windowSystem.Draw;
+        PluginInterface.UiBuilder.Draw -= DrawOverlay;
         if (chatHandler != null) ChatGui.ChatMessage -= chatHandler;
         CommandManager.RemoveHandler(Command);
         windowSystem.RemoveAllWindows();
@@ -198,6 +200,12 @@ public sealed class Plugin : IDalamudPlugin
         {
             MainWindow.Toggle();
         }
+    }
+
+    /// <summary>The dairy box being marked out, drawn on the ground (only while editing).</summary>
+    private void DrawOverlay()
+    {
+        if (Game.Draft is { } d && ClientState.TerritoryType == d.Territory) Windows.AreaOverlay.Draw(d);
     }
 
     private IChatGui.OnHandleableChatMessageDelegate? chatHandler;

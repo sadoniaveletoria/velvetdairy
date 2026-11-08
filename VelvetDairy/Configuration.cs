@@ -124,6 +124,7 @@ public class NetMember
     public bool IsOwner { get; set; }
     public string HouseId { get; set; } = "";
     public int Level { get; set; } = 1;
+    public DairyArea? Area { get; set; }             // the dairy's box (null for older house-only dairies)
 }
 
 [Serializable]

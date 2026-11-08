@@ -267,6 +267,7 @@ public sealed class NetClient : IDisposable
             version = Plugin.Version,
             charHash = MyCharHash(),
             houseId = here?.HouseId.ToString(),
+            pos = g.Position(),
             dairyXp = g.TakeDairyXp(),
             pumped = g.TakePumped(),
             atCreamery = g.AtCreamery,

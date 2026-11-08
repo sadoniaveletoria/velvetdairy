@@ -265,6 +265,76 @@ async function stats(env) {
   return { online: await onlineCount(env), dairies: d.n || 0, publicDairies: d.p || 0 };
 }
 
+// ---------------------------------------------------------------- dairy areas (boxes)
+
+const AREA_MIN = 4, AREA_MAX = 80, AREA_HEIGHT_MAX = 40;
+
+/** The box's four corners on the ground (x, z), using the game's rotation (0 faces +z). */
+function corners(a) {
+  const fx = Math.sin(a.rot), fz = Math.cos(a.rot);    // forward
+  const rx = Math.cos(a.rot), rz = -Math.sin(a.rot);   // right
+  const hl = a.length / 2, hw = a.width / 2;
+  return [[1, 1], [1, -1], [-1, -1], [-1, 1]].map(([f, r]) => [a.x + fx * hl * f + rx * hw * r, a.z + fz * hl * f + rz * hw * r]);
+}
+
+/** Is a point inside the box (and within its height)? */
+function inArea(a, p) {
+  if (Math.abs(p.y - a.y) > a.height) return false;
+  const dx = p.x - a.x, dz = p.z - a.z;
+  const along = dx * Math.sin(a.rot) + dz * Math.cos(a.rot);
+  const across = dx * Math.cos(a.rot) - dz * Math.sin(a.rot);
+  return Math.abs(along) <= a.length / 2 && Math.abs(across) <= a.width / 2;
+}
+
+/** Do two boxes overlap on the ground? (separating axis test) */
+function overlaps(a, b) {
+  const ca = corners(a), cb = corners(b);
+  for (const poly of [ca, cb]) {
+    for (let i = 0; i < 4; i++) {
+      const [x1, z1] = poly[i], [x2, z2] = poly[(i + 1) % 4];
+      const nx = z2 - z1, nz = x1 - x2;
+      const proj = pts => pts.map(([x, z]) => x * nx + z * nz);
+      const pa = proj(ca), pb = proj(cb);
+      if (Math.max(...pa) < Math.min(...pb) || Math.max(...pb) < Math.min(...pa)) return false;
+    }
+  }
+  return Math.abs(a.y - b.y) <= a.height + b.height;
+}
+
+function readArea(v) {
+  if (!v || typeof v !== "object") return null;
+  const num = (n, lo, hi, what) => {
+    const x = Number(n);
+    if (!Number.isFinite(x) || x < lo || x > hi) fail(400, `Bad ${what}.`);
+    return x;
+  };
+  const house = v.house ? String(v.house) : "";
+  if (house && !/^[0-9]{1,20}$/.test(house)) fail(400, "Bad house.");
+  return {
+    territory: int(v.territory, 1, 100000, "zone"), world: int(v.world, 1, 100000, "world"), house,
+    x: num(v.x, -5000, 5000, "position"), y: num(v.y, -5000, 5000, "position"), z: num(v.z, -5000, 5000, "position"),
+    width: num(v.width, AREA_MIN, AREA_MAX, "width"), length: num(v.length, AREA_MIN, AREA_MAX, "length"),
+    height: num(v.height ?? 6, 1, AREA_HEIGHT_MAX, "height"), rot: num(v.rot ?? 0, -10, 10, "facing"),
+    mapId: int(v.mapId ?? 0, 0, 100000, "map"), zone: clean(v.zone, 60),
+  };
+}
+
+const areaRow = r => r && ({
+  territory: r.territory, world: r.world, house: r.house, x: r.x, y: r.y, z: r.z,
+  width: r.width, length: r.length, height: r.height, rot: r.rot, mapId: r.map_id, zone: r.zone,
+});
+
+/** The dairy whose box contains this position, if any. */
+async function dairyInArea(env, pos) {
+  if (!pos || typeof pos !== "object") return null;
+  const territory = Number(pos.territory), world = Number(pos.world), house = pos.house ? String(pos.house) : "";
+  const p = { x: Number(pos.x), y: Number(pos.y), z: Number(pos.z) };
+  if (!Number.isFinite(territory) || !Number.isFinite(world) || !Number.isFinite(p.x)) return null;
+  const rows = (await env.DB.prepare("SELECT * FROM dairy_area WHERE territory = ? AND world = ? AND house = ?").bind(territory, world, house).all()).results;
+  const hit = rows.find(r => inArea(r, p));
+  return hit ? await env.DB.prepare("SELECT * FROM dairies WHERE id = ?").bind(hit.dairy_id).first() : null;
+}
+
 async function dairyAt(env, hid) {
   if (!hid) return null;
   const s = String(hid);
@@ -288,7 +358,7 @@ const notice = (env, install, note) => addInbox(env, install, "notice", 0, 0, 0,
 async function heartbeat(env, me, request) {
   const b = await body(request);
   const t = now();
-  const here = await dairyAt(env, b.houseId);
+  const here = (await dairyInArea(env, b.pos)) || (await dairyAt(env, b.houseId));
   const charHash = isHash(b.charHash) ? b.charHash : me.char_hash;
   if (t - me.last_seen >= HEARTBEAT_MIN || (here?.id ?? null) !== me.at_dairy || charHash !== me.char_hash) {
     await env.DB.prepare("UPDATE installs SET last_seen = ?, at_dairy = ?, version = ?, char_hash = ? WHERE id = ?")
@@ -385,7 +455,11 @@ function listing(row, me) {
     worldName: row.world_name,
     dcName: row.dc_name,
     // The address only goes to other players when the owner made the dairy public
-    houseId: open ? row.house_id : null,
+    houseId: open && /^[0-9]+$/.test(row.house_id) ? row.house_id : null,
+    area: open && row.a_territory ? {
+      territory: row.a_territory, world: row.a_world, house: row.a_house, x: row.a_x, y: row.a_y, z: row.a_z,
+      mapId: row.a_map, zone: row.a_zone,
+    } : null,
     world: open ? row.world : null,
     district: open ? row.district : "",
     districtKind: open ? row.district_kind : 0,
@@ -405,10 +479,11 @@ async function listDairies(env, me) {
   const t = now();
   const rows = await env.DB.prepare(`
     SELECT d.*, p.xp, p.week, p.week_xp,
+      a.territory AS a_territory, a.world AS a_world, a.house AS a_house, a.x AS a_x, a.y AS a_y, a.z AS a_z, a.map_id AS a_map, a.zone AS a_zone,
       (SELECT COUNT(*) FROM installs i WHERE i.at_dairy = d.id AND i.last_seen >= ?) AS here,
       (SELECT COUNT(*) FROM members m WHERE m.dairy_id = d.id) AS members,
       (SELECT COUNT(*) FROM orders o WHERE o.dairy_id = d.id AND o.status = 'open') AS orders
-    FROM dairies d LEFT JOIN dairy_progress p ON p.dairy_id = d.id
+    FROM dairies d LEFT JOIN dairy_progress p ON p.dairy_id = d.id LEFT JOIN dairy_area a ON a.dairy_id = d.id
     WHERE d.updated >= ? OR d.owner = ?
     ORDER BY COALESCE(p.xp, 0) DESC, here DESC, d.is_public DESC, d.updated DESC
     LIMIT 500`).bind(t - ONLINE_WINDOW, t - LISTING_MAX_AGE, me.id).all();
@@ -434,6 +509,7 @@ async function myDairy(env, me) {
       id: d.id, name: d.name, description: d.description, isPublic: !!d.is_public, showOwner: !!d.show_owner,
       houseId: d.house_id, world: d.world, worldName: d.world_name, district: d.district, districtKind: d.district_kind,
       ward: d.ward, plot: d.plot, room: d.room,
+      area: areaRow(await env.DB.prepare("SELECT * FROM dairy_area WHERE dairy_id = ?").bind(d.id).first()),
     },
     you: { id: me.id, role: mem.role, isOwner: !!mem.is_owner },
     members: members.map(m => ({
@@ -490,19 +566,32 @@ async function putDairy(env, me, request) {
   const b = await body(request);
   const name = clean(b.name, 32);
   if (!name) fail(400, "Give your dairy a name.");
-  const hid = houseId(b.houseId);
-  const world = int(b.world, 1, 100000, "world");
-  const ward = int(b.ward, 1, 60, "ward");
-  const plot = int(b.plot, 1, 120, "plot");
-  const room = int(b.room ?? 0, 0, 1000, "room");
-  const districtKind = int(b.districtKind ?? 0, 0, 1000, "district");
+  const area = readArea(b.area);
+  const existing = await env.DB.prepare("SELECT * FROM dairies WHERE owner = ?").bind(me.id).first();
   const role = PLAY_ROLES.includes(b.role) ? b.role : "cow";
   const t = now();
-
-  const atAddress = await dairyAt(env, hid);
-  if (atAddress && atAddress.owner !== me.id) fail(409, "This address is already registered as a dairy.");
-  const existing = await env.DB.prepare("SELECT * FROM dairies WHERE owner = ?").bind(me.id).first();
-  if (existing && existing.house_id !== hid) fail(409, `You already own ${existing.name}. Remove it before registering another.`);
+  let hid, world, ward, plot, room, districtKind;
+  if (area) {
+    // A box anywhere: it can't overlap another dairy's box in the same zone, world and house
+    const others = (await env.DB.prepare("SELECT * FROM dairy_area WHERE territory = ? AND world = ? AND house = ?")
+      .bind(area.territory, area.world, area.house).all()).results.filter(r => !existing || r.dairy_id !== existing.id);
+    if (others.some(r => overlaps(r, area))) fail(409, "That overlaps another dairy. Move or shrink your box.");
+    hid = `area:${me.id}`;
+    world = area.world; ward = 0; plot = 0; room = 0; districtKind = 0;
+  } else if (existing) {
+    if (b.houseId != null && String(b.houseId) !== existing.house_id) fail(409, `You already own ${existing.name}. Remove it before registering another.`);
+    // Just updating the name, listing or role
+    hid = existing.house_id; world = existing.world; ward = existing.ward; plot = existing.plot; room = existing.room; districtKind = existing.district_kind;
+  } else {
+    hid = houseId(b.houseId);
+    world = int(b.world, 1, 100000, "world");
+    ward = int(b.ward, 1, 60, "ward");
+    plot = int(b.plot, 1, 120, "plot");
+    room = int(b.room ?? 0, 0, 1000, "room");
+    districtKind = int(b.districtKind ?? 0, 0, 1000, "district");
+    const atAddress = await dairyAt(env, hid);
+    if (atAddress && atAddress.owner !== me.id) fail(409, "This address is already registered as a dairy.");
+  }
 
   const id = existing ? existing.id : randomId();
   await env.DB.prepare(`
@@ -512,10 +601,20 @@ async function putDairy(env, me, request) {
     ON CONFLICT(owner) DO UPDATE SET
       name = excluded.name, description = excluded.description, is_public = excluded.is_public,
       show_owner = excluded.show_owner, owner_name = excluded.owner_name, world_name = excluded.world_name,
-      dc_name = excluded.dc_name, district = excluded.district, district_kind = excluded.district_kind, updated = excluded.updated`)
+      dc_name = excluded.dc_name, district = excluded.district, district_kind = excluded.district_kind, updated = excluded.updated,
+      house_id = excluded.house_id, world = excluded.world, ward = excluded.ward, plot = excluded.plot, room = excluded.room`)
     .bind(id, me.id, hid, name, clean(b.description, 140), b.isPublic ? 1 : 0, b.showOwner ? 1 : 0,
       clean(b.ownerName, 40), world, clean(b.worldName, 30), clean(b.dcName, 30),
-      clean(b.district, 30), districtKind, ward, plot, room, t).run();
+      clean(area ? area.zone : b.district, 30), districtKind, ward, plot, room, t).run();
+
+  if (area) {
+    await env.DB.prepare(`INSERT INTO dairy_area (dairy_id, territory, world, house, x, y, z, width, length, height, rot, map_id, zone)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(dairy_id) DO UPDATE SET territory = excluded.territory, world = excluded.world, house = excluded.house,
+        x = excluded.x, y = excluded.y, z = excluded.z, width = excluded.width, length = excluded.length, height = excluded.height,
+        rot = excluded.rot, map_id = excluded.map_id, zone = excluded.zone`)
+      .bind(id, area.territory, area.world, area.house, area.x, area.y, area.z, area.width, area.length, area.height, area.rot, area.mapId, area.zone).run();
+  }
 
   if (!existing) {
     // The owner joins their own dairy (leaving any other)
@@ -544,6 +643,7 @@ async function deleteDairy(env, me) {
     env.DB.prepare("DELETE FROM dairy_tank WHERE dairy_id = ?").bind(d.id),
     env.DB.prepare("DELETE FROM tank_contrib WHERE dairy_id = ?").bind(d.id),
     env.DB.prepare("DELETE FROM contracts WHERE dairy_id = ?").bind(d.id),
+    env.DB.prepare("DELETE FROM dairy_area WHERE dairy_id = ?").bind(d.id),
     env.DB.prepare("DELETE FROM contract_contrib WHERE dairy_id = ?").bind(d.id),
     env.DB.prepare("UPDATE invites SET status = 'cancelled' WHERE dairy_id = ? AND status = 'pending'").bind(d.id),
     env.DB.prepare("DELETE FROM dairies WHERE id = ?").bind(d.id),
