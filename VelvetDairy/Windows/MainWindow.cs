@@ -207,7 +207,6 @@ public sealed partial class MainWindow : Window
     private float DrawHeader(ImDrawListPtr dl, Vector2 o, float width)
     {
         const float h = 92f;
-        var (lvl, into, need) = Leveling.FromXp(F.Xp);
 
         // A cream band with a rose rule under it
         dl.AddRectFilled(o, o + new Vector2(width, h), Ui.U(Theme.Paper, 0.92f));
@@ -219,11 +218,38 @@ public sealed partial class MainWindow : Window
         Ui.Text(dl, fonts.Label, "VELVET", new Vector2(tx, o.Y + 14), Theme.RoseDeep);
         Ui.Text(dl, fonts.Title, "DAIRY", new Vector2(tx - 1, o.Y + 34), Theme.Ink);
 
-        // Level and rank
+        // Your dairy and you in it: name, your roles, the dairy's level and this week's contract
         var mx = tx + 150;
-        Ui.Text(dl, fonts.Heading, $"Level {lvl} · {Leveling.Rank(lvl)}", new Vector2(mx, o.Y + 24), Theme.Ink);
-        Ui.Bar(dl, new Vector2(mx, o.Y + 56), new Vector2(mx + 240, o.Y + 63), need == 0 ? 1f : (float)into / need, Theme.RoseDeep);
-        Ui.Text(dl, fonts.Small, need == 0 ? "Max level" : $"{into} / {need} xp", new Vector2(mx, o.Y + 66), Theme.InkSoft);
+        var member = F.NetMember;
+        var dairyTitle = G.Networked ? member?.Dairy ?? "No dairy yet" : F.Dairy?.Name ?? "No dairy yet";
+        Ui.Text(dl, fonts.Heading, dairyTitle, new Vector2(mx, o.Y + 14), Theme.Ink);
+        var px = mx;
+        void Pill(string text, Vector4 color)
+        {
+            var size = Ui.Measure(fonts.Small, text);
+            var a0 = new Vector2(px, o.Y + 42);
+            var a1 = a0 + new Vector2(size.X + 16, size.Y + 2);
+            dl.AddRectFilled(a0, a1, Ui.U(color, 0.14f), 99);
+            dl.AddRect(a0, a1, Ui.U(color, 0.55f), 99, ImDrawFlags.None, 1f);
+            Ui.Text(dl, fonts.Small, text, a0 + new Vector2(8, 1), color);
+            px = a1.X + 6;
+        }
+
+        foreach (var r in G.MyRoles) Pill(r.ToUpperInvariant(), r == "farmer" ? Theme.SageDeep : r == "bull" ? Theme.HoneyDeep : Theme.RoseDeep);
+        if (G.Networked && member != null) Pill($"DAIRY LV {G.DairyLevel}", Theme.BlueDeep);
+
+        var con = G.Networked ? G.Net.Progress?.Contract : null;
+        if (con != null)
+        {
+            var left = NextMonday() - DateTime.UtcNow;
+            Ui.Bar(dl, new Vector2(mx, o.Y + 66), new Vector2(mx + 240, o.Y + 72), con.Progress, con.Completed ? Theme.SageDeep : Theme.BlueDeep);
+            Ui.Text(dl, fonts.Small, con.Completed ? "Weekly contract done!" : $"Contract {con.OzDone:0} / {con.OzNeed} oz · {(int)left.TotalDays}d {left.Hours}h left",
+                new Vector2(mx + 248, o.Y + 61), con.Completed ? Theme.SageDeep : Theme.InkSoft);
+        }
+        else if (G.Networked && member == null)
+            Ui.Text(dl, fonts.Small, "Start your own dairy or get invited (Dairy tab)", new Vector2(mx, o.Y + 64), Theme.RoseDeep);
+        else if (!G.Networked)
+            Ui.Text(dl, fonts.Small, "Playing on your own", new Vector2(mx, o.Y + 64), Theme.InkSoft);
 
         // Coins and where you are, right aligned
         var right = o.X + width - Pad;
