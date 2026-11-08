@@ -43,7 +43,10 @@ const PAY_PER_LEVEL = 0.02;         // each dairy level adds 2% to what it pays
 const FARMER_CUT = 0.25;            // a farmer gets this share of what the cow was paid for a hand milking
 const FARMER_DAILY_COINS = 3000;
 const COW_DAILY_HAND_OZ = 800;
-const MAX_TAKE_OZ = 96;             // most milk a farmer or owner can carry out of the tank at once
+const MAX_TAKE_OZ = 96;
+// Weekly contracts
+const CONTRACT_BASE_OZ = 200, CONTRACT_OZ_PER_LEVEL = 40, CONTRACT_MAX_OZ = 1200;
+const CONTRACT_XP_PER_OZ = 1.5, CONTRACT_FUND_PER_OZ = 4;             // most milk a farmer or owner can carry out of the tank at once
 const PUMP_PER_BEAT = 120;          // most oz one heartbeat can add to the dairy tank
 const MEMBER_DAILY_PUMP = 1500;     // most oz one member can add to a dairy tank per day
 const INVITE_ROLES = ["farmer", "cow", "bull"];
@@ -221,6 +224,7 @@ async function route(request, env) {
     ["POST", /^\/v1\/dairy\/fund$/, () => donate(env, me, request)],
     ["POST", /^\/v1\/dairy\/tank\/take$/, () => takeFromTank(env, me, request)],
     ["POST", /^\/v1\/handpay$/, () => handPay(env, me, request)],
+    ["POST", /^\/v1\/dairy\/contract\/ship$/, () => shipToContract(env, me, request)],
     ["GET", /^\/v1\/leaderboard$/, () => leaderboard(env, me)],
     ["GET", /^\/v1\/inbox$/, () => inbox(env, me)],
     ["POST", /^\/v1\/inbox\/claim$/, () => claim(env, me)],
@@ -443,6 +447,7 @@ async function progressOut(env, dairyId, stallCount) {
     donors: donors.map(x => ({ name: x.name, coins: x.coins })),
     tank: await tankOf(env, dairyId),
     payBonus: payBonus(p.level),
+    contract: await contractOut(env, dairyId, p.level),
   };
 }
 
@@ -528,6 +533,8 @@ async function deleteDairy(env, me) {
     env.DB.prepare("DELETE FROM donations WHERE dairy_id = ?").bind(d.id),
     env.DB.prepare("DELETE FROM dairy_tank WHERE dairy_id = ?").bind(d.id),
     env.DB.prepare("DELETE FROM tank_contrib WHERE dairy_id = ?").bind(d.id),
+    env.DB.prepare("DELETE FROM contracts WHERE dairy_id = ?").bind(d.id),
+    env.DB.prepare("DELETE FROM contract_contrib WHERE dairy_id = ?").bind(d.id),
     env.DB.prepare("UPDATE invites SET status = 'cancelled' WHERE dairy_id = ? AND status = 'pending'").bind(d.id),
     env.DB.prepare("DELETE FROM dairies WHERE id = ?").bind(d.id),
   ]);
@@ -735,6 +742,85 @@ async function handPay(env, me, request) {
     inboxStmt(env, farmer.install, "payout", coins, 0, 0, `${mem.name || "A cow"} paid you ${coins} coins for hand milking ${Math.round(counted * 10) / 10} oz.`),
   ]);
   return { ok: true, coins };
+}
+
+// ---------------------------------------------------------------- weekly contracts
+
+const contractMinGrade = level => level >= 15 ? 3 : level >= 10 ? 2 : level >= 5 ? 1 : 0;
+
+/** This week's contract for a dairy, made the first time anyone looks (sized by the dairy's level then). */
+async function contractFor(env, dairyId, level) {
+  const week = weekKey();
+  let c = await env.DB.prepare("SELECT * FROM contracts WHERE dairy_id = ? AND week = ?").bind(dairyId, week).first();
+  if (c) return c;
+  const need = Math.min(CONTRACT_MAX_OZ, CONTRACT_BASE_OZ + CONTRACT_OZ_PER_LEVEL * (level - 1));
+  await env.DB.prepare(`INSERT OR IGNORE INTO contracts (dairy_id, week, oz_need, min_grade, reward_xp, reward_fund) VALUES (?, ?, ?, ?, ?, ?)`)
+    .bind(dairyId, week, need, contractMinGrade(level), Math.round(need * CONTRACT_XP_PER_OZ), Math.round(need * CONTRACT_FUND_PER_OZ)).run();
+  return await env.DB.prepare("SELECT * FROM contracts WHERE dairy_id = ? AND week = ?").bind(dairyId, week).first();
+}
+
+async function contractOut(env, dairyId, level) {
+  const c = await contractFor(env, dairyId, level);
+  const top = (await env.DB.prepare("SELECT name, oz FROM contract_contrib WHERE dairy_id = ? AND week = ? ORDER BY oz DESC LIMIT 5")
+    .bind(dairyId, c.week).all()).results;
+  return {
+    week: c.week, ozNeed: c.oz_need, ozDone: Math.round(c.oz_done * 10) / 10, minGrade: c.min_grade,
+    rewardXp: c.reward_xp, rewardFund: c.reward_fund, completed: !!c.completed,
+    shippers: top.map(x => ({ name: x.name, oz: Math.round(x.oz * 10) / 10 })),
+  };
+}
+
+/** Farmers and the owner ship milk from the dairy tank to this week's contract. Finishing it pays out once. */
+async function shipToContract(env, me, request) {
+  const b = await body(request);
+  const mem = await membership(env, me.id);
+  if (!mem) fail(400, "Join a dairy first.");
+  if (!mem.is_owner && mem.role !== "farmer") fail(403, "Only farmers and the owner ship milk to the contract.");
+  if (!inOwnDairy(me, mem)) fail(400, "Go to your dairy to ship milk from its tank.");
+  const grade = int(b.grade, 0, GRADES - 1, "grade");
+  const p = await progressOf(env, mem.dairy_id);
+  const c = await contractFor(env, mem.dairy_id, p.level);
+  if (c.completed) fail(409, "This week's contract is already done.");
+  if (grade < c.min_grade) fail(400, `This contract needs Grade ${gradeName(c.min_grade)} or better.`);
+  const want = Math.min(int(b.oz, 1, CONTRACT_MAX_OZ, "oz"), Math.ceil(c.oz_need - c.oz_done));
+  if (want <= 0) fail(409, "This week's contract is already full.");
+
+  const took = await env.DB.prepare("UPDATE dairy_tank SET oz = oz - ? WHERE dairy_id = ? AND grade = ? AND oz >= ? RETURNING oz")
+    .bind(want, mem.dairy_id, grade, want).first();
+  if (!took) fail(400, `The tank doesn't have ${want} oz of Grade ${gradeName(grade)}.`);
+
+  const done = await env.DB.prepare(
+    "UPDATE contracts SET oz_done = oz_done + ? WHERE dairy_id = ? AND week = ? AND completed IS NULL RETURNING oz_done, oz_need")
+    .bind(want, mem.dairy_id, c.week).first();
+  if (!done) {
+    // Someone finished it a moment ago: put the milk back
+    await env.DB.prepare("UPDATE dairy_tank SET oz = oz + ? WHERE dairy_id = ? AND grade = ?").bind(want, mem.dairy_id, grade).run();
+    fail(409, "This week's contract was just finished.");
+  }
+
+  await env.DB.prepare(`INSERT INTO contract_contrib (dairy_id, week, install, name, oz) VALUES (?, ?, ?, ?, ?)
+    ON CONFLICT(dairy_id, week, install) DO UPDATE SET oz = oz + excluded.oz, name = excluded.name`)
+    .bind(mem.dairy_id, c.week, me.id, mem.name || "", want).run();
+
+  let finished = false;
+  if (done.oz_done >= done.oz_need) {
+    // Only one shipment can mark it finished, so the reward is paid once
+    const won = await env.DB.prepare("UPDATE contracts SET completed = ? WHERE dairy_id = ? AND week = ? AND completed IS NULL RETURNING reward_xp, reward_fund")
+      .bind(now(), mem.dairy_id, c.week).first();
+    if (won) {
+      finished = true;
+      const members = (await env.DB.prepare("SELECT install FROM members WHERE dairy_id = ?").bind(mem.dairy_id).all()).results;
+      await env.DB.batch([
+        addXpStmt(env, mem.dairy_id, won.reward_xp),
+        env.DB.prepare(`INSERT INTO dairy_progress (dairy_id, fund, week) VALUES (?, ?, ?)
+          ON CONFLICT(dairy_id) DO UPDATE SET fund = fund + excluded.fund`).bind(mem.dairy_id, won.reward_fund, weekKey()),
+        ...members.map(m => inboxStmt(env, m.install, "notice", 0, 0, 0,
+          `${mem.dairy_name} finished this week's creamery contract! +${won.reward_xp} dairy xp and ${won.reward_fund} coins for the fund.`)),
+      ]);
+    }
+  }
+
+  return { ok: true, shipped: want, ozDone: Math.round(done.oz_done * 10) / 10, ozNeed: done.oz_need, finished };
 }
 
 // ---------------------------------------------------------------- dairy fund and leaderboard

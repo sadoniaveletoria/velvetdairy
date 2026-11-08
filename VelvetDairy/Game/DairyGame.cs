@@ -299,6 +299,39 @@ public sealed class DairyGame
         }, e => Fail(e));
     }
 
+    // ----- Weekly creamery contract -----
+
+    public float TankOz(int grade) => Net.Progress?.Tank?.ByGrade is { } t && grade >= 0 && grade < t.Count ? t[grade] : 0;
+
+    public string? ShipProblem(int grade, int oz)
+    {
+        var c = Net.Progress?.Contract;
+        if (Blocked() != null) return Blocked();
+        if (c == null) return "Loading the contract...";
+        if (c.Completed) return "This week's contract is done.";
+        if (!CanCarry) return "Farmers and the owner ship milk to the contract.";
+        if (!Where.InDairy) return "Go to your dairy to ship milk from its tank.";
+        if (grade < c.MinGrade) return $"This contract needs Grade {Grades.Name(c.MinGrade)} or better.";
+        if (oz < 1) return "Nothing left to ship.";
+        if (TankOz(grade) < oz) return $"The tank has {TankOz(grade):0.#} oz of Grade {Grades.Name(grade)}.";
+        return null;
+    }
+
+    public void Ship(int grade, int oz)
+    {
+        var p = ShipProblem(grade, oz);
+        if (p != null)
+        {
+            Fail(p);
+            return;
+        }
+
+        Touch();
+        Net.ShipToContract(grade, oz, r =>
+            Say(r.Finished ? $"Contract finished! The reward goes to {DairyName}." : $"Shipped {r.Shipped} oz to the contract ({r.OzDone:0} / {r.OzNeed} oz).", 1),
+            e => Fail(e));
+    }
+
     /// <summary>Milk people had stored before milk paid at milking time: paid out once, at today's prices.</summary>
     private void PayOutOldStock()
     {

@@ -157,3 +157,24 @@ CREATE TABLE IF NOT EXISTS member_pump (
   oz      REAL NOT NULL DEFAULT 0,
   PRIMARY KEY (install, day)
 );
+
+-- Weekly creamery contract per dairy: ship milk from the dairy tank; finishing pays dairy XP and fund coins.
+CREATE TABLE IF NOT EXISTS contracts (
+  dairy_id   TEXT NOT NULL,
+  week       TEXT NOT NULL,              -- Monday (UTC)
+  oz_need    INTEGER NOT NULL,
+  min_grade  INTEGER NOT NULL,
+  oz_done    REAL NOT NULL DEFAULT 0,
+  reward_xp  INTEGER NOT NULL,
+  reward_fund INTEGER NOT NULL,
+  completed  INTEGER,                    -- time it was finished
+  PRIMARY KEY (dairy_id, week)
+);
+CREATE TABLE IF NOT EXISTS contract_contrib (
+  dairy_id TEXT NOT NULL,
+  week     TEXT NOT NULL,
+  install  TEXT NOT NULL,
+  name     TEXT NOT NULL DEFAULT '',
+  oz       REAL NOT NULL DEFAULT 0,
+  PRIMARY KEY (dairy_id, week, install)
+);

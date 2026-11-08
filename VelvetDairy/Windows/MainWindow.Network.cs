@@ -217,7 +217,7 @@ public sealed partial class MainWindow
             return;
         }
 
-        var labels = m.IsOwner ? new[] { "Overview", "Stalls", "Listing" } : new[] { "Overview", "Stalls" };
+        var labels = m.IsOwner ? new[] { "Overview", "Contract", "Stalls", "Listing" } : new[] { "Overview", "Contract", "Stalls" };
         var top = SubTabs("dairynet", labels, min, max.X - min.X);
         var mid = (min.X + max.X) / 2;
         switch (Sub("dairynet"))
@@ -227,6 +227,10 @@ public sealed partial class MainWindow
                 Panel("##netlevel", new Vector2(mid + 7, top.Y), max, "Level, fund and tank", DrawDairyLevel, true);
                 break;
             case 1:
+                Panel("##contract", top, new Vector2(mid - 7, max.Y), "This week's creamery contract", DrawContract);
+                Panel("##contractship", new Vector2(mid + 7, top.Y), max, "Ship from the dairy tank", DrawContractShip, true);
+                break;
+            case 2:
                 Panel("##stalls", top, new Vector2(mid - 7, max.Y), "Stalls", DrawStalls);
                 Panel("##stallside", new Vector2(mid + 7, top.Y), max, G.IsOwner ? "Stall upgrades" : "Milking emotes", w =>
                 {
@@ -300,6 +304,72 @@ public sealed partial class MainWindow
 
         SubHeading("Members", width);
         DrawMemberSummary(width);
+    }
+
+    private void DrawContract(float width)
+    {
+        var c = G.Net.Progress?.Contract;
+        if (c == null)
+        {
+            ImGui.TextColored(Theme.InkSoft, "Loading...");
+            return;
+        }
+
+        Ui.Wrapped("The Grand Creamery wants milk from your dairy every week. Ship it from the dairy tank; when it's full, the whole dairy is rewarded.", Theme.InkSoft, width);
+        Gap(8);
+        using (fonts.For(fonts.Heading, $"{c.OzDone:0}")!.Push())
+            ImGui.TextColored(c.Completed ? Theme.SageDeep : Theme.Ink, c.Completed ? "Done for this week!" : $"{c.OzDone:0} / {c.OzNeed} oz");
+        var cur = ImGui.GetCursorScreenPos();
+        var barW = Math.Min(width, 420);
+        Ui.Bar(ImGui.GetWindowDrawList(), cur + new Vector2(0, 4), cur + new Vector2(barW, 14), c.Progress, c.Completed ? Theme.SageDeep : Theme.BlueDeep);
+        ImGui.Dummy(new Vector2(barW, 20));
+        ImGui.TextColored(Theme.InkSoft, c.MinGrade == 0 ? "Any grade" : $"Grade {Grades.Name(c.MinGrade)} or better");
+        ImGui.TextColored(Theme.HoneyDeep, $"Reward: {c.RewardXp:N0} dairy xp + {c.RewardFund:N0} coins for the fund");
+        var left = NextMonday() - DateTime.UtcNow;
+        ImGui.TextColored(Theme.InkSoft, c.Completed ? $"A new contract comes in {(int)left.TotalDays}d {left.Hours}h." : $"Ends in {(int)left.TotalDays}d {left.Hours}h (Monday 00:00 UTC).");
+        if (c.Shippers.Count > 0)
+        {
+            Gap(6);
+            Ui.Wrapped("Shipped by: " + string.Join(", ", c.Shippers.Select(x => $"{x.Name.Split(' ')[0]} {x.Oz:N0} oz")), Theme.InkSoft, width);
+        }
+
+        Gap(6);
+        Ui.Wrapped("Contracts grow 40 oz with each dairy level. Higher levels ask for better grades: B from level 5, A from 10, S from 15.", Theme.InkSoft, width);
+    }
+
+    private void DrawContractShip(float width)
+    {
+        var c = G.Net.Progress?.Contract;
+        if (c == null) return;
+        if (!G.CanCarry)
+        {
+            Ui.Wrapped("Farmers and the owner ship milk to the contract. As a cow, every milking in the dairy fills the tank they ship from.", Theme.InkSoft, width);
+            return;
+        }
+
+        if (c.Completed)
+        {
+            Ui.Wrapped("This week's contract is done. Spare milk can go to Customer orders or Deliveries (Creamery tab).", Theme.SageDeep, width);
+            return;
+        }
+
+        var leftOz = (int)Math.Ceiling(c.Left);
+        for (var g = Grades.Count - 1; g >= 0; g--)
+        {
+            var grade = g;
+            var have = G.TankOz(g);
+            var all = (int)Math.Min(Math.Floor(have), leftOz);
+            var p32 = G.ShipProblem(g, Math.Min(32, leftOz));
+            var pAll = G.ShipProblem(g, all);
+            var ok = g >= c.MinGrade;
+            var clicked = ListRow(cc => Ui.Seal(ImGui.GetWindowDrawList(), cc, 22, Grades.Name(grade), Theme.GradeColor(grade)),
+                $"Grade {Grades.Name(g)}", ok && have > 0 ? Theme.Ink : Theme.InkSoft,
+                new[] { new Line(ok ? $"{have:0.#} oz in the tank" : "Below this contract's grade", Theme.InkSoft) },
+                ok ? new[] { new Btn($"##ship32{g}", $"Ship {Math.Min(32, leftOz)}", "cream", p32 == null, p32), new Btn($"##shipall{g}", all > 0 ? $"Ship {all}" : "Ship", "blue", pAll == null && all > 0, pAll) }
+                   : Array.Empty<Btn>(), width);
+            if (clicked == 0) G.Ship(g, Math.Min(32, leftOz));
+            else if (clicked == 1) G.Ship(g, all);
+        }
     }
 
     /// <summary>The dairy's level, XP to the next one, and the shared fund members can donate to.</summary>

@@ -98,6 +98,7 @@ public sealed class DairyProgress
     public List<Donor> Donors { get; set; } = new();
     public DairyTank? Tank { get; set; }
     public float PayBonus { get; set; } = 1f;
+    public ContractInfo? Contract { get; set; }
 
     public float LevelProgress => NextXp is { } n && n > LevelXp ? Math.Clamp((Xp - LevelXp) / (float)(n - LevelXp), 0, 1) : 1;
     public int TierPrice(int tier) => tier >= 0 && tier < TierPrices.Count ? TierPrices[tier] : 0;
@@ -139,6 +140,30 @@ public sealed class LeaderRow
     public int Level { get; set; }
     public int WeekXp { get; set; }
     public bool Mine { get; set; }
+}
+
+/// <summary>This week's creamery contract for the dairy.</summary>
+public sealed class ContractInfo
+{
+    public string Week { get; set; } = "";
+    public int OzNeed { get; set; }
+    public float OzDone { get; set; }
+    public int MinGrade { get; set; }
+    public int RewardXp { get; set; }
+    public int RewardFund { get; set; }
+    public bool Completed { get; set; }
+    public List<Pumper> Shippers { get; set; } = new();
+
+    public float Left => Math.Max(0, OzNeed - OzDone);
+    public float Progress => OzNeed > 0 ? Math.Clamp(OzDone / OzNeed, 0, 1) : 0;
+}
+
+public sealed class ShipReply
+{
+    public int Shipped { get; set; }
+    public float OzDone { get; set; }
+    public int OzNeed { get; set; }
+    public bool Finished { get; set; }
 }
 
 public sealed class TakeReply

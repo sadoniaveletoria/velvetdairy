@@ -82,6 +82,7 @@ When the network is up, dairies are shared between players:
 - **Cows** make milk and get milked in the dairy's stalls or by its farmers. **Bulls** are a role only for now.
 - Invite with right-click > Velvet Dairy, or target a player and use the Members panel on the Dairy tab.
 - The **Dairies** tab shows how many people are online and lists every dairy. Public ones show their address: Visit takes you there with Lifestream (or copies the address).
+- **Weekly creamery contract**: each dairy gets one a week (resets Monday 00:00 UTC): about 200 oz at level 1, +40 oz a level, Grade B+ from level 5, A+ from 10, S+ from 15. Farmers and the owner ship milk to it from the dairy tank (Dairy > Contract). Finishing it gives the dairy about 1.5 xp and 4 fund coins per oz.
 - **Dairy milk tank**: milk from milkings at a dairy (stalls or hand milking) is also stored in that dairy's own tank, by grade (a copy; the cow keeps hers). The Dairy tab shows the tank and its top pumpers. What it's used for comes later.
 - **Deliveries**: owners of public dairies post buy orders (coins are held until filled). Cows go there in person and deliver from their tank. Each public dairy also has two creamery visitor orders a day.
 

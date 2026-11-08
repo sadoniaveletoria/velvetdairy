@@ -337,6 +337,14 @@ public sealed class NetClient : IDisposable
             ok(r);
         }, failed);
 
+    /// <summary>Ships milk from the dairy tank to this week's contract.</summary>
+    public void ShipToContract(int grade, int oz, Action<ShipReply> ok, Action<string> failed) =>
+        Call<ShipReply>("POST", "/v1/dairy/contract/ship", new { grade, oz }, r =>
+        {
+            Poke();
+            ok(r);
+        }, failed);
+
     /// <summary>Tells the server a farmer hand milked you, so they get their share.</summary>
     public void HandPay(string farmer, string world, float oz, int grade) =>
         Call<HandPayReply>("POST", "/v1/handpay", new { farmer, world, oz = Math.Round(oz, 2), grade }, _ => { }, e => Plugin.Log.Debug($"Hand pay: {e}"));
