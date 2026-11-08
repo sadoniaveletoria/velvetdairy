@@ -1191,7 +1191,7 @@ public sealed class DairyGame
     {
         if (!Emotes.Perform(emote)) return false;
         milkingCow = cowName;
-        milkingEmote = Emotes.Find(emote.Split(' ')[0]);
+        milkingEmote = 0;   // read back from your character once the loop starts (the game's id can differ from the command's)
         milkingSince = now;
         // A little extra so they're really empty (Udder balm only makes it faster)
         milkingEndsAt = now + Math.Clamp(cowMilk / Catalog.HandSpeed, 5, 3600) + 3;
@@ -1205,8 +1205,23 @@ public sealed class DairyGame
     {
         if (milkingCow == null) return;
         var me = Plugin.ObjectTable.LocalPlayer;
-        // Give the emote a moment to start; after that, stopping or switching emotes yourself ends it here too
-        if (me == null || (now - milkingSince > 3 && Emotes.Looping(me) != milkingEmote))
+        if (me == null)
+        {
+            milkingCow = null;
+            return;
+        }
+
+        var loop = Emotes.Looping(me);
+        if (milkingEmote == 0)
+        {
+            // Remember whichever loop you're actually in once it starts
+            if (loop != 0) milkingEmote = loop;
+            else if (now - milkingSince > 5) milkingCow = null;   // it never started
+            return;
+        }
+
+        // Stopping or switching emotes yourself ends it here too
+        if (loop != milkingEmote)
         {
             milkingCow = null;
             return;
@@ -1227,7 +1242,7 @@ public sealed class DairyGame
         var cow = milkingCow;
         milkingCow = null;
         // There's no "stop emote" in the game; any other emote ends the loop, so give a quiet pat (no chat text)
-        if (Emotes.Looping(me) == milkingEmote) Emotes.Perform("/pet motion");
+        if (Emotes.Looping(me) != 0 && !Emotes.Perform("/pet motion")) Emotes.Perform("/pet");
         Say($"{cow} is empty.", 1);
     }
 
