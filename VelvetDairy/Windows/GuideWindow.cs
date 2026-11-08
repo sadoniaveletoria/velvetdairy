@@ -67,7 +67,7 @@ public sealed class GuideWindow : Window
         }),
         new("Levels and XP", new[]
         {
-            "You get +1 XP for every 0.1 oz of milk you make (more at better grades), plus a bonus when you're emptied at a stall or by hand, plus daily goals, orders and care.",
+            "You get +1 XP for every 0.2 oz of milk you make (more at better grades), plus a bonus when you're emptied at a stall or by hand, plus daily goals, orders and care.",
             "Each level needs 30 more XP than the last. Your cow level makes milk come faster and unlocks shop items and upgrades. Max level is 30.",
             "Farmers level separately: hand milking pay, filling jugs, deliveries and contracts give farmer XP, and farmer levels unlock bigger farmer tanks to buy in the Shop. Bulls have their own level too, for things coming later.",
             "Daily goals (Progress tab) reset each day and pay coins and XP.",

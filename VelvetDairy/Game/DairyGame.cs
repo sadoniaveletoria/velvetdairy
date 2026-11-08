@@ -44,7 +44,7 @@ public sealed class DairyGame
     public event Action<string, int>? Toast;   // message, kind (0 info, 1 good, 2 warn)
     public event Action? Stroked;              // a farmhand stroke drew milk (for the squirt sound)
 
-    private const float BaseRate = 0.07f;  // oz per minute with every need full, before bonuses and the Milk speed setting
+    private const float BaseRate = 0.14f;  // oz per minute with every need full, before bonuses and the Milk speed setting
     private double now;
     private bool autoHold;                  // after a stall milking, wait for half a bottle before it starts again
     private int spoilWarned;                // 0 none, 1 warned at 24 h left, 2 warned at 2 h left

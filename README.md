@@ -49,7 +49,7 @@ Hunger, Thirst, Comfort and Mood go from 0 to 100, plus Feed quality.
 
 ## Levels (1–30)
 New Cow → Dairy Cow (3) → Good Producer (6) → Prize Cow (10) → Blue Ribbon (15) → Champion (21) → Velvet Legend (28).
-XP ticks in while you make milk: +1 for every 0.1 oz (none while asleep or full). Emptying at a stall adds 2 per oz times the stall's tier bonus (x1 to x1.5); hand milking adds 6 per oz + 10. All milk XP is multiplied by your grade (C x1, B x1.2, A x1.4, S x1.7, S+ x2). Plus orders, goals and care. Each level needs 30 more XP than the last. Levels unlock feed, upgrades, stall tiers, better-paying orders and more capacity.
+XP ticks in while you make milk: +1 for every 0.2 oz (none while asleep or full). Emptying at a stall adds 1 per oz times the stall's tier bonus (x1 to x1.5); hand milking adds 3 per oz + 10. All milk XP is multiplied by your grade (C x1, B x1.2, A x1.4, S x1.7, S+ x2). Plus orders, goals and care. Each level needs 30 more XP than the last. Levels unlock feed, upgrades, stall tiers, better-paying orders and more capacity.
 
 ## Sounds
 The stall's milking machine is a real recording: "Milk Pump Step02" by **Erdie** on Freesound (https://freesound.org/s/49877/), cut into a start, a seamless loop and a stop. The farmhand squirt is generated.

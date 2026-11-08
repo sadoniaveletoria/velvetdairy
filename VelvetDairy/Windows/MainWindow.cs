@@ -1446,7 +1446,7 @@ public sealed partial class MainWindow : Window
         if (shown == 0) ImGui.TextColored(Theme.InkSoft, "Everything is unlocked.");
 
         SubHeading("How to earn cow xp", width);
-        Ui.Wrapped("+1 xp for every 0.1 oz of milk you make (more at better grades), a bonus when you're emptied at a stall or by hand, daily goals and care.", Theme.InkSoft, width);
+        Ui.Wrapped("+1 xp for every 0.2 oz of milk you make (more at better grades), a bonus when you're emptied at a stall or by hand, daily goals and care.", Theme.InkSoft, width);
     }
 
     /// <summary>Progress tab: every role's level at a glance (details on the Roles tab), plus totals.</summary>
