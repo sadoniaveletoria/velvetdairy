@@ -153,7 +153,7 @@ public static class Catalog
     // Milk is sized at about five times a real person's yield: roughly 125-150 oz a day with good care
     public static readonly float[] BottleSizes = { 0, 8, 12, 20, 32, 48 };
 
-    public const float LevelBonus = 0.04f;      // +4% milk per level above 1
+    public const float LevelBonus = 0.04f;      // +4% milk per level above 1, up to Leveling.MilkBonusCap
     public const float ContentBonus = 0.25f;    // all four needs at 75 or more
     public const float TreatBonus = 0.30f;      // while a treat boost lasts
     public const float RestBonus = 0.5f;        // resting in your dairy
@@ -167,9 +167,14 @@ public static class Catalog
 
 public static class Leveling
 {
-    public const int MaxLevel = 30;
+    public const int MaxLevel = 100;
 
-    public static int Need(int level) => 80 + 30 * (level - 1);
+    /// <summary>XP to go from this level to the next. Gets steeper as you climb: about 6 months of grinding
+    /// (Grade S, ~5 h a day) or a year of casual play (Grade A, ~3 h a day) to reach 100.</summary>
+    public static int Need(int level) => 80 + (int)MathF.Round(4.2f * MathF.Pow(level - 1, 1.8f));
+
+    /// <summary>The milk bonus from levels stops growing here; levels past it are for rank and unlocks.</summary>
+    public const int MilkBonusCap = 50;
 
     // ----- Where XP comes from -----
     public const float OzPerXpTick = 0.2f;        // +1 xp for every 0.2 oz of milk you make (awake, bottles not full)

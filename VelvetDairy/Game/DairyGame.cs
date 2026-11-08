@@ -451,7 +451,7 @@ public sealed class DairyGame
         var parts = new List<RatePart>();
         var care = Cow.Hunger < 10 || Cow.Thirst < 10 ? 0.1f : 0.2f + 0.8f * NeedsAverage / 100f;
         parts.Add(new RatePart(Cow.Hunger < 10 || Cow.Thirst < 10 ? "Starving or parched" : "How well you're kept", care));
-        if (Level > 1) parts.Add(new RatePart($"Level {Level}", 1f + Catalog.LevelBonus * (Level - 1)));
+        if (Level > 1) parts.Add(new RatePart(Level > Leveling.MilkBonusCap ? $"Level {Level} (max bonus)" : $"Level {Level}", 1f + Catalog.LevelBonus * (Math.Min(Level, Leveling.MilkBonusCap) - 1)));
         if (Contented) parts.Add(new RatePart("Contented (all needs 75+)", 1f + Catalog.ContentBonus));
         if (BoostLeft > TimeSpan.Zero) parts.Add(new RatePart("Treat boost", 1f + Catalog.TreatBonus));
         if (includeResting && Where.InDairy && Where.Seated && Wake == Wakefulness.Awake) parts.Add(new RatePart("Resting in your dairy", 1f + (Owned("deeprest") > 0 ? 0.75f : Catalog.RestBonus)));

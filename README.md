@@ -26,7 +26,7 @@ Hunger, Thirst, Comfort and Mood go from 0 to 100, plus Feed quality.
 ## Milk
 - Milk builds up over time. Hover the "oz a minute" line to see what goes into your speed:
   - how well you're kept (needs)
-  - +4% per level
+  - +4% per level, up to level 50
   - **Contented** +25% when all four needs are 75 or more
   - **Treat boost** +30% for a while after clover (15 min), salt lick (10 min) or Velvet blend (30 min), up to an hour
   - +50% while resting on furniture in your dairy
@@ -47,9 +47,9 @@ Hunger, Thirst, Comfort and Mood go from 0 to 100, plus Feed quality.
 - **Daily goals** (Progress tab): give 10 oz, fill an order, do 3 care tasks, get hand milked. Claim each for coins and xp, plus a bonus for all four.
 - **Awards**: 14 of them, 25 coins each.
 
-## Levels (1–30)
+## Levels (1–100)
 New Cow → Dairy Cow (3) → Good Producer (6) → Prize Cow (10) → Blue Ribbon (15) → Champion (21) → Velvet Legend (28).
-XP ticks in while you make milk: +1 for every 0.2 oz (none while asleep or full). Emptying at a stall adds 1 per oz times the stall's tier bonus (x1 to x1.5); hand milking adds 3 per oz + 10. All milk XP is multiplied by your grade (C x1, B x1.2, A x1.4, S x1.7, S+ x2). Plus orders, goals and care. Each level needs 30 more XP than the last. Levels unlock feed, upgrades, stall tiers, better-paying orders and more capacity.
+XP ticks in while you make milk: +1 for every 0.2 oz (none while asleep or full). Emptying at a stall adds 1 per oz times the stall's tier bonus (x1 to x1.5); hand milking adds 3 per oz + 10. All milk XP is multiplied by your grade (C x1, B x1.2, A x1.4, S x1.7, S+ x2). Plus orders, goals and care. Each level takes longer than the last (XP needed = 80 + 4.2 × (level − 1)^1.8): about 6 months of steady grinding or a year of casual play to reach 100. Farmer and bull levels use the same curve. Levels unlock feed, upgrades, stall tiers, better-paying orders and more capacity.
 
 ## Sounds
 The stall's milking machine is a real recording: "Milk Pump Step02" by **Erdie** on Freesound (https://freesound.org/s/49877/), cut into a start, a seamless loop and a stop. The farmhand squirt is generated.
