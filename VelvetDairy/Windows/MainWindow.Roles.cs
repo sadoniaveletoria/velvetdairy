@@ -154,7 +154,7 @@ public sealed partial class MainWindow
             return;
         }
 
-        Ui.Wrapped("Stand within 3 yalms of a cow, target her and hold a looping emote like /kneel (one-shot gestures like /pet don't count). Her plugin starts the milking (unless she turned that off) and milk flows until she's empty or you stop.",
+        Ui.Wrapped("Stand within 3 yalms of a cow, press Target, then Milk (or hold any looping emote like /kneel yourself; one-shot gestures like /pet don't count). Their plugin starts the milking (unless they turned that off) and milk flows until they're empty or you stop.",
             Theme.Ink, width);
         Gap(4);
         var mine = G.Net.Mine;
@@ -187,26 +187,26 @@ public sealed partial class MainWindow
                     near >= 0 && near <= G.HandRange ? Theme.SageDeep : Theme.InkSoft));
                 if (st != null)
                 {
-                    lines.Add(new Line(st.Spoiled ? "Her milk spoiled; she has to dump it first." : $"{st.Milk:0.#} / {st.Cap:0} oz · Grade {Grades.Name(Math.Clamp(st.Grade, 0, Grades.Count - 1))}",
+                    lines.Add(new Line(st.Spoiled ? "Their milk spoiled; they have to dump it first." : $"{st.Milk:0.#} / {st.Cap:0} oz · Grade {Grades.Name(Math.Clamp(st.Grade, 0, Grades.Count - 1))}",
                         st.Spoiled ? Theme.Warn : Theme.InkSoft));
                     if (st.HandBy.Length > 0)
-                        lines.Add(new Line(st.HandBy.Equals(myName, StringComparison.OrdinalIgnoreCase) ? "You're milking her" : $"Being milked by {st.HandBy}", Theme.RoseDeep));
+                        lines.Add(new Line(st.HandBy.Equals(myName, StringComparison.OrdinalIgnoreCase) ? "You're milking them" : $"Being milked by {st.HandBy}", Theme.RoseDeep));
                 }
             }
 
             var emotes = st?.Emotes is { Count: > 0 } e ? string.Join("  ", e) : "/kneel";
-            lines.Add(new Line($"Milk her with a looping emote, e.g. {emotes}", Theme.BlueDeep));
-            // Target her first; once she's your target the button becomes Milk her (does her first looping milking emote for you)
+            lines.Add(new Line($"Milk them with a looping emote, e.g. {emotes}", Theme.BlueDeep));
+            // Target first; once they're your target the button becomes Milk (does their first looping milking emote for you)
             var targeted = Plugin.TargetManager.Target is Dalamud.Game.ClientState.Objects.SubKinds.IPlayerCharacter tp && tp.Name.TextValue.Equals(c.Name, StringComparison.OrdinalIgnoreCase);
             var milkEmote = st?.Emotes is { Count: > 0 } list ? list[0] : "/kneel";
             var buttons = Array.Empty<Btn>();
             if (near >= 0 && c.Online)
             {
-                if (!targeted) buttons = new[] { new Btn($"##tgt{c.Id}", "Target her", "blue", true, "Targets her so your milking counts.") };
+                if (!targeted) buttons = new[] { new Btn($"##tgt{c.Id}", "Target", "blue", true, "Targets them so your milking counts.") };
                 else
                 {
                     var close = near <= G.HandRange;
-                    buttons = new[] { new Btn($"##milk{c.Id}", "Milk her", "rose", close, close ? $"Does {milkEmote} for you (as if you typed it). Hold still; milk flows until she's empty." : $"Get within {G.HandRange:0} yalms of her first.") };
+                    buttons = new[] { new Btn($"##milk{c.Id}", "Milk", "rose", close, close ? $"Does {milkEmote} for you (as if you typed it). Hold still; milk flows until they're empty." : $"Get within {G.HandRange:0} yalms of them first.") };
                 }
             }
 
@@ -221,10 +221,10 @@ public sealed partial class MainWindow
                         break;
                     }
             }
-            else if (clicked == 0 && !Emotes.Perform(milkEmote)) G.Notify($"{milkEmote} isn't an emote the game knows. Ask her to fix her milking emotes (Roles > Cow).", 2);
+            else if (clicked == 0 && !Emotes.Perform(milkEmote)) G.Notify($"{milkEmote} isn't an emote the game knows. Ask them to fix their milking emotes (Roles > Cow).", 2);
         }
 
-        Ui.Wrapped("You get 25% of what she's paid, on top of her pay, plus farmer xp.", Theme.InkSoft, width);
+        Ui.Wrapped("You get 25% of what the cow is paid, on top of their pay, plus farmer xp.", Theme.InkSoft, width);
     }
 
     // ----- Bull -----

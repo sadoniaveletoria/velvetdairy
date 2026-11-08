@@ -1568,7 +1568,7 @@ public sealed partial class MainWindow : Window
 
 
         SubHeading("Privacy and safety", width);
-        Ui.Wrapped("Everything stays in this window and your own chat log. Nothing is posted in public chat, and the plugin never moves your character, and only does an emote for you when you press a button for it (like Milk her). " +
+        Ui.Wrapped("Everything stays in this window and your own chat log. Nothing is posted in public chat, and the plugin never moves your character, and only does an emote for you when you press a button for it (like Milk on the farmer page). " +
                    "Farmhands are only ever people you registered yourself or your dairy invited. " +
                    "The network only shows your dairy's address when you make it public, and your name only if you choose to show it.", Theme.InkSoft, width);
 

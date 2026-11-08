@@ -88,7 +88,7 @@ public static class Emotes
     }
 
     /// <summary>
-    /// Does an emote for you, exactly as if you typed it (only ever from a button you pressed, like Milk her).
+    /// Does an emote for you, exactly as if you typed it (only ever from a button you pressed, like Milk).
     /// Returns false when the text isn't a known emote command.
     /// </summary>
     public static unsafe bool Perform(string command)
