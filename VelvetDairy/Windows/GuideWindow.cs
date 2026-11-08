@@ -39,7 +39,7 @@ public sealed class GuideWindow : Window
         }),
         new("Your cow", new[]
         {
-            "Cows have four bonuses: Fed (eat food), Watered (drink), Comfy (rest on furniture in your dairy) and Happy (have a treat). Each use fills half its bar (30 minutes, up to a full hour), then the bar drains as the bonus wears off. Eating, drinking, resting and treats each have a 15-minute cooldown. Using one again adds time, not a bigger bonus; better food and treats give bigger bonuses. All four at once makes you Contented, +10% more.",
+            "Cows have four bonuses: Fed (eat food), Watered (drink), Comfy (rest on furniture in your dairy, and stay seated 15 minutes for it to stick) and Happy (have a treat). Each use fills half its bar (30 minutes, up to a full hour), then the bar drains as the bonus wears off. Eating, drinking, resting and treats each have a 15-minute cooldown. Using one again adds time, not a bigger bonus; better food and treats give bigger bonuses. All four at once makes you Contented, +10% more.",
             "Bonuses only count down while you're awake and playing; they wait while you're asleep or logged out. When one runs out you're just plain: it never slows you down or lowers your grade. The newest food or treat of a kind replaces the last.",
             "Care happens inside your dairy (Barn tab): Drink and Rest (sitting on furniture) are free; feed comes from your Pantry.",
             "Pantry tab: everything you own. Eat it, sell back what you don't need for half price, or hide it from your lists.",

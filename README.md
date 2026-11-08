@@ -20,7 +20,7 @@ The first time you open Velvet Dairy, a short walkthrough explains the game and 
 Fed, Watered, Comfy and Happy are **milk bonuses with a bar**. Each use adds half a bar (30 minutes, up to a full hour) and has a **15-minute cooldown**; using one again adds time, not a bigger bonus. The bar drains as the bonus wears off, only while you're awake and playing (they wait while you're asleep, dozing or logged out). Running out just makes you plain: no penalty, and needs never touch your grade.
 - **Fed**: eat food. Meadow hay +4%, Sweet grain +7%, Honey oats +9%, Velvet blend +12%, Golden mash +15% (Golden alfalfa +6%).
 - **Watered**: the trough (free) +4%, Mineral block +8%. Clean trough makes it drain 1.5× slower.
-- **Comfy**: sit on furniture in your dairy and press **Rest** (free). +4%, Plush bedding +7% and drains half as fast, Lavender bedding +3% more.
+- **Comfy**: sit on furniture in your dairy and press **Rest** (free), then **stay seated 15 minutes**. Stand up sooner and that rest's Comfy is taken back. +4%, Plush bedding +7% and drains half as fast, Lavender bedding +3% more.
 - **Happy**: treats. Salt lick +4%, Cream biscuit +4%, Fresh clover +5%, Cream clover +8%, Star clover +10%. Bell collar and Lavender bedding make it last longer.
 - The newest food or treat of a kind sets the bonus.
 - **Dry-off tonic** (150 coins): stops your grade slipping for 7 days while you're away. Usable anywhere.

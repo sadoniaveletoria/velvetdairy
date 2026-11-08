@@ -711,7 +711,7 @@ public sealed partial class MainWindow : Window
         {
             ("hay", "Fed", cow.Hunger, cow.FedBonus, Theme.HoneyDeep, "Eat feed from your pantry. Better food gives a bigger bonus (hay +4% up to Golden mash +15%)."),
             ("water", "Watered", cow.Thirst, cow.WaterBonus, Theme.BlueDeep, "Drink at the trough (free, +4%) or have a Mineral block (+8%)."),
-            ("cushion", "Comfy", cow.Comfort, cow.ComfortBonus, Theme.RoseDeep, "Sit on furniture in your dairy and press Rest. Bedding upgrades make it bigger and last longer."),
+            ("cushion", "Comfy", cow.Comfort, cow.ComfortBonus, Theme.RoseDeep, "Sit on furniture in your dairy and press Rest, then stay seated 15 minutes: get up sooner and that rest doesn't count. Bedding upgrades make it bigger and last longer."),
             ("clover", "Happy", cow.Mood, cow.HappyBonus, Theme.SageDeep, "Have a treat: clover, salt lick, cream clover or a quality treat."),
         };
 
@@ -763,7 +763,8 @@ public sealed partial class MainWindow : Window
 
         var rcd = G.RestWait;
         var restProblem = G.RestProblem();
-        if (Row("##rest", "cushion", "Rest", rcd > TimeSpan.Zero ? $"Ready in {DairyGame.Wait(rcd)}" : restProblem != null && ok ? "Sit on furniture first" : $"Free · Comfy +{G.ComfyNow * 100:0}%, +30m", "Rest", "rose",
+        var settle = G.RestSettleLeft;
+        if (Row("##rest", "cushion", "Rest", settle > TimeSpan.Zero ? $"Stay seated {DairyGame.Wait(settle)} to keep it" : rcd > TimeSpan.Zero ? $"Ready in {DairyGame.Wait(rcd)}" : restProblem != null && ok ? "Sit on furniture first" : $"Free · Comfy +{G.ComfyNow * 100:0}%, +30m", "Rest", "rose",
                 restProblem == null && rcd <= TimeSpan.Zero, restProblem, width))
             G.Rest();
 

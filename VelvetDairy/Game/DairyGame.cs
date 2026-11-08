@@ -662,6 +662,7 @@ public sealed class DairyGame
         if (Cow.Milk > Capacity) Cow.Milk = Capacity;
         var fullBefore = FullBottles;
         var cushion = Owned("cushion") > 0;
+        WatchRest();
 
         // Need bars drain as the bonus wears off, only while you're awake; asleep, dozing or logged out they wait
         if (Wake == Wakefulness.Awake)
@@ -803,11 +804,42 @@ public sealed class DairyGame
         var p = RestProblem();
         if (p != null) return Fail(p);
         if (RestWait > TimeSpan.Zero) return Fail($"You can rest again in {Wait(RestWait)}.");
+        var before = Cow.Comfort;
+        restPrevBonus = Cow.ComfortBonus;
         Cow.Comfort = Fill(Cow.Comfort);
+        restAdded = Cow.Comfort - before;
+        restPendingSince = now;
         Cow.ComfortBonus = ComfyNow;
         Cow.ComfyReadyUtc = DateTime.UtcNow.AddMinutes(Catalog.NeedCooldownMinutes);
-        CareDone("You settle in and get comfy.");
+        CareDone($"You settle in and get comfy. Stay seated {Catalog.RestSettleMinutes:0} minutes and it stays with you when you get up.");
         return true;
+    }
+
+    // Comfy from furniture only sticks once you've stayed seated a while
+    private double restPendingSince = -1;
+    private float restAdded, restPrevBonus;
+
+    /// <summary>Time left sitting before the last Rest's Comfy is yours to keep (zero when settled or no rest pending).</summary>
+    public TimeSpan RestSettleLeft => restPendingSince < 0 ? TimeSpan.Zero
+        : TimeSpan.FromSeconds(Math.Max(0, Catalog.RestSettleMinutes * 60 - (now - restPendingSince)));
+
+    private void WatchRest()
+    {
+        if (restPendingSince < 0) return;
+        if (now - restPendingSince >= Catalog.RestSettleMinutes * 60)
+        {
+            restPendingSince = -1;
+            Say("You're settled in. Your Comfy bonus stays when you get up.", 0);
+            return;
+        }
+
+        if (Where.InDairy && Where.Seated) return;
+        // Got up too soon: that rest doesn't count
+        restPendingSince = -1;
+        Cow.Comfort = Clamp(Cow.Comfort - restAdded);
+        if (Cow.Comfort > 0) Cow.ComfortBonus = restPrevBonus;
+        Say($"You got up too soon. Stay seated {Catalog.RestSettleMinutes:0} minutes after resting to keep the Comfy bonus.", 2);
+        plugin.SaveConfig();
     }
 
     private void CareDone(string text)
