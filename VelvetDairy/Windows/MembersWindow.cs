@@ -140,11 +140,12 @@ public sealed class MembersWindow : Window
         var tableH = Math.Max(120, ImGui.GetContentRegionAvail().Y - invitesH);
         const ImGuiTableFlags flags = ImGuiTableFlags.RowBg | ImGuiTableFlags.BordersInnerH | ImGuiTableFlags.ScrollY | ImGuiTableFlags.Sortable |
                                       ImGuiTableFlags.Resizable | ImGuiTableFlags.SizingStretchProp;
-        if (ImGui.BeginTable("##members", 5, flags, new Vector2(0, tableH)))
+        if (ImGui.BeginTable("##members", 6, flags, new Vector2(0, tableH)))
         {
             ImGui.TableSetupScrollFreeze(0, 1);
             ImGui.TableSetupColumn("Name", ImGuiTableColumnFlags.DefaultSort, 2.2f);
             ImGui.TableSetupColumn("Role", ImGuiTableColumnFlags.None, 1f);
+            ImGui.TableSetupColumn("Levels", ImGuiTableColumnFlags.None, 1.6f);
             ImGui.TableSetupColumn("Status", ImGuiTableColumnFlags.None, 1.4f);
             ImGui.TableSetupColumn("Milk", ImGuiTableColumnFlags.None, 1.6f);
             ImGui.TableSetupColumn("", ImGuiTableColumnFlags.NoSort | ImGuiTableColumnFlags.WidthFixed, 34);
@@ -162,8 +163,9 @@ public sealed class MembersWindow : Window
             Func<MemberInfo, IComparable> key = col switch
             {
                 1 => m => m.RoleText,
-                2 => m => (m.Online ? 0 : 2) - (m.Status?.InDairy == true ? 1 : 0),
-                3 => m => m.Has("cow") && m.Status is { Cap: > 0 } s ? s.Milk / s.Cap : -1f,
+                2 => m => TopLevel(m),
+                3 => m => (m.Online ? 0 : 2) - (m.Status?.InDairy == true ? 1 : 0),
+                4 => m => m.Has("cow") && m.Status is { Cap: > 0 } s ? s.Milk / s.Cap : -1f,
                 _ => m => m.Name,
             };
             var rows = (asc ? shown.OrderBy(key) : shown.OrderByDescending(key)).ThenBy(m => m.Name).ToList();
@@ -178,6 +180,9 @@ public sealed class MembersWindow : Window
 
                 ImGui.TableNextColumn();
                 ImGui.TextColored(RoleColor(m.AllRoles.Count == 1 ? m.AllRoles[0] : ""), (m.IsOwner ? "Owner · " : "") + m.RoleText);
+
+                ImGui.TableNextColumn();
+                DrawLevels(m);
 
                 ImGui.TableNextColumn();
                 if (!m.Online) ImGui.TextColored(Theme.InkSoft, "Offline");
@@ -226,6 +231,39 @@ public sealed class MembersWindow : Window
                 if (ImGui.SmallButton($"Cancel##cinv{inv.Id}")) G.Net.CancelInvite(inv.Id, e => G.Notify(e, 2));
             }
         }
+    }
+
+    /// <summary>Their level in each role they hold, e.g. "Cow 12 · Farmer 4". Levels come from their plugin (last time it checked in).</summary>
+    private static void DrawLevels(MemberInfo m)
+    {
+        var st = m.Status;
+        if (st == null || (st.Level == 0 && st.FarmerLevel == 0 && st.BullLevel == 0))
+        {
+            ImGui.TextColored(Theme.InkSoft, "-");
+            if (ImGui.IsItemHovered()) ImGui.SetTooltip("Shows once they've played with this version.");
+            return;
+        }
+
+        var first = true;
+        void Part(string role, string label, int level)
+        {
+            if (!m.Has(role) || level <= 0) return;
+            if (!first) ImGui.SameLine(0, 4);
+            ImGui.TextColored(RoleColor(role), $"{(first ? "" : "· ")}{label} {level}");
+            first = false;
+        }
+
+        Part("cow", "Cow", st.Level);
+        Part("farmer", "Farmer", st.FarmerLevel);
+        Part("bull", "Bull", st.BullLevel);
+        if (first) ImGui.TextColored(Theme.InkSoft, "-");
+    }
+
+    private static int TopLevel(MemberInfo m)
+    {
+        var st = m.Status;
+        if (st == null) return 0;
+        return Math.Max(m.Has("cow") ? st.Level : 0, Math.Max(m.Has("farmer") ? st.FarmerLevel : 0, m.Has("bull") ? st.BullLevel : 0));
     }
 
     /// <summary>The per-member menu: role changes (owner) and removal (owner, or farmer for cows and bulls).</summary>

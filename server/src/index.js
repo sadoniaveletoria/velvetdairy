@@ -390,6 +390,7 @@ async function heartbeat(env, me, request) {
     const status = JSON.stringify({
       milk: num(st.milk), cap: num(st.cap), grade: Math.max(0, Math.min(4, Math.floor(num(st.grade)))), spoiled: !!st.spoiled,
       inDairy: !!st.inDairy, level: Math.floor(num(st.level)),
+      farmerLevel: Math.floor(num(st.farmerLevel)), bullLevel: Math.floor(num(st.bullLevel)),
       emotes: Array.isArray(st.emotes) ? st.emotes.slice(0, 8).map(e => clean(e, 24)).filter(Boolean) : [],
       handBy: clean(st.handBy, 40),
       milking: clean(st.milking, 40),   // a farmer: the cow they pressed Milk on (hand milking only counts then)

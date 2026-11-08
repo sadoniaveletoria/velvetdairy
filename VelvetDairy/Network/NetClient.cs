@@ -281,7 +281,7 @@ public sealed class NetClient : IDisposable
             status = new MemberStatus
             {
                 Milk = (float)Math.Round(F.Cow.Milk, 1), Cap = g.Capacity, Grade = g.CurrentGrade, Spoiled = g.Spoiled,
-                InDairy = g.Where.InDairy, Level = g.Level,
+                InDairy = g.Where.InDairy, Level = g.Level, FarmerLevel = g.FarmerLevel, BullLevel = g.BullLevel,
                 Emotes = g.IsCow ? g.MilkEmotesForFarmers() : new List<string>(),
                 HandBy = g.Active is { Kind: VelvetDairy.Game.SessionKind.Hand, Hand: { IsTest: false } h } ? h.Name : "",
                 AnyEmote = F.AnyLoopEmote,
