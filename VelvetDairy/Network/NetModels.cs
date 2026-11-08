@@ -97,6 +97,7 @@ public sealed class DairyProgress
     public List<int> TierPrices { get; set; } = new();
     public List<Donor> Donors { get; set; } = new();
     public DairyTank? Tank { get; set; }
+    public float PayBonus { get; set; } = 1f;
 
     public float LevelProgress => NextXp is { } n && n > LevelXp ? Math.Clamp((Xp - LevelXp) / (float)(n - LevelXp), 0, 1) : 1;
     public int TierPrice(int tier) => tier >= 0 && tier < TierPrices.Count ? TierPrices[tier] : 0;
@@ -138,6 +139,18 @@ public sealed class LeaderRow
     public int Level { get; set; }
     public int WeekXp { get; set; }
     public bool Mine { get; set; }
+}
+
+public sealed class TakeReply
+{
+    public int Oz { get; set; }
+    public int Grade { get; set; }
+    public float Left { get; set; }
+}
+
+public sealed class HandPayReply
+{
+    public int Coins { get; set; }
 }
 
 public sealed class FundReply

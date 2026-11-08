@@ -876,36 +876,65 @@ public sealed partial class MainWindow : Window
 
     private void DrawCreamery(Vector2 min, Vector2 max)
     {
-        var labels = G.Networked ? new[] { "Sell milk", "Customer orders", "Deliveries" } : new[] { "Sell milk", "Customer orders" };
+        var labels = G.CanCarry ? new[] { "Your pay", "Jugs", "Customer orders", "Deliveries" } : new[] { "Your pay" };
         var top = SubTabs("creamery", labels, min, max.X - min.X);
         var (cmin, cmax) = Column(top, max, 760);
-        switch (Sub("creamery"))
+        switch (G.CanCarry ? Sub("creamery") : 0)
         {
-            case 0: Panel("##tank", cmin, cmax, "Your milk", DrawTank); return;
-            case 1: Panel("##orders", cmin, cmax, "Creamery orders", DrawOrders, true); return;
+            case 0: Panel("##pay", cmin, cmax, "Your pay", DrawPay); return;
+            case 1: Panel("##jugs", cmin, cmax, "Jugs from the dairy tank", DrawJugs, true); return;
+            case 2: Panel("##orders", cmin, cmax, "Creamery orders", DrawOrders, true); return;
             default: Panel("##netorders", cmin, cmax, "Deliveries to other dairies", DrawNetOrders, true); return;
         }
     }
 
-    private void DrawTank(float width)
+    /// <summary>What the dairy pays per oz, by grade, the moment you're milked.</summary>
+    private void DrawPay(float width)
     {
-        Ui.Wrapped($"Milk you've given waits here. The creamery buys it by the cup ({Catalog.BottleOz:0} oz). Orders pay more than selling.", Theme.InkSoft, width);
+        Ui.Wrapped("You don't sell milk yourself: the dairy pays you for every ounce the moment you're milked, at a stall or by a farmer's hand. " +
+                   "The milk goes into the dairy's tank, and farmers and the owner deliver it to customers.", Theme.InkSoft, width);
         Gap(8);
+        var cur = G.CurrentGrade;
         for (var g = Grades.Count - 1; g >= 0; g--)
         {
             var grade = g;
-            var bottles = G.Bottles(g);
-            var tip = bottles == 0 ? "You need at least a cup (8 oz) to sell." : null;
-            var clicked = ListRow(c => Ui.Seal(ImGui.GetWindowDrawList(), c, 22, Grades.Name(grade), Theme.GradeColor(grade)),
-                $"Grade {Grades.Name(g)} · {Grades.All[g].Blurb}", Theme.Ink,
-                new[] { new Line($"{F.Tank![g]:0.#} oz · {bottles} cup{(bottles == 1 ? "" : "s")} · {G.BottlePrice(g)} coins a cup", Theme.InkSoft) },
-                new[] { new Btn($"##sell1{g}", "Sell 1", "cream", bottles > 0, tip), new Btn($"##sellall{g}", "Sell all", "honey", bottles > 0, tip) }, width);
-            if (clicked == 0) G.SellBottles(g, 1);
-            else if (clicked == 1) G.SellBottles(g, bottles);
+            ListRow(c => Ui.Seal(ImGui.GetWindowDrawList(), c, 22, Grades.Name(grade), Theme.GradeColor(grade)),
+                $"Grade {Grades.Name(g)} · {Grades.All[g].Blurb}" + (g == cur ? "  ·  yours now" : ""), g == cur ? Theme.RoseDeep : Theme.Ink,
+                new[] { new Line($"{G.PayRate(g):0.#} coins per oz", Theme.HoneyDeep) }, Array.Empty<Btn>(), width);
         }
 
         Gap(4);
-        ImGui.TextColored(Theme.InkSoft, $"In the tank: {G.TankTotal:0.#} oz.  Price bonus: {(G.PriceBonus - 1) * 100:0}%");
+        var bonus = (G.DairyPayBonus - 1) * 100;
+        ImGui.TextColored(Theme.InkSoft, $"Dairy level bonus: +{bonus:0}% · your looks bonus: +{(G.PriceBonus - 1) * 100:0}%");
+        if (G.Networked) ImGui.TextColored(Theme.InkSoft, "Each dairy level raises pay by 2%. Hand milking also pays your farmer a share (not taken from you).");
+        ImGui.TextColored(Theme.InkSoft, $"Milk given today: {F.DayOz:0.#} oz");
+    }
+
+    /// <summary>Farmers and owners fill jugs from the dairy's tank to deliver to customers and other dairies.</summary>
+    private void DrawJugs(float width)
+    {
+        var tank = G.Net.Progress?.Tank;
+        Ui.Wrapped($"Fill jugs from your dairy's tank, then deliver them on Customer orders or to other dairies for your own coins. You can carry up to {DairyGame.MaxCarry} oz.",
+            Theme.InkSoft, width);
+        Gap(6);
+        ImGui.TextColored(Theme.Ink, $"Carrying {G.Carried:0.#} / {DairyGame.MaxCarry} oz");
+        if (G.Carried > 0)
+            ImGui.TextColored(Theme.InkSoft, string.Join(" · ", F.Tank!.Select((oz, g) => (oz, g)).Where(x => x.oz > 0.01f).Select(x => $"{Grades.Name(x.g)} {x.oz:0.#} oz")));
+        Gap(6);
+        SubHeading($"Dairy tank · {tank?.Total ?? 0:N1} oz", width);
+        for (var g = Grades.Count - 1; g >= 0; g--)
+        {
+            var grade = g;
+            var have = tank?.ByGrade is { } t && g < t.Count ? t[g] : 0;
+            var p8 = G.TakeJugProblem(g, 8);
+            var p32 = G.TakeJugProblem(g, 32);
+            var clicked = ListRow(c => Ui.Seal(ImGui.GetWindowDrawList(), c, 22, Grades.Name(grade), Theme.GradeColor(grade)),
+                $"Grade {Grades.Name(g)}", have > 0 ? Theme.Ink : Theme.InkSoft,
+                new[] { new Line($"{have:0.#} oz in the tank · you carry {F.Tank![g]:0.#} oz", Theme.InkSoft) },
+                new[] { new Btn($"##jug8{g}", "Fill 8 oz", "cream", p8 == null, p8), new Btn($"##jug32{g}", "Fill 32 oz", "blue", p32 == null, p32) }, width);
+            if (clicked == 0) G.TakeJug(g, 8);
+            else if (clicked == 1) G.TakeJug(g, 32);
+        }
     }
 
     private void DrawOrders(float width)

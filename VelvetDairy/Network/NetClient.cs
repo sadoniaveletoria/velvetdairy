@@ -329,6 +329,18 @@ public sealed class NetClient : IDisposable
     /// <summary>Your dairy's level, XP and fund (from the last dairy refresh).</summary>
     public DairyProgress? Progress => Mine?.Progress;
 
+    /// <summary>A farmer or owner fills a jug from the dairy's tank.</summary>
+    public void TakeFromTank(int grade, int oz, Action<TakeReply> ok, Action<string> failed) =>
+        Call<TakeReply>("POST", "/v1/dairy/tank/take", new { grade, oz }, r =>
+        {
+            Poke();
+            ok(r);
+        }, failed);
+
+    /// <summary>Tells the server a farmer hand milked you, so they get their share.</summary>
+    public void HandPay(string farmer, string world, float oz, int grade) =>
+        Call<HandPayReply>("POST", "/v1/handpay", new { farmer, world, oz = Math.Round(oz, 2), grade }, _ => { }, e => Plugin.Log.Debug($"Hand pay: {e}"));
+
     public void Donate(int coins, Action<int> ok, Action<string> failed) =>
         Call<FundReply>("POST", "/v1/dairy/fund", new { coins }, r =>
         {

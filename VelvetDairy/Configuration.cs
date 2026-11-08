@@ -84,7 +84,9 @@ public class FarmSave
     public string OwnerRole { get; set; } = "cow";    // what you play in your own dairy: cow, farmer, bull or none
     public bool ShowOwnerHud { get; set; } = true;
     public string VisitDay { get; set; } = "";
-    public float DayAwakeMinutes { get; set; }        // minutes of milk-making today (tired after 12 h)        // bonus orders at other dairies, per day
+    public float DayAwakeMinutes { get; set; }
+    public int DayStall { get; set; }                 // stall milkings today (daily goal for cows)
+    public bool StockPaidOut { get; set; }            // old sellable milk was paid out when milk started paying at milking time        // minutes of milk-making today (tired after 12 h)        // bonus orders at other dairies, per day
     public List<string>? VisitOrdersDone { get; set; }
 
     // ----- Save protection -----

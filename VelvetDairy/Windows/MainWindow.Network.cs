@@ -472,14 +472,14 @@ public sealed partial class MainWindow
 
             foreach (var o in G.VisitorOrders(visiting.Id))
             {
-                var can = G.ProducesMilk && G.CanFill(o);
+                var can = G.CanCarry && G.CanFill(o);
                 var clicked = ListRow(Ico("bottle"), $"{o.Customer} (visitor order)", Theme.Ink,
                     new[]
                     {
                         new Line($"{o.Oz} oz, {(o.MinGrade == 0 ? "any grade" : $"Grade {Grades.Name(o.MinGrade)} or better")}", Theme.InkSoft),
                         new Line($"Pays {o.Coins} coins · {o.Xp} xp (the creamery pays)", Theme.HoneyDeep),
                     },
-                    new[] { new Btn($"##vfill{visiting.Id}{o.Id}", "Deliver", "sage", can, can ? null : G.ProducesMilk ? "Not enough milk of that grade." : "Only cows deliver milk.") }, width);
+                    new[] { new Btn($"##vfill{visiting.Id}{o.Id}", "Deliver", "sage", can, can ? null : G.CanCarry ? "Fill jugs of that grade from your dairy tank first." : "Only farmers and owners deliver milk.") }, width);
                 if (clicked == 0) G.FillVisitorOrder(visiting.Id, o);
             }
 

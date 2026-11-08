@@ -172,6 +172,19 @@ await test("dairy XP: only in the dairy, capped per member per day", async () =>
   assert.deepEqual(tank.byGrade, [10, 0, 2.5, 0, 0]);
   assert.equal(tank.total, 12.5);
   assert.equal(tank.pumpers[0].oz, 12.5);
+  // Farmers and owners fill jugs from the tank; others can't
+  assert.equal((await call(bob, "POST", "/v1/dairy/tank/take", { grade: 0, oz: 4 })).data.left, 6);
+  assert.equal((await call(bob, "POST", "/v1/dairy/tank/take", { grade: 0, oz: 50 })).status, 400, "not that much");
+  assert.equal((await call(carl, "POST", "/v1/dairy/tank/take", { grade: 0, oz: 1 })).status, 403, "bulls can't");
+  // A cow's hand milking pays the farmer a share
+  await beat(alice, { houseId: HOUSE, awake: true });
+  const hp = await call(alice, "POST", "/v1/handpay", { farmer: "Bob Hand", world: "Gilgamesh", oz: 10, grade: 1 });
+  assert.equal(hp.data.coins, Math.round(10 * 7 * 1.02 * 0.25));
+  assert.equal((await call(alice, "POST", "/v1/handpay", { farmer: "Nobody", world: "Gilgamesh", oz: 10, grade: 1 })).status, 400);
+  assert.equal((await call(bob, "POST", "/v1/handpay", { farmer: "Bob Hand", world: "Gilgamesh", oz: 10, grade: 1 })).status, 400, "farmers don't report");
+  const pay = (await call(bob, "POST", "/v1/inbox/claim")).data.items.find(i => i.kind === "payout");
+  assert.equal(pay.coins, hp.data.coins);
+  await beat(alice);   // back out of the dairy
   const board = (await call(dana, "GET", "/v1/leaderboard")).data;
   assert.equal(board.dairies[0].name, "Rose Hollow");
   assert.equal(board.dairies[0].weekXp, 420);
@@ -235,9 +248,10 @@ await test("delivery pays the seller and gives the owner the milk, once", async 
   assert.equal(d[0].kind, "payout");
   assert.equal(d[0].coins, 200);
   assert.equal((await call(dana, "POST", "/v1/inbox/claim")).data.items.length, 0);
-  const a = (await call(alice, "POST", "/v1/inbox/claim")).data.items.filter(i => i.kind === "milk");
-  assert.equal(a[0].oz, 16);
-  assert.equal(a[0].grade, 2);
+  const a = (await call(alice, "POST", "/v1/inbox/claim")).data.items;
+  assert.ok(a.some(i => i.kind === "notice"), "owner is told");
+  const tank = (await call(alice, "GET", "/v1/dairy/mine")).data.progress.tank;
+  assert.ok(tank.byGrade[2] >= 16, "the milk went into the buying dairy's tank");
 });
 
 await test("going private cancels and refunds open orders", async () => {

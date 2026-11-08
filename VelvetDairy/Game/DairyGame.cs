@@ -254,6 +254,70 @@ public sealed class DairyGame
     public float PriceBonus => 1f + (Owned("ribbon") > 0 ? 0.05f : 0) + (Owned("cap") > 0 ? 0.10f : 0);
     public float TankTotal => F.Tank!.Sum();
 
+    // =================================================================
+    // Pay: the dairy pays cows per oz the moment they're milked
+    // =================================================================
+
+    /// <summary>The dairy's level raises pay 2% a level (on the network).</summary>
+    public float DairyPayBonus => Networked ? Net.Progress?.PayBonus ?? 1f : 1f;
+
+    /// <summary>Coins per oz for milk of this grade.</summary>
+    public float PayRate(int grade) => Grades.All[Math.Clamp(grade, 0, Grades.Count - 1)].Price * PriceBonus * DairyPayBonus;
+
+    /// <summary>Farmers and owners carry jugs from the dairy's tank and deliver them; cows just get milked.</summary>
+    public bool CanCarry => Networked && F.NetMember != null && (F.NetMember.IsOwner || F.NetMember.Role == "farmer");
+
+    public const int MaxCarry = 192;
+    public float Carried => F.Tank!.Sum();
+
+    public string? TakeJugProblem(int grade, int oz)
+    {
+        if (Blocked() != null) return Blocked();
+        if (!CanCarry) return "Only farmers and the owner fill jugs from the dairy tank.";
+        if (!Where.InDairy) return "Go to your dairy to fill jugs from its tank.";
+        if (Carried + oz > MaxCarry) return $"You can carry up to {MaxCarry} oz at a time.";
+        var inTank = Net.Progress?.Tank?.ByGrade is { } t && grade < t.Count ? t[grade] : 0;
+        if (inTank < oz) return $"The tank has {inTank:0.#} oz of Grade {Grades.Name(grade)}.";
+        return null;
+    }
+
+    public void TakeJug(int grade, int oz)
+    {
+        var p = TakeJugProblem(grade, oz);
+        if (p != null)
+        {
+            Fail(p);
+            return;
+        }
+
+        Touch();
+        Net.TakeFromTank(grade, oz, r =>
+        {
+            F.Tank![r.Grade] += r.Oz;
+            plugin.SaveConfig();
+            Say($"Filled {r.Oz} oz of Grade {Grades.Name(r.Grade)} from the dairy tank ({r.Left:0.#} oz left).", 1);
+        }, e => Fail(e));
+    }
+
+    /// <summary>Milk people had stored before milk paid at milking time: paid out once, at today's prices.</summary>
+    private void PayOutOldStock()
+    {
+        F.StockPaidOut = true;
+        var oz = F.Tank!.Sum();
+        if (oz <= 0.01f)
+        {
+            plugin.SaveConfig();
+            return;
+        }
+
+        var coins = 0;
+        for (var g = 0; g < Grades.Count; g++) coins += (int)Math.Round(F.Tank[g] * Grades.All[g].Price * PriceBonus);
+        Array.Clear(F.Tank);
+        Earn(coins);
+        Say($"Milk now pays when you're milked. The {oz:0.#} oz you had stored was paid out: +{coins} coins.", 1);
+        plugin.SaveConfig();
+    }
+
     public static bool IsLalafell()
     {
         var me = Plugin.ObjectTable.LocalPlayer;
@@ -360,6 +424,7 @@ public sealed class DairyGame
     public void Update(float dt)
     {
         now += dt;
+        if (!F.StockPaidOut && Blocked() == null) PayOutOldStock();
         Where = Locate();
         WatchActivity();
 
@@ -825,7 +890,9 @@ public sealed class DairyGame
         var collected = s.Extracted * s.Yield;
         EaseTaint(Catalog.TaintPerMilking);
         AddQuality(collected * (s.Kind == SessionKind.Hand ? Grades.QualityPerOzHand : Grades.QualityPerOz));
-        F.Tank![s.Grade] += collected;
+        // The dairy pays for the milk right away; the milk itself goes into the dairy's tank
+        var pay = (int)Math.Round(collected * PayRate(s.Grade));
+        Earn(pay);
         F.Stats.TotalOz += collected;
         F.DayOz += collected;
         F.Stats.BestGrade = Math.Max(F.Stats.BestGrade, s.Grade);
@@ -841,6 +908,7 @@ public sealed class DairyGame
         if (s.Kind == SessionKind.Stall)
         {
             F.Stats.StallSessions++;
+            F.DayStall++;
             s.Stall!.Sessions++;
             xp = (int)Math.Round(collected * Leveling.XpPerOzStall * Leveling.StallXpBonus[Math.Clamp(s.Stall.Tier, 1, 4)] * Leveling.GradeBonus(s.Grade));
         }
@@ -850,12 +918,13 @@ public sealed class DairyGame
             F.DayHand++;
             s.Hand!.Sessions++;
             s.Hand.OzMilked += collected;
+            if (Networked && !s.Hand.IsTest) Net.HandPay(s.Hand.Name, s.Hand.WorldName, collected, s.Grade);   // the farmer's share
             xp = (int)Math.Round(collected * Leveling.XpPerOzHand * Leveling.GradeBonus(s.Grade)) + Leveling.XpHandSession;
         }
 
         AddXp(xp);
         var by = s.Kind == SessionKind.Hand ? $" by {(s.Hand!.IsTest ? "the test farmhand" : s.Hand.Name)}" : "";
-        Say($"Milked{by}: {collected:0.#} oz of Grade {Grades.Name(s.Grade)} milk. +{xp} xp" + (reason != null ? $" ({reason})" : ""), 1);
+        Say($"Milked{by}: {collected:0.#} oz of Grade {Grades.Name(s.Grade)}. +{pay} coins, +{xp} xp" + (reason != null ? $" ({reason})" : ""), 1);
         plugin.SaveConfig();
     }
 
@@ -1281,6 +1350,7 @@ public sealed class DairyGame
 
     private void RefillOrders()
     {
+        if (!CanCarry) return;   // farmers and owners deliver; cows are paid at milking time
         var orders = F.Orders!;
         if (orders.Count >= 3) return;
 
@@ -1301,7 +1371,7 @@ public sealed class DairyGame
     private Order NewOrder()
     {
         var lvl = Level;
-        var maxGrade = GradeCap;   // orders only ask for grades you can make
+        var maxGrade = BestTankGrade();   // orders ask for grades your dairy has
         var grade = rng.Next(0, maxGrade + 1);
         var oz = 4 * rng.Next(2, 3 + Math.Min(6, lvl / 3));
         var coins = (int)Math.Round(oz * Grades.All[grade].Price * 1.6f) + 10;
@@ -1314,6 +1384,16 @@ public sealed class DairyGame
             Coins = coins,
             Xp = (int)(oz * 2.5f) + 15 + grade * 10,
         };
+    }
+
+    /// <summary>Best grade in your dairy's tank (or what you carry), so orders ask for milk you can get.</summary>
+    private int BestTankGrade()
+    {
+        var best = 0;
+        var t = Net.Progress?.Tank?.ByGrade;
+        for (var g = 0; g < Grades.Count; g++)
+            if ((t != null && g < t.Count && t[g] >= 8) || F.Tank![g] >= 8) best = g;
+        return Math.Min(best, 2 + Level / 10);
     }
 
     public bool CanFill(Order o) => OzAtOrAbove(o.MinGrade) >= o.Oz;
@@ -1520,7 +1600,7 @@ public sealed class DairyGame
     public string? DeliverProblem(BuyOrder o)
     {
         if (Blocked() != null) return Blocked();
-        if (!ProducesMilk) return "Only cows deliver milk.";
+        if (!CanCarry) return "Only farmers and owners deliver milk.";
         if (VisitingDairy?.Id != o.DairyId) return "Go to that dairy to deliver in person.";
         if (OzAtOrAbove(o.MinGrade) < o.Oz) return $"You need {o.Oz} oz of Grade {Grades.Name(o.MinGrade)} or better in your tank.";
         return null;
@@ -1583,7 +1663,7 @@ public sealed class DairyGame
         var r = new Random(seed);
         for (var i = 0; i < 2; i++)
         {
-            var grade = Math.Min(GradeCap, r.Next(0, 3));
+            var grade = Math.Min(BestTankGrade(), r.Next(0, 3));
             var oz = 8 * r.Next(1, 4);
             var key = $"{dairyId}:{i}";
             if (F.VisitOrdersDone.Contains(key)) continue;
@@ -1604,7 +1684,7 @@ public sealed class DairyGame
     public bool FillVisitorOrder(string dairyId, Order o)
     {
         if (VisitingDairy?.Id != dairyId) return Fail("Go to that dairy to deliver in person.");
-        if (!ProducesMilk) return Fail("Only cows deliver milk.");
+        if (!CanCarry) return Fail("Only farmers and owners deliver milk.");
         if (!VisitorOrders(dairyId).Any(x => x.Id == o.Id)) return Fail("That order is already done.");
         F.VisitOrdersDone!.Add($"{dairyId}:{o.Id}");
         pendingDairyXp += o.Oz;  // counts for your own dairy (the server checks you're at a public dairy)
@@ -1628,7 +1708,7 @@ public sealed class DairyGame
     public IReadOnlyList<Goal> Goals() => new[]
     {
         new Goal("Give 10 oz of milk", F.DayOz, 10),
-        new Goal("Fill a creamery order", F.DayOrders, 1),
+        CanCarry ? new Goal("Fill a creamery order", F.DayOrders, 1) : new Goal("Get milked at a stall", F.DayStall, 1),
         new Goal("Do 3 care tasks", F.DayCare, 3),
         new Goal("Get hand milked", F.DayHand, 1),
     };
@@ -1665,6 +1745,7 @@ public sealed class DairyGame
         F.DayCare = 0;
         F.DayHand = 0;
         F.DayAwakeMinutes = 0;
+        F.DayStall = 0;
         F.DayClaimed = 0;
     }
 
