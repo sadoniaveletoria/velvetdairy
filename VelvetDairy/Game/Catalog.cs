@@ -10,11 +10,11 @@ public static class Grades
 {
     public static readonly IReadOnlyList<Grade> All = new[]
     {
-        new Grade("C", 5.0f, "Thin"),
-        new Grade("B", 7.0f, "Good"),
-        new Grade("A", 10.0f, "Rich"),
-        new Grade("S", 14.0f, "Cream"),
-        new Grade("S+", 20.0f, "Velvet"),
+        new Grade("C", 7.0f, "Thin"),
+        new Grade("B", 10.0f, "Good"),
+        new Grade("A", 15.0f, "Rich"),
+        new Grade("S", 21.0f, "Cream"),
+        new Grade("S+", 30.0f, "Velvet"),
     };
 
     public static int Count => All.Count;

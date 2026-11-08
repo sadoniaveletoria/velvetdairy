@@ -41,7 +41,7 @@ Hunger, Thirst, Comfort and Mood go from 0 to 100, plus Feed quality.
 - While you're logged out, no milk is made (so bottles you emptied stay safe). Needs drop gently (a quarter speed, never below 20).
 
 ## Coins
-- **Getting paid**: cows don't sell milk. The dairy pays you per oz the moment you're milked (stall or hand), by grade: C 5, B 7, A 10, S 14, S+ 20 coins, plus 2% per dairy level and your looks bonus. The milk goes into the dairy's tank. When a farmer hand milks you, they also get a share (25% of your pay, not taken from you).
+- **Getting paid**: cows don't sell milk. The dairy pays you per oz the moment you're milked (stall or hand), by grade: C 7, B 10, A 15, S 21, S+ 30 coins, plus 2% per dairy level and your looks bonus. The milk goes into the dairy's tank. When a farmer hand milks you, they also get a share (25% of your pay, not taken from you).
 - **Creamery** tab: everyone sees **Your pay**. Farmers and owners also get **Jugs** (fill from the dairy tank, up to what your farmer tank holds: a 32 oz milk pail at first, bigger tanks up to 256 oz in Shop > Farmer tank, unlocked by farmer level), **Customer orders** (a new one every 20 minutes) and **Deliveries** (other dairies' buy orders and visitor orders), and keep the coins they earn delivering. Buy-order milk goes into the buying dairy's tank.
 - **Shop** tab: feed, a second and third stall, plush bedding, bigger and extra bottles, a clean trough, stall upgrades (Wooden, Padded, Velvet, Gilded: faster and more milk) and things to wear (bell collar, show ribbon, gold-cap bottles).
 - **Daily goals** (Progress tab): give 10 oz, fill an order, do 3 care tasks, get hand milked. Claim each for coins and xp, plus a bonus for all four.

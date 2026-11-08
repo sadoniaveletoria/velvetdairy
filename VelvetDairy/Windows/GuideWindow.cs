@@ -62,7 +62,7 @@ public sealed class GuideWindow : Window
         new("Grades and pay", new[]
         {
             "Everyone starts at Grade C. Milk quality builds as you get milked, fill goals and eat quality treats: B at 150, A at 800, S at 2,600 and S+ at 6,000.",
-            "Pay per ounce: C 5, B 7, A 10, S 14, S+ 20 coins. Better grades also give more XP.",
+            "Pay per ounce: C 7, B 10, A 15, S 21, S+ 30 coins. Better grades also give more XP.",
             "Your care decides the best grade you can make right now; let your needs drop and your grade drops with them.",
         }),
         new("Levels and XP", new[]

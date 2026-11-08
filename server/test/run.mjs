@@ -203,7 +203,7 @@ await test("dairy XP: only in the dairy, capped per member per day", async () =>
   // A cow's hand milking pays the farmer a share
   await beat(alice, { houseId: HOUSE, awake: true });
   const hp = await call(alice, "POST", "/v1/handpay", { farmer: "Bob Hand", world: "Gilgamesh", oz: 10, grade: 1 });
-  assert.equal(hp.data.coins, Math.round(10 * 7 * 1.02 * 0.25));
+  assert.equal(hp.data.coins, Math.round(10 * 10 * 1.02 * 0.25));
   assert.equal((await call(alice, "POST", "/v1/handpay", { farmer: "Nobody", world: "Gilgamesh", oz: 10, grade: 1 })).status, 400);
   assert.equal((await call(bob, "POST", "/v1/handpay", { farmer: "Bob Hand", world: "Gilgamesh", oz: 10, grade: 1 })).status, 400, "farmers don't report");
   const pay = (await call(bob, "POST", "/v1/inbox/claim")).data.items.find(i => i.kind === "payout");

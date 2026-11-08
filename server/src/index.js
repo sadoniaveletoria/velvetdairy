@@ -38,10 +38,10 @@ const DELIVERER_XP_PER_OZ = 1;      // and the deliverer's own dairy this much
 const MAX_DONATION = 100000;
 const TIER_PRICE = [0, 0, 150, 400, 900];   // fund coins to raise a stall to this tier
 const LEADERBOARD_SIZE = 20;
-const GRADE_PRICE = [5, 7, 10, 14, 20];   // coins per oz the dairy pays a cow, by grade (C..S+)
+const GRADE_PRICE = [7, 10, 15, 21, 30];   // coins per oz the dairy pays a cow, by grade (C..S+)
 const PAY_PER_LEVEL = 0.02;         // each dairy level adds 2% to what it pays
 const FARMER_CUT = 0.25;            // a farmer gets this share of what the cow was paid for a hand milking
-const FARMER_DAILY_COINS = 3000;
+const FARMER_DAILY_COINS = 4500;
 const COW_DAILY_HAND_OZ = 800;
 const MAX_TAKE_OZ = 96;
 // Developer (same phrase hash as the plugin's dev mode)
