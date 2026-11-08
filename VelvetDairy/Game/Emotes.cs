@@ -74,6 +74,17 @@ public static class Emotes
         return ((CSCharacter*)o.Address)->EmoteController.EmoteId;
     }
 
+    /// <summary>
+    /// The looping emote a character is holding right now (0 = none). The emote id alone can stay set after an emote ends,
+    /// so this also checks the character is actually in an emote loop (not standing, walking or sitting on furniture).
+    /// </summary>
+    public static unsafe ushort Looping(IGameObject? o)
+    {
+        if (o is not ICharacter || o.Address == nint.Zero) return 0;
+        var c = (CSCharacter*)o.Address;
+        return c->Mode == CharacterModes.EmoteLoop ? c->EmoteController.EmoteId : (ushort)0;
+    }
+
     /// <summary>Sitting on furniture (chair, bed, bench).</summary>
     public static unsafe bool InPositionLoop(IGameObject? o)
     {

@@ -1142,7 +1142,7 @@ public sealed class DairyGame
         var me = Plugin.ObjectTable.LocalPlayer;
         var o = HandObject(fh);
         if (me == null || o == null) return new FarmhandSight(false, 0, 0, false);
-        return new FarmhandSight(true, Vector3.Distance(me.Position, o.Position), Emotes.Current(o), o.TargetObjectId == me.GameObjectId);
+        return new FarmhandSight(true, Vector3.Distance(me.Position, o.Position), Emotes.Looping(o), o.TargetObjectId == me.GameObjectId);
     }
 
     public HashSet<ushort> HandEmoteIds() => F.HandEmotes!.Select(Emotes.Find).Where(id => id != 0).ToHashSet();
