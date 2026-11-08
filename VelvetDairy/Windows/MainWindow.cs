@@ -33,9 +33,9 @@ public sealed partial class MainWindow : Window
     private FarmSave F => plugin.Config.Farm;
     private DairyGame G => plugin.Game;
 
-    public const int TabBarn = 0, TabPantry = 1, TabShop = 2, TabCreamery = 3, TabDairy = 4, TabDairies = 5, TabRoles = 6, TabProgress = 7, TabSettings = 8;
+    public const int TabBarn = 0, TabRoles = 1, TabPantry = 2, TabShop = 3, TabCreamery = 4, TabDairy = 5, TabDairies = 6, TabProgress = 7, TabSettings = 8;
 
-    private static readonly string[] Tabs = { "Barn", "Pantry", "Shop", "Creamery", "Dairy", "Dairies", "Roles", "Progress", "Settings" };
+    private static readonly string[] Tabs = { "Barn", "Roles", "Pantry", "Shop", "Creamery", "Dairy", "Dairies", "Progress", "Settings" };
     private int tab;
     private bool ticked18;
     private string dairyName = "";
