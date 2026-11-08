@@ -20,13 +20,31 @@ public static class Grades
     public static int Count => All.Count;
     public static string Name(int i) => i >= 0 && i < All.Count ? All[i].Name : "-";
 
-    /// <summary>Grade from your needs and feed quality. Hand milking adds one step.</summary>
-    public static int FromState(CowState c, bool hand)
+    /// <summary>Days without being milked before your grade slips one step (and one more every this many days after).</summary>
+    public const double FreshDays = 3;
+
+    /// <summary>When freshness is counted from: your last milking, or the end of a Dry-off tonic if that's later.</summary>
+    public static DateTime FreshSince(CowState c)
     {
-        var score = Score(c);
-        var g = score < 35 ? 0 : score < 55 ? 1 : score < 72 ? 2 : score < 88 ? 3 : 4;
-        if (hand) g++;
-        return Math.Min(g, All.Count - 1);
+        var now = DateTime.UtcNow;
+        var since = c.LastMilkedUtc ?? now;
+        var hold = c.FreshHoldUntilUtc > now ? now : c.FreshHoldUntilUtc;
+        return hold > since ? hold : since;
+    }
+
+    /// <summary>Grade steps lost to going too long without being milked.</summary>
+    public static int Slip(CowState c)
+    {
+        var days = (DateTime.UtcNow - FreshSince(c)).TotalDays;
+        return days < FreshDays ? 0 : 1 + (int)((days - FreshDays) / FreshDays);
+    }
+
+    /// <summary>When the next slip happens (null while a tonic holds it).</summary>
+    public static DateTime? NextSlipUtc(CowState c)
+    {
+        if (c.FreshHoldUntilUtc > DateTime.UtcNow) return null;
+        var since = FreshSince(c);
+        return since.AddDays(FreshDays * (Slip(c) + 1));
     }
 
     /// <summary>
@@ -54,20 +72,23 @@ public static class Grades
         return g;
     }
 
-    /// <summary>Your grade: care and feed decide it, hand milking adds one, and your milk quality caps it.</summary>
-    public static int For(CowState c, bool hand, float quality) => Math.Min(FromState(c, hand), Cap(quality));
-
-    /// <summary>Points the off taste from dumped milk takes off your grade score (up to 40).</summary>
-    public static float TaintPenalty(CowState c) => c.Taint * 0.4f;
-
-    public static float Score(CowState c) =>
-        Math.Max(0, (c.Hunger + c.Thirst + c.Comfort + c.Mood) / 4f * 0.6f + c.Richness * 0.4f - TaintPenalty(c));
+    /// <summary>
+    /// Your grade comes from your milk quality (earned by being milked). Going days without milking slips it, and the off taste
+    /// from dumped milk takes one step off while it lasts. Hand milking makes up one lost step, but never goes past your quality.
+    /// Needs don't change your grade; they only add milk speed.
+    /// </summary>
+    public static int For(CowState c, bool hand, float quality)
+    {
+        var cap = Cap(quality);
+        var g = cap - Slip(c) - (c.Taint > 0 ? 1 : 0) + (hand ? 1 : 0);
+        return Math.Clamp(g, 0, cap);
+    }
 }
 
 /// <summary>A feed or treat you buy, keep in the pantry and use inside your dairy.</summary>
 public sealed record FeedItem(
     string Id, string Name, string Icon, int Price, int Unlock, string Desc,
-    float Hunger = 0, float Thirst = 0, float Comfort = 0, float Mood = 0, float Richness = 0, int BoostMinutes = 0, float Quality = 0);
+    float Fed = 0, float Water = 0, float Happy = 0, int BoostMinutes = 0, float Quality = 0, int HoldDays = 0);
 
 /// <summary>Something you buy once or in levels.</summary>
 public sealed record Upgrade(string Id, string Name, string Icon, int[] Prices, int[] Unlocks, string Desc, bool Cosmetic = false, bool Farmer = false)
@@ -77,21 +98,25 @@ public sealed record Upgrade(string Id, string Name, string Icon, int[] Prices, 
 
 public static class Catalog
 {
+    // Each need is a 30-minute milk bonus. Food sets Fed, the trough or a mineral block sets Watered, resting sets Comfy,
+    // treats set Happy. The newest one of a kind replaces the last. All four at once: Contented on top.
     public static readonly IReadOnlyList<FeedItem> Feed = new[]
     {
-        new FeedItem("hay", "Meadow hay", "hay", 4, 1, "Plain and filling.", Hunger: 30, Richness: 4),
-        new FeedItem("grain", "Sweet grain", "grain", 12, 2, "Makes richer milk.", Hunger: 24, Richness: 14),
-        new FeedItem("clover", "Fresh clover", "clover", 15, 3, "A treat. Lifts your mood and speeds up your milk for a while.", Hunger: 6, Mood: 22, BoostMinutes: 15),
-        new FeedItem("salt", "Salt lick", "salt", 20, 4, "Mood and richness, but it makes you thirsty. Short milk boost.", Thirst: -12, Mood: 14, Richness: 10, BoostMinutes: 10),
-        new FeedItem("premium", "Velvet blend", "premium", 45, 8, "The best feed money buys. Long milk boost.", Hunger: 40, Mood: 10, Richness: 32, BoostMinutes: 30),
-        new FeedItem("honeyoats", "Honey oats", "grain", 18, 7, "Sweet and filling. A nicer everyday feed.", Hunger: 26, Mood: 8, Richness: 12),
-        new FeedItem("mineral", "Mineral block", "salt", 22, 11, "Richer milk without the salt lick's thirst.", Thirst: 20, Richness: 14),
-        new FeedItem("creamclover", "Cream clover", "clover", 35, 13, "A lush treat. Lifts your mood and speeds up your milk for 45 minutes.", Hunger: 8, Mood: 18, BoostMinutes: 45),
-        new FeedItem("goldenmash", "Golden mash", "premium", 70, 22, "A feast. Very filling, very rich, and a milk boost.", Hunger: 45, Richness: 30, BoostMinutes: 30),
+        new FeedItem("hay", "Meadow hay", "hay", 4, 1, "Plain and filling.", Fed: 0.04f),
+        new FeedItem("grain", "Sweet grain", "grain", 12, 2, "A better meal.", Fed: 0.07f),
+        new FeedItem("clover", "Fresh clover", "clover", 15, 3, "A treat. Makes you happy and speeds up your milk for a while.", Happy: 0.05f, BoostMinutes: 15),
+        new FeedItem("salt", "Salt lick", "salt", 20, 4, "A salty treat. Happy, and a short milk boost.", Happy: 0.04f, BoostMinutes: 10),
+        new FeedItem("premium", "Velvet blend", "premium", 45, 8, "The best feed money buys. Long milk boost.", Fed: 0.12f, BoostMinutes: 30),
+        new FeedItem("honeyoats", "Honey oats", "grain", 18, 7, "Sweet and filling. A nicer everyday feed.", Fed: 0.09f),
+        new FeedItem("mineral", "Mineral block", "salt", 22, 11, "Better than plain water.", Water: 0.08f),
+        new FeedItem("creamclover", "Cream clover", "clover", 35, 13, "A lush treat. Very happy, and faster milk for 45 minutes.", Happy: 0.08f, BoostMinutes: 45),
+        new FeedItem("goldenmash", "Golden mash", "premium", 70, 22, "A feast. The best meal there is, and a milk boost.", Fed: 0.15f, BoostMinutes: 30),
         // Quality treats: raise your milk quality score so better grades unlock sooner
-        new FeedItem("biscuit", "Cream biscuit", "biscuit", 30, 1, "A rich little treat. Builds your milk quality and speeds up your milk for 30 minutes.", Hunger: 4, Mood: 6, Quality: 20, BoostMinutes: 30),
-        new FeedItem("alfalfa", "Golden alfalfa", "alfalfa", 80, 1, "Prized hay. Builds your milk quality a lot and speeds up your milk for 30 minutes.", Hunger: 12, Richness: 8, Quality: 50, BoostMinutes: 30),
-        new FeedItem("starclover", "Star clover", "starclover", 200, 1, "Rare and sweet. A big step up in milk quality, and faster milk for 30 minutes.", Mood: 15, Richness: 12, Quality: 100, BoostMinutes: 30),
+        new FeedItem("biscuit", "Cream biscuit", "biscuit", 30, 1, "A rich little treat. Builds your milk quality and speeds up your milk for 30 minutes.", Happy: 0.04f, Quality: 20, BoostMinutes: 30),
+        new FeedItem("alfalfa", "Golden alfalfa", "alfalfa", 80, 1, "Prized hay. Builds your milk quality a lot and speeds up your milk for 30 minutes.", Fed: 0.06f, Quality: 50, BoostMinutes: 30),
+        new FeedItem("starclover", "Star clover", "starclover", 200, 1, "Rare and sweet. A big step up in milk quality, and faster milk for 30 minutes.", Happy: 0.10f, Quality: 100, BoostMinutes: 30),
+        // Going away: keeps your grade from slipping
+        new FeedItem("tonic", "Dry-off tonic", "water", 150, 1, "Going away? Your grade won't slip for 7 days, however long since you were milked. Use another to add 7 more.", HoldDays: 7),
     };
 
     public static FeedItem? FeedById(string id) => Feed.FirstOrDefault(f => f.Id == id);
@@ -99,14 +124,14 @@ public static class Catalog
     public static readonly IReadOnlyList<Upgrade> Upgrades = new[]
     {
         new Upgrade("stallkit", "Stall kit", "bucket", new[] { 200, 500 }, new[] { 6, 12 }, "Lets you register one more stall."),
-        new Upgrade("cushion", "Plush bedding", "cushion", new[] { 250 }, new[] { 4 }, "Comfort drops half as fast. Resting restores more."),
+        new Upgrade("cushion", "Plush bedding", "cushion", new[] { 250 }, new[] { 4 }, "Resting makes you comfier: Comfy bonus +7% instead of +4%, and it lasts twice as long after you get up."),
         new Upgrade("bottle", "Bigger bottle", "bottle", new[] { 180, 450, 1000, 2200 }, new[] { 3, 8, 14, 21 }, "Each bottle holds more."),
         new Upgrade("rack", "Extra bottle", "milk", new[] { 300, 800, 1800, 3500 }, new[] { 6, 12, 19, 25 }, "One more bottle. When one fills, the next one starts."),
         // Farmers (and owners) buy a bigger tank to carry milk from the dairy tank; unlocks go by farmer level
         new Upgrade("farmtank", "Bigger farmer tank", "bucket", new[] { 200, 500, 1200, 2500, 5000 }, new[] { 2, 5, 10, 16, 22 },
             "Carry more milk from the dairy tank to customers, other dairies and the Grand Creamery.", Farmer: true),
-        new Upgrade("trough", "Clean trough", "water", new[] { 160 }, new[] { 5 }, "Thirst drops a third slower."),
-        new Upgrade("bell", "Bell collar", "bell", new[] { 80 }, new[] { 3 }, "A brass bell. Mood drops a little slower.", true),
+        new Upgrade("trough", "Clean trough", "water", new[] { 160 }, new[] { 5 }, "Watered lasts half again as long."),
+        new Upgrade("bell", "Bell collar", "bell", new[] { 80 }, new[] { 3 }, "A brass bell. Happy lasts a little longer.", true),
         new Upgrade("ribbon", "Show ribbon", "ribbon", new[] { 600 }, new[] { 15 }, "Wear your ribbon. +5% creamery prices.", true),
         new Upgrade("cap", "Gold-cap bottles", "coin", new[] { 1500 }, new[] { 25 }, "Bottles with your name on them. +10% creamery prices.", true),
         // Cow perks and wearables for the higher cow levels
@@ -116,7 +141,7 @@ public static class Catalog
         new Upgrade("halter", "Silk halter", "ribbon", new[] { 1000 }, new[] { 17 }, "A soft silk halter. +3% pay.", true),
         new Upgrade("steady", "Steady producer", "milk", new[] { 1200 }, new[] { 18 }, "You get tired after 14 hours of milk a day instead of 12."),
         new Upgrade("heifer", "Prize heifer sash", "ribbon", new[] { 1600 }, new[] { 20 }, "Milk quality builds 10% faster.", true),
-        new Upgrade("lavender", "Lavender bedding", "cushion", new[] { 1800 }, new[] { 23 }, "Mood drops half as fast."),
+        new Upgrade("lavender", "Lavender bedding", "cushion", new[] { 1800 }, new[] { 23 }, "Comfy bonus +3% more, and Happy lasts twice as long."),
         new Upgrade("mist", "Cooling mist", "water", new[] { 2000 }, new[] { 24 }, "Full bottles keep 96 hours before they spoil instead of 72."),
         new Upgrade("velvetbell", "Velvet bell", "bell", new[] { 2600 }, new[] { 26 }, "A velvet-wrapped bell. +5% pay.", true),
         new Upgrade("champion", "Champion's ribbon", "ribbon", new[] { 3200 }, new[] { 28 }, "Milk quality builds 20% faster.", true),
@@ -139,7 +164,7 @@ public static class Catalog
 
     // Spoiling: full bottles left this long go bad and have to be dumped
     public const double SpoilHours = 72;
-    public const float TaintOnDump = 100f;     // off taste after dumping (costs up to 40 grade points)
+    public const float TaintOnDump = 100f;     // off taste after dumping (one grade lower until it wears off)
     public const float TaintPerCare = 6f;      // each care task clears this much
     public const float TaintPerMilking = 12f;  // each milking
     public const float TaintPerOrder = 25f;    // each creamery delivery
@@ -154,9 +179,16 @@ public static class Catalog
     public static readonly float[] BottleSizes = { 0, 8, 12, 20, 32, 48 };
 
     public const float LevelBonus = 0.04f;      // +4% milk per level above 1, up to Leveling.MilkBonusCap
-    public const float ContentBonus = 0.25f;    // all four needs at 75 or more
+    public const float ContentBonus = 0.10f;    // all four need bonuses active at once
     public const float TreatBonus = 0.30f;      // while a treat boost lasts
     public const float RestBonus = 0.5f;        // resting in your dairy
+
+    // ----- Need bonuses -----
+    public const float NeedMinutes = 30f;       // how long a need bonus lasts (awake play only)
+    public const float TroughBonus = 0.04f;     // Watered from the trough
+    public const float ComfyBonus = 0.04f;      // Comfy from resting (Plush bedding 0.07, + Lavender bedding 0.03)
+    public const float ComfyCushion = 0.07f;
+    public const float ComfyLavender = 0.03f;
 
     public static readonly string[] Customers =
     {

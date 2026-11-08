@@ -251,7 +251,7 @@ public sealed class DairyGame
     public float Capacity => BottleSize * BottleCount;
     public int FullBottles => Math.Min(BottleCount, (int)((Cow.Milk + 0.01f) / BottleSize));
     public TimeSpan BoostLeft => Cow.BoostUntilUtc > DateTime.UtcNow ? Cow.BoostUntilUtc - DateTime.UtcNow : TimeSpan.Zero;
-    public bool Contented => Cow.Hunger >= 75 && Cow.Thirst >= 75 && Cow.Comfort >= 75 && Cow.Mood >= 75;
+    public bool Contented => Cow.Hunger > 0 && Cow.FedBonus > 0 && Cow.Thirst > 0 && Cow.WaterBonus > 0 && Cow.Comfort > 0 && Cow.ComfortBonus > 0 && Cow.Mood > 0 && Cow.HappyBonus > 0;
     public bool Spoiled => Cow.Spoiled;
 
     /// <summary>How long until full bottles spoil, or null if they aren't all full.</summary>
@@ -262,8 +262,11 @@ public sealed class DairyGame
     public float NeedsAverage => (Cow.Hunger + Cow.Thirst + Cow.Comfort + Cow.Mood) / 4f;
     public int CurrentGrade => Grades.For(Cow, false, F.Quality);
     public int GradeCap => Grades.Cap(F.Quality);
-    /// <summary>The grade your care would give if your level allowed it.</summary>
-    public int CareGrade => Grades.FromState(Cow, false);
+    public int GradeSlip => Grades.Slip(Cow);
+    public DateTime? NextSlipUtc => Grades.NextSlipUtc(Cow);
+    public TimeSpan FreshHoldLeft => Cow.FreshHoldUntilUtc > DateTime.UtcNow ? Cow.FreshHoldUntilUtc - DateTime.UtcNow : TimeSpan.Zero;
+    /// <summary>The Comfy bonus resting gives you with what you own.</summary>
+    public float ComfyNow => (Owned("cushion") > 0 ? Catalog.ComfyCushion : Catalog.ComfyBonus) + (Owned("lavender") > 0 ? Catalog.ComfyLavender : 0);
     public bool Overfull => Cow.Milk >= Capacity - 0.01f;
     public int MaxStalls => Networked ? Net.Progress?.StallSlots ?? 2 : 1 + Owned("stallkit");
     public float PriceBonus => 1f + (Owned("ribbon") > 0 ? 0.05f : 0) + (Owned("cap") > 0 ? 0.10f : 0) +
@@ -449,10 +452,12 @@ public sealed class DairyGame
     public List<RatePart> RateParts(bool includeResting = true)
     {
         var parts = new List<RatePart>();
-        var care = Cow.Hunger < 10 || Cow.Thirst < 10 ? 0.1f : 0.2f + 0.8f * NeedsAverage / 100f;
-        parts.Add(new RatePart(Cow.Hunger < 10 || Cow.Thirst < 10 ? "Starving or parched" : "How well you're kept", care));
+        if (Cow.Hunger > 0 && Cow.FedBonus > 0) parts.Add(new RatePart("Fed", 1f + Cow.FedBonus));
+        if (Cow.Thirst > 0 && Cow.WaterBonus > 0) parts.Add(new RatePart("Watered", 1f + Cow.WaterBonus));
+        if (Cow.Comfort > 0 && Cow.ComfortBonus > 0) parts.Add(new RatePart("Comfy", 1f + Cow.ComfortBonus));
+        if (Cow.Mood > 0 && Cow.HappyBonus > 0) parts.Add(new RatePart("Happy", 1f + Cow.HappyBonus));
         if (Level > 1) parts.Add(new RatePart(Level > Leveling.MilkBonusCap ? $"Level {Level} (max bonus)" : $"Level {Level}", 1f + Catalog.LevelBonus * (Math.Min(Level, Leveling.MilkBonusCap) - 1)));
-        if (Contented) parts.Add(new RatePart("Contented (all needs 75+)", 1f + Catalog.ContentBonus));
+        if (Contented) parts.Add(new RatePart("Contented (all four bonuses)", 1f + Catalog.ContentBonus));
         if (BoostLeft > TimeSpan.Zero) parts.Add(new RatePart("Treat boost", 1f + Catalog.TreatBonus));
         if (includeResting && Where.InDairy && Where.Seated && Wake == Wakefulness.Awake) parts.Add(new RatePart("Resting in your dairy", 1f + (Owned("deeprest") > 0 ? 0.75f : Catalog.RestBonus)));
         if (includeResting && Wake == Wakefulness.Dozing) parts.Add(new RatePart("Dozing (no activity for 15 min)", 0.5f));
@@ -629,20 +634,13 @@ public sealed class DairyGame
 
     /// <summary>
     /// Time spent logged out: no milk is made. Full bottles still spoil on the real clock, so empty them before you log out.
-    /// Needs drift down gently (a quarter speed, never below 20) so a fresh login still has a little care to do.
+    /// Need bonuses are frozen while you're away and pick up where they left off.
     /// </summary>
     private void CatchUp()
     {
         var away = DateTime.UtcNow - Cow.LastTickUtc;
         if (away.TotalMinutes < 1) return;
 
-        var minutes = (float)Math.Min(away.TotalMinutes, 8 * 60);
-        static float Floor(float v, float d) => Math.Max(Math.Min(v, 20), v - d);
-        Cow.Hunger = Floor(Cow.Hunger, 0.35f * 0.25f * minutes);
-        Cow.Thirst = Floor(Cow.Thirst, 0.5f * 0.25f * minutes);
-        Cow.Comfort = Floor(Cow.Comfort, 0.25f * 0.25f * minutes);
-        Cow.Mood = Floor(Cow.Mood, 0.2f * 0.25f * minutes);
-        Cow.Richness = Math.Max(0, Cow.Richness - 0.2f * 0.25f * minutes);
         Cow.LastTickUtc = DateTime.UtcNow;
         CheckSpoil();
     }
@@ -655,23 +653,22 @@ public sealed class DairyGame
         var resting = Where.InDairy && Where.Seated;
         var cushion = Owned("cushion") > 0;
 
-        Cow.Hunger = Clamp(Cow.Hunger - 0.35f * m);
-        Cow.Thirst = Clamp(Cow.Thirst - (Owned("trough") > 0 ? 0.33f : 0.5f) * m);
-        if (resting) Cow.Comfort = Clamp(Cow.Comfort + (cushion ? 3.0f : 2.0f) * m);
-        else Cow.Comfort = Clamp(Cow.Comfort - (cushion ? 0.12f : 0.25f) * m);
-
-        // Mood drifts toward how well you're kept, and drops a little on its own
-        var target = (Cow.Hunger + Cow.Thirst + Cow.Comfort) / 3f;
-        var moodDecay = (Owned("bell") > 0 ? 0.17f : 0.2f) * (Owned("lavender") > 0 ? 0.5f : 1f);
-        Cow.Mood = Clamp(Cow.Mood - moodDecay * m + (target - Cow.Mood) * 0.01f * m);
-        Cow.Richness = Math.Max(0, Cow.Richness - 0.2f * m);
-
-        if (Overfull)
+        // Need bonuses run for 30 minutes of awake play; asleep, dozing or logged out they wait
+        if (Wake == Wakefulness.Awake)
         {
-            Cow.Comfort = Clamp(Cow.Comfort - 1.0f * m);
-            Cow.Mood = Clamp(Cow.Mood - 0.5f * m);
+            var step = 100f / Catalog.NeedMinutes * m;
+            Cow.Hunger = Clamp(Cow.Hunger - step);
+            Cow.Thirst = Clamp(Cow.Thirst - step / (Owned("trough") > 0 ? 1.5f : 1f));
+            Cow.Mood = Clamp(Cow.Mood - step / ((Owned("lavender") > 0 ? 2f : 1f) * (Owned("bell") > 0 ? 1.2f : 1f)));
+            if (resting)
+            {
+                Cow.Comfort = 100f;
+                Cow.ComfortBonus = ComfyNow;
+            }
+            else Cow.Comfort = Clamp(Cow.Comfort - step / (cushion ? 2f : 1f));
         }
-        else if (Active == null && ProducesMilk)
+
+        if (!Overfull && Active == null && ProducesMilk)
         {
             var milkBefore = Cow.Milk;
             Cow.Milk = Math.Min(Capacity, Cow.Milk + ProductionPerMinute() * m);
@@ -712,21 +709,31 @@ public sealed class DairyGame
     {
         var item = Catalog.FeedById(id);
         if (item == null) return false;
-        var p = CareProblem();
+        // The tonic works anywhere, so you can take it on the way out
+        var p = item.HoldDays > 0 ? Blocked() : CareProblem();
         if (p != null) return Fail(p);
         if (Count(id) <= 0) return Fail($"You're out of {item.Name}. Buy more in the Shop.");
 
         if (item.Quality > 0 && QualityTreatWait > TimeSpan.Zero)
             return Fail($"You can have another quality treat in {Wait(QualityTreatWait)}.");
-        var useful = (item.Hunger > 0 && Cow.Hunger < 95) || (item.Mood > 0 && Cow.Mood < 95) || item.Richness >= 10 || item.Quality > 0;
-        if (!useful) return Fail("You don't feel like that right now.");
-
+        // Don't let a plain snack wipe out a better bonus that's still going
+        bool Worse(float give, float have, float left) => give > 0 && left > 50 && have > give;
+        if (item.Quality <= 0 && item.HoldDays <= 0 &&
+            (Worse(item.Fed, Cow.FedBonus, Cow.Hunger) || Worse(item.Water, Cow.WaterBonus, Cow.Thirst) || Worse(item.Happy, Cow.HappyBonus, Cow.Mood)))
+            return Fail("You're still enjoying something better. Have it when that wears off.");
         F.Pantry[id] = Count(id) - 1;
-        Cow.Hunger = Clamp(Cow.Hunger + item.Hunger);
-        Cow.Thirst = Clamp(Cow.Thirst + item.Thirst);
-        Cow.Comfort = Clamp(Cow.Comfort + item.Comfort);
-        Cow.Mood = Clamp(Cow.Mood + item.Mood);
-        Cow.Richness = Math.Min(100, Cow.Richness + item.Richness);
+        if (item.Fed > 0) { Cow.Hunger = 100; Cow.FedBonus = item.Fed; }
+        if (item.Water > 0) { Cow.Thirst = 100; Cow.WaterBonus = item.Water; }
+        if (item.Happy > 0) { Cow.Mood = 100; Cow.HappyBonus = item.Happy; }
+        if (item.HoldDays > 0)
+        {
+            var from = Cow.FreshHoldUntilUtc > DateTime.UtcNow ? Cow.FreshHoldUntilUtc : DateTime.UtcNow;
+            Cow.FreshHoldUntilUtc = from.AddDays(item.HoldDays);
+            Touch();
+            Say($"Dry-off tonic: your grade won't slip until {Cow.FreshHoldUntilUtc.ToLocalTime():MMM d, h:mm tt}.", 1);
+            plugin.SaveConfig();
+            return true;
+        }
         if (item.Quality > 0)
         {
             AddQuality(item.Quality);
@@ -758,8 +765,9 @@ public sealed class DairyGame
         var p = CareProblem();
         if (p != null) return Fail(p);
         if (WaterCooldown > 0) return Fail("Give it a moment.");
-        if (Cow.Thirst >= 95) return Fail("You're not thirsty.");
-        Cow.Thirst = Clamp(Cow.Thirst + 40);
+        if (Cow.Thirst >= 95 && Cow.WaterBonus >= Catalog.TroughBonus) return Fail("You're not thirsty.");
+        Cow.Thirst = 100;
+        if (Cow.WaterBonus <= Catalog.TroughBonus || Cow.Thirst <= 0) Cow.WaterBonus = Catalog.TroughBonus;
         waterReady = now + 20;
         CareDone("You drink from the trough.");
         return true;
@@ -770,8 +778,8 @@ public sealed class DairyGame
         var p = CareProblem();
         if (p != null) return Fail(p);
         if (StretchCooldown > 0) return Fail("You stretched a moment ago.");
-        Cow.Comfort = Clamp(Cow.Comfort + 12);
-        Cow.Mood = Clamp(Cow.Mood + 4);
+        Cow.Comfort = 100;
+        if (Cow.ComfortBonus <= 0) Cow.ComfortBonus = ComfyNow;
         stretchReady = now + 300;
         CareDone("You stretch out and shake off the stiffness.");
         return true;
@@ -833,7 +841,6 @@ public sealed class DairyGame
         Cow.Spoiled = false;
         Cow.FullSinceUtc = null;
         Cow.Taint = Catalog.TaintOnDump;
-        Cow.Mood = Clamp(Cow.Mood - 10);
         F.Stats.TimesDumped++;
         F.Stats.OzDumped += oz;
         spoilWarned = 0;
@@ -1029,9 +1036,8 @@ public sealed class DairyGame
         if (Networked && F.NetMember != null && Where.InDairy) pendingPump[Math.Clamp(s.Grade, 0, 4)] += collected;
         F.Stats.BestSessionOz = Math.Max(F.Stats.BestSessionOz, collected);
 
-        // Being milked feels good and resets the pressure
-        Cow.Comfort = Clamp(Cow.Comfort + Math.Min(15, s.Extracted * 0.4f));
-        Cow.Mood = Clamp(Cow.Mood + (s.Kind == SessionKind.Hand ? 10 : 4));
+        // Being milked keeps your milk fresh
+        Cow.LastMilkedUtc = DateTime.UtcNow;
 
         int xp;
         if (s.Kind == SessionKind.Stall)
@@ -2217,8 +2223,11 @@ public sealed class DairyGame
     public void DevResetNeeds()
     {
         if (!Dev) return;
-        Cow.Hunger = Cow.Thirst = Cow.Comfort = Cow.Mood = 80;
-        Cow.Richness = 30;
+        Cow.Hunger = Cow.Thirst = Cow.Comfort = Cow.Mood = 100;
+        Cow.FedBonus = 0.07f;
+        Cow.WaterBonus = Catalog.TroughBonus;
+        Cow.ComfortBonus = ComfyNow;
+        Cow.HappyBonus = 0.05f;
     }
 
     public void DevStroke()

@@ -94,7 +94,7 @@ public static class Theme
     public static Vector4 Darken(Vector4 c, float k) => new(c.X * (1 - k), c.Y * (1 - k), c.Z * (1 - k), c.W);
 
     /// <summary>Gauge colour: calm when fine, rose when getting low, red when urgent.</summary>
-    public static Vector4 NeedColor(float v, Vector4 ok) => v >= 40 ? ok : v >= 20 ? RoseDeep : Warn;
+    public static Vector4 NeedColor(float v, Vector4 ok) => v >= 20 ? ok : RoseDeep;   // a need bonus running out (never a warning: plain is fine)
 
     public static Vector4 GradeColor(int g) => g switch
     {
@@ -387,14 +387,14 @@ public static class Ui
     }
 
     /// <summary>Labelled need gauge with an icon. Returns its height.</summary>
-    public static float Gauge(ImDrawListPtr dl, Vector2 pos, float width, string icon, string label, float value, Vector4 color)
+    public static float Gauge(ImDrawListPtr dl, Vector2 pos, float width, string icon, string label, float value, Vector4 color, string? valueText = null)
     {
         const float r = 17f;
         Icon(dl, icon, pos + new Vector2(r, r + 2), r);
         var x = pos.X + r * 2 + 10;
         var w = width - (x - pos.X);
         Text(dl, Fonts?.Label, label.ToUpperInvariant(), new Vector2(x, pos.Y - 1), Theme.InkSoft);
-        Text(dl, Fonts?.Small, $"{value:0}", new Vector2(x + w, pos.Y), Theme.Ink, 1f);
+        Text(dl, Fonts?.Small, valueText ?? $"{value:0}", new Vector2(x + w, pos.Y), Theme.Ink, 1f);
         var barMin = new Vector2(x, pos.Y + 24);
         var barMax = new Vector2(x + w, pos.Y + 32);
         dl.AddRectFilled(barMin, barMax, U(Theme.Linen), 4);

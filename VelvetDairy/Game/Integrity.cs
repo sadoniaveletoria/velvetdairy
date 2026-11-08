@@ -63,6 +63,9 @@ public static partial class Integrity
         Add("starter", f.StarterGiven);
         // Added later: only part of the signature once used, so older saves still check out
         if (f.FarmerXp != 0 || f.BullXp != 0) Add("rolexp", $"{f.FarmerXp},{f.BullXp}");
+        if (cow.FedBonus != 0 || cow.WaterBonus != 0 || cow.ComfortBonus != 0 || cow.HappyBonus != 0)
+            Add("bonus", $"{N(cow.FedBonus)},{N(cow.WaterBonus)},{N(cow.ComfortBonus)},{N(cow.HappyBonus)}");
+        if (cow.LastMilkedUtc != null || cow.FreshHoldUntilUtc != DateTime.MinValue) Add("fresh", $"{D(cow.LastMilkedUtc)},{D(cow.FreshHoldUntilUtc)}");
         return sb.ToString();
     }
 

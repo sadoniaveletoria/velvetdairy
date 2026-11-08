@@ -626,9 +626,10 @@ public sealed partial class MainWindow : Window
         var sealC = new Vector2(bmin.X + bw + 6, bmin.Y + bh * 0.3f);
         Ui.Seal(dl, sealC, 28, Grades.Name(grade), Theme.GradeColor(grade));
         if (ImGui.IsMouseHoveringRect(sealC - new Vector2(28, 28), sealC + new Vector2(28, 28)))
-            ImGui.SetTooltip($"Grade {Grades.Name(grade)} ({Grades.All[grade].Blurb}) if you're milked now.\nScore {Grades.Score(cow):0} from your needs and feed quality. Hand milking adds one grade." +
-                (cow.Taint > 0 ? $"\nOff taste from dumped milk: -{Grades.TaintPenalty(cow):0} points." : "") +
-                GradeCapNote());
+            ImGui.SetTooltip($"Grade {Grades.Name(grade)} ({Grades.All[grade].Blurb}) if you're milked now.\nYour grade comes from your milk quality, and stays up as long as you're milked every few days." +
+                (G.GradeSlip > 0 ? $"\nSlipped {G.GradeSlip} grade{(G.GradeSlip > 1 ? "s" : "")}: it's been a while since you were milked. Get milked to bring it back." : "") +
+                (cow.Taint > 0 ? "\nOff taste from dumped milk: one grade lower until it wears off." : "") +
+                "\nHand milking makes up one lost grade." + GradeCapNote());
 
         var y = bmin.Y + bh + 6;
         var cx = min.X + w / 2;
@@ -656,7 +657,7 @@ public sealed partial class MainWindow : Window
         if (!milking && ImGui.IsMouseHoveringRect(new Vector2(cx - ls.X / 2, y), new Vector2(cx + ls.X / 2, y + ls.Y)))
         {
             var tip = "Milk speed\n" + string.Join("\n", G.RateParts().Select(r => $"  {r.Name}: x{r.Multiplier:0.00}"));
-            tip += "\nFull speed needs good care. Level, contentment, treats and resting all add to it.";
+            tip += "\nFed, Watered, Comfy and Happy each add a bonus for 30 minutes; all four make you Contented. Level, treats and resting add more.";
             ImGui.SetTooltip(tip);
         }
 
@@ -670,7 +671,8 @@ public sealed partial class MainWindow : Window
         }
 
         var extras = new List<string>();
-        if (cow.Taint > 0) extras.Add($"Off taste -{Grades.TaintPenalty(cow):0}");
+        if (cow.Taint > 0) extras.Add("Off taste");
+        if (G.GradeSlip > 0) extras.Add($"Grade slipped {G.GradeSlip}");
         if (G.Where.InDairy && G.Where.Seated && !milking) extras.Add("Resting");
         if (G.Contented) extras.Add("Contented");
         if (G.BoostLeft > TimeSpan.Zero) extras.Add($"Treat boost {Mins(G.BoostLeft)}");
@@ -705,18 +707,19 @@ public sealed partial class MainWindow : Window
         var cow = F.Cow;
         var p = ImGui.GetCursorScreenPos();
         var y = p.Y;
-        var rows = new (string Icon, string Label, float Value, Vector4 Color, string Tip)[]
+        var rows = new (string Icon, string Label, float Value, float Bonus, Vector4 Color, string Tip)[]
         {
-            ("hay", "Hunger", cow.Hunger, Theme.HoneyDeep, "Eat feed from your pantry. Drops slowly all the time."),
-            ("water", "Thirst", cow.Thirst, Theme.BlueDeep, "Drink at the trough. Drops a little faster than hunger."),
-            ("cushion", "Comfort", cow.Comfort, Theme.RoseDeep, "Sit on furniture in your dairy to rest. Being too full hurts it."),
-            ("clover", "Mood", cow.Mood, Theme.SageDeep, "Follows how well you're kept. Treats and being milked lift it."),
-            ("premium", "Feed quality", cow.Richness, Theme.HoneyDeep, "Rich feed (grain, salt, Velvet blend) raises your milk grade."),
+            ("hay", "Fed", cow.Hunger, cow.FedBonus, Theme.HoneyDeep, "Eat feed from your pantry. Better food gives a bigger bonus (hay +4% up to Golden mash +15%)."),
+            ("water", "Watered", cow.Thirst, cow.WaterBonus, Theme.BlueDeep, "Drink at the trough (free, +4%) or have a Mineral block (+8%)."),
+            ("cushion", "Comfy", cow.Comfort, cow.ComfortBonus, Theme.RoseDeep, "Rest on furniture in your dairy. Bedding upgrades make it bigger and last longer."),
+            ("clover", "Happy", cow.Mood, cow.HappyBonus, Theme.SageDeep, "Have a treat: clover, salt lick, cream clover or a quality treat."),
         };
 
         foreach (var r in rows)
         {
-            var h = Ui.Gauge(dl, new Vector2(p.X, y), width, r.Icon, r.Label, r.Value, r.Color);
+            var left = r.Value / 100f * Catalog.NeedMinutes;
+            var text = r.Value > 0 && r.Bonus > 0 ? $"+{r.Bonus * 100:0}% · {(left >= 1 ? $"{left:0}m" : "<1m")}" : "plain";
+            var h = Ui.Gauge(dl, new Vector2(p.X, y), width, r.Icon, r.Label, r.Value, r.Color, text);
             if (ImGui.IsMouseHoveringRect(new Vector2(p.X, y), new Vector2(p.X + width, y + h))) ImGui.SetTooltip(r.Tip);
             y += h + 10;
         }
@@ -726,8 +729,10 @@ public sealed partial class MainWindow : Window
         var where = G.Where;
         if (G.Paused) notes.Add(("The game is paused (Developer settings).", Theme.InkSoft));
         if (!where.InDairy) notes.Add((where.Why + " Care and milking wait until you're back.", Theme.RoseDeep));
-        if (cow.Hunger < 20) notes.Add(("You're hungry.", Theme.Warn));
-        if (cow.Thirst < 20) notes.Add(("You're thirsty.", Theme.Warn));
+        if (G.FreshHoldLeft > TimeSpan.Zero) notes.Add(($"Dry-off tonic: your grade won't slip for {DairyGame.Wait(G.FreshHoldLeft)}.", Theme.SageDeep));
+        else if (G.GradeSlip > 0) notes.Add(($"Your grade slipped {G.GradeSlip} step{(G.GradeSlip > 1 ? "s" : "")} from going days without milking. One milking brings it back.", Theme.RoseDeep));
+        else if (G.NextSlipUtc is { } slip && slip - DateTime.UtcNow < TimeSpan.FromDays(1))
+            notes.Add(($"Get milked within {DairyGame.Wait(slip - DateTime.UtcNow)} or your grade slips. Going away? A Dry-off tonic holds it.", Theme.RoseDeep));
         if (G.Spoiled) notes.Add(("Your milk spoiled from sitting too long. Dump it (under the bottle or on the HUD) before you can be milked.", Theme.Warn));
         else if (G.Overfull)
         {
@@ -736,8 +741,8 @@ public sealed partial class MainWindow : Window
         }
 
         if (cow.Taint > 0)
-            notes.Add(($"Your milk tastes off after the dump (-{Grades.TaintPenalty(cow):0} grade points). Care tasks, milkings and creamery deliveries wear it off.", Theme.RoseDeep));
-        if (notes.Count == 0) notes.Add(("All good. Keep it up for better milk.", Theme.SageDeep));
+            notes.Add(("Your milk tastes off after the dump (one grade lower). Care tasks, milkings and creamery deliveries wear it off.", Theme.RoseDeep));
+        if (notes.Count == 0) notes.Add((G.Contented ? "Contented! Every bonus is going." : "Bonuses last 30 minutes of play and wait while you're asleep or away. Running out never hurts.", Theme.SageDeep));
         foreach (var (t, c) in notes) Ui.Wrapped(t, c, width);
     }
 
@@ -752,12 +757,12 @@ public sealed partial class MainWindow : Window
 
         var ok = problem == null;
         var wcd = G.WaterCooldown;
-        if (Row("##drink", "water", "Drink", wcd > 0 ? $"Ready in {wcd:0}s" : "Free · +40 thirst", "Drink", "blue",
+        if (Row("##drink", "water", "Drink", wcd > 0 ? $"Ready in {wcd:0}s" : $"Free · Watered +{Catalog.TroughBonus * 100:0}%", "Drink", "blue",
                 ok && wcd <= 0, problem, width))
             G.Drink();
 
         var scd = G.StretchCooldown;
-        if (Row("##stretch", "cushion", "Stretch", scd > 0 ? $"Ready in {Mins(TimeSpan.FromSeconds(scd))}" : "Free · +12 comfort", "Stretch", "rose",
+        if (Row("##stretch", "cushion", "Stretch", scd > 0 ? $"Ready in {Mins(TimeSpan.FromSeconds(scd))}" : "Free · Comfy for 30m", "Stretch", "rose",
                 ok && scd <= 0, problem, width))
             G.Stretch();
 
@@ -788,8 +793,7 @@ public sealed partial class MainWindow : Window
     {
         var cap = G.GradeCap;
         var next = G.NextQuality is { } need ? $" Grade {Grades.Name(cap + 1)} unlocks at {need:0} quality (you have {F.Quality:0})." : "";
-        var held = G.CareGrade > cap ? $" Your care is good enough for {Grades.Name(Math.Min(G.CareGrade, Grades.Count - 1))}, but your milk quality holds it at {Grades.Name(cap)}." : "";
-        return $"\nBest grade your milk quality allows: {Grades.Name(cap)}.{held}{next}";
+        return $"\nBest grade your milk quality allows: {Grades.Name(cap)}.{next}";
     }
 
     /// <summary>Milk quality progress bar with what raises it.</summary>
@@ -819,10 +823,11 @@ public sealed partial class MainWindow : Window
     private static string Effects(FeedItem f)
     {
         var parts = new List<string>();
-        if (f.Hunger != 0) parts.Add($"{f.Hunger:+0;-0} hunger");
-        if (f.Thirst != 0) parts.Add($"{f.Thirst:+0;-0} thirst");
-        if (f.Mood != 0) parts.Add($"{f.Mood:+0;-0} mood");
-        if (f.Richness != 0) parts.Add($"{f.Richness:+0;-0} feed quality");
+        if (f.Fed != 0) parts.Add($"Fed +{f.Fed * 100:0}%");
+        if (f.Water != 0) parts.Add($"Watered +{f.Water * 100:0}%");
+        if (f.Happy != 0) parts.Add($"Happy +{f.Happy * 100:0}%");
+        if (f.BoostMinutes != 0) parts.Add($"boost {f.BoostMinutes}m");
+        if (f.HoldDays != 0) parts.Add($"no grade slip for {f.HoldDays} days");
         if (f.Quality != 0) parts.Add($"+{f.Quality:0} milk quality");
         return string.Join(", ", parts);
     }

@@ -84,7 +84,7 @@ public sealed partial class MainWindow
         }
 
         Gap(6);
-        Ui.Wrapped("Quality builds as you're milked, fill goals and eat quality treats. Your care (hunger, thirst, comfort, mood, feed) decides the best grade you can make right now.",
+        Ui.Wrapped("Quality builds as you're milked, fill goals and eat quality treats. Your grade is your quality, as long as you're milked every few days (it slips after 3 days without).",
             Theme.InkSoft, width);
     }
 

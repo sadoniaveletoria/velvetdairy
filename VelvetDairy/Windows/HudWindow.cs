@@ -100,8 +100,8 @@ public sealed class HudWindow : Window
         var bw = size.X - (x - o.X) - 26;
         var needs = new (string Label, float V, Vector4 C)[]
         {
-            ("Hunger", cow.Hunger, Theme.HoneyDeep), ("Thirst", cow.Thirst, Theme.BlueDeep),
-            ("Comfort", cow.Comfort, Theme.RoseDeep), ("Mood", cow.Mood, Theme.SageDeep),
+            ("Fed", cow.Hunger, Theme.HoneyDeep), ("Watered", cow.Thirst, Theme.BlueDeep),
+            ("Comfy", cow.Comfort, Theme.RoseDeep), ("Happy", cow.Mood, Theme.SageDeep),
         };
         var half = (bw - 10) / 2;
         for (var i = 0; i < needs.Length; i++)

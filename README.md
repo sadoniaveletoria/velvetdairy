@@ -16,29 +16,31 @@ The first time you open Velvet Dairy, a short walkthrough explains the game and 
   - **Hand milking**: only a **registered farmhand of your dairy** can do it. They stand within 3 y, target you and use one of the milking emotes (`/pet`, `/comfort`, `/hug` by default; you can change the list). Each emote draws 1 oz. Hand milking gives one grade higher and more xp.
 - **Shopping, the creamery and goals work anywhere.**
 
-## Your needs
-Hunger, Thirst, Comfort and Mood go from 0 to 100, plus Feed quality.
-- Hunger and thirst drop slowly all the time. Eat feed from your pantry or drink at the trough (free, every 20 s).
-- Comfort rises while you sit on furniture in your dairy and drops when you don't. Stretch (free, every 5 min) helps.
-- Mood follows how well you're kept. Treats and being milked lift it.
-- Feed quality comes from rich feed (grain, salt lick, Velvet blend) and fades over time.
+## Your needs (bonuses)
+Fed, Watered, Comfy and Happy are **30-minute milk bonuses**. They count down only while you're awake and playing (they wait while you're asleep, dozing or logged out). Running out just makes you plain: no penalty, and needs never touch your grade.
+- **Fed**: eat food. Meadow hay +4%, Sweet grain +7%, Honey oats +9%, Velvet blend +12%, Golden mash +15% (Golden alfalfa +6%).
+- **Watered**: the trough (free) +4%, Mineral block +8%. Clean trough makes it last 1.5×.
+- **Comfy**: rest on furniture in your dairy; it stays full while you sit and lasts 30 min after you get up. +4%, Plush bedding +7% and twice as long, Lavender bedding +3% more. Stretch (free, every 5 min) refreshes it.
+- **Happy**: treats. Salt lick +4%, Cream biscuit +4%, Fresh clover +5%, Cream clover +8%, Star clover +10%. Bell collar and Lavender bedding make it last longer.
+- The newest food or treat of a kind replaces the last (a plain snack won't replace a better bonus that's more than half left).
+- **Dry-off tonic** (150 coins): stops your grade slipping for 7 days while you're away. Usable anywhere.
 
 ## Milk
 - Milk builds up over time. Hover the "oz a minute" line to see what goes into your speed:
-  - how well you're kept (needs)
+  - Fed, Watered, Comfy and Happy bonuses
   - +4% per level, up to level 50
-  - **Contented** +25% when all four needs are 75 or more
+  - **Contented** +10% when all four bonuses are going
   - **Treat boost** +30% for a while after clover (15 min), salt lick (10 min) or Velvet blend (30 min), up to an hour
   - +50% while resting on furniture in your dairy
   - the **Milk speed** setting
 - **How much milk**: about five times a real person's yield, so roughly 125–150 oz a day with good care, more at high levels.
 - **Your bottles**: you start with one Milk bottle (8 oz). Buy **Bigger bottle** (Cream jar 12, Dairy jug 20, Big jug 32, Milk churn 48) and **Extra bottle** (up to 5 bottles; the 5th unlocks at level 25). When one fills, the next starts. Each size has its own look (classic quart, wide-mouth jar, handled gallon jug, big milk jug with a carry handle, metal churn with a sight window). The big bottle shows the one filling; small ones underneath show the rest.
 - When every bottle is full, nothing more comes and comfort and mood start dropping, so get milked.
-- **Cow unlocks to level 30**: new feed (Honey oats 7, Mineral block 11, Cream clover 13, Golden mash 22) and cow upgrades: Udder balm 9 (hand milking 15% faster), Easy let-down 10 (stall milking 10% faster), Deep rest 16 (resting +75%), Silk halter 17 (+3% pay), Steady producer 18 (tired after 14 h), Prize heifer sash 20 (quality +10%), Lavender bedding 23 (mood drops half as fast), Cooling mist 24 (bottles keep 96 h), Velvet bell 26 (+5% pay), Champion's ribbon 28 (quality +20%), Velvet champion sash 30 (+10% pay).
-- **Spoiling**: if every bottle stays full for **72 hours** without being milked, the milk spoils (you get warnings at 24 hours and 2 hours left, and the bottle shows a countdown). Spoiled milk turns sour yellow and can't be milked or sold. A **Dump milk** button appears on the HUD and under the bottle: it pours everything out for no xp or coins, and leaves an **off taste** that takes up to 40 points off your grade. Care tasks, milkings and creamery deliveries wear the off taste away. The 72 hours run on the real clock, logged in or not, so empty your bottles before you log out for a while.
-- **Grade** (C, B, A, S, S+) comes from your needs and feed quality when the milking starts. Hand milking adds one grade. **Everyone starts at Grade C.** Your **milk quality** score sets the best grade you can make: B at 150, A at 800, S at 2,600, S+ at 6,000. You earn quality from every oz you're milked (+5, or +7.5 by hand), every creamery delivery (+10), and quality treats from the Shop: Cream biscuit +20 (30 coins), Golden alfalfa +50 (80), Star clover +100 (200). Quality treats share a **1-hour cooldown** and each one also speeds up your milk by 30% for 30 minutes. Milking all day for three days with treats reaches S; without treats it takes about four. Creamery orders only ask for grades you can reach.
+- **Cow unlocks to level 30**: new feed (Honey oats 7, Mineral block 11, Cream clover 13, Golden mash 22) and cow upgrades: Udder balm 9 (hand milking 15% faster), Easy let-down 10 (stall milking 10% faster), Deep rest 16 (resting +75%), Silk halter 17 (+3% pay), Steady producer 18 (tired after 14 h), Prize heifer sash 20 (quality +10%), Lavender bedding 23 (Comfy +3%, Happy lasts twice as long), Cooling mist 24 (bottles keep 96 h), Velvet bell 26 (+5% pay), Champion's ribbon 28 (quality +20%), Velvet champion sash 30 (+10% pay).
+- **Spoiling**: if every bottle stays full for **72 hours** without being milked, the milk spoils (you get warnings at 24 hours and 2 hours left, and the bottle shows a countdown). Spoiled milk turns sour yellow and can't be milked or sold. A **Dump milk** button appears on the HUD and under the bottle: it pours everything out for no xp or coins, and leaves an **off taste** that takes one grade off. Care tasks, milkings and creamery deliveries wear the off taste away. The 72 hours run on the real clock, logged in or not, so empty your bottles before you log out for a while.
+- **Grade** (C, B, A, S, S+) is your **milk quality**, set when the milking starts. It **slips one grade after 3 days without being milked** (one more every 3 days after); one milking brings it back, and a Dry-off tonic holds it while you're away. Off taste takes one grade off. Hand milking makes up one lost grade. **Everyone starts at Grade C.** Milk quality unlocks: B at 150, A at 800, S at 2,600, S+ at 6,000. You earn quality from every oz you're milked (+5, or +7.5 by hand), every creamery delivery (+10), and quality treats from the Shop: Cream biscuit +20 (30 coins), Golden alfalfa +50 (80), Star clover +100 (200). Quality treats share a **1-hour cooldown** and each one also speeds up your milk by 30% for 30 minutes. Milking all day for three days with treats reaches S; without treats it takes about four. Creamery orders only ask for grades you can reach.
 - Sitting in a stall all day works: after each milking it waits until half a bottle has built up again, then milks you again.
-- While you're logged out, no milk is made (so bottles you emptied stay safe). Needs drop gently (a quarter speed, never below 20).
+- While you're logged out, no milk is made (so bottles you emptied stay safe). Need bonuses are frozen until you're back.
 
 ## Coins
 - **Getting paid**: cows don't sell milk. The dairy pays you per oz the moment you're milked (stall or hand), by grade: C 7, B 10, A 15, S 21, S+ 30 coins, plus 2% per dairy level and your looks bonus. The milk goes into the dairy's tank. When a farmer hand milks you, they also get a share (25% of your pay, not taken from you).

@@ -29,7 +29,7 @@ public sealed class GuideWindow : Window
         }),
         new("Roles", new[]
         {
-            "Cow: makes milk and gets milked. Paid per ounce at milking time. Cows care for themselves (food, water, comfort) to keep milk quality up.",
+            "Cow: makes milk and gets milked. Paid per ounce at milking time. Cows treat themselves (food, water, rest, treats) for faster milk.",
             "Farmer: hand milks the dairy's cows (and gets a 25% share of what the cow is paid, on top), fills jugs from the dairy tank and delivers milk. Farmers can invite and give roles to others, farmer included.",
             "Bull: a role only for now. More is coming in new updates.",
             "Owner: runs the dairy. Marks out where it is, sets up stalls, invites farmers, cows and bulls, spends the dairy fund and posts buy orders. The owner can also play any mix of roles.",
@@ -39,18 +39,20 @@ public sealed class GuideWindow : Window
         }),
         new("Your cow", new[]
         {
-            "Cows have four needs: hunger, thirst, comfort and mood. Keep them up and your milk comes faster and stays good. They drop slowly while you play, and gently while you're logged out (never below 20).",
+            "Cows have four bonuses: Fed (eat food), Watered (drink), Comfy (rest on furniture in your dairy) and Happy (have a treat). Each one makes milk come faster for 30 minutes, and better food and treats give bigger bonuses. All four at once makes you Contented, +10% more.",
+            "Bonuses only count down while you're awake and playing; they wait while you're asleep or logged out. When one runs out you're just plain: it never slows you down or lowers your grade. The newest food or treat of a kind replaces the last.",
             "Care happens inside your dairy (Barn tab): Drink and Stretch are free; feed comes from your Pantry.",
             "Pantry tab: everything you own. Eat it, sell back what you don't need for half price, or hide it from your lists.",
             "Shop tab: Feed & treats (everyday feed, quality treats), Upgrades (comfort, care and things to wear) and Bottles. Cow levels unlock new feed and cow upgrades all the way to level 30: faster stall and hand milking, deeper rest, longer before you tire or spoil, faster quality, and wearables that raise your pay.",
             "Quality treats (cream biscuit, golden alfalfa, star clover) raise your milk quality toward the next grade and make milk come 30% faster for 30 minutes. You can have one every hour.",
-            "Clover, salt licks and the Velvet blend give a short boost that makes milk come in faster.",
+            "Clover, salt licks, cream clover, the Velvet blend and Golden mash also give a treat boost (+30% milk) on top of their bonus.",
+            "Going away for a while? A Dry-off tonic (Shop, 150 coins) stops your grade slipping for 7 days. Take it anywhere, even outside your dairy.",
         }),
         new("Milk and bottles", new[]
         {
             "Milk fills your bottles while you're awake and logged in. No milk is made while you're logged out.",
             "Bottles: milk bottle 8 oz, cream jar 12, dairy jug 20, big jug 32, milk churn 48. Bigger bottle upgrades make each one hold more; Extra bottle upgrades add more bottles (up to 5, the 5th at level 25).",
-            "Full bottles spoil after 72 hours (real time, logged in or not; 96 with the Cooling mist upgrade). Empty them before you log off for a while. Spoiled milk has to be dumped (HUD button) for no pay, and it lowers your grade until you care for yourself, get milked and the dairy delivers again.",
+            "Full bottles spoil after 72 hours (real time, logged in or not; 96 with the Cooling mist upgrade). Empty them before you log off for a while. Spoiled milk has to be dumped (HUD button) for no pay, and your milk tastes off (one grade lower) until care tasks, milkings and deliveries wear it off.",
         }),
         new("Getting milked", new[]
         {
@@ -63,7 +65,8 @@ public sealed class GuideWindow : Window
         {
             "Everyone starts at Grade C. Milk quality builds as you get milked, fill goals and eat quality treats: B at 150, A at 800, S at 2,600 and S+ at 6,000.",
             "Pay per ounce: C 7, B 10, A 15, S 21, S+ 30 coins. Better grades also give more XP.",
-            "Your care decides the best grade you can make right now; let your needs drop and your grade drops with them.",
+            "Your grade is your milk quality, and it stays there as long as you're milked. Go 3 days without being milked and it slips one grade (one more every 3 days after). One milking brings it right back. A Dry-off tonic stops it slipping while you're away.",
+            "Hand milking by a farmer makes up one grade lost to slipping or off taste.",
         }),
         new("Levels and XP", new[]
         {

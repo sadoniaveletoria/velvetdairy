@@ -180,16 +180,24 @@ public class Farmhand
 [Serializable]
 public class CowState
 {
-    public float Hunger { get; set; } = 80;
-    public float Thirst { get; set; } = 80;
-    public float Comfort { get; set; } = 70;
-    public float Mood { get; set; } = 70;
-    public float Richness { get; set; } = 30;   // feed quality, raises the grade
+    // Needs are 30-minute bonuses: 100 = a fresh bonus, 0 = plain (no bonus, never a penalty).
+    // They only tick down while you're awake and logged in.
+    public float Hunger { get; set; }    // Fed
+    public float Thirst { get; set; }    // Watered
+    public float Comfort { get; set; }   // Comfy
+    public float Mood { get; set; }      // Happy
+    public float Richness { get; set; }  // no longer used (kept so old saves load)
+    public float FedBonus { get; set; }       // milk bonus from the last food, as a fraction
+    public float WaterBonus { get; set; }
+    public float ComfortBonus { get; set; }
+    public float HappyBonus { get; set; }
+    public DateTime? LastMilkedUtc { get; set; }        // freshness: grade slips if you go days without being milked
+    public DateTime FreshHoldUntilUtc { get; set; } = DateTime.MinValue;   // Dry-off tonic: no slipping until then
     public float Milk { get; set; } = 3;       // oz waiting to be milked (across all your bottles)
     public DateTime BoostUntilUtc { get; set; } = DateTime.MinValue;   // treat boost
     public DateTime? FullSinceUtc { get; set; }   // when every bottle became full (spoils 72 h later)
     public bool Spoiled { get; set; }             // bottles have gone bad: dump them before anything else
-    public float Taint { get; set; }              // off taste left from dumping (0-100); lowers the grade
+    public float Taint { get; set; }              // off taste left from dumping (0-100); one grade lower while it lasts
     public DateTime QualityTreatReadyUtc { get; set; } = DateTime.MinValue;   // next quality treat allowed
     public DateTime LastTickUtc { get; set; } = DateTime.UtcNow;
 }
