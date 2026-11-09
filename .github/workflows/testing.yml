@@ -1,0 +1,94 @@
+name: Testing build
+
+# Pushing to the `testing` branch builds the plugin and puts it on the rolling "testing" pre-release (latest.zip), then
+# sets TestingAssemblyVersion in repo.json on main. Only people who turned on Dalamud's plugin testing builds (and
+# chose to receive testing versions of Velvet Dairy) get it; everyone else stays on the normal release.
+# To ship a tested build to everyone: merge `testing` into main with the same <Version> (release.yml publishes it).
+on:
+  push:
+    branches: [ testing ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    outputs:
+      version: ${{ steps.pub.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Download Dalamud
+        shell: pwsh
+        run: |
+          Invoke-WebRequest -Uri https://goatcorp.github.io/dalamud-distrib/latest.zip -OutFile latest.zip
+          $dest = "$env:AppData\XIVLauncher\addon\Hooks\dev"
+          New-Item -ItemType Directory -Force -Path $dest | Out-Null
+          Expand-Archive -Force latest.zip $dest
+          "DALAMUD_HOME=$dest\" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Write the save-signing key
+        shell: pwsh
+        env:
+          KEY: ${{ secrets.VELVET_INTEGRITY_KEY }}
+        run: |
+          # The key that signs saves never lives in Git. It comes from the VELVET_INTEGRITY_KEY repository secret.
+          if ($env:KEY) {
+            $value = '"' + $env:KEY.Trim() + '"'
+          } else {
+            # No secret yet: use the public testing key so testers can still install. Saves signed with it are
+            # re-signed with the real key automatically once the secret is added.
+            "::warning::VELVET_INTEGRITY_KEY secret not set; this build uses the public testing key. Add the secret in Settings > Secrets and variables > Actions."
+            $value = 'TestingKeyHex'
+          }
+          @"
+          namespace VelvetDairy.Game;
+
+          public static partial class Integrity
+          {
+              private const string KeyHex = $value;
+          }
+          "@ | Out-File -Encoding utf8 VelvetDairy/Game/IntegrityKey.cs
+
+      - name: Build
+        run: dotnet build VelvetDairy/VelvetDairy.csproj -c Release
+
+      - name: Publish the testing build
+        id: pub
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $version = ([xml](Get-Content VelvetDairy/VelvetDairy.csproj)).Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
+          $repo = "${{ github.repository }}"
+          gh release view testing --repo $repo *> $null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create testing --repo $repo --prerelease --target "${{ github.sha }}" --title "Velvet Dairy testing $version" --notes "Testing builds for opted-in testers. Not the normal release."
+          }
+          $global:LASTEXITCODE = 0
+          gh release upload testing VelvetDairy/bin/Release/VelvetDairy/latest.zip --clobber --repo $repo
+          gh release edit testing --repo $repo --prerelease --title "Velvet Dairy testing $version"
+          "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+  list:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Offer it to testers
+        run: |
+          v="${{ needs.build.outputs.version }}"
+          jq --arg v "$v" '.[0].TestingAssemblyVersion = $v' repo.json > repo.tmp && mv repo.tmp repo.json
+          if git diff --quiet; then echo "Already offering $v"; exit 0; fi
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git commit -am "Testing build $v for testers"
+          git push origin HEAD:main
