@@ -20,58 +20,6 @@ public static class AreaOverlay
         if (Plugin.GameGui.WorldToScreen(a.Center, out var mid)) dl.AddCircleFilled(mid, 5f, Front);
     }
 
-    private static readonly Vector4 Green = new(0.25f, 0.85f, 0.4f, 1f);
-    private static readonly Vector4 LightRed = new(1f, 0.55f, 0.55f, 1f);
-    private static readonly Vector4 Red = new(0.92f, 0.12f, 0.18f, 1f);
-
-    public enum StallLook { Idle, Sitting, Milking, Dozing, Asleep }
-
-    /// <summary>
-    /// A small round badge beside a stall (off to the side on screen, so it never covers whoever's sitting there).
-    /// Green; it pulses gently while you sit on it, drains like a gauge while it milks you (<paramref name="fill"/> =
-    /// milk left of what you started with), turns light red while you doze on it and flashes red while you're asleep on it.
-    /// </summary>
-    public static void DrawStall(Stall s, StallLook look, float fill)
-    {
-        var at = new Vector3(s.X, s.Y, s.Z);
-        if (!Plugin.GameGui.WorldToScreen(at, out var seat)) return;
-        var dl = ImGui.GetBackgroundDrawList();
-        const float r = 11f;
-        // Beside the seat, about a body-width out: measured from how tall a seated person looks at this distance,
-        // so it clears whoever's sitting there whether you're zoomed in close or far away
-        var body = Plugin.GameGui.WorldToScreen(at + new Vector3(0, 1.3f, 0), out var head) ? System.MathF.Abs(seat.Y - head.Y) : 60f;
-        var c = seat + new Vector2(System.Math.Clamp(body * 0.7f, 36f, 320f), -body * 0.15f);
-
-        var t = (float)(System.Environment.TickCount64 / 1000.0);
-        var (col, a) = look switch
-        {
-            StallLook.Sitting => (Green, 0.55f + 0.4f * (0.5f + 0.5f * System.MathF.Sin(t * 2.2f))),   // a slow breath
-            StallLook.Milking => (Green, 0.95f),
-            StallLook.Dozing => (LightRed, 0.9f),
-            StallLook.Asleep => (Red, System.MathF.Sin(t * 6f) > 0 ? 1f : 0.25f),                        // flashing
-            _ => (Green, 0.75f),
-        };
-        uint U(Vector4 v, float alpha) => ImGui.ColorConvertFloat4ToU32(v with { W = alpha });
-
-        // A dark backing so it reads on any floor, then the color
-        dl.AddCircleFilled(c, r + 2.5f, U(new Vector4(0.08f, 0.06f, 0.06f, 1f), 0.55f));
-        if (look == StallLook.Milking)
-        {
-            // Drains from the top down as the milk comes out
-            fill = System.Math.Clamp(fill, 0f, 1f);
-            dl.AddCircleFilled(c, r, U(col, 0.18f));
-            var top = c.Y + r - 2 * r * fill;
-            dl.PushClipRect(new Vector2(c.X - r - 1, top), new Vector2(c.X + r + 1, c.Y + r + 1), true);
-            dl.AddCircleFilled(c, r, U(col, a));
-            dl.PopClipRect();
-        }
-        else dl.AddCircleFilled(c, r, U(col, a));
-
-        dl.AddCircle(c, r, U(col, 1f), 0, 1.8f);
-        // A little tick toward the seat so you can tell which seat it belongs to
-        dl.AddLine(c + new Vector2(-r * 0.8f, r * 0.6f), seat + new Vector2(8, -4), U(col, 0.5f), 1.5f);
-    }
-
     /// <summary>A world-space line split into short pieces so it follows the view even when one end is off screen.</summary>
     private static void Line(ImDrawListPtr dl, Vector3 from, Vector3 to, uint color, float thickness)
     {
