@@ -1595,6 +1595,15 @@ public sealed partial class MainWindow : Window
         b = F.ShowStallMarkers;
         if (ImGui.Checkbox("Mark the stalls on the ground (only you see it)", ref b)) { F.ShowStallMarkers = b; changed = true; }
         if (ImGui.IsItemHovered()) ImGui.SetTooltip("A colored box around each of your dairy's stalls while you're in the dairy, in the stall's tier color, so you can see which seats milk you.");
+        if (F.ShowStallMarkers)
+        {
+            var here = G.StallsHere().Count();
+            ImGui.Indent();
+            ImGui.TextColored(Theme.InkSoft, !G.Where.InDairy ? "Markers show once you're in your dairy."
+                : here > 0 ? $"Marking {here} stall{(here == 1 ? "" : "s")} here{(G.InPrivatePlace ? " (private place)" : "")}."
+                : G.Stalls.Count == 0 ? "Your dairy has no stalls yet." : $"None of your {G.Stalls.Count} stall(s) are in this part of the dairy.");
+            ImGui.Unindent();
+        }
 
         b = F.SoundOn;
         if (ImGui.Checkbox("Milking sounds (only you hear them)", ref b)) { F.SoundOn = b; changed = true; }

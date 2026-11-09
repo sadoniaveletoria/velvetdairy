@@ -1950,15 +1950,21 @@ public sealed class DairyGame
 
     /// <summary>Is this stall inside the dairy's area? (After moving the dairy, stalls left outside stop working until moved.)</summary>
     /// <summary>The stalls in the place you're standing in (the public area or the private place), for drawing them.</summary>
+    /// <remarks>
+    /// Stalls only know their position, not their zone, so a stall counts as "here" when it's inside the box of the place
+    /// you're in and close to you (an interior is small; the public area is at most 80 y across).
+    /// </remarks>
     public IEnumerable<Stall> StallsHere()
     {
-        if (!Where.InDairy) return Enumerable.Empty<Stall>();
-        var m = F.NetMember;
-        if (!Networked || m == null) return Stalls;
+        var me = Plugin.ObjectTable.LocalPlayer;
+        if (!Where.InDairy || me == null) return Enumerable.Empty<Stall>();
+        var pos = me.Position;
         static Vector3 P(Stall s) => new(s.X, s.Y, s.Z);
-        if (InPrivatePlace && m.PrivateArea is { } priv)
-            return Stalls.Where(s => priv.Contains(P(s)) && !(m.Area?.Contains(P(s)) ?? false));
-        return m.Area is { } a ? Stalls.Where(s => a.Contains(P(s))) : Stalls;
+        bool Near(Stall s, float range) => Vector3.Distance(P(s), pos) <= range;
+        var m = F.NetMember;
+        if (!Networked || m == null) return Stalls.Where(s => Near(s, 120));
+        if (InPrivatePlace && m.PrivateArea is { } priv) return Stalls.Where(s => priv.Contains(P(s)) && Near(s, 60));
+        return Stalls.Where(s => (m.Area?.Contains(P(s)) ?? true) && Near(s, 120));
     }
 
     public bool StallInArea(Stall s)
