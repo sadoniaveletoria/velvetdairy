@@ -168,7 +168,7 @@ public sealed class TutorialWindow : Window
             case Step.OwnerStall:
                 Title("Step 4: your first stall");
                 Para("A stall is a seat inside your dairy where cows get milked: a chair, bench or bed.");
-                Para("Sit on it, open Dairy > Stalls and press Add. The first stall is free; more come from the dairy fund as your dairy levels up.");
+                Para("Sit on it, open Dairy > Stalls and press Add. The first stall is free; more can be bought from the dairy fund, each costing more than the last.");
                 if (G.Stalls.Count > 0) ImGui.TextColored(Theme.SageDeep, $"You have {G.Stalls.Count} stall(s). Nice!");
                 if (ImGui.Button("Open Dairy tab##tutstalltab", new Vector2(160, 30))) plugin.MainWindow.OpenTab(MainWindow.TabDairy);
                 ImGui.SameLine();

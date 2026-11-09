@@ -152,7 +152,7 @@ await test("only the owner sets up stalls, everyone sees them", async () => {
   assert.equal((await call(bob, "POST", "/v1/stalls", { x: 1, y: 2, z: 3 })).status, 403);
   const r = await call(alice, "POST", "/v1/stalls", { name: "Stall 1", x: 1.5, y: 0, z: -3.25 });
   assert.equal(r.status, 200, "the first stall is free");
-  assert.equal((await call(alice, "POST", "/v1/stalls", { x: 2, y: 0, z: 0 })).status, 400, "the second costs 200 from the fund");
+  assert.equal((await call(alice, "POST", "/v1/stalls", { x: 2, y: 0, z: 0 })).status, 400, "the second costs 250 from the fund");
   const stalls = (await call(carl, "GET", "/v1/dairy/mine")).data.stalls;
   assert.equal(stalls.length, 1);
   assert.equal(stalls[0].z, -3.25);
@@ -161,7 +161,7 @@ await test("only the owner sets up stalls, everyone sees them", async () => {
   assert.equal((await call(alice, "POST", `/v1/stalls/${r.data.id}/tier`, { tier: 2 })).status, 200);
   assert.equal((await call(alice, "POST", `/v1/stalls/${r.data.id}/tier`, { tier: 3 })).status, 400, "tier 3 needs level 5");
   assert.equal((await call(alice, "POST", "/v1/stalls", { name: "Stall 2", x: 2, y: 0, z: 0 })).status, 200);
-  assert.equal((await call(alice, "POST", "/v1/stalls", { x: 3, y: 0, z: 0 })).status, 400, "level 1 has 2 slots");
+  assert.equal((await call(alice, "POST", "/v1/stalls", { x: 3, y: 0, z: 0 })).status, 400, "the third costs 1,000 (not level-limited any more)");
   // The owner moves a stall to a new seat; it keeps its tier
   assert.equal((await call(bob, "PUT", `/v1/stalls/${r.data.id}`, { x: 9, y: 0, z: 9 })).status, 403, "only the owner moves stalls");
   assert.equal((await call(alice, "PUT", `/v1/stalls/${r.data.id}`, { x: 9, y: 1, z: 9 })).status, 200);
@@ -169,9 +169,9 @@ await test("only the owner sets up stalls, everyone sees them", async () => {
   assert.equal(moved.x, 9);
   assert.equal(moved.tier, 2);
   const p = (await call(bob, "GET", "/v1/dairy/mine")).data.progress;
-  assert.equal(p.fund, 500 - 150 - 200);
+  assert.equal(p.fund, 500 - 150 - 250);
   assert.equal(p.level, 1);
-  assert.equal(p.stallSlots, 2);
+  assert.equal(p.stallSlots, 16, "no level limit, only the cap");
   assert.deepEqual(p.donors, [{ name: "Carl Bull", coins: 500 }]);
 });
 

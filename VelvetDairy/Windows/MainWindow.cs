@@ -224,7 +224,7 @@ public sealed partial class MainWindow : Window
         var dairyTitle = G.Networked ? member?.Dairy ?? "No dairy yet" : F.Dairy?.Name ?? "No dairy yet";
         Ui.Text(dl, fonts.Heading, dairyTitle, new Vector2(mx, o.Y + 14), Theme.Ink);
         var px = mx;
-        void Pill(string text, Vector4 color)
+        void Pill(string text, Vector4 color, string? tip = null)
         {
             var size = Ui.Measure(fonts.Small, text);
             var a0 = new Vector2(px, o.Y + 42);
@@ -232,11 +232,19 @@ public sealed partial class MainWindow : Window
             dl.AddRectFilled(a0, a1, Ui.U(color, 0.14f), 99);
             dl.AddRect(a0, a1, Ui.U(color, 0.55f), 99, ImDrawFlags.None, 1f);
             Ui.Text(dl, fonts.Small, text, a0 + new Vector2(8, 1), color);
+            if (tip != null && ImGui.IsMouseHoveringRect(a0, a1)) ImGui.SetTooltip(tip);
             px = a1.X + 6;
         }
 
         foreach (var r in G.MyRoles) Pill(r.ToUpperInvariant(), r == "farmer" ? Theme.SageDeep : r == "bull" ? Theme.HoneyDeep : Theme.RoseDeep);
         if (G.Networked && member != null) Pill($"DAIRY LV {G.DairyLevel}", Theme.BlueDeep);
+        // Where you are: in the dairy (or its private place) or away from it
+        if (member != null || F.Dairy != null)
+        {
+            if (G.Where.InDairy)
+                Pill(G.InPrivatePlace ? "IN THE DAIRY · PRIVATE" : G.Where.Seated ? "IN THE DAIRY · RESTING" : "IN THE DAIRY", Theme.SageDeep, G.Where.Why);
+            else Pill("AWAY", Theme.InkSoft, G.Where.Why + " Milking, care and chores only work inside the dairy.");
+        }
 
         var con = G.Networked ? G.Net.Progress?.Contract : null;
         if (con != null)
@@ -796,7 +804,7 @@ public sealed partial class MainWindow : Window
         {
             if (G.Level < item.Unlock || F.HiddenFeed!.Contains(item.Id)) continue;
             var have = G.Count(item.Id);
-            if (have <= 0 && !F.CareShowEmpty) continue;   // only what's in your pantry
+            if (have <= 0) continue;   // Care only lists what you have right now (the Pantry can show the rest)
             shown++;
             var wait = item.HoldDays > 0 ? TimeSpan.Zero : G.FeedWait(item);
             var qwait = item.Quality > 0 ? G.QualityTreatWait : TimeSpan.Zero;
@@ -1305,8 +1313,8 @@ public sealed partial class MainWindow : Window
         {
             var pr = G.Net.Progress;
             Ui.Wrapped(G.IsOwner
-                ? $"A stall is a seat in your dairy: a chair, bench or bed. Sit on it and press Add. Dairy level {G.DairyLevel} allows {G.MaxStalls}; " +
-                  $"the next costs {pr?.NextStallPrice ?? 0} coins from the dairy fund."
+                ? $"A stall is a seat in your dairy or its private place: a chair, bench or bed. Sit on it and press Add. " +
+                  $"Put as many as you like wherever you like (up to {G.MaxStalls}); the next costs {pr?.NextStallPrice ?? 0:N0} coins from the dairy fund, and each one costs more than the last."
                 : "Your dairy's stalls. Sit on one to get milked.", Theme.InkSoft, width);
         }
         else Ui.Wrapped($"A stall is a seat in your dairy: a chair, bench or bed. Sit on it and press Add. You can have {G.MaxStalls}.", Theme.InkSoft, width);
@@ -1583,6 +1591,10 @@ public sealed partial class MainWindow : Window
             ImGui.SetTooltip("Shares only what the network needs: a random id for this install, your dairy's listing, and your character name with the dairy you join.");
         b = F.ShowOwnerHud;
         if (ImGui.Checkbox("Show the owner HUD when I own a dairy", ref b)) { F.ShowOwnerHud = b; changed = true; }
+
+        b = F.ShowStallMarkers;
+        if (ImGui.Checkbox("Mark the stalls on the ground (only you see it)", ref b)) { F.ShowStallMarkers = b; changed = true; }
+        if (ImGui.IsItemHovered()) ImGui.SetTooltip("A colored box around each of your dairy's stalls while you're in the dairy, in the stall's tier color, so you can see which seats milk you.");
 
         b = F.SoundOn;
         if (ImGui.Checkbox("Milking sounds (only you hear them)", ref b)) { F.SoundOn = b; changed = true; }

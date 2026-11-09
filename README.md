@@ -86,12 +86,14 @@ Milk is for people who are actually playing:
 - Need bars and treat boosts only count down while you're awake; dozing, asleep or logged out they wait.
 - After **12 hours** of making milk in one day you're **tired**: half speed until the next day.
 - Stalls only milk you while you're **sitting on the stall's own seat**, not near it.
+- **Stall markers** (Settings, on by default): a box on the ground around each stall in its tier color, with its name, only while you're in the dairy and only on your screen. A green dot means a farmer cleaned it recently.
 
 ## The Velvet Dairy Network
 
 When the network is up, dairies are shared between players:
 
 - **Owners** mark out their dairy anywhere: stand in the middle of the spot (a field, a corner of a city, or a room in any house), then size and turn a box that's drawn on the ground while you set it up. Boxes can't overlap another dairy in the same zone and world, and each player can own or belong to one dairy at a time. Owners can move or resize it later (Dairy > Listing).
+- **Stalls** aren't limited by dairy level: the owner can put them anywhere in the public area or the private place (up to 16). The first is free; each one after costs more from the dairy fund (250, 1,000, 2,250, 4,000, 6,250, ...). Better stall tiers still need dairy levels.
 - Owners invite **farmers, cows and bulls**, set up and upgrade the dairy's stalls, and choose a play role for themselves (any role, or none). Owners get an extra **owner HUD** showing who's online, who's in the dairy and how full each cow is.
 - **Milking animation mod** (Roles > Farmer, needs Penumbra): pick a mod (for example one that turns /beesknees into a massage). The Milk button switches it on for your character just before the emote and back off when the cow is empty, using Penumbra's temporary settings, so your saved Penumbra setup never changes. Optional redraw if the animation needs a reload. Others see it only if they sync your mods.
 - **Farmer chores** (Roles > Farmer): **Groom** a cow you're next to (20 farmer xp; their Happy bar gets 30 more minutes; once every 15 min per cow). **Clean** a stall nobody is sitting on (25 farmer xp; cows milked there get +10% speed and xp for an hour; it can be freshened again with half an hour left). Stalls never drop below their tier.

@@ -218,6 +218,8 @@ public sealed class Plugin : IDalamudPlugin
     private void DrawOverlay()
     {
         if (Game.Draft is { } d && ClientState.TerritoryType == d.Territory) Windows.AreaOverlay.Draw(d);
+        if (Config.Farm.ShowStallMarkers && Game.Where.InDairy && Game.Blocked() == null)
+            foreach (var s in Game.StallsHere()) Windows.AreaOverlay.DrawStall(s, Game.Where.AtStall == s, DairyGame.Fresh(s));
     }
 
     private IChatGui.OnHandleableChatMessageDelegate? chatHandler;

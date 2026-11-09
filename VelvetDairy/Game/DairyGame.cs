@@ -280,7 +280,7 @@ public sealed class DairyGame
     /// <summary>The Comfy bonus resting gives you with what you own.</summary>
     public float ComfyNow => (Owned("cushion") > 0 ? Catalog.ComfyCushion : Catalog.ComfyBonus) + (Owned("lavender") > 0 ? Catalog.ComfyLavender : 0);
     public bool Overfull => Cow.Milk >= Capacity - 0.01f;
-    public int MaxStalls => Networked ? Net.Progress?.StallSlots ?? 2 : 1 + Owned("stallkit");
+    public int MaxStalls => Networked ? Net.Progress?.StallSlots ?? 16 : 1 + Owned("stallkit");
     public float PriceBonus => 1f + (Owned("ribbon") > 0 ? 0.05f : 0) + (Owned("cap") > 0 ? 0.10f : 0) +
                                (Owned("halter") > 0 ? 0.03f : 0) + (Owned("velvetbell") > 0 ? 0.05f : 0) + (Owned("velvetchamp") > 0 ? 0.10f : 0);
 
@@ -1884,7 +1884,7 @@ public sealed class DairyGame
         if (Where.AtStall != null) return $"That's already {Where.AtStall.Name}.";
         if (Networked)
         {
-            if (Stalls.Count >= MaxStalls) return $"Your dairy has room for {MaxStalls} stall(s) at level {DairyLevel}. Level up the dairy for more.";
+            if (Stalls.Count >= MaxStalls) return $"A dairy can have up to {MaxStalls} stalls.";
             var price = Net.Progress?.NextStallPrice ?? 0;
             if (price > (Net.Progress?.Fund ?? 0)) return $"The next stall costs {price} coins from the dairy fund.";
         }
@@ -1949,6 +1949,18 @@ public sealed class DairyGame
     }
 
     /// <summary>Is this stall inside the dairy's area? (After moving the dairy, stalls left outside stop working until moved.)</summary>
+    /// <summary>The stalls in the place you're standing in (the public area or the private place), for drawing them.</summary>
+    public IEnumerable<Stall> StallsHere()
+    {
+        if (!Where.InDairy) return Enumerable.Empty<Stall>();
+        var m = F.NetMember;
+        if (!Networked || m == null) return Stalls;
+        static Vector3 P(Stall s) => new(s.X, s.Y, s.Z);
+        if (InPrivatePlace && m.PrivateArea is { } priv)
+            return Stalls.Where(s => priv.Contains(P(s)) && !(m.Area?.Contains(P(s)) ?? false));
+        return m.Area is { } a ? Stalls.Where(s => a.Contains(P(s))) : Stalls;
+    }
+
     public bool StallInArea(Stall s)
     {
         var p = new Vector3(s.X, s.Y, s.Z);

@@ -145,12 +145,13 @@ function levelFor(xp) {
   while (l < MAX_LEVEL && xp >= xpToReach(l + 1)) l++;
   return l;
 }
-/** Stall slots: 2 at level 1, one more at levels 3, 6, 9, 12, 15 and 18 (8 at most). */
-const stallSlots = level => 2 + [3, 6, 9, 12, 15, 18].filter(l => level >= l).length;
+/** Stalls aren't limited by level any more, only by the fund (and a sanity cap). */
+const STALL_CAP = 16;
+const stallSlots = () => STALL_CAP;
 /** Best stall tier allowed: 2 at first, 3 from level 5, 4 from level 12. */
 const maxTier = level => level >= 12 ? 4 : level >= 5 ? 3 : 2;
-/** Fund coins for the next stall: the first is free, then 200 more each. */
-const stallPrice = count => 200 * count;
+/** Fund coins for the next stall: the first is free, then they climb fast (250, 1,000, 2,250, 4,000, 6,250...). */
+const stallPrice = count => 250 * count * count;
 /** Monday (UTC) of this week, e.g. "2026-11-02". */
 function weekKey(date = new Date()) {
   const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
@@ -875,8 +876,7 @@ async function addStall(env, me, request) {
   const d = await ownedDairy(env, me);
   const count = await env.DB.prepare("SELECT COUNT(*) AS n FROM stalls WHERE dairy_id = ?").bind(d.id).first();
   const p = await progressOf(env, d.id);
-  const limit = stallSlots(p.level);
-  if (count.n >= limit) fail(400, `Your dairy has room for ${limit} stall(s) at level ${p.level}. Level up for more.`);
+  if (count.n >= STALL_CAP) fail(400, `A dairy can have up to ${STALL_CAP} stalls.`);
   const price = stallPrice(count.n);
   if (!(await spendFund(env, d.id, price))) fail(400, `A new stall costs ${price} coins from the dairy fund.`);
   const id = randomId();

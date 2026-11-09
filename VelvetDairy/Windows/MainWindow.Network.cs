@@ -442,7 +442,7 @@ public sealed partial class MainWindow
         Ui.Bar(ImGui.GetWindowDrawList(), cur + new Vector2(0, 4), cur + new Vector2(barW, 12), p.LevelProgress, Theme.HoneyDeep);
         ImGui.Dummy(new Vector2(barW, 16));
         ImGui.TextColored(Theme.InkSoft, p.NextXp is { } n ? $"{p.Xp:N0} / {n:N0} xp · {p.WeekXp:N0} this week" : $"Max level · {p.WeekXp:N0} xp this week");
-        ImGui.TextColored(Theme.InkSoft, $"{p.StallSlots} stall slots · best stall: {Catalog.StallTierNames[Math.Clamp(p.MaxTier, 1, 4)]}");
+        ImGui.TextColored(Theme.InkSoft, $"Next stall {p.NextStallPrice:N0} fund coins · best stall: {Catalog.StallTierNames[Math.Clamp(p.MaxTier, 1, 4)]}");
         Ui.Wrapped("Members earn XP for the dairy by milking and caring inside it (up to 300 each a day) and when cows fill its buy orders.", Theme.InkSoft, width);
 
         // The dairy's milk tank

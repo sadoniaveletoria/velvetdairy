@@ -53,7 +53,7 @@ public class FarmSave
     public int Coins { get; set; } = 60;
     public Dictionary<string, int> Pantry { get; set; } = new();      // feed item id -> count
     public List<string>? HiddenFeed { get; set; }                     // feed you hid from the lists
-    public bool CareShowEmpty { get; set; }                           // Care list also shows feed you're out of
+    public bool CareShowEmpty { get; set; }                           // Pantry list also shows feed you're out of (Care never does)
     public Dictionary<string, int> Upgrades { get; set; } = new();    // upgrade id -> level owned
     public float[]? Tank { get; set; }                                // stored milk (oz) by grade index
     public bool StarterGiven { get; set; }
@@ -94,6 +94,7 @@ public class FarmSave
     public string OwnerRole { get; set; } = "cow";    // older single role (kept for old saves)
     public List<string>? OwnerRoles { get; set; }      // what you play in your own dairy: any of cow, farmer, bull
     public bool ShowOwnerHud { get; set; } = true;
+    public bool ShowStallMarkers { get; set; } = true;   // a colored box on the ground around each stall (only you see it)
     public string VisitDay { get; set; } = "";
     public float DayAwakeMinutes { get; set; }
     public int DayStall { get; set; }                 // stall milkings today (daily goal for cows)

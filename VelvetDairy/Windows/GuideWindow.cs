@@ -90,7 +90,7 @@ public sealed class GuideWindow : Window
             "2. Dairy tab: give it a name, choose public or private, whether to show your name, and what you play as.",
             "3. Stand in the middle and press Start marking here. A box is drawn on the ground: pink sides, blue front. Use Width, Length and Turn (and Face my way) until it covers your dairy. Height is how far up or down still counts.",
             "4. Press Register my dairy. Boxes can't overlap another dairy in the same zone and world.",
-            "5. Stalls: sit on a seat inside the box and press Add on Dairy > Stalls. The first stall is free; more come from the dairy fund and dairy levels.",
+            "5. Stalls: sit on a seat inside the box (or your private place) and press Add on Dairy > Stalls. The first stall is free; after that there's no limit by level, but each new one costs more from the dairy fund (250, 1,000, 2,250, 4,000...).",
             "6. Invite people: right-click a player > Velvet Dairy > Invite as cow, bull or farmer, or target them and use the Members panel. For people already in your dairy, the same menu (or Manage members) gives them more roles.",
             "You can move or resize the box any time, even to a different zone: Dairy > Listing > Move or resize. To move a stall, sit on its new seat and press Move here on Dairy > Stalls; it keeps its name and tier. Stalls left outside a moved box stop working until you move them.",
             "You can also give the dairy a private place just for members, like your home or apartment (Dairy > Listing > Private place): use the whole house, or draw borders around part of it. Members are in the dairy there, so milking, stalls, resting and chores all work; visitors, the directory and deliveries only ever see the public area.",
@@ -98,7 +98,7 @@ public sealed class GuideWindow : Window
         new("Your dairy", new[]
         {
             "Dairy > Overview: who's in it, invites, and the members summary. Manage members opens a window with search, filters, role changes and removal.",
-            "Dairy level: members earn dairy XP by milking and caring inside it (up to 300 each a day), and from filled buy orders and contracts. Higher levels give more stall slots (2 up to 8), better stall tiers (3 from level 5, 4 from level 12), 2% more pay per level, and put the dairy higher in the Dairies list.",
+            "Dairy level: members earn dairy XP by milking and caring inside it (up to 300 each a day), and from filled buy orders and contracts. Higher levels give better stall tiers (3 from level 5, 4 from level 12), 2% more pay per level, and put the dairy higher in the Dairies list.",
             "Dairy fund: anyone in the dairy can donate coins. The owner spends them on new stalls and stall upgrades.",
             "Dairy tank: every milking inside the dairy adds that milk to the tank, by grade. Farmers and the owner fill jugs from it.",
             "The owner HUD shows who's online, who's in the dairy, each cow's milk and grade, the contract and the tank.",
