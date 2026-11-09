@@ -86,7 +86,7 @@ Milk is for people who are actually playing:
 - Need bars and treat boosts only count down while you're awake; dozing, asleep or logged out they wait.
 - After **12 hours** of making milk in one day you're **tired**: half speed until the next day.
 - Stalls only milk you while you're **sitting on the stall's own seat**, not near it.
-- **Stall markers** (Settings, on by default): a small green square on the ground under each stall, only while you're in the dairy and only on your screen. On the stall you're sitting on it gently pulses, drains like a gauge while it milks you, turns light red if you doze off and flashes red if you fall asleep.
+- **Stall markers** (Settings, on by default): a small green badge beside each stall (off to the side, so it never covers anyone), only while you're in the dairy and only on your screen. On the stall you're sitting on it gently pulses, drains like a gauge while it milks you, turns light red if you doze off and flashes red if you fall asleep.
 
 ## The Velvet Dairy Network
 
