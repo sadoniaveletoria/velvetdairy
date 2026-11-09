@@ -86,7 +86,8 @@ jobs:
       - name: Offer it to testers
         run: |
           v="${{ needs.build.outputs.version }}"
-          jq --arg v "$v" '.[0].TestingAssemblyVersion = $v' repo.json > repo.tmp && mv repo.tmp repo.json
+          # Dalamud ignores a testing version unless TestingDalamudApiLevel is set too
+          jq --arg v "$v" '.[0].TestingAssemblyVersion = $v | .[0].TestingDalamudApiLevel = .[0].DalamudApiLevel' repo.json > repo.tmp && mv repo.tmp repo.json
           if git diff --quiet; then echo "Already offering $v"; exit 0; fi
           git config user.name "github-actions"
           git config user.email "github-actions@users.noreply.github.com"
