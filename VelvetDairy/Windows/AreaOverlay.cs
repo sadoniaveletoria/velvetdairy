@@ -33,10 +33,14 @@ public static class AreaOverlay
     /// </summary>
     public static void DrawStall(Stall s, StallLook look, float fill)
     {
-        if (!Plugin.GameGui.WorldToScreen(new Vector3(s.X, s.Y, s.Z), out var seat)) return;
+        var at = new Vector3(s.X, s.Y, s.Z);
+        if (!Plugin.GameGui.WorldToScreen(at, out var seat)) return;
         var dl = ImGui.GetBackgroundDrawList();
         const float r = 11f;
-        var c = seat + new Vector2(58, -18);   // beside the seat, not on it
+        // Beside the seat, about a body-width out: measured from how tall a seated person looks at this distance,
+        // so it clears whoever's sitting there whether you're zoomed in close or far away
+        var body = Plugin.GameGui.WorldToScreen(at + new Vector3(0, 1.3f, 0), out var head) ? System.MathF.Abs(seat.Y - head.Y) : 60f;
+        var c = seat + new Vector2(System.Math.Clamp(body * 0.7f, 36f, 320f), -body * 0.15f);
 
         var t = (float)(System.Environment.TickCount64 / 1000.0);
         var (col, a) = look switch
