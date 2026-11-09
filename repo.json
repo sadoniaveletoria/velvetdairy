@@ -17,7 +17,8 @@
     ],
     "DownloadLinkInstall": "https://github.com/sadoniaveletoria/velvetdairy/releases/latest/download/latest.zip",
     "DownloadLinkUpdate": "https://github.com/sadoniaveletoria/velvetdairy/releases/latest/download/latest.zip",
-    "DownloadLinkTesting": "https://github.com/sadoniaveletoria/velvetdairy/releases/latest/download/latest.zip",
-    "IconUrl": "https://raw.githubusercontent.com/sadoniaveletoria/velvetdairy/main/VelvetDairy/images/icon.png"
+    "DownloadLinkTesting": "https://github.com/sadoniaveletoria/velvetdairy/releases/download/testing/latest.zip",
+    "IconUrl": "https://raw.githubusercontent.com/sadoniaveletoria/velvetdairy/main/VelvetDairy/images/icon.png",
+    "TestingAssemblyVersion": "0.9.9.1"
   }
 ]

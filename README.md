@@ -129,6 +129,18 @@ Developer mode adds a **Developer** panel in Settings (shortcuts, the test farmh
 - `/vdairy`: open or close
 - `/vdairy hud`: show or hide the HUD
 
+## Testing builds (opt-in)
+New builds go to testers first. Pushing to the `testing` branch publishes a **testing** pre-release and offers it through
+the same plugin list, but only to people who opt in; everyone else stays on the normal release.
+
+To get testing builds:
+1. `/xlsettings` → **Experimental** → tick **Get plugin testing builds**, then Save.
+2. `/xlplugins` → **Installed** → open Velvet Dairy's menu (the ⋯ / right-click) → tick **Receive plugin testing versions**.
+3. Updates now include testing builds. Untick either to go back to the normal release (it switches back once a normal release is newer).
+
+When a testing build is good, merging `testing` into main with the same version publishes it for everyone.
+Server changes are shared by everyone, so they're kept backward compatible.
+
 ## Install (players and testers)
 1. `/xlsettings` → **Experimental** → **Custom Plugin Repositories**.
 2. Add `https://raw.githubusercontent.com/sadoniaveletoria/velvetdairy/main/repo.json`, tick it, **Save**.
