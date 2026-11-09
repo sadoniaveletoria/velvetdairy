@@ -1594,7 +1594,7 @@ public sealed partial class MainWindow : Window
 
         b = F.ShowStallMarkers;
         if (ImGui.Checkbox("Mark the stalls on the ground (only you see it)", ref b)) { F.ShowStallMarkers = b; changed = true; }
-        if (ImGui.IsItemHovered()) ImGui.SetTooltip("A colored box around each of your dairy's stalls while you're in the dairy, in the stall's tier color, so you can see which seats milk you.");
+        if (ImGui.IsItemHovered()) ImGui.SetTooltip("A small red square on the ground under each of your dairy's stalls while you're in the dairy, so you can see which seats milk you.");
         if (F.ShowStallMarkers)
         {
             var here = G.StallsHere().Count();
