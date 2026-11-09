@@ -219,7 +219,24 @@ public sealed class Plugin : IDalamudPlugin
     {
         if (Game.Draft is { } d && ClientState.TerritoryType == d.Territory) Windows.AreaOverlay.Draw(d);
         if (Config.Farm.ShowStallMarkers && Game.Where.InDairy && Game.Blocked() == null)
-            foreach (var s in Game.StallsHere()) Windows.AreaOverlay.DrawStall(s, Game.Where.AtStall == s, DairyGame.Fresh(s));
+            foreach (var s in Game.StallsHere())
+            {
+                var look = Windows.AreaOverlay.StallLook.Idle;
+                var fill = 1f;
+                if (Game.Where.AtStall == s)
+                {
+                    if (Game.Wake == DairyGame.Wakefulness.Asleep) look = Windows.AreaOverlay.StallLook.Asleep;
+                    else if (Game.Wake == DairyGame.Wakefulness.Dozing) look = Windows.AreaOverlay.StallLook.Dozing;
+                    else if (Game.Active is { Kind: SessionKind.Stall } a && a.Stall == s)
+                    {
+                        look = Windows.AreaOverlay.StallLook.Milking;
+                        fill = a.StartMilk > 0 ? Config.Farm.Cow.Milk / a.StartMilk : 0f;
+                    }
+                    else look = Windows.AreaOverlay.StallLook.Sitting;
+                }
+
+                Windows.AreaOverlay.DrawStall(s, look, fill);
+            }
     }
 
     private IChatGui.OnHandleableChatMessageDelegate? chatHandler;
