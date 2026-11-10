@@ -14,7 +14,7 @@ public sealed class ChangelogWindow : Window
 {
     private readonly Plugin plugin;
     private readonly Fonts fonts;
-    private Version shownFrom = new(0, 0);
+    private Version shownFrom = new(0, 0, 0, 0);
     private bool checkedThisSession;
 
     private sealed record Entry(string Version, string Title, string[] Notes);
@@ -22,7 +22,7 @@ public sealed class ChangelogWindow : Window
     /// <summary>Newest first. Write these for players: what changed for them, not how.</summary>
     private static readonly Entry[] Entries =
     {
-        new("0.9.11.0", "Your grade, baking and farmer tools", new[]
+        new("0.9.11", "Your grade, baking and farmer tools", new[]
         {
             "# Your grade",
             "Milk no longer has a grade. Your cow grade still sets your pay, and now it also milks you faster and gets more milk out: B +10%, A +20%, S +35%, S+ +50%.",
@@ -66,14 +66,16 @@ public sealed class ChangelogWindow : Window
 
     private FarmSave F => plugin.Config.Farm;
 
-    private static Version Current => typeof(Plugin).Assembly.GetName().Version ?? new Version(0, 0);
+    private static Version Current => Parse(typeof(Plugin).Assembly.GetName().Version?.ToString() ?? "0.0");
 
-    private static Version Parse(string v) => Version.TryParse(v, out var r) ? r : new Version(0, 0);
+    /// <summary>"0.9.11" and "0.9.11.0" are the same version (updates use three numbers, the assembly four).</summary>
+    private static Version Parse(string v) =>
+        Version.TryParse(v, out var r) ? new Version(r.Major, r.Minor, Math.Max(r.Build, 0), Math.Max(r.Revision, 0)) : new Version(0, 0, 0, 0);
 
     /// <summary>Everything, from the start.</summary>
     public void OpenAll()
     {
-        shownFrom = new Version(0, 0);
+        shownFrom = new Version(0, 0, 0, 0);
         IsOpen = true;
     }
 
@@ -82,7 +84,7 @@ public sealed class ChangelogWindow : Window
     {
         if (checkedThisSession || IsOpen || !F.Confirmed18 || Plugin.ObjectTable.LocalPlayer == null) return;
         checkedThisSession = true;
-        var now = Current.ToString();
+        var now = Current.ToString(3);
         if (F.SeenChanges == now) return;
 
         // Someone brand new doesn't need a list of changes: the walkthrough covers it
@@ -105,7 +107,7 @@ public sealed class ChangelogWindow : Window
 
     public override void OnClose()
     {
-        var now = Current.ToString();
+        var now = Current.ToString(3);
         if (F.SeenChanges == now) return;
         F.SeenChanges = now;
         plugin.SaveConfig();
@@ -154,9 +156,9 @@ public sealed class ChangelogWindow : Window
         ImGui.PopTextWrapPos();
         ImGui.EndChild();
 
-        if (shownFrom > new Version(0, 0) && list.Length < Entries.Length)
+        if (shownFrom > new Version(0, 0, 0, 0) && list.Length < Entries.Length)
         {
-            if (Ui.Button("##changesall", "Show older changes", new Vector2(180, 32), "cream", true, null)) shownFrom = new Version(0, 0);
+            if (Ui.Button("##changesall", "Show older changes", new Vector2(180, 32), "cream", true, null)) shownFrom = new Version(0, 0, 0, 0);
             ImGui.SameLine();
         }
 
