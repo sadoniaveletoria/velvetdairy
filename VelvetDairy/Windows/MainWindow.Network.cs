@@ -751,17 +751,13 @@ public sealed partial class MainWindow
                 if (clicked == 0) G.FillVisitorOrder(visiting.Id, o);
             }
 
-            if (theirs.Count == 0 && G.VisitorOrders(visiting.Id).Count == 0) ImGui.TextColored(Theme.InkSoft, "Nothing to deliver here today.");
+            if (G.VisitorOrders(visiting.Id).Count == 0) ImGui.TextColored(Theme.InkSoft, "No visitor orders left here today.");
         }
 
         // Owners: buy milk from other players' cows
         if (F.NetMember?.IsOwner != true) return;
         SubHeading("Your buy orders", width);
-        if (net.Mine?.Dairy?.IsPublic != true)
-        {
-            Ui.Wrapped("Make your dairy public (Dairy tab) and cows can come deliver milk to your buy orders.", Theme.InkSoft, width);
-            return;
-        }
+        Ui.Wrapped("Farmers from other dairies fill these from their own dairy, so it works even if yours is private.", Theme.InkSoft, width);
 
         foreach (var o in net.MyOrders.ToList())
         {
