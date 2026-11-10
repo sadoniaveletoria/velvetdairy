@@ -36,6 +36,7 @@ public sealed class Plugin : IDalamudPlugin
     public OwnerHudWindow OwnerHud { get; }
     public MembersWindow Members { get; }
     public GuideWindow Guide { get; }
+    public MilkAnimationWindow MilkAnimation { get; }
     public TutorialWindow Tutorial { get; }
 
     /// <summary>This build's version, sent to the network so old versions can be told to update.</summary>
@@ -83,6 +84,8 @@ public sealed class Plugin : IDalamudPlugin
         windowSystem.AddWindow(Members);
         Guide = new GuideWindow(this, fonts);
         windowSystem.AddWindow(Guide);
+        MilkAnimation = new MilkAnimationWindow(this);
+        windowSystem.AddWindow(MilkAnimation);
         Tutorial = new TutorialWindow(this, fonts);
         windowSystem.AddWindow(Tutorial);
         contextMenu = new ContextMenuHandler(this);

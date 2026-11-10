@@ -146,154 +146,17 @@ public sealed partial class MainWindow
         Ui.Wrapped($"Grooming cows ({Catalog.GroomXp} each, every 15 min per cow), cleaning stalls ({Catalog.CleanXp} each), hand milking pay, filling jugs, customer orders, deliveries and contract shipments.", Theme.InkSoft, width);
     }
 
-    private System.Collections.Generic.List<(string Dir, string Name)>? modList;
-    private System.Collections.Generic.List<(string Group, string[] Options, bool Single)>? modGroups;
-    private string modGroupsFor = "";
-
-    /// <summary>The picked mod's options (like which animation it uses), chosen just for milking.</summary>
-    private void DrawMilkModOptions()
-    {
-        if (F.MilkModDir.Length == 0) return;
-        if (modGroups == null || modGroupsFor != F.MilkModDir)
-        {
-            modGroups = PenumbraLink.Groups(F.MilkModDir) ?? new();
-            modGroupsFor = F.MilkModDir;
-        }
-
-        if (modGroups.Count == 0) return;
-        ImGui.TextColored(Theme.InkSoft, "Options while milking (anything left as set in Penumbra keeps your Penumbra choice):");
-        var changed = false;
-        foreach (var (group, options, single) in modGroups)
-        {
-            if (options.Length == 0) continue;
-            F.MilkModOptions.TryGetValue(group, out var picked);
-            if (single)
-            {
-                var label = picked is { Count: > 0 } ? picked[0] : "As set in Penumbra";
-                ImGui.SetNextItemWidth(260);
-                if (ImGui.BeginCombo($"{group}##mmg{group}", label))
-                {
-                    if (ImGui.Selectable($"As set in Penumbra##mmgdef{group}", picked == null))
-                    {
-                        F.MilkModOptions.Remove(group);
-                        changed = true;
-                    }
-
-                    foreach (var o in options)
-                        if (ImGui.Selectable($"{o}##mmo{group}{o}", picked is { Count: > 0 } && picked[0] == o))
-                        {
-                            F.MilkModOptions[group] = new System.Collections.Generic.List<string> { o };
-                            changed = true;
-                        }
-
-                    ImGui.EndCombo();
-                }
-            }
-            else
-            {
-                ImGui.TextColored(Theme.Ink, group);
-                var custom = picked != null;
-                if (ImGui.Checkbox($"Choose for milking##mmgc{group}", ref custom))
-                {
-                    if (custom) F.MilkModOptions[group] = new System.Collections.Generic.List<string>();
-                    else F.MilkModOptions.Remove(group);
-                    changed = true;
-                }
-
-                if (F.MilkModOptions.TryGetValue(group, out var on))
-                {
-                    ImGui.Indent();
-                    foreach (var o in options)
-                    {
-                        var b = on.Contains(o);
-                        if (ImGui.Checkbox($"{o}##mmc{group}{o}", ref b))
-                        {
-                            if (b) on.Add(o);
-                            else on.Remove(o);
-                            changed = true;
-                        }
-                    }
-
-                    ImGui.Unindent();
-                }
-            }
-        }
-
-        if (changed)
-        {
-            G.EndMilkMod();
-            plugin.SaveConfig();
-        }
-    }
-
-    /// <summary>For farmers: a Penumbra mod switched on only while the Milk button's emote plays (say, one that turns it into a massage).</summary>
+    /// <summary>For farmers: one line with the milking animation, and a button that opens the picker in its own window.</summary>
     private void DrawMilkMod(float width)
     {
         if (!G.IsFarmer) return;
-        SubHeading("Milking animation (Penumbra)", width);
-        if (!PenumbraLink.Available)
-        {
-            Ui.Wrapped("Install Penumbra to use an animation mod (like one that turns /beesknees into a massage) only while you milk.", Theme.InkSoft, width);
-            return;
-        }
-
-        Ui.Wrapped("Pick a mod that changes your milking emote. The Milk button switches it on for your character just before the emote and back off when the cow is empty. Your Penumbra settings aren't changed. Others see it only if they sync your mods (like with Mare).",
-            Theme.InkSoft, width);
-        modList ??= PenumbraLink.Sorted();
-        var current = F.MilkModDir.Length == 0 ? "None" : modList.FirstOrDefault(m => m.Dir == F.MilkModDir).Name ?? F.MilkModDir;
-        ImGui.SetNextItemWidth(Math.Min(320, width - 120));
-        if (ImGui.BeginCombo("##milkmod", current))
-        {
-            if (ImGui.Selectable("None##milkmodnone", F.MilkModDir.Length == 0))
-            {
-                G.EndMilkMod();
-                F.MilkModDir = "";
-                F.MilkModOptions.Clear();
-                modGroups = null;
-                plugin.SaveConfig();
-            }
-
-            foreach (var (dir, name) in modList)
-                if (ImGui.Selectable($"{name}##mm{dir}", dir == F.MilkModDir))
-                {
-                    G.EndMilkMod();
-                    if (dir != F.MilkModDir) F.MilkModOptions.Clear();
-                    F.MilkModDir = dir;
-                    modGroups = null;
-                    plugin.SaveConfig();
-                }
-
-            ImGui.EndCombo();
-        }
-
+        SubHeading("Milking animation", width);
+        var emote = F.MilkButtonEmote.Length > 0 ? (F.MilkButtonEmote.StartsWith('/') ? F.MilkButtonEmote : "/" + F.MilkButtonEmote) : DairyGame.MilkEmote;
+        var mod = F.MilkModDir.Length == 0 ? "no animation mod" : PenumbraLink.NameOf(F.MilkModDir);
+        ImGui.TextColored(Theme.Ink, $"Milk does {emote} · {mod}");
         ImGui.SameLine();
-        if (ImGui.SmallButton("Refresh##milkmodrefresh"))
-        {
-            modList = PenumbraLink.Sorted();
-            modGroups = null;
-        }
-
-        DrawMilkModOptions();
-
-        ImGui.SetNextItemWidth(160);
-        var em = F.MilkButtonEmote;
-        if (ImGui.InputTextWithHint("Milk button emote##milkbtnemote", DairyGame.MilkEmote, ref em, 30))
-        {
-            F.MilkButtonEmote = em.Trim();
-            plugin.SaveConfig();
-        }
-
-        if (ImGui.IsItemHovered()) ImGui.SetTooltip("The emote the Milk button does: use the one your animation mod changes. It has to be a looping one. Empty = /beesknees.\nIf a cow only accepts their own list of emotes and yours isn't on it, the button uses theirs.");
-        var typed = F.MilkButtonEmote.Length == 0 ? "" : F.MilkButtonEmote.StartsWith('/') ? F.MilkButtonEmote : "/" + F.MilkButtonEmote;
-        if (typed.Length > 0 && Emotes.Find(typed) == 0) ImGui.TextColored(Theme.Warn, $"{typed} isn't an emote the game knows, so the Milk button uses /beesknees.");
-        var redraw = F.MilkModRedraw;
-        if (ImGui.Checkbox("Redraw me first (if the animation doesn't change)##milkmodredraw", ref redraw))
-        {
-            F.MilkModRedraw = redraw;
-            plugin.SaveConfig();
-        }
-
-        if (ImGui.IsItemHovered()) ImGui.SetTooltip("Some animation mods only show after your character reloads. This blinks you for a moment before the emote starts.");
+        if (ImGui.SmallButton("Choose...##milkanim")) plugin.MilkAnimation.IsOpen = true;
+        if (ImGui.IsItemHovered()) ImGui.SetTooltip("Pick the emote the Milk button does, and a Penumbra animation mod (and its options) used only while you milk.");
     }
 
     /// <summary>For farmers and the owner: clean the dairy's stalls for a bonus to cows milked there.</summary>
