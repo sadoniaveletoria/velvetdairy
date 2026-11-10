@@ -53,6 +53,14 @@ public sealed class HudWindow : Window
 
     public override void PostDraw() => ImGui.PopStyleVar(2);
 
+    /// <summary>Shortens a line with "..." so it always stays inside the card.</summary>
+    private string Fit(string text, float width)
+    {
+        if (Ui.Measure(fonts.Small, text).X <= width) return text;
+        while (text.Length > 4 && Ui.Measure(fonts.Small, text + "...").X > width) text = text[..^1];
+        return text.TrimEnd(' ', '·') + "...";
+    }
+
     public override void Draw()
     {
         // Clicking in Velvet Dairy's own windows counts as being awake (mouse movement alone doesn't)
@@ -78,8 +86,8 @@ public sealed class HudWindow : Window
         var bh = size.Y - 34;
         var bmin = o + new Vector2(20, 17);
         var flow = G.Active != null ? Ui.Flow.Draining
-            : G.Paused || G.Overfull || G.Spoiled || G.Blocked() != null ? Ui.Flow.Still
-            : Ui.Flow.Filling;
+            : G.MilkComing ? Ui.Flow.Filling
+            : Ui.Flow.Still;
         var bSize = G.BottleSize;
         var bCount = G.BottleCount;
         var full = Math.Min(bCount, (int)(shown / bSize + 0.001f));
@@ -146,17 +154,17 @@ public sealed class HudWindow : Window
         }
         else if (G.Wake == DairyGame.Wakefulness.Asleep)
         {
-            status = "Asleep · no milk until you move";
+            status = "Asleep · move to wake up";
             col = Theme.Warn;
         }
         else if (G.Wake == DairyGame.Wakefulness.Dozing)
         {
-            status = "Dozing · milk at half speed";
+            status = "Dozing · half-speed milk";
             col = Theme.HoneyDeep;
         }
         else if (G.Tired && G.ProducesMilk)
         {
-            status = "Tired · half speed until tomorrow";
+            status = "Tired · half speed today";
             col = Theme.HoneyDeep;
         }
         else if (G.Where.InDairy)
@@ -194,7 +202,7 @@ public sealed class HudWindow : Window
 
         var textRight = o.X + size.X - 20 - (G.Spoiled ? 112 : 0);
         dl.PushClipRect(new Vector2(x, o.Y), new Vector2(textRight, o.Y + size.Y), true);
-        Ui.Text(dl, fonts.Small, status, new Vector2(x, o.Y + size.Y - 46), col);
+        Ui.Text(dl, fonts.Small, Fit(status, textRight - x), new Vector2(x, o.Y + size.Y - 46), col);
         dl.PopClipRect();
 
         // Spoiled milk: the only way forward is to pour it out

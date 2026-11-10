@@ -51,8 +51,7 @@ public sealed partial class MainWindow : Window
     private Ui.Flow FlowNow()
     {
         if (G.Active != null) return Ui.Flow.Draining;
-        if (G.Paused || G.Overfull || G.Spoiled || G.Blocked() != null) return Ui.Flow.Still;
-        return Ui.Flow.Filling;
+        return G.MilkComing ? Ui.Flow.Filling : Ui.Flow.Still;
     }
 
     private const float Pad = 18f;
@@ -902,7 +901,7 @@ public sealed partial class MainWindow : Window
         {
             var problem = G.StallProblem();
             buttons.Add(new Btn("##stall", "Start stall", "blue", problem == null, problem ?? "Starts the stall you're sitting on."));
-            starts.Add(G.StartStall);
+            starts.Add(() => G.StartStall());
         }
 
         if (!F.AutoHand)

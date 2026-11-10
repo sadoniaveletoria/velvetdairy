@@ -495,6 +495,9 @@ public sealed class DairyGame
     }
 
     /// <summary>oz per minute right now.</summary>
+    /// <summary>Milk is coming in right now (the bottle animates drops only then): not asleep, full, paused or blocked.</summary>
+    public bool MilkComing => ProducesMilk && !Paused && !Overfull && !Spoiled && Blocked() == null && ProductionPerMinute() > 0;
+
     public float ProductionPerMinute() => RateParts().Aggregate(BaseRate, (r, p) => r * p.Multiplier);
 
     // =================================================================
