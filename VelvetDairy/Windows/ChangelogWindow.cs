@@ -22,36 +22,27 @@ public sealed class ChangelogWindow : Window
     /// <summary>Newest first. Write these for players: what changed for them, not how.</summary>
     private static readonly Entry[] Entries =
     {
-        new("0.9.10.9", "Hand milk and Kitchen buttons", new[]
+        new("0.9.11.0", "Your grade, baking and farmer tools", new[]
         {
-            "Farmers get two buttons on the HUD: Hand milk and Kitchen. Each opens its own window.",
-            "Hand milk lists your dairy's cows with Target, Milk and Groom, and the animation picker is one click away.",
-            "Jugs are filled at the top of the Kitchen now (Fill 8 oz, Fill 32 oz or Fill up), instead of on the Creamery tab.",
-            "The Milking box on the Barn is simpler and smaller when you're not being milked, so the rest of the Barn gets more room.",
-        }),
-        new("0.9.10.8", "Your grade, not your milk's", new[]
-        {
+            "# Your grade",
             "Milk no longer has a grade. Your cow grade still sets your pay, and now it also milks you faster and gets more milk out: B +10%, A +20%, S +35%, S+ +50%.",
             "Any milk fills any order, the weekly contract and every recipe. Jugs and the dairy tank just show ounces, and milk you already had was poured together.",
-            "Customer orders pay a little better as your farmer level grows.",
-            "New: this What's new window. Open it any time with /vdairy changes.",
-        }),
-        new("0.9.10.7", "Kitchen and Pantry", new[]
-        {
-            "The Kitchen is its own window: search the recipes, pick how many with - / + / Max, and watch the progress bar.",
-            "The Pantry has tabs: Food & treats, Ingredients and the Dairy shelf.",
-        }),
-        new("0.9.10.6", "Baking and the dairy shelf", new[]
-        {
-            "Farmers churn butter (16 oz of milk makes 1 butter) and bake Butter cookies (1 butter + 8 oz of milk makes 3).",
+            "# Baking and the dairy shelf",
+            "Farmers bake in the Kitchen: churn butter (16 oz of milk makes 1) and bake Butter cookies (1 butter + 8 oz of milk makes 3). Baking takes a little time, shows a progress bar and gives farmer xp.",
             "Cookies go on your dairy's shelf. Members buy them inside the dairy: the baker gets 80% and the fund 20%. The owner sets the price.",
-        }),
-        new("0.9.10.5", "Deliveries from home", new[]
-        {
+            "The Pantry has tabs: Food & treats, Ingredients and the Dairy shelf.",
+            "# Farmer tools",
+            "Two new buttons under the HUD: Hand milk (your dairy's cows with Target, Milk and Groom) and Kitchen. Each opens its own window.",
+            "Fill your jugs at the top of the Kitchen (Fill 8 oz, Fill 32 oz or Fill up). The Jugs tab on the Creamery is gone.",
+            "Pick your milking emote and animation mod from the Hand milk window.",
+            "Customer orders pay a little better as your farmer level grows.",
+            "# Deliveries",
             "Fill other dairies' buy orders from inside your own dairy. Delivering in person at a public dairy pays 10% more.",
             "Private dairies can post buy orders too.",
+            "# Also new",
             "A small green dot above each stall shows which seats milk you (Settings).",
-            "Farmers pick their milking animation in its own pop-out window.",
+            "The Milking box on the Barn is smaller when you're not being milked, so the rest of the Barn gets more room.",
+            "This What's new window. Open it any time with /vdairy changes.",
         }),
         new("0.9.9.4", "Stalls and the HUD", new[]
         {
@@ -146,6 +137,14 @@ public sealed class ChangelogWindow : Window
             ImGui.Spacing();
             foreach (var n in e.Notes)
             {
+                // "# Heading" lines group the notes under a small heading
+                if (n.StartsWith("# "))
+                {
+                    ImGui.Spacing();
+                    ImGui.TextColored(Theme.BlueDeep, n[2..].ToUpperInvariant());
+                    continue;
+                }
+
                 ImGui.TextColored(Theme.HoneyDeep, "•");
                 ImGui.SameLine();
                 ImGui.TextColored(Theme.Ink, n);
