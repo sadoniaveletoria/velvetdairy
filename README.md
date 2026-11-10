@@ -1,179 +1,152 @@
-# Velvet Dairy (proof of concept) — 18+
+# Velvet Dairy (18+)
 
-You play the cow. Keep yourself fed and comfortable inside your dairy, get milked at your dairy's stalls or by hand by one of its farmers, and level up while the dairy's farmers deliver the milk.
+A dairy life game for FFXIV, played with friends. Be a **cow** who makes milk, a **farmer** who milks and delivers it, or the **owner** who runs the dairy, or any mix of these. Everyone levels up, earns coins and grows their dairy together.
 
-This is a fresh rebuild. It uses a new save section, so the old prototype's herd and settings are ignored.
+> **Work in progress.** Expect changes and new features in updates. The **Bull** role is coming in a later update.
 
-## New here?
+---
 
-The first time you open Velvet Dairy, a short walkthrough explains the game and lets you pick a path: join a dairy, or start your own (it walks owners through choosing a role, naming the dairy, marking out its area, the first stall and inviting people). The full **How to play** guide is the **?** in the main window, or `/vdairy guide`. `/vdairy tutorial` runs the walkthrough again.
+## Getting started
 
-## The rules
-- **Your dairy is a house.** Register it from inside (yours, your FC's or a friend's). You can limit it to part of the house with the range slider.
-- **Care only works inside your dairy.** Eating, drinking and stretching are locked anywhere else. The Barn tab and the HUD tell you why.
-- **Milking only works inside your dairy too.**
-  - **Stalls**: sit on a chair, bench or bed in your dairy and register it as a stall. Sitting in it milks you (automatically, or press Start).
-  - **Hand milking**: only a **farmer of your dairy** can do it. They stand within 3 y, target you and press **Milk** (Roles > Farmer); only the Milk button counts, never an emote someone happens to do near you. Their plugin does a looping emote (`/beesknees` by default, or the one they picked) and milk flows until you're empty, then their emote ends by itself. Hand milking draws 0.35 oz a second, yields more, makes up one grade lost to slipping or off taste, and gives more xp. Both of you need the plugin.
-- **Shopping, the creamery and goals work anywhere.**
+**Install**
+1. Type `/xlsettings`, open **Experimental**, find **Custom Plugin Repositories**.
+2. Add `https://raw.githubusercontent.com/sadoniaveletoria/velvetdairy/main/repo.json`, tick it and **Save**.
+3. Type `/xlplugins`, search **Velvet Dairy** and **Install**. Updates arrive like any other plugin.
 
-## Your needs (bonuses)
-Fed, Watered, Comfy and Happy are **milk bonuses with a bar**. Each use adds half a bar (30 minutes, up to a full hour) and has a **15-minute cooldown**; using one again adds time, not a bigger bonus. The bar drains as the bonus wears off, only while you're awake and playing (they wait while you're asleep, dozing or logged out). Running out just makes you plain: no penalty, and needs never touch your grade.
-- **Fed**: eat food. Meadow hay +4%, Sweet grain +7%, Honey oats +9%, Velvet blend +12%, Golden mash +15% (Golden alfalfa +6%).
-- **Watered**: the trough (free) +4%, Mineral block +8%. Clean trough makes it drain 1.5× slower.
-- **Comfy**: sit on furniture in your dairy and press **Rest** (free), then **stay seated 15 minutes**. Stand up sooner and that rest's Comfy is taken back. +4%, Plush bedding +7% and drains half as fast, Lavender bedding +3% more.
-- **Happy**: treats. Salt lick +4%, Cream biscuit +4%, Fresh clover +5%, Cream clover +8%, Star clover +10%. Bell collar and Lavender bedding make it last longer.
-- The newest food or treat of a kind sets the bonus.
-- **Dry-off tonic** (150 coins): stops your grade slipping for 7 days while you're away. Usable anywhere.
+**First time**
+- Confirm you're 18+ and a short walkthrough starts. Pick **Join a dairy** or **Start my own**.
+- The full guide is the **?** in the main window, or `/vdairy guide`. `/vdairy tutorial` runs the walkthrough again.
 
-## Milk
-- Milk builds up over time. Hover the "oz a minute" line to see what goes into your speed:
-  - Fed, Watered, Comfy and Happy bonuses
-  - +4% per level, up to level 50
-  - **Contented** +10% when all four bonuses are going
-  - **Treat boost** +30% for a while after clover (15 min), salt lick (10 min) or Velvet blend (30 min), up to an hour
-  - +50% while resting on furniture in your dairy
-  - the **Milk speed** setting
-- **How much milk**: about five times a real person's yield, so roughly 125–150 oz a day with good care, more at high levels.
-- **Your bottles**: you start with one Milk bottle (8 oz). Buy **Bigger bottle** (Cream jar 12, Dairy jug 20, Big jug 32, Milk churn 48) and **Extra bottle** (up to 5 bottles; the 5th unlocks at level 25). When one fills, the next starts. Each size has its own look (classic quart, wide-mouth jar, handled gallon jug, big milk jug with a carry handle, metal churn with a sight window). The big bottle shows the one filling; small ones underneath show the rest.
-- When every bottle is full, nothing more comes and comfort and mood start dropping, so get milked.
-- **Cow unlocks to level 30**: new feed (Honey oats 7, Mineral block 11, Cream clover 13, Golden mash 22) and cow upgrades: Udder balm 9 (hand milking 15% faster), Easy let-down 10 (stall milking 10% faster), Deep rest 16 (resting +75%), Silk halter 17 (+3% pay), Steady producer 18 (tired after 14 h), Prize heifer sash 20 (quality +10%), Lavender bedding 23 (Comfy +3%, Happy lasts twice as long), Cooling mist 24 (bottles keep 96 h), Velvet bell 26 (+5% pay), Champion's ribbon 28 (quality +20%), Velvet champion sash 30 (+10% pay).
-- **Spoiling**: if every bottle stays full for **72 hours** without being milked, the milk spoils (you get warnings at 24 hours and 2 hours left, and the bottle shows a countdown). Spoiled milk turns sour yellow and can't be milked or sold. A **Dump milk** button appears on the HUD and under the bottle: it pours everything out for no xp or coins, and leaves an **off taste** that takes one grade off. Care tasks, milkings and creamery deliveries wear the off taste away. The 72 hours run on the real clock, logged in or not, so empty your bottles before you log out for a while.
-- **Grade** (C, B, A, S, S+) is your **milk quality**, set when the milking starts. It **slips one grade after 3 days without being milked** (one more every 3 days after); one milking brings it back, and a Dry-off tonic holds it while you're away. Off taste takes one grade off. Hand milking makes up one lost grade. **Everyone starts at Grade C.** Milk quality unlocks: B at 150, A at 800, S at 2,600, S+ at 6,000. You earn quality from every oz you're milked (+5, or +7.5 by hand), every creamery delivery (+10), and quality treats from the Shop: Cream biscuit +20 (30 coins), Golden alfalfa +50 (80), Star clover +100 (200). Quality treats share a **1-hour cooldown** and each one also speeds up your milk by 30% for 30 minutes. Milking all day for three days with treats reaches S; without treats it takes about four. Creamery orders only ask for grades you can reach.
-- Sitting in a stall all day works: after each milking it waits until half a bottle has built up again, then milks you again.
-- While you're logged out, no milk is made (so bottles you emptied stay safe). Need bonuses are frozen until you're back.
+---
 
-## Coins
-- **Getting paid**: cows don't sell milk. The dairy pays you per oz the moment you're milked (stall or hand), by grade: C 7, B 10, A 15, S 21, S+ 30 coins, plus 2% per dairy level and your looks bonus. The milk goes into the dairy's tank. When a farmer hand milks you, they also get a share (25% of your pay, not taken from you).
-- **Creamery** tab: everyone sees **Your pay**. Farmers and owners also get **Jugs** (fill from the dairy tank, up to what your farmer tank holds: a 32 oz milk pail at first, bigger tanks up to 256 oz in Shop > Farmer tank, unlocked by farmer level), **Customer orders** (a new one every 20 minutes) and **Deliveries** (other dairies' buy orders and visitor orders), and keep the coins they earn delivering. Buy-order milk goes into the buying dairy's tank.
-- **Shop** tab: feed, a second and third stall, plush bedding, bigger and extra bottles, a clean trough, stall upgrades (Wooden, Padded, Velvet, Gilded: faster and more milk) and things to wear (bell collar, show ribbon, gold-cap bottles).
-- **Daily goals** (Progress tab), one set per role: **cows** give 10 oz, get milked at a stall, do 3 care tasks and get hand milked; **farmers** groom 2 cows, clean a stall, fill an order (or ship to the contract) and hand milk a cow until they're empty. Each pays coins and that role's xp, plus a bonus for finishing a whole set. Farmer-only players never get cow xp.
-- **Awards**: 14 of them, 25 coins each.
+## Roles
 
-## Levels (1–100)
-New Cow → Dairy Cow (3) → Good Producer (6) → Prize Cow (10) → Blue Ribbon (15) → Champion (21) → Velvet Legend (28).
-XP ticks in while you make milk: +1 for every 0.2 oz (none while asleep or full). Emptying at a stall adds 1 per oz times the stall's tier bonus (x1 to x1.5); hand milking adds 3 per oz + 10. All milk XP is multiplied by your grade (C x1, B x1.2, A x1.4, S x1.7, S+ x2). Plus orders, goals and care. Each level takes longer than the last (XP needed = 80 + 4.2 × (level − 1)^1.8): about 6 months of steady grinding or a year of casual play to reach 100. Farmer and bull levels use the same curve. Levels unlock feed, upgrades, stall tiers, better-paying orders and more capacity.
+You can hold several roles at once, and each role levels up on its own. Your progress is never lost if a role is added or removed.
 
-## Sounds
-The stall's milking machine is a real recording: "Milk Pump Step02" by **Erdie** on Freesound (https://freesound.org/s/49877/), cut into a start, a seamless loop and a stop. The farmhand squirt is generated.
+| Role | What you do | How you get it |
+|---|---|---|
+| **Cow** | Make milk, get milked, earn pay for every ounce | Add it to yourself, or be invited |
+| **Farmer** | Hand milk cows, groom them, clean stalls, carry and deliver milk | Given by the owner or another farmer |
+| **Owner** | Run the dairy: place stalls, invite people, post buy orders | Start your own dairy |
+| **Bull** | Coming soon | Add it to yourself |
 
-While a stall milks you, you hear the milking machine: the motor starts, the pump pulses, and air hisses out when it stops. Each farmhand stroke squirts into the pail. Only you hear them (they play on your computer, not in the game). Turn them off or change the volume in Settings.
+Only the owner can take a role away from someone.
 
-**Use your own recordings**: Settings → **Open my sounds folder**, then drop in `.wav` or `.mp3` files named `pump_start`, `pump_loop`, `pump_stop` and/or `squirt`. Any you add replace the built-in ones (the others stay built-in). The folder lives with your settings, so plugin updates don't wipe it. `pump_loop` repeats for as long as a stall milks you, so a few seconds of steady pumping that starts and ends at the same point loops best.
-If you ship your own sounds with the plugin, put them in `VelvetDairy/Assets/sounds` with the same names (check the recording's license allows that).
+---
 
-## The HUD
-A small card with your milk bottle, grade, needs and status. Drag it where you like, lock it in Settings, and double-click or right-click it to open the main window. `/vdairy hud` shows or hides it.
+## Your dairy
 
-## Private place
-An owner can give the dairy a second spot just for its members, like their home or apartment (Dairy > Listing > **Private place**). Go there and either press **Use this whole house** (anywhere inside that house or apartment counts) or **Draw the borders** (size a box like the dairy area, then **Save private place**).
-- Members count as being in the dairy there: milking, stalls, resting, care, grooming, cleaning, jugs and dairy XP all work.
-- Visitors, the directory and in-person deliveries only ever see the public area. The server never tells non-members it exists. Private dairies still get buy orders delivered: farmers fill them from their own dairy.
-- It can't overlap another dairy. **Remove** takes it away again (stalls there stop working).
+- **The public area** is a box you mark out anywhere: a field, a corner of a city, or a room in a house. Visitors can find it and deliver to it in person.
+- **The private place** (optional) is a second spot just for members, like your home or apartment. Use the whole house, or draw borders around part of it. Everything works there, but visitors never see it.
+- **Stalls** are seats (a chair, bench or bed) that milk whoever sits on them. Put them in either place. The first is free; each one after costs more from the dairy fund (250, 1,000, 2,250, 4,000…). Upgrade them to Wooden, Padded, Velvet and Gilded for faster milking.
+- **The dairy fund** is shared money, filled by members' donations and the weekly contract. It pays for stalls and stall upgrades.
+- **The milk tank** holds the dairy's milk. Every milking adds to it, and farmers fill their jugs from it.
+- **Dairy levels** come from members playing together and unlock better stall tiers and higher pay. The **Dairies** tab ranks every dairy, with the highest level at the top.
 
-## Farmers and hand milking
-- Farmers join by invite: the owner or another farmer gives them the farmer role (right-click > Velvet Dairy, or Dairy > Overview).
-- Hand milking needs both players to have the plugin: the farmer presses **Milk** on Roles > Farmer, your plugin checks with the server that they meant you, and milk flows while they hold the emote close to you and target you.
-- Roles > Cow shows what your plugin sees for each farmer (distance, targeting, emote) and lets you turn off "farmers can start milking me without asking".
-- Right-click a farmer > Velvet Dairy > **Let them milk me** starts it from the world when that's turned off.
+---
+
+## Playing as a cow
+
+**Making milk**
+- Milk builds up while you play. You start with one 8 oz bottle. Buy bigger bottles (up to a 48 oz churn) and extra bottles (up to 5) in the Shop.
+- When every bottle is full, no more milk comes, so get milked.
+- No milk is made while you're logged out.
+
+**Getting milked** (only inside your dairy)
+- **At a stall:** sit on its seat and it starts by itself.
+- **By hand:** a farmer of your dairy stands close, targets you and presses **Milk**. Hand milking is faster, pays more and makes up a lost grade.
+- You're **paid the moment you're milked**, by grade: C 7, B 10, A 15, S 21, S+ 30 coins an ounce, plus a bonus for your dairy's level.
+
+**Grade and milk quality**
+- Everyone starts at **Grade C**. Being milked, deliveries and quality treats build your **milk quality**, which unlocks B (150), A (800), S (2,600) and S+ (6,000).
+- **Keep getting milked:** after 3 days without a milking your grade slips one step. One milking brings it back. Going away? A **Dry-off tonic** holds your grade for 7 days.
+
+**Bonuses** (the Barn tab)
+- **Fed** (food), **Watered** (drink), **Comfy** (rest) and **Happy** (treats) each make milk come faster.
+- Each use adds 30 minutes to that bar, up to an hour, and each has a 15-minute cooldown. Better food and treats give bigger bonuses.
+- **Comfy:** sit on furniture in your dairy, press **Rest**, then stay seated for 15 minutes or it doesn't stick.
+- **All four at once** makes you **Contented**, a bit faster still.
+- Bars only drain while you're awake and playing. Running out never hurts you; you're just back to normal speed.
+
+**Spoiling:** if your bottles stay full for **72 hours**, the milk spoils and has to be dumped, which lowers your grade for a while. Empty your bottles before a long break.
+
+---
+
+## Playing as a farmer
+
+- **Hand milking:** on **Roles → Farmer**, stand near a cow, press **Target**, then **Milk**. Your character does the milking emote (/beesknees by default, or one you choose) until the cow is empty, then stops by itself. You earn 25% of what the cow is paid, on top of their pay.
+- **Your own animation:** if you use Penumbra, pick an animation mod and its options under **Milking animation**. It switches on only while you milk.
+- **Chores:** **Groom** a cow (they get 30 minutes of Happy) and **Clean** an empty stall (cows milked there get a bonus for an hour). Both earn farmer XP.
+- **Jugs:** fill them from the dairy tank on the **Creamery** tab. Bigger farmer tanks unlock as your farmer level grows.
+- **Deliveries:**
+  - **Customer orders**, with a new one every 20 minutes.
+  - **Other dairies' buy orders**, public or private. Fill them from inside your own dairy, or in person at a public dairy for **+10%**.
+  - **The weekly contract**, delivered in person at the **Grand Creamery**. **Dairy → Contract** shows where it is.
+
+---
+
+## Running a dairy (owners)
+
+- Invite people with **right-click → Velvet Dairy**, or on **Dairy → Overview**.
+- **Manage members** shows everyone's levels, milk, quality, how much they've given and when they were last online.
+- The **owner HUD** shows who's online, who's in the dairy and how full each cow is.
+- Post **buy orders** to bring milk into your tank from other dairies. This works even if your dairy is private.
+- Fill the **weekly contract** together for dairy XP and fund coins.
+
+---
+
+## Levels, coins and goals
+
+- **Levels go to 100.** Each takes longer than the last: the first ten come quickly, the last ones take days. Reaching 100 is about six months for a dedicated player or a year of casual play.
+- **Cow levels** make milk faster (up to level 50) and unlock feed and upgrades. **Farmer levels** unlock bigger tanks and better orders.
+- **Daily goals** (Progress tab): four for cows and four for farmers, with a bonus for finishing a set.
+- **Awards:** collect them for coins.
+- **The Shop** sells feed, treats, bottles, comfort upgrades and things to wear.
+
+---
 
 ## Staying awake
 
-Milk is for people who are actually playing:
+Milk is for people who are actually playing.
 
-- After **15 minutes** with no activity (moving or turning your character, targeting, emotes, sending a chat message, or clicking in Velvet Dairy's windows; moving the mouse or pressing keys alone doesn't count) you start **dozing**: milk comes in at half speed and stalls don't start a new milking.
-- After **30 minutes** you're **asleep**: milking stops, and you make no milk, XP or dairy XP until you do anything at all.
-- **Resting on furniture in your dairy** holds that off: dozing at **30 minutes**, asleep at **45**.
-- Need bars and treat boosts only count down while you're awake; dozing, asleep or logged out they wait.
-- After **12 hours** of making milk in one day you're **tired**: half speed until the next day.
-- Stalls only milk you while you're **sitting on the stall's own seat**, not near it.
+- **15 minutes** with no activity (moving, emotes, targeting, chatting, or clicking in Velvet Dairy) and you start **dozing**: half-speed milk.
+- **30 minutes** and you're **asleep**: no milk, no XP.
+- **Sitting on furniture in your dairy** holds this off longer: dozing at 30 minutes, asleep at 45.
+- After **12 hours** of making milk in a day you get **tired** and make milk at half speed until the next day.
 
-## The Velvet Dairy Network
-
-When the network is up, dairies are shared between players:
-
-- **Owners** mark out their dairy anywhere: stand in the middle of the spot (a field, a corner of a city, or a room in any house), then size and turn a box that's drawn on the ground while you set it up. Boxes can't overlap another dairy in the same zone and world, and each player can own or belong to one dairy at a time. Owners can move or resize it later (Dairy > Listing).
-- **Stalls** aren't limited by dairy level: the owner can put them anywhere in the public area or the private place (up to 16). The first is free; each one after costs more from the dairy fund (250, 1,000, 2,250, 4,000, 6,250, ...). Better stall tiers still need dairy levels.
-- Owners invite **farmers, cows and bulls**, set up and upgrade the dairy's stalls, and choose a play role for themselves (any role, or none). Owners get an extra **owner HUD** showing who's online, who's in the dairy and how full each cow is.
-- **Milking animation mod** (Roles > Farmer, needs Penumbra): pick a mod (for example one that turns /beesknees into a massage). The Milk button switches it on for your character just before the emote and back off when the cow is empty, using Penumbra's temporary settings, so your saved Penumbra setup never changes. Optional redraw if the animation needs a reload. Others see it only if they sync your mods.
-- **Farmer chores** (Roles > Farmer): **Groom** a cow you're next to (20 farmer xp; their Happy bar gets 30 more minutes; once every 15 min per cow). **Clean** a stall nobody is sitting on (25 farmer xp; cows milked there get +10% speed and xp for an hour; it can be freshened again with half an hour left). Stalls never drop below their tier.
-- **Several roles at once**: a member can be a cow, farmer and bull together. Anyone can add cow or bull to themselves; farmer is given by a farmer or the owner; only the owner takes roles away. Each role has its own level (cow, farmer, bull), and progress is never lost when roles change.
-- **Farmers** hand milk the dairy's cows and can invite cows and bulls (not other farmers).
-- **Cows** make milk and get milked in the dairy's stalls or by its farmers. **Bulls** are a role only for now.
-- Invite with right-click > Velvet Dairy, or target a player and use the Members panel on the Dairy tab.
-- The **Dairies** tab shows how many people are online and lists every dairy. Public ones show their address: Visit takes you there with Lifestream (or copies the address).
-- **Weekly creamery contract**: each dairy gets one a week (resets Monday 00:00 UTC): about 200 oz at level 1, +40 oz a level, Grade B+ from level 5, A+ from 10, S+ from 15. Farmers and the owner fill jugs from the dairy tank (Creamery > Jugs), take them to the **Grand Creamery** (a spot in the world the developer picks; Dairy > Contract shows where, with Show on map) and ship them there. Finishing it gives the dairy about 1.5 xp and 4 fund coins per oz.
-- **Dairy milk tank**: milk from milkings at a dairy (stalls or hand milking) is also stored in that dairy's own tank, by grade (a copy; the cow keeps hers). The Dairy tab shows the tank and its top pumpers. What it's used for comes later.
-- **Deliveries**: any dairy's owner (public or private) posts buy orders (coins are held until filled). Farmers see every other dairy's open orders on the Creamery tab and fill them **from inside their own dairy** with milk in their jugs; it goes straight into the buyer's tank. Delivering **in person** at a public dairy pays **10% more**. Each public dairy also has two creamery visitor orders a day (in person). The weekly contract is delivered in person at the Grand Creamery.
-
-Without the network (or with it turned off in Settings) everything works locally as before.
+---
 
 ## Privacy and safety
-- Everything stays in the window and your own chat log. Nothing is ever said in public chat.
-- The plugin never moves your character or does emotes for you.
-- Only people you registered yourself can hand milk you. Remove them any time.
-- **Pause** in Settings freezes everything. Locked until you confirm you're 18+. Not available for Lalafell characters.
 
-## Save protection
-Saves are signed (an HMAC of coins, xp, quality, milk, tank, pantry, upgrades, stats, awards and orders), and a signed backup of the last good save is kept as `save-backup.json` in the plugin's config folder. If someone edits their save by hand, the plugin notices on load and puts back the backup; with no good backup, progress starts over (the dairy, stalls, farmhands and settings are kept). The Progress tab counts edits that were undone.
-The signing key is in `VelvetDairy/Game/IntegrityKey.cs`, which `.gitignore` keeps out of Git. Don't change it after release: every existing save would look edited.
-This stops save editing, not someone changing the plugin's code. Only a server can stop that (needed anyway for shared leaderboards or trading).
+- Nothing is ever said in public chat. The plugin never moves your character.
+- The only time it does an emote for you is when you press **Milk**.
+- Only farmers of your own dairy can milk you, and only when they press Milk on you.
+- **Pause** in Settings freezes everything. 18+ only. Not available for Lalafell characters.
 
-## Developer mode
-Players always get the normal game: milk speed 1x, no pause, sitting in a stall always starts milking, fixed stall and farmhand ranges, and no test farmhand.
-Developer mode adds a **Developer** panel in Settings (shortcuts, the test farmhand, and those rules). It turns on:
-- automatically when the plugin is loaded from Dev Plugin Locations, or
-- on a live install with `/vdairy dev <phrase>` (`/vdairy dev off` turns it off). Only a SHA-256 hash of the phrase is in the code (`DevKeyHash` in Plugin.cs); the comment there shows how to make a new one.
+---
 
 ## Commands
-- `/vdairy`: open or close
-- `/vdairy hud`: show or hide the HUD
 
-## Testing builds (opt-in)
-New builds go to testers first. Pushing to the `testing` branch publishes a **testing** pre-release and offers it through
-the same plugin list, but only to people who opt in; everyone else stays on the normal release.
+| Command | What it does |
+|---|---|
+| `/vdairy` | Open or close the main window |
+| `/vdairy hud` | Show or hide the HUD |
+| `/vdairy guide` | Open the how-to guide |
+| `/vdairy tutorial` | Run the first-time walkthrough again |
 
-To get testing builds:
-1. `/xlsettings` → **Experimental** → tick **Get plugin testing builds**, then Save.
-2. `/xlplugins` → **Installed** → open Velvet Dairy's menu (the ⋯ / right-click) → tick **Receive plugin testing versions**.
-3. Updates now include testing builds. Untick either to go back to the normal release (it switches back once a normal release is newer).
+---
 
-When a testing build is good, merging `testing` into main with the same version publishes it for everyone.
-Server changes are shared by everyone, so they're kept backward compatible.
+## Testing builds (for testers)
 
-## Install (players and testers)
-1. `/xlsettings` → **Experimental** → **Custom Plugin Repositories**.
-2. Add `https://raw.githubusercontent.com/sadoniaveletoria/velvetdairy/main/repo.json`, tick it, **Save**.
-3. `/xlplugins` → search **Velvet Dairy** → Install. Updates arrive like any other plugin.
+Want new features before everyone else?
+1. `/xlsettings` → **Experimental** → tick **Get plugin testing builds** → **Save**.
+2. `/xlplugins` → **Installed** → Velvet Dairy's menu → tick **Receive plugin testing versions**.
 
-## Network server (for me)
+Untick either one to go back to the normal release.
 
-The server is in `server/` (Cloudflare Worker + D1). Add the repo secrets `CLOUDFLARE_API_TOKEN` (Workers Scripts edit + D1 edit) and `CLOUDFLARE_ACCOUNT_ID`; the "Network server" workflow then creates the database, deploys, and writes `network.json`, which the plugin reads to find the server. Tests: `node --no-warnings server/test/run.mjs`.
-
-## Releasing (for me)
-Bump `<Version>` in `VelvetDairy/VelvetDairy.csproj` **and** `AssemblyVersion` in `repo.json`, then push to `main`.
-GitHub Actions builds it, tags `v<Version>` and publishes `latest.zip`; Dalamud picks it up on its next refresh.
-The save-signing key comes from the `VELVET_INTEGRITY_KEY` repository secret; locally it lives in `VelvetDairy/Game/IntegrityKey.cs`, which Git ignores.
-
-## Build and load (local dev)
-1. `dotnet build VelvetDairy\VelvetDairy.csproj -c Release`
-2. `/xlsettings` → Experimental → Dev Plugin Locations → add `VelvetDairy\bin\x64\Release\VelvetDairy.dll` → Save (if you still have the old one there, replace it)
-3. `/xlplugins` → Dev Tools → Installed Dev Plugins → enable **Velvet Dairy**
-
-## Testing on your own
-1. Settings: tick 18+ and open the barn.
-2. Go into a house. **Dairy** tab → name it → **Register here**. The header chip turns green.
-3. Sit on a chair or bed → **Add the seat I'm on**. Stand up, sit again: milking starts by itself. Stand up to stop.
-4. Barn tab: try **Drink**, **Rest** (while sitting) and **Eat**. Leave the house: they lock and say why.
-5. Settings → Developer → **Add test farmhand**. Barn tab → **Test**. It milks you every 2.5 s.
-6. Creamery tab: sell a bottle and deliver an order. Shop: buy hay.
-7. Settings → Developer (dev builds only): **Fill me up**, **+500 coins** and **Reset needs** speed things up. **Spoil my milk now** and **Spoils in 1 minute** test spoiling. **What the plugin sees** shows the house, seat, stall and your emote.
-
-With a friend: give them the farmer role, have them stand close, target you and press **Milk** on Roles > Farmer. Watch their line on Roles > Cow.
+---
 
 ## Credits
-- Milking machine sound: "Milk Pump Step02" by Erdie, https://freesound.org/s/49877/
-- Young Serif font (art only): SIL Open Font License
 
-## Art
-`tools/make_dairy_art.py` generates everything in `VelvetDairy/Assets` (boutique creamery look). `tools/preview.py` renders a rough mock of the Barn tab.
-`python3 tools/make_dairy_art.py VelvetDairy/Assets`
+- Milking machine sound: "Milk Pump Step02" by Erdie ([Freesound](https://freesound.org/s/49877/))
+- Young Serif font: SIL Open Font License
