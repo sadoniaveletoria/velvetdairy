@@ -570,7 +570,7 @@ public sealed partial class MainWindow : Window
         }
 
         var blocked = G.Blocked();
-        var milkH = 200f;
+        var milkH = G.Active != null || !G.AutoStall || !F.AutoHand ? 200f : 110f;
         var topMax = new Vector2(max.X, max.Y - milkH - 14);
         var leftW = 270f;
         var rightW = 330f;
@@ -890,50 +890,31 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        // Two columns: stalls on the left, hand milking on the right
-        var col = (width - 20) / 2;
-        var h = ImGui.GetContentRegionAvail().Y;
-        if (ImGui.BeginChild("##mcolStall", new Vector2(col, h), false)) DrawStallColumn(ImGui.GetContentRegionAvail().X);
-        ImGui.EndChild();
-        ImGui.SameLine(0, 20);
-        if (ImGui.BeginChild("##mcolHand", new Vector2(col, h), false)) DrawHandColumn(ImGui.GetContentRegionAvail().X);
-        ImGui.EndChild();
-    }
-
-    private void DrawStallColumn(float width)
-    {
-        var problem = G.StallProblem();
-        var status = G.Stalls.Count == 0 ? (G.Networked && !G.IsOwner ? "Your dairy's owner hasn't set up stalls yet." : "No stalls yet. Set one up on the Dairy tab.") : problem ?? $"You're in {G.Where.AtStall!.Name}.";
-        var how = G.AutoStall ? "Sitting in a stall starts it by itself." : "Sit in a stall, then press Start.";
-        if (ListRow(Ico("bucket"), "Stalls", Theme.Ink,
-                new[] { new Line(status, problem == null ? Theme.SageDeep : Theme.InkSoft), new Line(how, Theme.InkSoft) },
-                new[] { new Btn("##stall", "Start", "blue", problem == null, problem) }, width) == 0)
-            G.StartStall();
-    }
-
-    private void DrawHandColumn(float width)
-    {
-        var hands = G.Farmhands.Where(f => G.Dev || !f.IsTest).ToList();
-        if (hands.Count == 0)
+        // Not being milked: a short how-to, plus Start buttons only when you've turned off starting by itself
+        var lines = new List<Line>
         {
-            ListRow(Ico("ribbon"), "Hand milking", Theme.Ink,
-                new[]
-                {
-                    new Line(G.Networked ? "Only a farmer of your dairy can do this." : "Only a registered farmhand of your dairy can do this.", Theme.InkSoft),
-                    new Line(G.Networked ? "Your dairy's owner invites farmers." : "Right-click a player > Velvet Dairy > Register as farmhand.", Theme.InkSoft),
-                }, Array.Empty<Btn>(), width);
-            return;
+            new(G.Where.InDairy ? "Sit on one of your dairy's stalls, or have a farmer stand close and press Milk on you." : "Go to your dairy to get milked.", Theme.Ink),
+            new(G.Stalls.Count == 0 ? "Your dairy has no stalls yet." : $"{G.Stalls.Count} stall{(G.Stalls.Count == 1 ? "" : "s")} in your dairy · hand milking is faster and pays more.", Theme.InkSoft),
+        };
+        var buttons = new List<Btn>();
+        var starts = new List<Action>();
+        if (!G.AutoStall)
+        {
+            var problem = G.StallProblem();
+            buttons.Add(new Btn("##stall", "Start stall", "blue", problem == null, problem ?? "Starts the stall you're sitting on."));
+            starts.Add(G.StartStall);
         }
 
-        var buttons = hands.Select(fh =>
-        {
-            var hp = G.HandProblem(fh);
-            return new Btn($"##hand{fh.Name}{fh.WorldId}", fh.IsTest ? "Test" : fh.Name.Split(' ')[0], "sage", hp == null, hp ?? $"Let {fh.Display} milk you.");
-        }).ToList();
+        if (!F.AutoHand)
+            foreach (var fh in G.Farmhands.Where(f => (G.Dev || !f.IsTest) && G.HandProblem(f) == null))
+            {
+                var hand = fh;
+                buttons.Add(new Btn($"##hand{fh.Name}{fh.WorldId}", $"Let {(fh.IsTest ? "Test" : fh.Name.Split(' ')[0])} milk me", "sage", true, $"{fh.Display} is ready to milk you."));
+                starts.Add(() => G.StartHand(hand));
+            }
 
-        ListRow(Ico("ribbon"), "Hand milking", Theme.Ink, new[] { new Line("Better grade and more xp. Pick who milks you:", Theme.InkSoft) }, Array.Empty<Btn>(), width);
-        var clicked = Buttons(buttons, width);
-        if (clicked >= 0) G.StartHand(hands[clicked]);
+        var clicked = ListRow(Ico("bucket"), "Not being milked", Theme.Ink, lines, buttons, width);
+        if (clicked >= 0) starts[clicked]();
     }
 
     // =====================================================================

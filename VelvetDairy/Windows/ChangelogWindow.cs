@@ -27,6 +27,7 @@ public sealed class ChangelogWindow : Window
             "Farmers get two buttons on the HUD: Hand milk and Kitchen. Each opens its own window.",
             "Hand milk lists your dairy's cows with Target, Milk and Groom, and the animation picker is one click away.",
             "Jugs are filled at the top of the Kitchen now (Fill 8 oz, Fill 32 oz or Fill up), instead of on the Creamery tab.",
+            "The Milking box on the Barn is simpler and smaller when you're not being milked, so the rest of the Barn gets more room.",
         }),
         new("0.9.10.8", "Your grade, not your milk's", new[]
         {
