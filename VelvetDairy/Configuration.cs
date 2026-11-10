@@ -52,6 +52,7 @@ public class FarmSave
     public CowState Cow { get; set; } = new();
     public int Coins { get; set; } = 60;
     public Dictionary<string, int> Pantry { get; set; } = new();      // feed item id -> count
+    public BakeJob? Bake { get; set; }                                // what you're baking right now (farmers), if anything
     public List<string>? HiddenFeed { get; set; }                     // feed you hid from the lists
     public bool CareShowEmpty { get; set; }                           // Pantry list also shows feed you're out of (Care never does)
     public Dictionary<string, int> Upgrades { get; set; } = new();    // upgrade id -> level owned
@@ -247,4 +248,13 @@ public class FarmStats
     public int DailiesDone { get; set; }
     public int TimesDumped { get; set; }
     public float OzDumped { get; set; }
+}
+
+/// <summary>A batch of baked goods in progress: Count to make, Done so far, Elapsed seconds into the current one.</summary>
+public sealed class BakeJob
+{
+    public string Recipe { get; set; } = "";
+    public int Count { get; set; }
+    public int Done { get; set; }
+    public float Elapsed { get; set; }
 }

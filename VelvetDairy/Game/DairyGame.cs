@@ -580,6 +580,7 @@ public sealed class DairyGame
 
         WatchFarmhands();
         WatchMyMilking();
+        TickBake(dt);
 
         simAccum += dt;
         if (simAccum >= 1.0)
@@ -2135,23 +2136,79 @@ public sealed class DairyGame
 
     // ----- Making things: farmers turn milk from their jugs into ingredients (butter for now) -----
 
-    public string? MakeProblem(Catalog.Recipe r)
+    public string? MakeProblem(Catalog.Recipe r, int count = 1)
     {
         var b = Blocked();
         if (b != null) return b;
         if (!CanCarry) return "Only farmers bake.";
+        if (F.Bake != null) return "You're already baking something. Wait for it or cancel it.";
         if (!Where.InDairy) return "Go to your dairy to use its kitchen.";
         if (IsFarmer && FarmerLevel < r.FarmerLevel) return $"Unlocks at farmer level {r.FarmerLevel}.";
-        if (OzAtOrAbove(r.MinGrade) < r.MilkOz)
-            return $"You need {r.MilkOz} oz of milk{(r.MinGrade > 0 ? $" (Grade {Grades.Name(r.MinGrade)} or better)" : "")} in your jugs. Fill them from the dairy tank on the Creamery tab.";
+        if (count < 1) return "Pick how many to make.";
+        if (OzAtOrAbove(r.MinGrade) < r.MilkOz * count)
+            return $"You need {r.MilkOz * count} oz of milk{(r.MinGrade > 0 ? $" (Grade {Grades.Name(r.MinGrade)} or better)" : "")} in your jugs. Fill them from the dairy tank on the Creamery tab.";
         return null;
     }
 
-    public bool Make(Catalog.Recipe r)
+    /// <summary>How many of this you could make with the milk in your jugs.</summary>
+    public int MaxMake(Catalog.Recipe r) => (int)(OzAtOrAbove(r.MinGrade) / r.MilkOz);
+
+    public bool StartBake(Catalog.Recipe r, int count)
     {
-        var p = MakeProblem(r);
+        var p = MakeProblem(r, count);
         if (p != null) return Fail(p);
-        // Use the lowest grade that qualifies first
+        F.Bake = new BakeJob { Recipe = r.Id, Count = count };
+        Touch();
+        Say($"{r.Name}: {count} batch{(count == 1 ? "" : "es")}, about {Wait(TimeSpan.FromSeconds(Catalog.TotalSeconds(r, count)))}. Stay in the dairy while it works.", 0);
+        plugin.SaveConfig();
+        return true;
+    }
+
+    public void CancelBake()
+    {
+        var j = F.Bake;
+        if (j == null) return;
+        F.Bake = null;
+        Say(j.Done > 0 ? $"Stopped baking. You kept the {j.Done} you finished." : "Stopped baking.", 0);
+        plugin.SaveConfig();
+    }
+
+    /// <summary>The job in progress: its recipe, how far into the current one (0-1), and time left for the whole batch.</summary>
+    public (Catalog.Recipe Recipe, float Current, TimeSpan Left)? Baking
+    {
+        get
+        {
+            if (F.Bake is not { } j || Catalog.RecipeById(j.Recipe) is not { } r) return null;
+            var cur = Catalog.BatchSeconds(r, j.Done);
+            var left = Catalog.TotalSeconds(r, j.Count, j.Done) - j.Elapsed;
+            return (r, Math.Clamp(j.Elapsed / cur, 0f, 1f), TimeSpan.FromSeconds(Math.Max(0, left)));
+        }
+    }
+
+    /// <summary>Baking only moves along while you're in the dairy (it waits while you're away or logged out).</summary>
+    private void TickBake(float dt)
+    {
+        if (F.Bake is not { } j) return;
+        var r = Catalog.RecipeById(j.Recipe);
+        if (r == null || j.Done >= j.Count)
+        {
+            F.Bake = null;
+            return;
+        }
+
+        if (!Where.InDairy || Blocked() != null) return;
+        j.Elapsed += dt;
+        if (j.Elapsed < Catalog.BatchSeconds(r, j.Done)) return;
+
+        // One finished: the milk comes out of your jugs now (lowest grade that qualifies first)
+        if (OzAtOrAbove(r.MinGrade) < r.MilkOz)
+        {
+            F.Bake = null;
+            Fail($"Out of milk: you made {j.Done} of {j.Count}.");
+            plugin.SaveConfig();
+            return;
+        }
+
         var left = (float)r.MilkOz;
         for (var g = r.MinGrade; g < Grades.Count && left > 0; g++)
         {
@@ -2163,11 +2220,16 @@ public sealed class DairyGame
         if (Networked) Net.UseCarried(r.MilkOz);
         F.Pantry[r.Makes] = Count(r.Makes) + r.Amount;
         AddFarmerXp(r.Xp);
-        Touch();
-        var name = Catalog.IngredientById(r.Makes)?.Name ?? r.Makes;
-        Say($"You made {r.Amount} {name.ToLowerInvariant()} from {r.MilkOz} oz of milk. +{r.Xp} farmer xp", 1);
+        j.Done++;
+        j.Elapsed = 0;
+        var name = Catalog.IngredientById(r.Makes)?.Name.ToLowerInvariant() ?? r.Makes;
+        if (j.Done >= j.Count)
+        {
+            F.Bake = null;
+            Say($"Done: {j.Count * r.Amount} {name} in your pantry. +{j.Count * r.Xp} farmer xp", 1);
+        }
+
         plugin.SaveConfig();
-        return true;
     }
 
     private void RefillOrders()

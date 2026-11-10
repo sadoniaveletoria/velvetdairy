@@ -153,21 +153,51 @@ public sealed partial class MainWindow
         if (!G.CanCarry) return;
         SubHeading("Baked goods", width);
         Ui.Wrapped($"Bake with milk from your jugs: ingredients for your pantry now, treats to come. You're carrying {G.Carried:0.#} oz.", Theme.InkSoft, width);
+        // Something in the oven: its progress, and a way to stop
+        if (G.Baking is { } b)
+        {
+            var job = F.Bake!;
+            var made = Catalog.IngredientById(b.Recipe.Makes);
+            var clicked = ListRow(Ico(made?.Icon ?? "bottle"), $"{b.Recipe.Name} · {job.Done + 1} of {job.Count}", Theme.Ink,
+                new[]
+                {
+                    new Line(G.Where.InDairy ? $"{Clock(b.Left)} left for the batch" : "Paused: go back into the dairy to keep going", G.Where.InDairy ? Theme.InkSoft : Theme.RoseDeep),
+                    new Line($"{job.Done} done so far", Theme.SageDeep),
+                },
+                new[] { new Btn("##bakecancel", "Stop", "cream", true, "Stop after keeping what's finished. Milk for unfinished ones stays in your jugs.") }, width,
+                b.Current, Theme.HoneyDeep);
+            if (clicked == 0) G.CancelBake();
+            return;
+        }
+
         foreach (var rec in Catalog.Recipes)
         {
-            var why = G.MakeProblem(rec);
+            var max = Math.Max(1, G.MaxMake(rec));
+            var n = Math.Clamp(bakeCount.GetValueOrDefault(rec.Id, 1), 1, Math.Max(1, max));
+            var why = G.MakeProblem(rec, n);
             var made = Catalog.IngredientById(rec.Makes);
             var clicked = ListRow(Ico(made?.Icon ?? "bottle"), rec.Name, Theme.Ink,
                 new[]
                 {
-                    new Line($"{rec.MilkOz} oz milk{(rec.MinGrade > 0 ? $" (Grade {Grades.Name(rec.MinGrade)}+)" : "")} → {rec.Amount} {made?.Name.ToLowerInvariant() ?? rec.Makes}", Theme.InkSoft),
-                    new Line($"You have {G.Count(rec.Makes)} · +{rec.Xp} farmer xp each", Theme.SageDeep),
+                    new Line($"{rec.MilkOz} oz milk{(rec.MinGrade > 0 ? $" (Grade {Grades.Name(rec.MinGrade)}+)" : "")} → {rec.Amount} {made?.Name.ToLowerInvariant() ?? rec.Makes} · you have {G.Count(rec.Makes)}", Theme.InkSoft),
+                    new Line($"{n} = {n * rec.MilkOz} oz, {Clock(TimeSpan.FromSeconds(Catalog.TotalSeconds(rec, n)))} · +{n * rec.Xp} farmer xp", Theme.SageDeep),
                 },
-                new[] { new Btn($"##make{rec.Id}", "Bake", "honey", why == null, why ?? rec.Desc) }, width,
+                new[]
+                {
+                    new Btn($"##bakeless{rec.Id}", "-", "cream", n > 1, "One fewer"),
+                    new Btn($"##bakemore{rec.Id}", "+", "cream", n < G.MaxMake(rec), "One more (each one takes a little longer than the last)"),
+                    new Btn($"##make{rec.Id}", "Bake", "honey", why == null, why ?? rec.Desc),
+                }, width,
                 Math.Min(1f, G.OzAtOrAbove(rec.MinGrade) / rec.MilkOz), why == null ? Theme.SageDeep : Theme.BlueDeep);
-            if (clicked == 0) G.Make(rec);
+            if (clicked == 0) bakeCount[rec.Id] = n - 1;
+            else if (clicked == 1) bakeCount[rec.Id] = n + 1;
+            else if (clicked == 2) G.StartBake(rec, n);
         }
     }
+
+    private readonly System.Collections.Generic.Dictionary<string, int> bakeCount = new();
+
+    private static string Clock(TimeSpan t) => t.TotalHours >= 1 ? $"{(int)t.TotalHours}:{t.Minutes:00}:{t.Seconds:00}" : $"{(int)t.TotalMinutes}:{t.Seconds:00}";
 
     /// <summary>For farmers: one line with the milking animation, and a button that opens the picker in its own window.</summary>
     private void DrawMilkMod(float width)

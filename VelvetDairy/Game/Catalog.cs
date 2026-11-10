@@ -105,7 +105,17 @@ public static class Catalog
     public sealed record Ingredient(string Id, string Name, string Icon, string Desc);
 
     /// <summary>Turn milk from your jugs into something. MilkOz of any grade from MinGrade up, at FarmerLevel or higher.</summary>
-    public sealed record Recipe(string Id, string Name, string Makes, int Amount, int MilkOz, int MinGrade, int FarmerLevel, int Xp, string Desc);
+    public sealed record Recipe(string Id, string Name, string Makes, int Amount, int MilkOz, int MinGrade, int FarmerLevel, int Xp, int Seconds, string Desc);
+
+    /// <summary>Each one in a batch takes a quarter longer than the one before, so big batches take much longer.</summary>
+    public static float BatchSeconds(Recipe r, int index) => r.Seconds * (1f + 0.25f * index);
+
+    public static float TotalSeconds(Recipe r, int count, int from = 0)
+    {
+        var t = 0f;
+        for (var i = from; i < count; i++) t += BatchSeconds(r, i);
+        return t;
+    }
 
     public static readonly IReadOnlyList<Ingredient> Ingredients = new[]
     {
@@ -114,10 +124,11 @@ public static class Catalog
 
     public static readonly IReadOnlyList<Recipe> Recipes = new[]
     {
-        new Recipe("butter", "Churn butter", "butter", 1, 16, 0, 1, 12, "Churn 16 oz of milk from your jugs into a pat of butter."),
+        new Recipe("butter", "Churn butter", "butter", 1, 16, 0, 1, 12, 30, "Churn 16 oz of milk from your jugs into a pat of butter."),
     };
 
     public static Ingredient? IngredientById(string id) => Ingredients.FirstOrDefault(i => i.Id == id);
+    public static Recipe? RecipeById(string id) => Recipes.FirstOrDefault(r => r.Id == id);
 
     public static readonly IReadOnlyList<FeedItem> Feed = new[]
     {
