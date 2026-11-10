@@ -388,6 +388,17 @@ public sealed class NetClient : IDisposable
         Call<OrdersReply>("GET", $"/v1/dairies/{dairyId}/orders", null, r => OrdersByDairy[dairyId] = r.Orders,
             e => OrdersByDairy[dairyId] = new List<BuyOrder>());
 
+    /// <summary>Open buy orders from every other dairy (farmers fill them from their own dairy).</summary>
+    public List<BuyOrder> Board { get; private set; } = new();
+    private DateTime nextBoard = DateTime.MinValue;
+
+    public void RefreshBoard(bool now = false)
+    {
+        if (!now && DateTime.UtcNow < nextBoard) return;
+        nextBoard = DateTime.UtcNow.AddSeconds(60);
+        Call<OrdersReply>("GET", "/v1/orders/board", null, r => Board = r.Orders);
+    }
+
     public void RefreshMyOrders() => Call<OrdersReply>("GET", "/v1/orders/mine", null, r => MyOrders = r.Orders);
 
     // ----- Dairy -----

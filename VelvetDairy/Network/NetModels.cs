@@ -308,6 +308,8 @@ public sealed class BuyOrder
     public int MinGrade { get; set; }
     public int Coins { get; set; }
     public long Expires { get; set; }
+    public string DairyName { get; set; } = "";   // board only
+    public bool DairyPublic { get; set; }          // board only: can also be delivered in person for a bonus
 }
 
 public sealed class InboxReply
@@ -343,6 +345,8 @@ public sealed class AcceptReply
 public sealed class FillReply
 {
     public int Coins { get; set; }
+    public int Bonus { get; set; }      // extra for delivering in person
+    public bool InPerson { get; set; }
     public int Oz { get; set; }
     public string Dairy { get; set; } = "";
 }

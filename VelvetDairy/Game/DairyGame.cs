@@ -2390,7 +2390,6 @@ public sealed class DairyGame
     public string? PostOrderProblem(int oz, int grade, int coins)
     {
         if (!Networked || F.NetMember?.IsOwner != true) return "Only a dairy owner can post buy orders.";
-        if (Net.Mine?.Dairy?.IsPublic != true) return "Make your dairy public so cows can find it and deliver.";
         if (oz < 1 || oz > MaxOrderOz) return $"Ask for 1 to {MaxOrderOz} oz.";
         if (coins < oz) return "Offer at least 1 coin per oz.";
         if (coins > oz * 40) return "That's more than 40 coins per oz.";
@@ -2427,7 +2426,9 @@ public sealed class DairyGame
     {
         if (Blocked() != null) return Blocked();
         if (!CanCarry) return "Only farmers and owners deliver milk.";
-        if (VisitingDairy?.Id != o.DairyId) return "Go to that dairy to deliver in person.";
+        // From inside your own dairy, or in person at the buyer's public area (which pays a bonus)
+        if (VisitingDairy?.Id != o.DairyId && !Where.InDairy)
+            return o.DairyPublic ? $"Deliver from inside your own dairy, or in person at {o.DairyName} for +10%." : "Deliver from inside your own dairy.";
         if (OzAtOrAbove(o.MinGrade) < o.Oz) return $"You need {o.Oz} oz of Grade {Grades.Name(o.MinGrade)} or better in your tank.";
         return null;
     }
@@ -2463,7 +2464,8 @@ public sealed class DairyGame
             F.DayDelivered++;
             EaseTaint(Catalog.TaintPerOrder);
             AddQuality(Grades.QualityPerOrder);
-            Say($"Delivered {r.Oz} oz to {r.Dairy}. Your {r.Coins} coins are on the way.", 1);
+            Say($"Delivered {r.Oz} oz to {r.Dairy}. Your {r.Coins} coins are on the way{(r.Bonus > 0 ? $" (+{r.Bonus} for coming in person)" : "")}.", 1);
+            Net.RefreshBoard(true);
             plugin.SaveConfig();
         }, e =>
         {

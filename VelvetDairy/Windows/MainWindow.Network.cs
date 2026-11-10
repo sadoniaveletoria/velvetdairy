@@ -104,7 +104,7 @@ public sealed partial class MainWindow
         SubHeading("How it works", width);
         Ui.Wrapped("Owners register their own estate as a dairy and invite farmers, cows and bulls. Farmers can invite cows and bulls. " +
                    "Public dairies show their address here so anyone can visit; private ones only show their name. " +
-                   "Cows deliver milk in person: go to a public dairy and fill its owner's buy orders or the creamery's visitor orders. " +
+                   "Farmers fill other dairies' buy orders from inside their own dairy (or in person at a public one for +10%), and the creamery's visitor orders in person at public dairies. " +
                    "Dairies level up from what their members do inside them; higher levels get more stalls and better stall tiers and list first.", Theme.InkSoft, width);
         if (!Lifestream.Installed)
         {
@@ -706,26 +706,37 @@ public sealed partial class MainWindow
         if (!G.Networked) return;
         var net = G.Net;
 
-        // Visiting someone else's public dairy: their buy orders and the creamery's visitor orders
-        var visiting = G.VisitingDairy;
-        if (visiting != null)
+        // Buy orders from every other dairy: delivered from inside your own dairy, no travel needed
+        if (G.CanCarry)
         {
-            SubHeading($"Deliveries at {visiting.Name}", width);
-            if (!net.OrdersByDairy.ContainsKey(visiting.Id)) net.RefreshOrders(visiting.Id);
-            var theirs = net.OrdersByDairy.TryGetValue(visiting.Id, out var l) ? l : new List<BuyOrder>();
-            foreach (var o in theirs.ToList())
+            SubHeading("Buy orders from other dairies", width);
+            net.RefreshBoard();
+            Ui.Wrapped("Deliver from inside your own dairy with milk in your jugs; it goes straight into their tank. " +
+                       "Public dairies pay 10% more if you deliver in person at their dairy.", Theme.InkSoft, width);
+            if (net.Board.Count == 0) ImGui.TextColored(Theme.InkSoft, "No open buy orders right now.");
+            foreach (var o in net.Board.ToList())
             {
                 var p = G.DeliverProblem(o);
                 var have = G.OzAtOrAbove(o.MinGrade);
-                var clicked = ListRow(Ico("coin"), $"Buy order · {o.Oz} oz", Theme.Ink,
+                var here = G.VisitingDairy?.Id == o.DairyId;
+                var clicked = ListRow(Ico("coin"), $"{o.DairyName} · {o.Oz} oz", Theme.Ink,
                     new[]
                     {
                         new Line(o.MinGrade == 0 ? "Any grade" : $"Grade {Grades.Name(o.MinGrade)} or better", Theme.InkSoft),
-                        new Line($"The owner pays {o.Coins} coins", Theme.HoneyDeep),
+                        new Line(here ? $"Pays {o.Coins} + {(int)Math.Round(o.Coins * 0.1)} for coming in person" : $"Pays {o.Coins} coins{(o.DairyPublic ? " (+10% in person)" : "")}", Theme.HoneyDeep),
                     },
-                    new[] { new Btn($"##nfill{o.Id}", "Deliver", "sage", p == null, p) }, width, Math.Min(1f, have / o.Oz), p == null ? Theme.SageDeep : Theme.BlueDeep);
+                    new[] { new Btn($"##bfill{o.Id}", "Deliver", "sage", p == null, p) }, width, Math.Min(1f, have / o.Oz), p == null ? Theme.SageDeep : Theme.BlueDeep);
                 if (clicked == 0) G.Deliver(o);
             }
+
+            Gap(8);
+        }
+
+        // Visiting someone else's public dairy: the creamery's visitor orders (buy orders are in the list above)
+        var visiting = G.VisitingDairy;
+        if (visiting != null)
+        {
+            SubHeading($"Visitor orders at {visiting.Name}", width);
 
             foreach (var o in G.VisitorOrders(visiting.Id))
             {

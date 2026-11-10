@@ -44,6 +44,7 @@ const FARMER_CUT = 0.25;            // a farmer gets this share of what the cow 
 const FARMER_DAILY_COINS = 4500;
 const COW_DAILY_HAND_OZ = 800;
 const MAX_TAKE_OZ = 96;
+const IN_PERSON_BONUS = 0.1;      // delivering a buy order in person at the buyer's public area pays 10% more
 const CLEAN_SECONDS = 3600;         // a cleaned stall stays fresh this long
 const CLEAN_AGAIN_SECONDS = 1800;   // and can be cleaned again once this much (or less) is left
 const GROOM_COOLDOWN = 900;         // one groom per farmer per cow every 15 minutes
@@ -237,6 +238,7 @@ async function route(request, env) {
     ["POST", /^\/v1\/groom$/, () => groom(env, me, request)],
     ["PUT", /^\/v1\/dairy\/private$/, () => putPrivate(env, me, request)],
     ["DELETE", /^\/v1\/dairy\/private$/, () => deletePrivate(env, me)],
+    ["GET", /^\/v1\/orders\/board$/, () => orderBoard(env, me)],
     ["GET", /^\/v1\/orders\/mine$/, () => myOrders(env, me)],
     ["POST", /^\/v1\/orders$/, () => postOrder(env, me, request)],
     ["GET", /^\/v1\/dairies\/([0-9a-f]{24})\/orders$/, m => dairyOrders(env, me, m[1])],
@@ -680,8 +682,7 @@ async function putDairy(env, me, request) {
       .bind(me.id, id, role, clean(b.ownerName, 40), clean(b.worldName, 30), t).run();
   }
 
-  // Going private closes the shop: open buy orders are cancelled and refunded
-  if (!b.isPublic) await refundOpenOrders(env, me.id, "Your dairy went private, so this buy order was cancelled.");
+  // Private dairies keep their buy orders: farmers deliver to them from their own dairies
   return { id };
 }
 
@@ -1211,6 +1212,17 @@ async function myOrders(env, me) {
   return { orders: rows.results.map(orderOut) };
 }
 
+/** Every open buy order from other dairies, best paying first: farmers fill these from their own dairy. */
+async function orderBoard(env, me) {
+  const home = await membership(env, me.id);
+  const rows = (await env.DB.prepare(`
+    SELECT o.*, d.name AS dairy_name, d.is_public AS dairy_public
+    FROM orders o JOIN dairies d ON d.id = o.dairy_id
+    WHERE o.status = 'open' AND o.expires >= ? AND o.owner != ? AND o.dairy_id != ?
+    ORDER BY o.coins * 1.0 / o.oz DESC LIMIT 60`).bind(now(), me.id, home ? home.dairy_id : "").all()).results;
+  return { orders: rows.map(o => ({ ...orderOut(o), dairyName: o.dairy_name, dairyPublic: !!o.dairy_public })) };
+}
+
 async function dairyOrders(env, me, dairyId) {
   const d = await env.DB.prepare("SELECT * FROM dairies WHERE id = ?").bind(dairyId).first();
   if (!d || (!d.is_public && d.owner !== me.id)) fail(404, "That dairy isn't public.");
@@ -1222,7 +1234,6 @@ async function dairyOrders(env, me, dairyId) {
 async function postOrder(env, me, request) {
   const b = await body(request);
   const d = await ownedDairy(env, me);
-  if (!d.is_public) fail(400, "Make your dairy public to post buy orders.");
   const oz = int(b.oz, 1, MAX_ORDER_OZ, "amount");
   const minGrade = int(b.minGrade, 0, GRADES - 1, "grade");
   const coins = int(b.coins, oz * MIN_COINS_PER_OZ, oz * MAX_COINS_PER_OZ, "price");
@@ -1262,9 +1273,15 @@ async function fillOrder(env, me, id, request) {
   if (grade < o.min_grade) fail(400, "Your milk's grade is too low for this order.");
 
   const d = await env.DB.prepare("SELECT * FROM dairies WHERE id = ?").bind(o.dairy_id).first();
-  if (!d || !d.is_public) fail(409, "That dairy isn't taking deliveries.");
+  if (!d) fail(409, "That dairy isn't taking deliveries.");
+  // Delivered from inside your own dairy (the milk goes over by cart), or in person at their public area for a bonus.
+  // Private places never count: only the buyer's own members can be "in" those.
   const here = (await dairyInArea(env, b.pos)) || (await dairyAt(env, b.houseId));
-  if (!here || here.id !== d.id) fail(400, `Deliveries are made in person: go to ${d.name} first.`);
+  const inPerson = !!here && here.id === d.id && !!d.is_public;
+  const home = await membership(env, me.id);
+  if (!inPerson && !(home && inOwnDairy(me, home)))
+    fail(400, d.is_public ? `Deliver from inside your own dairy, or in person at ${d.name} for a bonus.` : "Deliver from inside your own dairy.");
+  const bonus = inPerson ? Math.round(o.coins * IN_PERSON_BONUS) : 0;
 
   const day = today();
   const delivered = me.deliver_day === day ? me.deliver_oz : 0;
@@ -1283,16 +1300,16 @@ async function fillOrder(env, me, id, request) {
 
   await env.DB.batch([
     env.DB.prepare("UPDATE installs SET deliver_day = ?, deliver_oz = ? WHERE id = ?").bind(day, delivered + o.oz, me.id),
-    inboxStmt(env, me.id, "payout", o.coins, 0, 0, `${d.name} paid ${o.coins} coins for your ${o.oz} oz.`),
+    inboxStmt(env, me.id, "payout", o.coins + bonus, 0, 0,
+      `${d.name} paid ${o.coins} coins for your ${o.oz} oz${bonus ? ` (+${bonus} for delivering in person)` : ""}.`),
     // The milk goes into the buying dairy's tank
     env.DB.prepare(`INSERT INTO dairy_tank (dairy_id, grade, oz) VALUES (?, ?, ?)
       ON CONFLICT(dairy_id, grade) DO UPDATE SET oz = oz + excluded.oz`).bind(d.id, grade, o.oz),
     inboxStmt(env, o.owner, "notice", 0, 0, 0, `A delivery filled your buy order: ${o.oz} oz of Grade ${gradeName(grade)} went into your dairy's tank.`),
     addXpStmt(env, d.id, o.oz * DELIVERY_XP_PER_OZ),
   ]);
-  const home = await membership(env, me.id);
   if (home && home.dairy_id !== d.id) await addXpStmt(env, home.dairy_id, o.oz * DELIVERER_XP_PER_OZ).run();
-  return { ok: true, coins: o.coins, oz: o.oz, dairy: d.name };
+  return { ok: true, coins: o.coins + bonus, bonus, inPerson, oz: o.oz, dairy: d.name };
 }
 
 function gradeName(g) {

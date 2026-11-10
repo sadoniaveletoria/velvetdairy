@@ -67,7 +67,7 @@ A small card with your milk bottle, grade, needs and status. Drag it where you l
 ## Private place
 An owner can give the dairy a second spot just for its members, like their home or apartment (Dairy > Listing > **Private place**). Go there and either press **Use this whole house** (anywhere inside that house or apartment counts) or **Draw the borders** (size a box like the dairy area, then **Save private place**).
 - Members count as being in the dairy there: milking, stalls, resting, care, grooming, cleaning, jugs and dairy XP all work.
-- Visitors, the directory, deliveries and buy orders only ever see the public area. The server never tells non-members it exists.
+- Visitors, the directory and in-person deliveries only ever see the public area. The server never tells non-members it exists. Private dairies still get buy orders delivered: farmers fill them from their own dairy.
 - It can't overlap another dairy. **Remove** takes it away again (stalls there stop working).
 
 ## Farmers and hand milking
@@ -103,7 +103,7 @@ When the network is up, dairies are shared between players:
 - The **Dairies** tab shows how many people are online and lists every dairy. Public ones show their address: Visit takes you there with Lifestream (or copies the address).
 - **Weekly creamery contract**: each dairy gets one a week (resets Monday 00:00 UTC): about 200 oz at level 1, +40 oz a level, Grade B+ from level 5, A+ from 10, S+ from 15. Farmers and the owner fill jugs from the dairy tank (Creamery > Jugs), take them to the **Grand Creamery** (a spot in the world the developer picks; Dairy > Contract shows where, with Show on map) and ship them there. Finishing it gives the dairy about 1.5 xp and 4 fund coins per oz.
 - **Dairy milk tank**: milk from milkings at a dairy (stalls or hand milking) is also stored in that dairy's own tank, by grade (a copy; the cow keeps hers). The Dairy tab shows the tank and its top pumpers. What it's used for comes later.
-- **Deliveries**: owners of public dairies post buy orders (coins are held until filled). Cows go there in person and deliver from their tank. Each public dairy also has two creamery visitor orders a day.
+- **Deliveries**: any dairy's owner (public or private) posts buy orders (coins are held until filled). Farmers see every other dairy's open orders on the Creamery tab and fill them **from inside their own dairy** with milk in their jugs; it goes straight into the buyer's tank. Delivering **in person** at a public dairy pays **10% more**. Each public dairy also has two creamery visitor orders a day (in person). The weekly contract is delivered in person at the Grand Creamery.
 
 Without the network (or with it turned off in Settings) everything works locally as before.
 

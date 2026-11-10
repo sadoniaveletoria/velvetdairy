@@ -107,8 +107,8 @@ public sealed class GuideWindow : Window
         {
             "Farmers and the owner fill jugs from the dairy tank (Creamery > Jugs), inside the dairy, up to what their farmer tank holds: a 32 oz milk pail at first, up to a 256 oz tanker cart (Shop > Farmer tank, unlocked by farmer level).",
             "Customer orders (Creamery tab): the creamery's customers want milk of a grade. Deliver from your jugs for coins and XP.",
-            "Deliveries: other public dairies' buy orders and two creamery visitor orders a day per dairy. Go there in person and deliver from your jugs. Milk from buy orders goes into the buying dairy's tank.",
-            "Owners of public dairies can post buy orders (Creamery > Deliveries): the coins are held until a delivery fills it or you cancel.",
+            "Deliveries: other dairies' buy orders (public or private) are listed on the Creamery tab. Fill them from inside your own dairy with milk in your jugs; it goes straight into the buying dairy's tank. Delivering in person at a public dairy pays 10% more. The creamery's two visitor orders a day per public dairy are still in person.",
+            "Any owner, public or private, can post buy orders (Creamery > Deliveries): the coins are held until a delivery fills it or you cancel.",
         }),
         new("Weekly contract", new[]
         {
