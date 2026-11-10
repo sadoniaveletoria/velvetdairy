@@ -39,6 +39,7 @@ Only the owner can take a role away from someone.
 - **The public area** is a box you mark out anywhere: a field, a corner of a city, or a room in a house. Visitors can find it and deliver to it in person.
 - **The private place** (optional) is a second spot just for members, like your home or apartment. Use the whole house, or draw borders around part of it. Everything works there, but visitors never see it.
 - **Stalls** are seats (a chair, bench or bed) that milk whoever sits on them. Put them in either place. The first is free; each one after costs more from the dairy fund (250, 1,000, 2,250, 4,000…). Upgrade them to Wooden, Padded, Velvet and Gilded for faster milking.
+- **Stall highlight** (Settings, on by default): a green square on the floor under each stall, only on your screen. It pulses while you sit, drains as you're milked, turns light red if you doze and flashes red if you fall asleep.
 - **The dairy fund** is shared money, filled by members' donations and the weekly contract. It pays for stalls and stall upgrades.
 - **The milk tank** holds the dairy's milk. Every milking adds to it, and farmers fill their jugs from it.
 - **Dairy levels** come from members playing together and unlock better stall tiers and higher pay. The **Dairies** tab ranks every dairy, with the highest level at the top.
