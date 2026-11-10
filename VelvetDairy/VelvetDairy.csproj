@@ -1,7 +1,7 @@
 <Project Sdk="Dalamud.NET.Sdk/15.0.0">
 
   <PropertyGroup>
-    <Version>0.9.10.0</Version>
+    <Version>0.9.10.1</Version>
     <Description>Velvet Dairy — be the cow. Care, milking stalls, farmhands and a creamery economy. Proof of concept.</Description>
     <PackageProjectUrl>https://github.com/sadoniaveletoria/velvetdairy</PackageProjectUrl>
     <IsPackable>false</IsPackable>
