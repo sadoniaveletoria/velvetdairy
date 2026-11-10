@@ -1346,6 +1346,8 @@ public sealed class DairyGame
         var member = Net.Mine?.Members.FirstOrDefault(m => m.Online && m.Status is { } st && st.Stall == s.Id)?.Status;
         // Anyone seen sitting on it here (for people whose plugin hasn't said, or isn't in the dairy)
         var someoneSits = SomeoneSitsOn(s);
+        // Someone's sitting there but we haven't heard they're being milked yet: ask again every few seconds
+        if (someoneSits && (member == null || member.DrainAt == 0)) Net.MineWithin(3);
 
         if (member != null)
         {
