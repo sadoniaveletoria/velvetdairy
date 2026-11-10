@@ -543,6 +543,8 @@ public sealed class DairyGame
         var w = Wake;
         if (w != lastWake)
         {
+            // Others' stall highlights show you dozing or asleep
+            if (Networked && Where.AtStall != null) Net.Poke();
             if (w == Wakefulness.Dozing) Say("You're dozing off. Milk comes in at half speed until you do something (move, emote, chat or click).", 2);
             else if (w == Wakefulness.Asleep)
             {
@@ -559,7 +561,10 @@ public sealed class DairyGame
         now += dt;
         if (!F.StockPaidOut && Blocked() == null) PayOutOldStock();
         var wasInDairy = Where.InDairy;
+        var wasStall = Where.AtStall;
         Where = Locate();
+        // Sitting down on or getting up from a stall shows on everyone's stall highlight
+        if (Networked && Where.AtStall != wasStall) Net.Poke();
         // Tell the server right away when you arrive or leave, so jugs, chores and hand milking pay count at once
         if (Networked && Where.InDairy != wasInDairy) Net.Poke();
         WatchActivity();
@@ -966,6 +971,7 @@ public sealed class DairyGame
         var p = StallProblem();
         if (p != null) return Fail(p);
         Begin(SessionKind.Stall, Where.AtStall, null);
+        if (Networked) Net.Poke();   // others' stall highlights start draining with you
         Say($"The {(Fresh(Where.AtStall!) ? "freshly cleaned " : "")}{Catalog.StallTierNames[Where.AtStall!.Tier].ToLowerInvariant()} starts milking you.", 0);
         return true;
     }
@@ -1320,6 +1326,58 @@ public sealed class DairyGame
     }
 
     public bool MilkingSomeone => milkingCow != null;
+
+    /// <summary>
+    /// How a stall looks on the highlight: you (your own state), a member sitting on it (from what their plugin reports),
+    /// or anyone else sitting on it (seen here). Look: 0 idle, 1 sitting, 2 milking, 3 dozing, 4 asleep; fill = milk left (0-1).
+    /// </summary>
+    public (int Look, float Fill) StallState(Stall s)
+    {
+        if (Where.AtStall == s)
+        {
+            if (Wake == Wakefulness.Asleep) return (4, 1);
+            if (Wake == Wakefulness.Dozing) return (3, 1);
+            if (Active is { Kind: SessionKind.Stall } a && a.Stall == s) return (2, a.StartMilk > 0 ? Cow.Milk / a.StartMilk : 0f);
+            return (1, 1);
+        }
+
+        var nowUnix = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        var member = Net.Mine?.Members.FirstOrDefault(m => m.Online && m.Status is { } st && st.Stall == s.Id)?.Status;
+        var at = new Vector3(s.X, s.Y, s.Z);
+        var someoneSits = false;
+        foreach (var o in Plugin.ObjectTable)
+            if (o is IPlayerCharacter pc && o.Address != Plugin.ObjectTable.LocalPlayer?.Address && Emotes.InPositionLoop(pc) && Vector3.Distance(pc.Position, at) <= Catalog.StallSitRange)
+            {
+                someoneSits = true;
+                break;
+            }
+
+        if (member != null && someoneSits)
+        {
+            if (member.Wake == 2) return (4, 1);
+            if (member.Wake == 1) return (3, 1);
+            if (member.DrainAt > 0 && member.DrainRate > 0)
+            {
+                var left = member.DrainLeft - member.DrainRate * (nowUnix - member.DrainAt);
+                if (left > 0.001f) return (2, Math.Clamp(left, 0f, 1f));
+            }
+
+            return (1, 1);
+        }
+
+        return someoneSits ? (1, 1) : (0, 1);
+    }
+
+    /// <summary>A stall milking you right now, for others' stall highlights: milk left of the start (0-1), the share that goes each second, when.</summary>
+    public (float Left, float Rate, long At) StallDrain
+    {
+        get
+        {
+            if (Active is not { Kind: SessionKind.Stall } s || s.Stall == null || s.StartMilk <= 0) return (0, 0, 0);
+            var speed = Catalog.StallSpeed[Math.Clamp(s.Stall.Tier, 1, 4)] * (Owned("letdown") > 0 ? 1.1f : 1f) * (Fresh(s.Stall) ? 1f + Catalog.CleanBonus : 1f);
+            return (Math.Clamp(Cow.Milk / s.StartMilk, 0f, 1f), speed / s.StartMilk, DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+        }
+    }
     public string? MilkingCowName => milkingCow;
 
     private void WatchMyMilking()

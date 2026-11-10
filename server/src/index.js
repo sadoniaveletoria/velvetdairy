@@ -420,6 +420,9 @@ async function heartbeat(env, me, request) {
       emotes: Array.isArray(st.emotes) ? st.emotes.slice(0, 8).map(e => clean(e, 24)).filter(Boolean) : [],
       handBy: clean(st.handBy, 40),
       milking: clean(st.milking, 40),   // a farmer: the cow they pressed Milk on (hand milking only counts then)
+      // A cow on a stall, so everyone's stall highlight shows it: which stall, awake/dozing/asleep, and the milking drain
+      stall: clean(st.stall, 40), wake: Math.max(0, Math.min(2, Math.floor(num(st.wake)))),
+      drainLeft: Math.max(0, Math.min(1, num(st.drainLeft))), drainRate: Math.max(0, Math.min(1, num(st.drainRate))), drainAt: Math.floor(num(st.drainAt)),
       anyEmote: st.anyEmote === undefined ? true : !!st.anyEmote,   // older plugins don't say; any looping emote is their default
     });
     if (status !== mem.status) await env.DB.prepare("UPDATE members SET status = ? WHERE install = ?").bind(status, me.id).run();

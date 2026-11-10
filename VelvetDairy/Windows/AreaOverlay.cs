@@ -26,6 +26,34 @@ public static class AreaOverlay
 
     public enum StallLook { Idle, Sitting, Milking, Dozing, Asleep }
 
+    // The floor under each stall's seat, found once per stall (and again if the stall moves)
+    private static readonly System.Collections.Generic.Dictionary<string, (Vector3 Seat, float Y)> floors = new();
+
+    /// <summary>
+    /// The floor height under a stall: a ray straight down from just under the seat, so the square lies on the floor
+    /// instead of the seat. Falls back to a little below the seat when nothing is found.
+    /// </summary>
+    private static unsafe float FloorUnder(Stall s)
+    {
+        var seat = new Vector3(s.X, s.Y, s.Z);
+        if (floors.TryGetValue(s.Id, out var f) && f.Seat == seat) return f.Y;
+        try
+        {
+            if (FFXIVClientStructs.FFXIV.Common.Component.BGCollision.BGCollisionModule.RaycastMaterialFilter(
+                    seat - new Vector3(0, 0.15f, 0), new Vector3(0, -1, 0), out var hit, 3f))
+            {
+                floors[s.Id] = (seat, hit.Point.Y + 0.02f);
+                return hit.Point.Y + 0.02f;
+            }
+        }
+        catch
+        {
+            // no collision data right now
+        }
+
+        return s.Y - 0.45f;   // not found yet (the area may still be loading): try again next frame
+    }
+
     /// <summary>
     /// A small square flat on the ground under a stall's seat. Green; it pulses gently while you sit on it, drains like a
     /// gauge while it milks you (<paramref name="fill"/> = milk left of what you started with), turns light red while
@@ -34,7 +62,7 @@ public static class AreaOverlay
     public static void DrawStall(Stall s, StallLook look, float fill)
     {
         var dl = ImGui.GetBackgroundDrawList();
-        var c = new Vector3(s.X, s.Y, s.Z);
+        var c = new Vector3(s.X, FloorUnder(s), s.Z);
         const float r = 0.45f;
         var world = new[] { c + new Vector3(-r, 0, -r), c + new Vector3(r, 0, -r), c + new Vector3(r, 0, r), c + new Vector3(-r, 0, r) };
         var pts = new Vector2[4];
