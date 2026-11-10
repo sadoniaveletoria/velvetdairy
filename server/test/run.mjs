@@ -287,6 +287,32 @@ await test("private place: members count as in the dairy there, nobody else sees
   await beat(bob, { houseId: ELSEWHERE, awake: true });
 });
 
+await test("dairy shelf: farmers stock it, members buy, baker and fund are paid, owner sets the price", async () => {
+  await beat(bob, { houseId: HOUSE, awake: true });
+  await beat(carl, { houseId: HOUSE, awake: true });
+  assert.equal((await call(carl, "POST", "/v1/shelf/stock", { item: "cookies", qty: 3 })).status, 403, "bulls don't bake");
+  assert.equal((await call(bob, "POST", "/v1/shelf/stock", { item: "rocks", qty: 3 })).status, 400, "only shelf items");
+  assert.equal((await call(bob, "POST", "/v1/shelf/stock", { item: "cookies", qty: 3 })).status, 200);
+  let v = (await call(carl, "GET", "/v1/shelf")).data.items.find(i => i.item === "cookies");
+  assert.equal(v.qty, 3);
+  assert.equal(v.price, 40, "default price");
+  assert.equal((await call(bob, "PUT", "/v1/shelf/price", { item: "cookies", price: 50 })).status, 403, "only the owner prices");
+  assert.equal((await call(alice, "PUT", "/v1/shelf/price", { item: "cookies", price: 999 })).status, 400, "within range");
+  assert.equal((await call(alice, "PUT", "/v1/shelf/price", { item: "cookies", price: 50 })).status, 200);
+  const before = (await call(alice, "GET", "/v1/dairy/mine")).data.progress.fund;
+  await call(bob, "POST", "/v1/inbox/claim");
+  const r = await call(carl, "POST", "/v1/shelf/buy", { item: "cookies" });
+  assert.equal(r.status, 200);
+  assert.equal(r.data.price, 50);
+  assert.equal(r.data.bakerCut, 40);
+  assert.equal((await call(alice, "GET", "/v1/dairy/mine")).data.progress.fund, before + 10, "fund gets 20%");
+  assert.ok((await call(bob, "POST", "/v1/inbox/claim")).data.items.some(i => i.kind === "payout" && i.coins === 40), "the baker is paid");
+  assert.equal((await call(carl, "GET", "/v1/shelf")).data.items.find(i => i.item === "cookies").qty, 2);
+  await beat(carl, { houseId: ELSEWHERE, awake: true });
+  assert.equal((await call(carl, "POST", "/v1/shelf/buy", { item: "cookies" })).status, 400, "only in the dairy");
+  await beat(bob, { houseId: ELSEWHERE, awake: true });
+});
+
 await test("farmer removes a bull; can't remove the owner", async () => {
   assert.equal((await call(bob, "DELETE", `/v1/members/${alice.id}`)).status, 400);
   assert.equal((await call(bob, "DELETE", `/v1/members/${carl.id}`)).status, 200);

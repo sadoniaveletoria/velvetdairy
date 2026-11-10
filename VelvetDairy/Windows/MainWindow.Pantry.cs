@@ -26,6 +26,8 @@ public sealed partial class MainWindow
             Gap(6);
         }
 
+        DrawShelf(width);
+
         var shown = 0;
         var hiddenCount = 0;
         foreach (var item in Catalog.Feed)
@@ -43,7 +45,7 @@ public sealed partial class MainWindow
             var back = DairyGame.SellBackPrice(item);
             var lines = new[]
             {
-                new Line($"You have {have}" + (have > 0 ? $" · sells back for {back} each" : ""), have > 0 ? Theme.Ink : Theme.InkSoft),
+                new Line($"You have {have}" + (have > 0 && !item.Baked ? $" · sells back for {back} each" : item.Baked ? " · from the dairy shelf" : ""), have > 0 ? Theme.Ink : Theme.InkSoft),
                 new Line(Effects(item), Theme.SageDeep),
                 new Line(item.Quality > 0 ? waiting ? $"Quality treat · next one in {DairyGame.Wait(wait)}" : "Quality treat · ready now" : "",
                     waiting ? Theme.HoneyDeep : Theme.InkSoft),
@@ -54,8 +56,8 @@ public sealed partial class MainWindow
                 new($"##eat{item.Id}", "Eat", "honey", problem == null && have > 0 && !waiting,
                     problem ?? (have <= 0 ? "You're out. Buy more in the Shop." : waiting ? $"Quality treats share a {Grades.QualityTreatHours:0}-hour cooldown." : item.Desc)),
             };
-            if (have > 0) buttons.Add(new Btn($"##psell1{item.Id}", $"Sell 1 - {back}", "cream", true, $"Sell one back for {back} coins (half price)."));
-            if (have > 1) buttons.Add(new Btn($"##psellall{item.Id}", $"Sell all - {back * have}", "cream", true, $"Sell all {have} back for {back * have} coins."));
+            if (have > 0 && !item.Baked) buttons.Add(new Btn($"##psell1{item.Id}", $"Sell 1 - {back}", "cream", true, $"Sell one back for {back} coins (half price)."));
+            if (have > 1 && !item.Baked) buttons.Add(new Btn($"##psellall{item.Id}", $"Sell all - {back * have}", "cream", true, $"Sell all {have} back for {back * have} coins."));
             buttons.Add(new Btn($"##phide{item.Id}", hidden ? "Show" : "Hide", "cream", true,
                 hidden ? "Put it back in your lists." : "Hide it from your Shop, Pantry and Care lists. Find it again under Show hidden."));
 
@@ -97,6 +99,41 @@ public sealed partial class MainWindow
 
         Gap(4);
         if (ImGui.SmallButton("Go to the Shop##pantryshop")) tab = TabShop;
+    }
+
+    /// <summary>The dairy shelf: treats the farmers baked, for any member to buy (the owner sets the price).</summary>
+    private void DrawShelf(float width)
+    {
+        if (!G.Networked || F.NetMember == null) return;
+        G.Net.RefreshShelf();
+        var items = G.Net.Shelf;
+        if (items.Count == 0) return;
+        SubHeading("Dairy shelf", width);
+        foreach (var s in items)
+        {
+            var feed = Catalog.FeedById(s.Item);
+            var why = G.BuyShelfProblem(s);
+            var lines = new List<Line>
+            {
+                new(s.Qty > 0 ? $"{s.Qty} on the shelf · {s.Price} coins each" : $"Sold out · {s.Price} coins each", s.Qty > 0 ? Theme.Ink : Theme.InkSoft),
+                new(feed != null ? Effects(feed) : "", Theme.SageDeep),
+            };
+            var buttons = new List<Btn> { new($"##shelfbuy{s.Item}", $"Buy - {s.Price}", "honey", why == null, why ?? "Baked by your dairy's farmers. They get 80%, the fund 20%.") };
+            if (F.NetMember.IsOwner)
+            {
+                buttons.Add(new Btn($"##shelfless{s.Item}", "-5", "cream", s.Price - 5 >= s.Min, $"Lower the price (at least {s.Min})"));
+                buttons.Add(new Btn($"##shelfmore{s.Item}", "+5", "cream", s.Price + 5 <= s.Max, $"Raise the price (at most {s.Max})"));
+            }
+
+            var clicked = ListRow(Ico(feed?.Icon ?? "biscuit"), s.Name, Theme.Ink, lines.ToArray(), buttons, width);
+            if (clicked < 0) continue;
+            var id = buttons[clicked].Id;
+            if (id.StartsWith("##shelfbuy")) G.BuyFromShelf(s);
+            else if (id.StartsWith("##shelfless")) G.SetShelfPrice(s, s.Price - 5);
+            else if (id.StartsWith("##shelfmore")) G.SetShelfPrice(s, s.Price + 5);
+        }
+
+        Gap(6);
     }
 
     private void DrawPantryInfo(float width)

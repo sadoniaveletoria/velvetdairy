@@ -1130,7 +1130,7 @@ public sealed partial class MainWindow : Window
         var hiddenCount = 0;
         foreach (var item in Catalog.Feed)
         {
-            if ((item.Quality > 0) != treats) continue;
+            if (item.Baked || (item.Quality > 0) != treats) continue;   // baked treats come off the dairy shelf
             var hidden = F.HiddenFeed!.Contains(item.Id);
             if (hidden) hiddenCount++;
             if (hidden && !showHiddenFeed) continue;

@@ -44,7 +44,11 @@ const FARMER_CUT = 0.25;            // a farmer gets this share of what the cow 
 const FARMER_DAILY_COINS = 4500;
 const COW_DAILY_HAND_OZ = 800;
 const MAX_TAKE_OZ = 96;
-const IN_PERSON_BONUS = 0.1;      // delivering a buy order in person at the buyer's public area pays 10% more
+const IN_PERSON_BONUS = 0.1;
+// Baked treats members buy off their dairy's shelf: item -> default price and the owner's allowed range (coins each)
+const SHELF_ITEMS = { cookies: { name: "Butter cookies", price: 40, min: 10, max: 150 } };
+const SHELF_BAKER_SHARE = 0.8;      // the rest goes to the dairy fund
+const SHELF_MAX_STOCK = 200;        // per item per dairy      // delivering a buy order in person at the buyer's public area pays 10% more
 const CLEAN_SECONDS = 3600;         // a cleaned stall stays fresh this long
 const CLEAN_AGAIN_SECONDS = 1800;   // and can be cleaned again once this much (or less) is left
 const GROOM_COOLDOWN = 900;         // one groom per farmer per cow every 15 minutes
@@ -236,6 +240,10 @@ async function route(request, env) {
     ["POST", /^\/v1\/stalls\/([0-9a-f]{24})\/tier$/, m => upgradeStall(env, me, m[1], request)],
     ["POST", /^\/v1\/stalls\/([0-9a-f]{24})\/clean$/, m => cleanStall(env, me, m[1])],
     ["POST", /^\/v1\/groom$/, () => groom(env, me, request)],
+    ["GET", /^\/v1\/shelf$/, () => shelfView(env, me)],
+    ["POST", /^\/v1\/shelf\/stock$/, () => shelfStock(env, me, request)],
+    ["POST", /^\/v1\/shelf\/buy$/, () => shelfBuy(env, me, request)],
+    ["PUT", /^\/v1\/shelf\/price$/, () => shelfPrice(env, me, request)],
     ["PUT", /^\/v1\/dairy\/private$/, () => putPrivate(env, me, request)],
     ["DELETE", /^\/v1\/dairy\/private$/, () => deletePrivate(env, me)],
     ["GET", /^\/v1\/orders\/board$/, () => orderBoard(env, me)],
@@ -726,6 +734,8 @@ async function deleteDairy(env, me) {
     env.DB.prepare("DELETE FROM contracts WHERE dairy_id = ?").bind(d.id),
     env.DB.prepare("DELETE FROM dairy_area WHERE dairy_id = ?").bind(d.id),
     env.DB.prepare("DELETE FROM dairy_private WHERE dairy_id = ?").bind(d.id),
+    env.DB.prepare("DELETE FROM shelf WHERE dairy_id = ?").bind(d.id),
+    env.DB.prepare("DELETE FROM shelf_price WHERE dairy_id = ?").bind(d.id),
     env.DB.prepare("DELETE FROM contract_contrib WHERE dairy_id = ?").bind(d.id),
     env.DB.prepare("UPDATE invites SET status = 'cancelled' WHERE dairy_id = ? AND status = 'pending'").bind(d.id),
     env.DB.prepare("DELETE FROM dairies WHERE id = ?").bind(d.id),
@@ -969,6 +979,87 @@ async function groom(env, me, request) {
     inboxStmt(env, cow.install, "groom", 0, 0, 0, `${mem.name || "A farmer"} groomed you. Happy +30 min.`),
   ]);
   return { ok: true, next: t + GROOM_COOLDOWN };
+}
+
+// ---------------------------------------------------------------- the dairy shelf
+
+async function shelfPriceOf(env, dairyId, item) {
+  const row = await env.DB.prepare("SELECT price FROM shelf_price WHERE dairy_id = ? AND item = ?").bind(dairyId, item).first();
+  return row ? row.price : SHELF_ITEMS[item].price;
+}
+
+function shelfItem(b) {
+  const item = String(b.item || "");
+  if (!SHELF_ITEMS[item]) fail(400, "That can't go on the shelf.");
+  return item;
+}
+
+/** What's on your dairy's shelf: each item, how many, and its price. */
+async function shelfView(env, me) {
+  const mem = await membership(env, me.id);
+  if (!mem) return { items: [] };
+  const rows = (await env.DB.prepare("SELECT item, SUM(qty) AS qty FROM shelf WHERE dairy_id = ? GROUP BY item").bind(mem.dairy_id).all()).results;
+  const items = [];
+  for (const [item, def] of Object.entries(SHELF_ITEMS)) {
+    const r = rows.find(x => x.item === item);
+    items.push({ item, name: def.name, qty: r ? r.qty : 0, price: await shelfPriceOf(env, mem.dairy_id, item), min: def.min, max: def.max });
+  }
+  return { items };
+}
+
+/** A farmer (or the owner) puts what they baked on the shelf. */
+async function shelfStock(env, me, request) {
+  const b = await body(request);
+  const item = shelfItem(b);
+  const qty = int(b.qty, 1, 50, "qty");
+  const mem = await membership(env, me.id);
+  if (!mem || !(mem.is_owner || hasRole(mem, "farmer"))) fail(403, "Only farmers and the owner stock the shelf.");
+  const have = await env.DB.prepare("SELECT COALESCE(SUM(qty), 0) AS n FROM shelf WHERE dairy_id = ? AND item = ?").bind(mem.dairy_id, item).first();
+  if (have.n + qty > SHELF_MAX_STOCK) fail(400, `The shelf holds up to ${SHELF_MAX_STOCK} ${SHELF_ITEMS[item].name.toLowerCase()}.`);
+  await env.DB.prepare("INSERT INTO shelf (dairy_id, item, baker, baker_name, qty, created) VALUES (?, ?, ?, ?, ?, ?)")
+    .bind(mem.dairy_id, item, me.id, mem.name || "", qty, now()).run();
+  return { ok: true, qty: have.n + qty };
+}
+
+/** A member buys one off the shelf: the baker gets their share (inbox), the fund gets the rest. Coins come from the buyer's plugin. */
+async function shelfBuy(env, me, request) {
+  const b = await body(request);
+  const item = shelfItem(b);
+  const mem = await membership(env, me.id);
+  if (!mem) fail(400, "Join a dairy first.");
+  if (!inOwnDairy(me, mem)) fail(400, "Go to your dairy to buy from its shelf.");
+  const price = await shelfPriceOf(env, mem.dairy_id, item);
+  // Oldest batch first; only one buyer can take each one
+  for (let tries = 0; tries < 3; tries++) {
+    const row = await env.DB.prepare("SELECT * FROM shelf WHERE dairy_id = ? AND item = ? AND qty > 0 ORDER BY created, id LIMIT 1")
+      .bind(mem.dairy_id, item).first();
+    if (!row) fail(409, `The shelf is out of ${SHELF_ITEMS[item].name.toLowerCase()}.`);
+    const took = await env.DB.prepare("UPDATE shelf SET qty = qty - 1 WHERE id = ? AND qty > 0 RETURNING qty").bind(row.id).first();
+    if (!took) continue;
+    const bakerCut = row.baker === me.id ? 0 : Math.floor(price * SHELF_BAKER_SHARE);
+    const fundCut = price - bakerCut;
+    const stmts = [
+      env.DB.prepare("DELETE FROM shelf WHERE id = ? AND qty <= 0").bind(row.id),
+      env.DB.prepare(`INSERT INTO dairy_progress (dairy_id, fund, week) VALUES (?, ?, ?)
+        ON CONFLICT(dairy_id) DO UPDATE SET fund = fund + excluded.fund`).bind(mem.dairy_id, fundCut, weekKey()),
+    ];
+    if (bakerCut > 0) stmts.push(inboxStmt(env, row.baker, "payout", bakerCut, 0, 0, `${mem.name || "Someone"} bought your ${SHELF_ITEMS[item].name.toLowerCase()}: +${bakerCut} coins.`));
+    await env.DB.batch(stmts);
+    return { ok: true, price, baker: row.baker_name, bakerCut, fundCut };
+  }
+  fail(409, "Someone else just bought that. Try again.");
+}
+
+/** The owner sets a shelf item's price, within its range. */
+async function shelfPrice(env, me, request) {
+  const b = await body(request);
+  const item = shelfItem(b);
+  const d = await ownedDairy(env, me);
+  const def = SHELF_ITEMS[item];
+  const price = int(b.price, def.min, def.max, "price");
+  await env.DB.prepare(`INSERT INTO shelf_price (dairy_id, item, price) VALUES (?, ?, ?)
+    ON CONFLICT(dairy_id, item) DO UPDATE SET price = excluded.price`).bind(d.id, item, price).run();
+  return { ok: true, price };
 }
 
 // ---------------------------------------------------------------- pay, tank jugs

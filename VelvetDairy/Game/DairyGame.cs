@@ -2145,13 +2145,62 @@ public sealed class DairyGame
         if (!Where.InDairy) return "Go to your dairy to use its kitchen.";
         if (IsFarmer && FarmerLevel < r.FarmerLevel) return $"Unlocks at farmer level {r.FarmerLevel}.";
         if (count < 1) return "Pick how many to make.";
+        if (r.ToShelf && (!Networked || F.NetMember == null)) return "Baking for the shelf needs your dairy on the network.";
+        if (r.UsesCount > 0 && Count(r.Uses) < r.UsesCount * count)
+            return $"You need {r.UsesCount * count} {Catalog.MadeName(r.Uses).ToLowerInvariant()} (you have {Count(r.Uses)}).";
         if (OzAtOrAbove(r.MinGrade) < r.MilkOz * count)
             return $"You need {r.MilkOz * count} oz of milk{(r.MinGrade > 0 ? $" (Grade {Grades.Name(r.MinGrade)} or better)" : "")} in your jugs. Fill them from the dairy tank on the Creamery tab.";
         return null;
     }
 
+    // ----- The dairy shelf: members buy what the farmers baked -----
+
+    public string? BuyShelfProblem(ShelfItem s)
+    {
+        var b = Blocked();
+        if (b != null) return b;
+        if (s.Qty <= 0) return "Sold out. Ask a farmer to bake more.";
+        if (!Where.InDairy) return "Go to your dairy to buy from its shelf.";
+        if (F.Coins < s.Price) return $"You need {s.Price} coins.";
+        return null;
+    }
+
+    private bool buyingShelf;
+
+    public void BuyFromShelf(ShelfItem s)
+    {
+        var p = BuyShelfProblem(s);
+        if (p != null)
+        {
+            Fail(p);
+            return;
+        }
+
+        if (buyingShelf) return;
+        buyingShelf = true;
+        Net.BuyShelf(s.Item, r =>
+        {
+            buyingShelf = false;
+            F.Coins -= r.Price;
+            F.Pantry[s.Item] = Count(s.Item) + 1;
+            Say($"Bought {Catalog.MadeName(s.Item).ToLowerInvariant()} for {r.Price} coins{(r.Baker.Length > 0 ? $" (baked by {r.Baker})" : "")}.", 0);
+            plugin.SaveConfig();
+        }, e =>
+        {
+            buyingShelf = false;
+            Fail(e);
+        });
+    }
+
+    public void SetShelfPrice(ShelfItem s, int price)
+    {
+        if (F.NetMember?.IsOwner != true) return;
+        Net.SetShelfPrice(s.Item, Math.Clamp(price, s.Min, s.Max), () => Say($"{s.Name} now cost {Math.Clamp(price, s.Min, s.Max)} coins on the shelf.", 0), e => Fail(e));
+    }
+
     /// <summary>How many of this you could make with the milk in your jugs.</summary>
-    public int MaxMake(Catalog.Recipe r) => (int)(OzAtOrAbove(r.MinGrade) / r.MilkOz);
+    public int MaxMake(Catalog.Recipe r) =>
+        Math.Min((int)(OzAtOrAbove(r.MinGrade) / r.MilkOz), r.UsesCount > 0 ? Count(r.Uses) / r.UsesCount : int.MaxValue);
 
     public bool StartBake(Catalog.Recipe r, int count)
     {
@@ -2200,14 +2249,16 @@ public sealed class DairyGame
         j.Elapsed += dt;
         if (j.Elapsed < Catalog.BatchSeconds(r, j.Done)) return;
 
-        // One finished: the milk comes out of your jugs now (lowest grade that qualifies first)
-        if (OzAtOrAbove(r.MinGrade) < r.MilkOz)
+        // One finished: the milk comes out of your jugs now (lowest grade that qualifies first), and any ingredient
+        if (OzAtOrAbove(r.MinGrade) < r.MilkOz || (r.UsesCount > 0 && Count(r.Uses) < r.UsesCount))
         {
             F.Bake = null;
-            Fail($"Out of milk: you made {j.Done} of {j.Count}.");
+            Fail($"Ran out of {(OzAtOrAbove(r.MinGrade) < r.MilkOz ? "milk" : Catalog.MadeName(r.Uses).ToLowerInvariant())}: you made {j.Done} of {j.Count}.");
             plugin.SaveConfig();
             return;
         }
+
+        if (r.UsesCount > 0) F.Pantry[r.Uses] = Count(r.Uses) - r.UsesCount;
 
         var left = (float)r.MilkOz;
         for (var g = r.MinGrade; g < Grades.Count && left > 0; g++)
@@ -2218,15 +2269,27 @@ public sealed class DairyGame
         }
 
         if (Networked) Net.UseCarried(r.MilkOz);
-        F.Pantry[r.Makes] = Count(r.Makes) + r.Amount;
+        if (r.ToShelf)
+        {
+            // Onto the dairy shelf; if the server says no, they come to your pantry instead so nothing's lost
+            var made = r.Makes;
+            var amount = r.Amount;
+            Net.StockShelf(made, amount, () => { }, e =>
+            {
+                F.Pantry[made] = Count(made) + amount;
+                Fail($"Couldn't put them on the shelf ({e}), so they're in your pantry.");
+                plugin.SaveConfig();
+            });
+        }
+        else F.Pantry[r.Makes] = Count(r.Makes) + r.Amount;
         AddFarmerXp(r.Xp);
         j.Done++;
         j.Elapsed = 0;
-        var name = Catalog.IngredientById(r.Makes)?.Name.ToLowerInvariant() ?? r.Makes;
+        var name = Catalog.MadeName(r.Makes).ToLowerInvariant();
         if (j.Done >= j.Count)
         {
             F.Bake = null;
-            Say($"Done: {j.Count * r.Amount} {name} in your pantry. +{j.Count * r.Xp} farmer xp", 1);
+            Say($"Done: {j.Count * r.Amount} {name} {(r.ToShelf ? "on the dairy shelf" : "in your pantry")}. +{j.Count * r.Xp} farmer xp", 1);
         }
 
         plugin.SaveConfig();

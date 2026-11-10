@@ -246,3 +246,24 @@ CREATE TABLE IF NOT EXISTS dairy_private (
   whole     INTEGER NOT NULL DEFAULT 0      -- 1 = the whole house or apartment counts (no box)
 );
 CREATE INDEX IF NOT EXISTS private_where ON dairy_private(territory, world, house);
+
+-- The dairy shelf: treats farmers baked, waiting for members to buy them. One row per baked batch (bought oldest first),
+-- so each baker gets paid for their own.
+CREATE TABLE IF NOT EXISTS shelf (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  dairy_id   TEXT NOT NULL,
+  item       TEXT NOT NULL,
+  baker      TEXT NOT NULL,
+  baker_name TEXT NOT NULL DEFAULT '',
+  qty        INTEGER NOT NULL,
+  created    INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS shelf_dairy ON shelf(dairy_id, item, created);
+
+-- The owner's price for each shelf item (coins each); missing = the default.
+CREATE TABLE IF NOT EXISTS shelf_price (
+  dairy_id TEXT NOT NULL,
+  item     TEXT NOT NULL,
+  price    INTEGER NOT NULL,
+  PRIMARY KEY (dairy_id, item)
+);

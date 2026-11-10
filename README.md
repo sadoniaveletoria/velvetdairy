@@ -41,6 +41,7 @@ Only the owner can take a role away from someone.
 - **Stalls** are seats (a chair, bench or bed) that milk whoever sits on them. Put them in either place. The first is free; each one after costs more from the dairy fund (250, 1,000, 2,250, 4,000…). Upgrade them to Wooden, Padded, Velvet and Gilded for faster milking.
 - **Stall markers** (Settings, on by default): a small green dot above each stall, only on your screen, so you can see which seats milk you.
 - **The dairy fund** is shared money, filled by members' donations and the weekly contract. It pays for stalls and stall upgrades.
+- **The dairy shelf** (Pantry tab) sells treats your farmers baked, like Butter cookies (Happy and a milk boost). Any member can buy them inside the dairy; the baker gets 80% and the fund 20%. The owner sets the price.
 - **The milk tank** holds the dairy's milk. Every milking adds to it, and farmers fill their jugs from it.
 - **Dairy levels** come from members playing together and unlock better stall tiers and higher pay. The **Dairies** tab ranks every dairy, with the highest level at the top.
 
@@ -78,7 +79,7 @@ Only the owner can take a role away from someone.
 - **Hand milking:** on **Roles → Farmer**, stand near a cow, press **Target**, then **Milk**. Your character does the milking emote (/beesknees by default, or one you choose) until the cow is empty, then stops by itself. You earn 25% of what the cow is paid, on top of their pay.
 - **Your own animation:** if you use Penumbra, pick an animation mod and its options under **Milking animation**. It switches on only while you milk.
 - **Chores:** **Groom** a cow (they get 30 minutes of Happy) and **Clean** an empty stall (cows milked there get a bonus for an hour). Both earn farmer XP.
-- **Baked goods:** bake with milk from your jugs on **Roles → Farmer → Baked goods**. For now that's **butter** (16 oz of milk → 1 butter, 30 seconds of churning). Pick how many with − and +; each one in a batch takes a little longer than the last, so 5 take about 4 minutes and 10 about 10½. A progress bar shows how it's going; it pauses if you leave the dairy, and **Stop** keeps what's finished. Butter goes in your Pantry and is only used to make other things; more recipes are coming.
+- **Baked goods:** bake with milk from your jugs on **Roles → Farmer → Baked goods**. For now that's **butter** (16 oz of milk → 1 butter, 30 seconds of churning). Pick how many with − and +; each one in a batch takes a little longer than the last, so 5 take about 4 minutes and 10 about 10½. A progress bar shows how it's going; it pauses if you leave the dairy, and **Stop** keeps what's finished. Butter goes in your Pantry and is only used to make other things. **Butter cookies** (1 butter + 8 oz of milk → 3 cookies) go on the **dairy shelf**.
 - **Jugs:** fill them from the dairy tank on the **Creamery** tab. Bigger farmer tanks unlock as your farmer level grows.
 - **Deliveries:**
   - **Customer orders**, with a new one every 20 minutes.

@@ -283,6 +283,27 @@ public sealed class StallInfo
     public long CleanUntil { get; set; }   // unix seconds; a farmer cleaned it and it's fresh until then (0 = not fresh)
 }
 
+public sealed class ShelfItem
+{
+    public string Item { get; set; } = "";
+    public string Name { get; set; } = "";
+    public int Qty { get; set; }
+    public int Price { get; set; }
+    public int Min { get; set; }
+    public int Max { get; set; }
+}
+
+public sealed class ShelfReply
+{
+    public List<ShelfItem> Items { get; set; } = new();
+}
+
+public sealed class ShelfBuyReply
+{
+    public int Price { get; set; }
+    public string Baker { get; set; } = "";
+}
+
 public sealed class CleanReply
 {
     public long Until { get; set; }

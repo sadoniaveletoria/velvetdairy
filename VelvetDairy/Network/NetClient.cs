@@ -511,6 +511,38 @@ public sealed class NetClient : IDisposable
             ok(r.Until);
         }, failed);
 
+    // ----- The dairy shelf -----
+    public List<ShelfItem> Shelf { get; private set; } = new();
+    private DateTime nextShelf = DateTime.MinValue;
+
+    public void RefreshShelf(bool now = false)
+    {
+        if (!now && DateTime.UtcNow < nextShelf) return;
+        nextShelf = DateTime.UtcNow.AddSeconds(30);
+        Call<ShelfReply>("GET", "/v1/shelf", null, r => Shelf = r.Items);
+    }
+
+    public void StockShelf(string item, int qty, Action ok, Action<string> failed) =>
+        Call<object>("POST", "/v1/shelf/stock", new { item, qty }, _ =>
+        {
+            RefreshShelf(true);
+            ok();
+        }, failed);
+
+    public void BuyShelf(string item, Action<ShelfBuyReply> ok, Action<string> failed) =>
+        Call<ShelfBuyReply>("POST", "/v1/shelf/buy", new { item }, r =>
+        {
+            RefreshShelf(true);
+            ok(r);
+        }, failed);
+
+    public void SetShelfPrice(string item, int price, Action ok, Action<string> failed) =>
+        Call<object>("PUT", "/v1/shelf/price", new { item, price }, _ =>
+        {
+            RefreshShelf(true);
+            ok();
+        }, failed);
+
     public void Groom(string cowId, Action ok, Action<string> failed) =>
         Call<object>("POST", "/v1/groom", new { cow = cowId }, _ => ok(), failed);
 
