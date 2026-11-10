@@ -2139,7 +2139,7 @@ public sealed class DairyGame
     {
         var b = Blocked();
         if (b != null) return b;
-        if (!CanCarry) return "Only farmers make things.";
+        if (!CanCarry) return "Only farmers bake.";
         if (!Where.InDairy) return "Go to your dairy to use its kitchen.";
         if (IsFarmer && FarmerLevel < r.FarmerLevel) return $"Unlocks at farmer level {r.FarmerLevel}.";
         if (OzAtOrAbove(r.MinGrade) < r.MilkOz)

@@ -147,12 +147,12 @@ public sealed partial class MainWindow
         Ui.Wrapped($"Grooming cows ({Catalog.GroomXp} each, every 15 min per cow), cleaning stalls ({Catalog.CleanXp} each), hand milking pay, filling jugs, customer orders, deliveries and contract shipments.", Theme.InkSoft, width);
     }
 
-    /// <summary>Farmers turn milk from their jugs into ingredients (butter for now).</summary>
+    /// <summary>Baked goods: farmers turn milk from their jugs into ingredients (butter for now).</summary>
     private void DrawMake(float width)
     {
         if (!G.CanCarry) return;
-        SubHeading("Make", width);
-        Ui.Wrapped($"Turn milk from your jugs into ingredients for your pantry. You're carrying {G.Carried:0.#} oz.", Theme.InkSoft, width);
+        SubHeading("Baked goods", width);
+        Ui.Wrapped($"Bake with milk from your jugs: ingredients for your pantry now, treats to come. You're carrying {G.Carried:0.#} oz.", Theme.InkSoft, width);
         foreach (var rec in Catalog.Recipes)
         {
             var why = G.MakeProblem(rec);
@@ -163,7 +163,7 @@ public sealed partial class MainWindow
                     new Line($"{rec.MilkOz} oz milk{(rec.MinGrade > 0 ? $" (Grade {Grades.Name(rec.MinGrade)}+)" : "")} → {rec.Amount} {made?.Name.ToLowerInvariant() ?? rec.Makes}", Theme.InkSoft),
                     new Line($"You have {G.Count(rec.Makes)} · +{rec.Xp} farmer xp each", Theme.SageDeep),
                 },
-                new[] { new Btn($"##make{rec.Id}", "Make", "honey", why == null, why ?? rec.Desc) }, width,
+                new[] { new Btn($"##make{rec.Id}", "Bake", "honey", why == null, why ?? rec.Desc) }, width,
                 Math.Min(1f, G.OzAtOrAbove(rec.MinGrade) / rec.MilkOz), why == null ? Theme.SageDeep : Theme.BlueDeep);
             if (clicked == 0) G.Make(rec);
         }
