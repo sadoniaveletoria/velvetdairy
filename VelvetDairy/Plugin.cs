@@ -222,6 +222,8 @@ public sealed class Plugin : IDalamudPlugin
     {
         if (Game.Draft is { } d && ClientState.TerritoryType == d.Territory) Windows.AreaOverlay.Draw(d);
         if (Config.Farm.ShowStallMarkers && Game.Where.InDairy && Game.Blocked() == null)
+            // While you're in the dairy with markers on, fetch everyone's stall states every 10 seconds
+            if (Game.Networked) Game.Net.MineWithin(10);
             foreach (var s in Game.StallsHere())
             {
                 // Your own stall from your own state; others' from what their plugin reports (everyone sees the same thing)

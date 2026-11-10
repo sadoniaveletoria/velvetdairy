@@ -324,6 +324,12 @@ public sealed class NetClient : IDisposable
         }, _ => claiming = false);
     }
 
+    /// <summary>Makes the next dairy refresh happen within this many seconds (stall markers keep others' states fresh this way).</summary>
+    public void MineWithin(double seconds)
+    {
+        if (nextMine > Now + seconds) nextMine = Now + seconds;
+    }
+
     public void RefreshMine()
     {
         nextMine = Now + 60;

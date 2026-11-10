@@ -1602,6 +1602,8 @@ public sealed partial class MainWindow : Window
             ImGui.TextColored(Theme.InkSoft, !G.Where.InDairy ? "Markers show once you're in your dairy."
                 : here > 0 ? $"Marking {here} stall{(here == 1 ? "" : "s")} here{(G.InPrivatePlace ? " (private place)" : "")}."
                 : G.Stalls.Count == 0 ? "Your dairy has no stalls yet." : $"None of your {G.Stalls.Count} stall(s) are in this part of the dairy.");
+            if (G.Where.InDairy)
+                foreach (var st in G.StallsHere()) ImGui.TextColored(Theme.InkSoft, G.StallStateText(st));
             ImGui.Unindent();
         }
 

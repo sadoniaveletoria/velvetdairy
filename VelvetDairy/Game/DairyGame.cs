@@ -1342,17 +1342,12 @@ public sealed class DairyGame
         }
 
         var nowUnix = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        // A member's plugin says they're on this stall: trust it (it's sent the moment they sit, doze or start milking)
         var member = Net.Mine?.Members.FirstOrDefault(m => m.Online && m.Status is { } st && st.Stall == s.Id)?.Status;
-        var at = new Vector3(s.X, s.Y, s.Z);
-        var someoneSits = false;
-        foreach (var o in Plugin.ObjectTable)
-            if (o is IPlayerCharacter pc && o.Address != Plugin.ObjectTable.LocalPlayer?.Address && Emotes.InPositionLoop(pc) && Vector3.Distance(pc.Position, at) <= Catalog.StallSitRange)
-            {
-                someoneSits = true;
-                break;
-            }
+        // Anyone seen sitting on it here (for people whose plugin hasn't said, or isn't in the dairy)
+        var someoneSits = SomeoneSitsOn(s);
 
-        if (member != null && someoneSits)
+        if (member != null)
         {
             if (member.Wake == 2) return (4, 1);
             if (member.Wake == 1) return (3, 1);
@@ -1366,6 +1361,35 @@ public sealed class DairyGame
         }
 
         return someoneSits ? (1, 1) : (0, 1);
+    }
+
+    /// <summary>Is another player sitting on this seat? Close on the ground, and in the sitting-on-furniture pose (or any loop).</summary>
+    private bool SomeoneSitsOn(Stall s)
+    {
+        var me = Plugin.ObjectTable.LocalPlayer?.Address ?? nint.Zero;
+        foreach (var o in Plugin.ObjectTable)
+        {
+            if (o is not IPlayerCharacter pc || o.Address == me) continue;
+            var flat = new Vector2(pc.Position.X - s.X, pc.Position.Z - s.Z).Length();
+            if (flat <= 1.2f && MathF.Abs(pc.Position.Y - s.Y) <= 1.5f && (Emotes.InPositionLoop(pc) || Emotes.Looping(pc) != 0)) return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>A short line per stall for Settings: who's on it and what the marker shows (to check it works).</summary>
+    public string StallStateText(Stall s)
+    {
+        var (look, fill) = StallState(s);
+        var who = Where.AtStall == s ? "you"
+            : Net.Mine?.Members.FirstOrDefault(m => m.Online && m.Status is { } st && st.Stall == s.Id)?.Name
+              ?? (SomeoneSitsOn(s) ? "someone" : "");
+        var what = look switch
+        {
+            1 => "sitting", 2 => $"milking ({fill * 100:0}% left)", 3 => "dozing", 4 => "asleep",
+            _ => "empty",
+        };
+        return who.Length > 0 ? $"{s.Name}: {who}, {what}" : $"{s.Name}: {what}";
     }
 
     /// <summary>A stall milking you right now, for others' stall highlights: milk left of the start (0-1), the share that goes each second, when.</summary>
