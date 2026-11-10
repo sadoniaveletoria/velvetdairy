@@ -592,11 +592,10 @@ public sealed partial class MainWindow : Window
     private void DrawFarmBarn(Vector2 min, Vector2 max)
     {
         var mid = (min.X + max.X) / 2;
-        Panel("##farmherd", min, new Vector2(mid - 7, max.Y), "Your herd", w =>
+        Panel("##farmherd", min, new Vector2(mid - 7, max.Y), "Farm work", w =>
         {
-            DrawHandMilkCows(w);
+            DrawFarmerButtons(w);
             DrawCleanStalls(w);
-            DrawMake(w);
         }, true);
         Panel("##farmwork", new Vector2(mid + 7, min.Y), max, G.IsFarmer ? $"Farmer level {G.FarmerLevel}" : "Your work", w =>
         {
@@ -943,14 +942,13 @@ public sealed partial class MainWindow : Window
 
     private void DrawCreamery(Vector2 min, Vector2 max)
     {
-        var labels = G.CanCarry ? new[] { "Your pay", "Jugs", "Customer orders", "Deliveries" } : new[] { "Your pay" };
+        var labels = G.CanCarry ? new[] { "Your pay", "Customer orders", "Deliveries" } : new[] { "Your pay" };
         var top = SubTabs("creamery", labels, min, max.X - min.X);
         var (cmin, cmax) = Column(top, max, 760);
         switch (G.CanCarry ? Sub("creamery") : 0)
         {
             case 0: Panel("##pay", cmin, cmax, "Your pay", DrawPay); return;
-            case 1: Panel("##jugs", cmin, cmax, "Jugs from the dairy tank", DrawJugs, true); return;
-            case 2: Panel("##orders", cmin, cmax, "Creamery orders", DrawOrders, true); return;
+            case 1: Panel("##orders", cmin, cmax, "Creamery orders", DrawOrders, true); return;
             default: Panel("##netorders", cmin, cmax, "Deliveries to other dairies", DrawNetOrders, true); return;
         }
     }
@@ -977,31 +975,20 @@ public sealed partial class MainWindow : Window
         ImGui.TextColored(Theme.InkSoft, $"Milk given today: {F.DayOz:0.#} oz");
     }
 
-    /// <summary>Farmers and owners fill jugs from the dairy's tank to deliver to customers and other dairies.</summary>
-    private void DrawJugs(float width)
+    /// <summary>One line on what you carry, with a button to the Kitchen where jugs are filled.</summary>
+    internal void JugsNote(float width)
     {
-        var tank = G.Net.Progress?.Tank;
-        Ui.Wrapped($"Fill jugs from your dairy's tank, then deliver them on Customer orders or to other dairies for your own coins. You can carry up to {G.MaxCarry} oz.",
-            Theme.InkSoft, width);
-        Gap(6);
-        ImGui.TextColored(Theme.Ink, $"Carrying {G.Carried:0.#} / {G.MaxCarry} oz");
-        Gap(6);
-        SubHeading($"Dairy tank · {tank?.Total ?? 0:N1} oz", width);
-        {
-            var have = tank?.Total ?? 0;
-            var p8 = G.TakeJugProblem(8);
-            var p32 = G.TakeJugProblem(32);
-            var clicked = ListRow(Ico("bottle"), "Milk", have > 0 ? Theme.Ink : Theme.InkSoft,
-                new[] { new Line($"{have:0.#} oz in the tank · you carry {G.Carried:0.#} oz", Theme.InkSoft) },
-                new[] { new Btn("##jug8", "Fill 8 oz", "cream", p8 == null, p8), new Btn("##jug32", "Fill 32 oz", "blue", p32 == null, p32) }, width);
-            if (clicked == 0) G.TakeJug(8);
-            else if (clicked == 1) G.TakeJug(32);
-        }
+        ImGui.TextColored(Theme.Ink, $"Your jugs: {G.Carried:0.#} / {G.MaxCarry} oz");
+        ImGui.SameLine();
+        if (ImGui.SmallButton("Fill jugs##jugsnote")) plugin.Kitchen.IsOpen = true;
+        if (ImGui.IsItemHovered()) ImGui.SetTooltip("Jugs are filled from the dairy tank at the top of the Kitchen window.");
+        Gap(4);
     }
 
     private void DrawOrders(float width)
     {
         var orders = F.Orders!;
+        JugsNote(width);
         if (orders.Count == 0) Ui.Wrapped("No orders right now.", Theme.InkSoft, width);
 
         foreach (var o in orders.ToList())
@@ -1087,7 +1074,7 @@ public sealed partial class MainWindow : Window
         var cur = ImGui.GetCursorScreenPos();
         Ui.Bar(ImGui.GetWindowDrawList(), cur + new Vector2(0, 6), cur + new Vector2(Math.Min(width, 360), 14), G.MaxCarry > 0 ? Math.Clamp(G.Carried / G.MaxCarry, 0, 1) : 0, Theme.BlueDeep);
         ImGui.Dummy(new Vector2(width, 20));
-        Ui.Wrapped("Fill it at your dairy (Creamery > Jugs). Farmer xp comes from hand milking pay, filling jugs, deliveries and contracts.", Theme.InkSoft, width);
+        Ui.Wrapped("Fill it at your dairy (HUD > Kitchen). Farmer xp comes from hand milking pay, filling jugs, deliveries and contracts.", Theme.InkSoft, width);
     }
 
     private void DrawBottleShop(float width)
@@ -1345,7 +1332,7 @@ public sealed partial class MainWindow : Window
 
     private void DrawFarmhands(float width)
     {
-        Ui.Wrapped("Only a farmer of your dairy can hand milk you: they stand close, target you and press Milk (Roles > Farmer). " +
+        Ui.Wrapped("Only a farmer of your dairy can hand milk you: they stand close, target you and press Milk (HUD > Hand milk). " +
                    "Just doing an emote near you never counts. It flows until you're empty.", Theme.InkSoft, width);
         Gap(6);
         var reg = G.RegisterProblem();

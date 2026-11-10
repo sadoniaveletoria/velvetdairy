@@ -22,6 +22,12 @@ public sealed class ChangelogWindow : Window
     /// <summary>Newest first. Write these for players: what changed for them, not how.</summary>
     private static readonly Entry[] Entries =
     {
+        new("0.9.10.9", "Hand milk and Kitchen buttons", new[]
+        {
+            "Farmers get two buttons on the HUD: Hand milk and Kitchen. Each opens its own window.",
+            "Hand milk lists your dairy's cows with Target, Milk and Groom, and the animation picker is one click away.",
+            "Jugs are filled at the top of the Kitchen now (Fill 8 oz, Fill 32 oz or Fill up), instead of on the Creamery tab.",
+        }),
         new("0.9.10.8", "Your grade, not your milk's", new[]
         {
             "Milk no longer has a grade. Your cow grade still sets your pay, and now it also milks you faster and gets more milk out: B +10%, A +20%, S +35%, S+ +50%.",
@@ -31,7 +37,7 @@ public sealed class ChangelogWindow : Window
         }),
         new("0.9.10.7", "Kitchen and Pantry", new[]
         {
-            "The Kitchen is its own window (Roles > Farmer > Open kitchen): search the recipes, pick how many with - / + / Max, and watch the progress bar.",
+            "The Kitchen is its own window: search the recipes, pick how many with - / + / Max, and watch the progress bar.",
             "The Pantry has tabs: Food & treats, Ingredients and the Dairy shelf.",
         }),
         new("0.9.10.6", "Baking and the dairy shelf", new[]

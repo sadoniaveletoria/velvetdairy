@@ -39,6 +39,7 @@ public sealed class Plugin : IDalamudPlugin
     public MilkAnimationWindow MilkAnimation { get; }
     public KitchenWindow Kitchen { get; }
     public ChangelogWindow Changes { get; }
+    public MilkingWindow Milking { get; }
     public TutorialWindow Tutorial { get; }
 
     /// <summary>This build's version, sent to the network so old versions can be told to update.</summary>
@@ -90,6 +91,8 @@ public sealed class Plugin : IDalamudPlugin
         windowSystem.AddWindow(MilkAnimation);
         Kitchen = new KitchenWindow(this);
         windowSystem.AddWindow(Kitchen);
+        Milking = new MilkingWindow(this);
+        windowSystem.AddWindow(Milking);
         Changes = new ChangelogWindow(this, fonts);
         windowSystem.AddWindow(Changes);
         Tutorial = new TutorialWindow(this, fonts);

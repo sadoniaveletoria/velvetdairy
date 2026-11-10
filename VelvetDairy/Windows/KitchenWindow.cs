@@ -38,9 +38,12 @@ public sealed class KitchenWindow : Window
 
     public override void Draw()
     {
+        DrawJugs();
+        ImGui.Separator();
+        ImGui.Spacing();
         DrawBaking();
-        ImGui.TextColored(Theme.InkSoft, $"In your jugs: {G.Carried:0.#} oz" +
-            string.Concat(Catalog.Ingredients.Where(i => G.Count(i.Id) > 0).Select(i => $" · {i.Name.ToLowerInvariant()} {G.Count(i.Id)}")));
+        var stock = string.Join(" · ", Catalog.Ingredients.Where(i => G.Count(i.Id) > 0).Select(i => $"{i.Name.ToLowerInvariant()} {G.Count(i.Id)}"));
+        if (stock.Length > 0) ImGui.TextColored(Theme.InkSoft, $"In your pantry: {stock}");
         ImGui.Spacing();
 
         var avail = ImGui.GetContentRegionAvail();
@@ -50,6 +53,29 @@ public sealed class KitchenWindow : Window
         ImGui.SameLine();
         if (ImGui.BeginChild("##kitchenrecipe", new Vector2(0, avail.Y), true)) DrawRecipe(ImGui.GetContentRegionAvail().X);
         ImGui.EndChild();
+    }
+
+    /// <summary>Your jugs: what you carry, what the dairy tank has, and buttons to fill up from it.</summary>
+    private void DrawJugs()
+    {
+        var frac = G.MaxCarry > 0 ? Math.Clamp(G.Carried / G.MaxCarry, 0f, 1f) : 0f;
+        ImGui.TextColored(Theme.Ink, $"Your jugs: {G.Carried:0.#} / {G.MaxCarry} oz");
+        ImGui.SameLine();
+        ImGui.TextColored(Theme.InkSoft, $"· dairy tank {G.TankOz:0.#} oz");
+        ImGui.PushStyleColor(ImGuiCol.PlotHistogram, Theme.BlueDeep);
+        ImGui.ProgressBar(frac, new Vector2(Math.Min(ImGui.GetContentRegionAvail().X, 260), 8), "");
+        ImGui.PopStyleColor();
+        ImGui.SameLine();
+        var p8 = G.TakeJugProblem(8);
+        if (Ui.Button("##kjug8", "Fill 8 oz", new Vector2(84, 24), "cream", p8 == null, p8)) G.TakeJug(8);
+        ImGui.SameLine();
+        var p32 = G.TakeJugProblem(32);
+        if (Ui.Button("##kjug32", "Fill 32 oz", new Vector2(90, 24), "cream", p32 == null, p32)) G.TakeJug(32);
+        ImGui.SameLine();
+        var up = G.FillUpOz;
+        var pUp = up < 1 ? (G.Carried >= G.MaxCarry - 0.5f ? "Your jugs are full." : "The dairy tank is empty.") : G.TakeJugProblem(up);
+        if (Ui.Button("##kjugup", "Fill up", new Vector2(80, 24), "blue", pUp == null, pUp ?? $"Take {up} oz")) G.TakeJug(up);
+        ImGui.Spacing();
     }
 
     /// <summary>What's baking: a progress bar for the current one, the time left for the batch, and Stop.</summary>

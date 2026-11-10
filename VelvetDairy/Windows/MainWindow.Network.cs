@@ -260,7 +260,7 @@ public sealed partial class MainWindow
                 Panel("##stallside", new Vector2(mid + 7, top.Y), max, G.IsOwner ? "Stall upgrades" : "Hand milking", w =>
                 {
                     if (G.IsOwner) DrawStallUpgrades(w);
-                    else Ui.Wrapped("Cows: your milking emotes are on Roles > Cow. Farmers: the dairy's cows and the emotes that milk them are on Roles > Farmer.", Theme.InkSoft, w);
+                    else Ui.Wrapped("Cows: your milking emotes are on Roles > Cow. Farmers: the dairy's cows and the emotes that milk them are in Hand milk (HUD).", Theme.InkSoft, w);
                 }, true);
                 break;
             default:
@@ -412,7 +412,7 @@ public sealed partial class MainWindow
         }
 
         ImGui.TextColored(Theme.Ink, $"Your jugs: {G.Carried:0.#} oz");
-        if (G.Carried <= 0) Ui.Wrapped("Fill jugs at your dairy first (Creamery > Jugs).", Theme.InkSoft, width);
+        if (G.Carried <= 0) Ui.Wrapped("Fill jugs at your dairy first (HUD > Kitchen).", Theme.InkSoft, width);
         var leftOz = (int)Math.Ceiling(c.Left);
         if (G.Carried >= 0.05f)
         {
@@ -701,6 +701,7 @@ public sealed partial class MainWindow
         if (G.CanCarry)
         {
             SubHeading("Buy orders from other dairies", width);
+            JugsNote(width);
             net.RefreshBoard();
             Ui.Wrapped("Deliver from inside your own dairy with milk in your jugs; it goes straight into their tank. " +
                        "Public dairies pay 10% more if you deliver in person at their dairy.", Theme.InkSoft, width);

@@ -93,7 +93,7 @@ public sealed partial class MainWindow
     private void DrawCowEmotes(float width)
     {
         SubHeading("Being hand milked", width);
-        Ui.Wrapped("A farmer of your dairy milks you by pressing Milk on you (Roles > Farmer): they stand close, target you and their plugin does a looping emote. Someone just doing an emote near you never milks you. Milk flows until you're empty or they stop.", Theme.InkSoft, width);
+        Ui.Wrapped("A farmer of your dairy milks you by pressing Milk on you (HUD > Hand milk): they stand close, target you and their plugin does a looping emote. Someone just doing an emote near you never milks you. Milk flows until you're empty or they stop.", Theme.InkSoft, width);
         var any = F.AnyLoopEmote;
         if (ImGui.Checkbox("Any looping emote counts##anyloop", ref any))
         {
@@ -120,10 +120,8 @@ public sealed partial class MainWindow
     {
         RoleNote("farmer", width);
         LevelHeader(F.FarmerXp, $"Farmer level {G.FarmerLevel}", Theme.SageDeep, width);
-        DrawHandMilkCows(width);
-        DrawMilkMod(width);
+        DrawFarmerButtons(width);
         DrawCleanStalls(width);
-        DrawMake(width);
 
         SubHeading("Coming up", width);
         var tank = Catalog.Upgrades.First(u => u.Id == "farmtank");
@@ -140,46 +138,33 @@ public sealed partial class MainWindow
         if (shown == 0) ImGui.TextColored(Theme.InkSoft, "Every farmer tank is unlocked.");
 
         SubHeading("What farmers do", width);
-        Ui.Wrapped("Hand milk your dairy's cows: stand close, target them and press Milk below; it does the emote and stops when they're empty. You get 25% of what the cow is paid, on top.", Theme.Ink, width);
-        Ui.Wrapped("Fill your farmer tank from the dairy tank (Creamery > Jugs) and deliver it: customer orders, other dairies' buy and visitor orders, and the weekly contract at the Grand Creamery.", Theme.Ink, width);
+        Ui.Wrapped("Hand milk your dairy's cows (Hand milk button): stand close, target them and press Milk; it does the emote and stops when they're empty. You get 25% of what the cow is paid, on top.", Theme.Ink, width);
+        Ui.Wrapped("Fill your farmer tank from the dairy tank (top of the Kitchen) and deliver it: customer orders, other dairies' buy and visitor orders, and the weekly contract at the Grand Creamery.", Theme.Ink, width);
         Ui.Wrapped("Invite people and give them roles, the farmer role included.", Theme.Ink, width);
 
         SubHeading("How to earn farmer xp", width);
         Ui.Wrapped($"Grooming cows ({Catalog.GroomXp} each, every 15 min per cow), cleaning stalls ({Catalog.CleanXp} each), hand milking pay, filling jugs, customer orders, deliveries and contract shipments.", Theme.InkSoft, width);
     }
 
-    /// <summary>The kitchen in one line: what's baking (or that nothing is), and a button that opens the Kitchen window.</summary>
-    private void DrawMake(float width)
+    /// <summary>Hand milking and the Kitchen each open their own window (also on the HUD).</summary>
+    private void DrawFarmerButtons(float width)
     {
-        if (!G.CanCarry) return;
-        SubHeading("Kitchen", width);
-        var line = G.Baking is { } b
-            ? $"{b.Recipe.Name} · {F.Bake!.Done + 1} of {F.Bake.Count} · {(G.Where.InDairy ? $"{DairyGame.Wait(b.Left)} left" : "paused")}"
-            : $"Nothing baking · {Catalog.Recipes.Count} recipes";
-        ImGui.TextColored(Theme.Ink, line);
-        ImGui.SameLine();
-        if (ImGui.SmallButton("Open kitchen##openkitchen")) plugin.Kitchen.IsOpen = true;
-        if (ImGui.IsItemHovered()) ImGui.SetTooltip("Bake with milk from your jugs: butter for your pantry, treats for the dairy shelf.");
-        if (G.Baking is { } bb)
+        var buttons = new System.Collections.Generic.List<Btn>();
+        if (G.IsFarmer) buttons.Add(new Btn("##farmhandmilk", "Hand milk", "rose", true, "Your dairy's cows: target, milk and groom them."));
+        if (G.CanCarry) buttons.Add(new Btn("##farmkitchen", "Kitchen", "honey", true, "Fill your jugs from the dairy tank and bake."));
+        if (buttons.Count == 0) return;
+        Gap(4);
+        var clicked = Buttons(buttons, width);
+        if (clicked >= 0)
         {
-            ImGui.PushStyleColor(ImGuiCol.PlotHistogram, Theme.HoneyDeep);
-            ImGui.ProgressBar(bb.Current, new Vector2(Math.Min(width, 320), 8), "");
-            ImGui.PopStyleColor();
+            if (buttons[clicked].Id == "##farmhandmilk") plugin.Milking.IsOpen = true;
+            else plugin.Kitchen.IsOpen = true;
         }
-    }
 
-
-    /// <summary>For farmers: one line with the milking animation, and a button that opens the picker in its own window.</summary>
-    private void DrawMilkMod(float width)
-    {
-        if (!G.IsFarmer) return;
-        SubHeading("Milking animation", width);
-        var emote = F.MilkButtonEmote.Length > 0 ? (F.MilkButtonEmote.StartsWith('/') ? F.MilkButtonEmote : "/" + F.MilkButtonEmote) : DairyGame.MilkEmote;
-        var mod = F.MilkModDir.Length == 0 ? "no animation mod" : PenumbraLink.NameOf(F.MilkModDir);
-        ImGui.TextColored(Theme.Ink, $"Milk does {emote} · {mod}");
-        ImGui.SameLine();
-        if (ImGui.SmallButton("Choose...##milkanim")) plugin.MilkAnimation.IsOpen = true;
-        if (ImGui.IsItemHovered()) ImGui.SetTooltip("Pick the emote the Milk button does, and a Penumbra animation mod (and its options) used only while you milk.");
+        if (G.Baking is { } b)
+            ImGui.TextColored(Theme.InkSoft, $"Baking {b.Recipe.Name} · {F.Bake!.Done + 1} of {F.Bake.Count} · {(G.Where.InDairy ? $"{DairyGame.Wait(b.Left)} left" : "paused")}");
+        ImGui.TextColored(Theme.InkSoft, $"Jugs: {G.Carried:0.#} / {G.MaxCarry} oz");
+        Gap(4);
     }
 
     /// <summary>For farmers and the owner: clean the dairy's stalls for a bonus to cows milked there.</summary>
@@ -214,9 +199,9 @@ public sealed partial class MainWindow
     }
 
     /// <summary>For farmers: the dairy's cows, whether they're close, and which emotes milk each of them.</summary>
-    private void DrawHandMilkCows(float width)
+    internal void DrawHandMilkCows(float width, bool heading = true)
     {
-        SubHeading("Hand milk a cow", width);
+        if (heading) SubHeading("Hand milk a cow", width);
         if (!G.IsFarmer)
         {
             Ui.Wrapped("Only farmers hand milk. A farmer or the owner can give you the farmer role.", Theme.InkSoft, width);

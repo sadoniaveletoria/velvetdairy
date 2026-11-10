@@ -18,6 +18,10 @@ public sealed class HudWindow : Window
     private DairyGame G => plugin.Game;
 
     private static readonly Vector2 HudSize = new(330, 168);
+    private const float ButtonRow = 38f;   // farmers get a row of buttons under the card: Hand milk and Kitchen
+
+    private bool ShowHandMilk => G.IsFarmer;
+    private bool ShowKitchen => G.CanCarry;
 
     public HudWindow(Plugin plugin, Art art, Fonts fonts)
         : base("Velvet Dairy HUD##VelvetDairyHud",
@@ -40,6 +44,7 @@ public sealed class HudWindow : Window
 
     public override void PreDraw()
     {
+        Size = HudSize + new Vector2(0, ShowHandMilk || ShowKitchen ? ButtonRow : 0);
         if (F.LockHud) Flags |= ImGuiWindowFlags.NoMove;
         else Flags &= ~ImGuiWindowFlags.NoMove;
         ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, Vector2.Zero);
@@ -55,8 +60,9 @@ public sealed class HudWindow : Window
 
         var dl = ImGui.GetWindowDrawList();
         var o = ImGui.GetWindowPos();
-        var size = ImGui.GetWindowSize();
-        Ui.Card(dl, o, o + size);
+        var whole = ImGui.GetWindowSize();
+        Ui.Card(dl, o, o + whole);
+        var size = HudSize;   // the bottle, needs and status keep their place; buttons go below
 
         var cow = F.Cow;
         var cap = G.Capacity;
@@ -196,6 +202,28 @@ public sealed class HudWindow : Window
             Ui.Button("##huddump", "Dump milk", new Vector2(104, 30), "rose", true,
                 "Your milk spoiled. Pour it all out (no xp or coins).", new Vector2(o.X + size.X - 124, o.Y + size.Y - 54)))
             G.DumpMilk();
+
+        // Farmers: Hand milk and Kitchen, each opening its own window
+        if (ShowHandMilk || ShowKitchen)
+        {
+            var by = o.Y + size.Y - 10;
+            var both = ShowHandMilk && ShowKitchen;
+            var bw2 = both ? (size.X - 50) / 2 : size.X - 40;
+            var bx = o.X + 20;
+            if (ShowHandMilk)
+            {
+                if (Ui.Button("##hudhandmilk", "Hand milk", new Vector2(bw2, 30), "rose", true, "Your dairy's cows: target, milk and groom them.", new Vector2(bx, by)))
+                    plugin.Milking.Toggle();
+                bx += bw2 + 10;
+            }
+
+            if (ShowKitchen)
+            {
+                var tip = G.Baking is { } bk ? $"Baking {bk.Recipe.Name} ({F.Bake!.Done + 1} of {F.Bake.Count})." : "Fill your jugs from the dairy tank and bake.";
+                if (Ui.Button("##hudkitchen", G.Baking != null ? "Kitchen (baking)" : "Kitchen", new Vector2(bw2, 30), "honey", true, tip, new Vector2(bx, by)))
+                    plugin.Kitchen.Toggle();
+            }
+        }
 
         // Double-click or right-click the card to open the main window (dragging it still moves it)
         if (ImGui.IsWindowHovered() && !ImGui.IsAnyItemHovered())

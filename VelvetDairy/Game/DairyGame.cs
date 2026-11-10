@@ -340,6 +340,9 @@ public sealed class DairyGame
 
     public float TankOz => Net.Progress?.Tank?.Total ?? 0;
 
+    /// <summary>How much "Fill up" takes: whatever fits in your farmer tank, as much as the dairy tank has.</summary>
+    public int FillUpOz => (int)Math.Floor(Math.Min(MaxCarry - Carried, TankOz) + 0.001f);
+
     /// <summary>The Grand Creamery (set by the developer), where contract milk is delivered.</summary>
     public CreameryInfo? Creamery => Net.Last?.Creamery;
 
@@ -379,7 +382,7 @@ public sealed class DairyGame
         if (Creamery is { } cr) { if (!AtCreamery) return $"Bring your jugs to {cr.Name} ({cr.Zone}) to ship them."; }
         else if (!Where.InDairy) return "Go to your dairy to ship milk.";
         if (oz < 1) return "Nothing left to ship.";
-        if (Carried < oz - 0.01f) return $"You carry {Carried:0.#} oz. Fill jugs at your dairy (Creamery > Jugs).";
+        if (Carried < oz - 0.01f) return $"You carry {Carried:0.#} oz. Fill jugs at your dairy (HUD > Kitchen).";
         return null;
     }
 
@@ -2161,7 +2164,7 @@ public sealed class DairyGame
         if (r.UsesCount > 0 && Count(r.Uses) < r.UsesCount * count)
             return $"You need {r.UsesCount * count} {Catalog.MadeName(r.Uses).ToLowerInvariant()} (you have {Count(r.Uses)}).";
         if (OzAtOrAbove(r.MinGrade) < r.MilkOz * count)
-            return $"You need {r.MilkOz * count} oz of milk in your jugs. Fill them from the dairy tank on the Creamery tab.";
+            return $"You need {r.MilkOz * count} oz of milk in your jugs. Fill them from the dairy tank at the top of the Kitchen.";
         return null;
     }
 
