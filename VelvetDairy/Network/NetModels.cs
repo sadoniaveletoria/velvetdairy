@@ -270,12 +270,6 @@ public sealed class MemberStatus
     public string HandBy { get; set; } = "";            // the farmer milking her right now, if any
     public bool AnyEmote { get; set; } = true;          // any looping emote milks them (not only their list)
     public string Milking { get; set; } = "";           // a farmer: the cow they pressed Milk on right now
-    // A cow sitting on a stall, for everyone's stall highlight
-    public string Stall { get; set; } = "";             // the stall they're sitting on ("" = none)
-    public int Wake { get; set; }                       // 0 awake, 1 dozing, 2 asleep
-    public float DrainLeft { get; set; }                // while a stall milks them: milk left of what they started with (0-1), at DrainAt
-    public float DrainRate { get; set; }                // how much of that goes per second
-    public long DrainAt { get; set; }                   // unix seconds (0 = not being milked)
 }
 
 public sealed class StallInfo

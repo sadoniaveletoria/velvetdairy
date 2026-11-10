@@ -288,9 +288,6 @@ public sealed class NetClient : IDisposable
                 HandBy = g.Active is { Kind: VelvetDairy.Game.SessionKind.Hand, Hand: { IsTest: false } h } ? h.Name : "",
                 AnyEmote = F.AnyLoopEmote,
                 Milking = g.MilkingCowName ?? "",
-                Stall = g.Where.AtStall?.Id ?? "",
-                Wake = (int)g.Wake,
-                DrainLeft = g.StallDrain.Left, DrainRate = g.StallDrain.Rate, DrainAt = g.StallDrain.At,
             },
         };
         Call<HeartbeatReply>("POST", "/v1/heartbeat", body, r =>

@@ -543,8 +543,6 @@ public sealed class DairyGame
         var w = Wake;
         if (w != lastWake)
         {
-            // Others' stall highlights show you dozing or asleep
-            if (Networked && Where.AtStall != null) Net.Poke();
             if (w == Wakefulness.Dozing) Say("You're dozing off. Milk comes in at half speed until you do something (move, emote, chat or click).", 2);
             else if (w == Wakefulness.Asleep)
             {
@@ -561,10 +559,7 @@ public sealed class DairyGame
         now += dt;
         if (!F.StockPaidOut && Blocked() == null) PayOutOldStock();
         var wasInDairy = Where.InDairy;
-        var wasStall = Where.AtStall;
         Where = Locate();
-        // Sitting down on or getting up from a stall shows on everyone's stall highlight
-        if (Networked && Where.AtStall != wasStall) Net.Poke();
         // Tell the server right away when you arrive or leave, so jugs, chores and hand milking pay count at once
         if (Networked && Where.InDairy != wasInDairy) Net.Poke();
         WatchActivity();
@@ -971,7 +966,6 @@ public sealed class DairyGame
         var p = StallProblem();
         if (p != null) return Fail(p);
         Begin(SessionKind.Stall, Where.AtStall, null);
-        if (Networked) Net.Poke();   // others' stall highlights start draining with you
         Say($"The {(Fresh(Where.AtStall!) ? "freshly cleaned " : "")}{Catalog.StallTierNames[Where.AtStall!.Tier].ToLowerInvariant()} starts milking you.", 0);
         return true;
     }
@@ -1327,83 +1321,6 @@ public sealed class DairyGame
 
     public bool MilkingSomeone => milkingCow != null;
 
-    /// <summary>
-    /// How a stall looks on the highlight: you (your own state), a member sitting on it (from what their plugin reports),
-    /// or anyone else sitting on it (seen here). Look: 0 idle, 1 sitting, 2 milking, 3 dozing, 4 asleep; fill = milk left (0-1).
-    /// </summary>
-    public (int Look, float Fill) StallState(Stall s)
-    {
-        if (Where.AtStall == s)
-        {
-            if (Wake == Wakefulness.Asleep) return (4, 1);
-            if (Wake == Wakefulness.Dozing) return (3, 1);
-            if (Active is { Kind: SessionKind.Stall } a && a.Stall == s) return (2, a.StartMilk > 0 ? Cow.Milk / a.StartMilk : 0f);
-            return (1, 1);
-        }
-
-        var nowUnix = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-        // A member's plugin says they're on this stall: trust it (it's sent the moment they sit, doze or start milking)
-        var member = Net.Mine?.Members.FirstOrDefault(m => m.Online && m.Status is { } st && st.Stall == s.Id)?.Status;
-        // Anyone seen sitting on it here (for people whose plugin hasn't said, or isn't in the dairy)
-        var someoneSits = SomeoneSitsOn(s);
-        // Someone's sitting there but we haven't heard they're being milked yet: ask again every few seconds
-        if (someoneSits && (member == null || member.DrainAt == 0)) Net.MineWithin(3);
-
-        if (member != null)
-        {
-            if (member.Wake == 2) return (4, 1);
-            if (member.Wake == 1) return (3, 1);
-            if (member.DrainAt > 0 && member.DrainRate > 0)
-            {
-                var left = member.DrainLeft - member.DrainRate * (nowUnix - member.DrainAt);
-                if (left > 0.001f) return (2, Math.Clamp(left, 0f, 1f));
-            }
-
-            return (1, 1);
-        }
-
-        return someoneSits ? (1, 1) : (0, 1);
-    }
-
-    /// <summary>Is another player sitting on this seat? Close on the ground, and in the sitting-on-furniture pose (or any loop).</summary>
-    private bool SomeoneSitsOn(Stall s)
-    {
-        var me = Plugin.ObjectTable.LocalPlayer?.Address ?? nint.Zero;
-        foreach (var o in Plugin.ObjectTable)
-        {
-            if (o is not IPlayerCharacter pc || o.Address == me) continue;
-            var flat = new Vector2(pc.Position.X - s.X, pc.Position.Z - s.Z).Length();
-            if (flat <= 1.2f && MathF.Abs(pc.Position.Y - s.Y) <= 1.5f && (Emotes.InPositionLoop(pc) || Emotes.Looping(pc) != 0)) return true;
-        }
-
-        return false;
-    }
-
-    /// <summary>A short line per stall for Settings: who's on it and what the marker shows (to check it works).</summary>
-    public string StallStateText(Stall s)
-    {
-        var (look, fill) = StallState(s);
-        var who = Where.AtStall == s ? "you"
-            : Net.Mine?.Members.FirstOrDefault(m => m.Online && m.Status is { } st && st.Stall == s.Id)?.Name
-              ?? (SomeoneSitsOn(s) ? "someone" : "");
-        var what = look switch
-        {
-            1 => "sitting", 2 => $"milking ({fill * 100:0}% left)", 3 => "dozing", 4 => "asleep",
-            _ => "empty",
-        };
-        return who.Length > 0 ? $"{s.Name}: {who}, {what}" : $"{s.Name}: {what}";
-    }
-
-    /// <summary>A stall milking you right now, for others' stall highlights: milk left of the start (0-1), the share that goes each second, when.</summary>
-    public (float Left, float Rate, long At) StallDrain
-    {
-        get
-        {
-            if (Active is not { Kind: SessionKind.Stall } s || s.Stall == null || s.StartMilk <= 0) return (0, 0, 0);
-            var speed = Catalog.StallSpeed[Math.Clamp(s.Stall.Tier, 1, 4)] * (Owned("letdown") > 0 ? 1.1f : 1f) * (Fresh(s.Stall) ? 1f + Catalog.CleanBonus : 1f);
-            return (Math.Clamp(Cow.Milk / s.StartMilk, 0f, 1f), speed / s.StartMilk, DateTimeOffset.UtcNow.ToUnixTimeSeconds());
-        }
-    }
     public string? MilkingCowName => milkingCow;
 
     private void WatchMyMilking()

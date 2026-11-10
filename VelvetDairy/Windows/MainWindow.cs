@@ -1594,7 +1594,7 @@ public sealed partial class MainWindow : Window
 
         b = F.ShowStallMarkers;
         if (ImGui.Checkbox("Show stall markers (only you see them)", ref b)) { F.ShowStallMarkers = b; changed = true; }
-        if (ImGui.IsItemHovered()) ImGui.SetTooltip("A small green circle over the head of whoever sits on each of your dairy's stalls (at head height over empty ones), while you're in the dairy. It pulses while someone sits, drains as they're milked, turns light red if they doze and flashes red if they fall asleep.");
+        if (ImGui.IsItemHovered()) ImGui.SetTooltip("A small green dot above each of your dairy's stalls while you're in the dairy, so you can see which seats milk you.");
         if (F.ShowStallMarkers)
         {
             var here = G.StallsHere().Count();
@@ -1602,8 +1602,6 @@ public sealed partial class MainWindow : Window
             ImGui.TextColored(Theme.InkSoft, !G.Where.InDairy ? "Markers show once you're in your dairy."
                 : here > 0 ? $"Marking {here} stall{(here == 1 ? "" : "s")} here{(G.InPrivatePlace ? " (private place)" : "")}."
                 : G.Stalls.Count == 0 ? "Your dairy has no stalls yet." : $"None of your {G.Stalls.Count} stall(s) are in this part of the dairy.");
-            if (G.Where.InDairy)
-                foreach (var st in G.StallsHere()) ImGui.TextColored(Theme.InkSoft, G.StallStateText(st));
             ImGui.Unindent();
         }
 
