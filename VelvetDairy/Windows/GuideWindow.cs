@@ -67,6 +67,8 @@ public sealed class GuideWindow : Window
         {
             "Everyone starts at Grade C. Milk quality builds as you get milked, fill goals and eat quality treats: B at 150, A at 800, S at 2,600 and S+ at 6,000.",
             "Pay per ounce: C 7, B 10, A 15, S 21, S+ 30 coins. Better grades also give more XP.",
+            "Your grade also makes milking faster and gives more milk each time: B +10%, A +20%, S +35%, S+ +50%.",
+            "Milk itself has no grade: once it's in the dairy tank, any milk fills any order, contract or recipe.",
             "Your grade is your milk quality, and it stays there as long as you're milked. Go 3 days without being milked and it slips one grade (one more every 3 days after). One milking brings it right back. A Dry-off tonic stops it slipping while you're away.",
             "Hand milking by a farmer makes up one grade lost to slipping or off taste.",
         }),
@@ -107,7 +109,7 @@ public sealed class GuideWindow : Window
         new("Jugs and deliveries", new[]
         {
             "Farmers and the owner fill jugs from the dairy tank (Creamery > Jugs), inside the dairy, up to what their farmer tank holds: a 32 oz milk pail at first, up to a 256 oz tanker cart (Shop > Farmer tank, unlocked by farmer level).",
-            "Customer orders (Creamery tab): the creamery's customers want milk of a grade. Deliver from your jugs for coins and XP.",
+            "Customer orders (Creamery tab): the creamery's customers want milk. Deliver from your jugs for coins and XP; better-paying customers come as your farmer level grows.",
             "Deliveries: other dairies' buy orders (public or private) are listed on the Creamery tab. Fill them from inside your own dairy with milk in your jugs; it goes straight into the buying dairy's tank. Delivering in person at a public dairy pays 10% more. The creamery's two visitor orders a day per public dairy are still in person.",
             "Any owner, public or private, can post buy orders (Creamery > Deliveries): the coins are held until a delivery fills it or you cancel.",
         }),

@@ -465,13 +465,13 @@ async function heartbeat(env, me, request) {
     const room = Math.max(0, Math.min(PUMP_PER_BEAT, MEMBER_DAILY_PUMP - used));
     const scale = asking > room ? room / asking : 1;
     const stmts = [];
-    pump.forEach((oz, grade) => {
-      const add = Math.round(oz * scale * 100) / 100;
-      if (add <= 0) return;
-      pumped += add;
-      stmts.push(env.DB.prepare(`INSERT INTO dairy_tank (dairy_id, grade, oz) VALUES (?, ?, ?)
-        ON CONFLICT(dairy_id, grade) DO UPDATE SET oz = oz + excluded.oz`).bind(mem.dairy_id, grade, add));
-    });
+    // Milk isn't graded any more (cows are): it all goes into the tank as plain ounces (kept in the grade 0 row)
+    const add = Math.round(asking * scale * 100) / 100;
+    if (add > 0) {
+      pumped = add;
+      stmts.push(env.DB.prepare(`INSERT INTO dairy_tank (dairy_id, grade, oz) VALUES (?, 0, ?)
+        ON CONFLICT(dairy_id, grade) DO UPDATE SET oz = oz + excluded.oz`).bind(mem.dairy_id, add));
+    }
     if (pumped > 0) {
       stmts.push(env.DB.prepare(`INSERT INTO member_pump (install, day, oz) VALUES (?, ?, ?)
         ON CONFLICT(install, day) DO UPDATE SET oz = oz + excluded.oz`).bind(me.id, day, pumped));
@@ -607,8 +607,10 @@ async function progressOut(env, dairyId, stallCount) {
 /** The dairy's milk tank by grade, and its top pumpers. */
 async function tankOf(env, dairyId) {
   const rows = (await env.DB.prepare("SELECT grade, oz FROM dairy_tank WHERE dairy_id = ?").bind(dairyId).all()).results;
+  // Milk isn't graded any more: everything shows as plain ounces (in the first slot, for older plugins)
   const byGrade = [0, 0, 0, 0, 0];
-  for (const r of rows) if (r.grade >= 0 && r.grade < 5) byGrade[r.grade] = Math.round(r.oz * 10) / 10;
+  for (const r of rows) byGrade[0] += r.oz;
+  byGrade[0] = Math.round(byGrade[0] * 10) / 10;
   const top = (await env.DB.prepare("SELECT name, oz FROM tank_contrib WHERE dairy_id = ? ORDER BY oz DESC LIMIT 10").bind(dairyId).all()).results;
   return {
     byGrade,
@@ -1078,13 +1080,25 @@ async function takeFromTank(env, me, request) {
   if (!mem) fail(400, "Join a dairy first.");
   if (!mem.is_owner && !hasRole(mem, "farmer")) fail(403, "Only farmers and the owner fill jugs from the dairy tank.");
   if (!inOwnDairy(me, mem)) fail(400, "Go to your dairy to fill jugs from its tank.");
-  const grade = int(b.grade, 0, GRADES - 1, "grade");
   const oz = int(b.oz, 1, MAX_TAKE_OZ, "oz");
-  const r = await env.DB.prepare("UPDATE dairy_tank SET oz = oz - ? WHERE dairy_id = ? AND grade = ? AND oz >= ? RETURNING oz")
-    .bind(oz, mem.dairy_id, grade, oz).first();
-  if (!r) fail(400, `The tank doesn't have ${oz} oz of Grade ${gradeName(grade)}.`);
+  // Plain milk: older graded milk was merged into the grade 0 row
+  await mergeTank(env, mem.dairy_id);
+  const r = await env.DB.prepare("UPDATE dairy_tank SET oz = oz - ? WHERE dairy_id = ? AND grade = 0 AND oz >= ? RETURNING oz")
+    .bind(oz, mem.dairy_id, oz).first();
+  if (!r) fail(400, `The tank doesn't have ${oz} oz.`);
   await env.DB.prepare(`INSERT INTO carried (install, oz) VALUES (?, ?) ON CONFLICT(install) DO UPDATE SET oz = oz + excluded.oz`).bind(me.id, oz).run();
-  return { ok: true, oz, grade, left: Math.round(r.oz * 10) / 10 };
+  return { ok: true, oz, grade: 0, left: Math.round(r.oz * 10) / 10 };
+}
+
+/** Milk from before grades went away: fold every graded row into plain ounces (the grade 0 row). */
+async function mergeTank(env, dairyId) {
+  const rest = await env.DB.prepare("SELECT COALESCE(SUM(oz), 0) AS oz FROM dairy_tank WHERE dairy_id = ? AND grade > 0").bind(dairyId).first();
+  if (!rest || rest.oz <= 0) return;
+  await env.DB.batch([
+    env.DB.prepare(`INSERT INTO dairy_tank (dairy_id, grade, oz) VALUES (?, 0, ?)
+      ON CONFLICT(dairy_id, grade) DO UPDATE SET oz = oz + excluded.oz`).bind(dairyId, rest.oz),
+    env.DB.prepare("DELETE FROM dairy_tank WHERE dairy_id = ? AND grade > 0").bind(dairyId),
+  ]);
 }
 
 /** A cow's plugin reports a hand milking; the farmer who did it gets a share, in their inbox. */
@@ -1122,7 +1136,7 @@ async function handPay(env, me, request) {
 
 // ---------------------------------------------------------------- weekly contracts
 
-const contractMinGrade = level => level >= 15 ? 3 : level >= 10 ? 2 : level >= 5 ? 1 : 0;
+const contractMinGrade = () => 0;   // milk isn't graded any more: any milk fills the contract
 
 /** This week's contract for a dairy, made the first time anyone looks (sized by the dairy's level then). */
 async function contractFor(env, dairyId, level) {
@@ -1140,7 +1154,7 @@ async function contractOut(env, dairyId, level) {
   const top = (await env.DB.prepare("SELECT name, oz FROM contract_contrib WHERE dairy_id = ? AND week = ? ORDER BY oz DESC LIMIT 5")
     .bind(dairyId, c.week).all()).results;
   return {
-    week: c.week, ozNeed: c.oz_need, ozDone: Math.round(c.oz_done * 10) / 10, minGrade: c.min_grade,
+    week: c.week, ozNeed: c.oz_need, ozDone: Math.round(c.oz_done * 10) / 10, minGrade: 0,
     rewardXp: c.reward_xp, rewardFund: c.reward_fund, completed: !!c.completed,
     shippers: top.map(x => ({ name: x.name, oz: Math.round(x.oz * 10) / 10 })),
   };
@@ -1161,7 +1175,6 @@ async function shipToContract(env, me, request) {
   const p = await progressOf(env, mem.dairy_id);
   const c = await contractFor(env, mem.dairy_id, p.level);
   if (c.completed) fail(409, "This week's contract is already done.");
-  if (grade < c.min_grade) fail(400, `This contract needs Grade ${gradeName(c.min_grade)} or better.`);
   const want = Math.min(int(b.oz, 1, CONTRACT_MAX_OZ, "oz"), Math.ceil(c.oz_need - c.oz_done));
   if (want <= 0) fail(409, "This week's contract is already full.");
   if (!(await useCarriedOz(env, me.id, want))) fail(400, "You can only ship milk you've carried out of your dairy's tank.");
@@ -1329,7 +1342,7 @@ async function postOrder(env, me, request) {
   const b = await body(request);
   const d = await ownedDairy(env, me);
   const oz = int(b.oz, 1, MAX_ORDER_OZ, "amount");
-  const minGrade = int(b.minGrade, 0, GRADES - 1, "grade");
+  const minGrade = 0;   // milk isn't graded any more: orders just ask for ounces
   const coins = int(b.coins, oz * MIN_COINS_PER_OZ, oz * MAX_COINS_PER_OZ, "price");
   const open = await env.DB.prepare("SELECT COUNT(*) AS n FROM orders WHERE owner = ? AND status = 'open'").bind(me.id).first();
   if (open.n >= MAX_OPEN_ORDERS) fail(400, `You can have ${MAX_OPEN_ORDERS} buy orders open at a time.`);
@@ -1364,7 +1377,6 @@ async function fillOrder(env, me, id, request) {
   const o = await env.DB.prepare("SELECT * FROM orders WHERE id = ?").bind(id).first();
   if (!o || o.status !== "open") fail(409, "Someone already filled that order.");
   if (o.owner === me.id) fail(400, "You can't fill your own order.");
-  if (grade < o.min_grade) fail(400, "Your milk's grade is too low for this order.");
 
   const d = await env.DB.prepare("SELECT * FROM dairies WHERE id = ?").bind(o.dairy_id).first();
   if (!d) fail(409, "That dairy isn't taking deliveries.");
@@ -1397,8 +1409,8 @@ async function fillOrder(env, me, id, request) {
     inboxStmt(env, me.id, "payout", o.coins + bonus, 0, 0,
       `${d.name} paid ${o.coins} coins for your ${o.oz} oz${bonus ? ` (+${bonus} for delivering in person)` : ""}.`),
     // The milk goes into the buying dairy's tank
-    env.DB.prepare(`INSERT INTO dairy_tank (dairy_id, grade, oz) VALUES (?, ?, ?)
-      ON CONFLICT(dairy_id, grade) DO UPDATE SET oz = oz + excluded.oz`).bind(d.id, grade, o.oz),
+    env.DB.prepare(`INSERT INTO dairy_tank (dairy_id, grade, oz) VALUES (?, 0, ?)
+      ON CONFLICT(dairy_id, grade) DO UPDATE SET oz = oz + excluded.oz`).bind(d.id, o.oz),
     inboxStmt(env, o.owner, "notice", 0, 0, 0, `A delivery filled your buy order: ${o.oz} oz of Grade ${gradeName(grade)} went into your dairy's tank.`),
     addXpStmt(env, d.id, o.oz * DELIVERY_XP_PER_OZ),
   ]);

@@ -14,7 +14,6 @@ public sealed partial class MainWindow
     private string listDescription = "";
     private bool listLoaded;
     private int orderOz = 16;
-    private int orderGrade;
     private int orderCoins = -1;
     private string dirFilter = "";
     private bool dirPublicOnly;
@@ -344,7 +343,7 @@ public sealed partial class MainWindow
         var barW = Math.Min(width, 420);
         Ui.Bar(ImGui.GetWindowDrawList(), cur + new Vector2(0, 4), cur + new Vector2(barW, 14), c.Progress, c.Completed ? Theme.SageDeep : Theme.BlueDeep);
         ImGui.Dummy(new Vector2(barW, 20));
-        ImGui.TextColored(Theme.InkSoft, c.MinGrade == 0 ? "Any grade" : $"Grade {Grades.Name(c.MinGrade)} or better");
+        ImGui.TextColored(Theme.InkSoft, "Any milk counts");
         ImGui.TextColored(Theme.HoneyDeep, $"Reward: {c.RewardXp:N0} dairy xp + {c.RewardFund:N0} coins for the fund");
         var left = NextMonday() - DateTime.UtcNow;
         ImGui.TextColored(Theme.InkSoft, c.Completed ? $"A new contract comes in {(int)left.TotalDays}d {left.Hours}h." : $"Ends in {(int)left.TotalDays}d {left.Hours}h (Monday 00:00 UTC).");
@@ -355,7 +354,7 @@ public sealed partial class MainWindow
         }
 
         Gap(6);
-        Ui.Wrapped("Contracts grow 40 oz with each dairy level. Higher levels ask for better grades: B from level 5, A from 10, S from 15.", Theme.InkSoft, width);
+        Ui.Wrapped("Contracts grow 40 oz with each dairy level. Any milk counts.", Theme.InkSoft, width);
     }
 
     private Dalamud.Game.Text.SeStringHandling.Payloads.MapLinkPayload? creameryLink;
@@ -415,19 +414,14 @@ public sealed partial class MainWindow
         ImGui.TextColored(Theme.Ink, $"Your jugs: {G.Carried:0.#} oz");
         if (G.Carried <= 0) Ui.Wrapped("Fill jugs at your dairy first (Creamery > Jugs).", Theme.InkSoft, width);
         var leftOz = (int)Math.Ceiling(c.Left);
-        for (var g = Grades.Count - 1; g >= 0; g--)
+        if (G.Carried >= 0.05f)
         {
-            var have = F.Tank![g];
-            if (have < 0.05f) continue;
-            var grade = g;
-            var all = (int)Math.Min(Math.Floor(have + 0.01f), leftOz);
-            var pAll = G.ShipProblem(g, all);
-            var ok = g >= c.MinGrade;
-            var clicked = ListRow(cc => Ui.Seal(ImGui.GetWindowDrawList(), cc, 22, Grades.Name(grade), Theme.GradeColor(grade)),
-                $"Grade {Grades.Name(g)}", ok ? Theme.Ink : Theme.InkSoft,
-                new[] { new Line(ok ? $"You carry {have:0.#} oz" : "Below this contract's grade", Theme.InkSoft) },
-                ok ? new[] { new Btn($"##shipall{g}", $"Ship {all}", "blue", pAll == null && all > 0, pAll) } : Array.Empty<Btn>(), width);
-            if (clicked == 0) G.Ship(g, all);
+            var all = (int)Math.Min(Math.Floor(G.Carried + 0.01f), leftOz);
+            var pAll = G.ShipProblem(all);
+            var clicked = ListRow(Ico("bottle"), "Your milk", Theme.Ink,
+                new[] { new Line($"You carry {G.Carried:0.#} oz", Theme.InkSoft) },
+                new[] { new Btn("##shipall", $"Ship {all}", "blue", pAll == null && all > 0, pAll) }, width);
+            if (clicked == 0) G.Ship(all);
         }
     }
 
@@ -451,12 +445,9 @@ public sealed partial class MainWindow
             Gap(4);
             ImGui.TextColored(Theme.BlueDeep, $"Dairy milk tank: {p.Tank.Total:N1} oz");
             if (ImGui.IsItemHovered())
-                ImGui.SetTooltip("Milk from milkings in this dairy (stalls and hand) is stored here too (you keep yours).\n" +
-                                 string.Join("\n", p.Tank.ByGrade.Select((oz, g) => $"Grade {Grades.Name(g)}: {oz:N1} oz")));
+                ImGui.SetTooltip("Every milking in this dairy (stalls and hand) fills this tank. Farmers fill their jugs from it.");
             if (p.Tank.Total > 0)
             {
-                var parts = p.Tank.ByGrade.Select((oz, g) => (oz, g)).Where(x => x.oz > 0).Select(x => $"{Grades.Name(x.g)} {x.oz:N1}");
-                ImGui.TextColored(Theme.InkSoft, string.Join(" · ", parts));
                 if (p.Tank.Pumpers.Count > 0)
                     Ui.Wrapped("Top pumpers: " + string.Join(", ", p.Tank.Pumpers.Take(5).Select(x => $"{x.Name.Split(' ')[0]} {x.Oz:N0} oz")), Theme.InkSoft, width);
             }
@@ -717,12 +708,11 @@ public sealed partial class MainWindow
             foreach (var o in net.Board.ToList())
             {
                 var p = G.DeliverProblem(o);
-                var have = G.OzAtOrAbove(o.MinGrade);
+                var have = G.Carried;
                 var here = G.VisitingDairy?.Id == o.DairyId;
                 var clicked = ListRow(Ico("coin"), $"{o.DairyName} · {o.Oz} oz", Theme.Ink,
                     new[]
                     {
-                        new Line(o.MinGrade == 0 ? "Any grade" : $"Grade {Grades.Name(o.MinGrade)} or better", Theme.InkSoft),
                         new Line(here ? $"Pays {o.Coins} + {(int)Math.Round(o.Coins * 0.1)} for coming in person" : $"Pays {o.Coins} coins{(o.DairyPublic ? " (+10% in person)" : "")}", Theme.HoneyDeep),
                     },
                     new[] { new Btn($"##bfill{o.Id}", "Deliver", "sage", p == null, p) }, width, Math.Min(1f, have / o.Oz), p == null ? Theme.SageDeep : Theme.BlueDeep);
@@ -744,10 +734,10 @@ public sealed partial class MainWindow
                 var clicked = ListRow(Ico("bottle"), $"{o.Customer} (visitor order)", Theme.Ink,
                     new[]
                     {
-                        new Line($"{o.Oz} oz, {(o.MinGrade == 0 ? "any grade" : $"Grade {Grades.Name(o.MinGrade)} or better")}", Theme.InkSoft),
+                        new Line($"{o.Oz} oz of milk", Theme.InkSoft),
                         new Line($"Pays {o.Coins} coins · {o.Xp} xp (the creamery pays)", Theme.HoneyDeep),
                     },
-                    new[] { new Btn($"##vfill{visiting.Id}{o.Id}", "Deliver", "sage", can, can ? null : G.CanCarry ? "Fill jugs of that grade from your dairy tank first." : "Only farmers and owners deliver milk.") }, width);
+                    new[] { new Btn($"##vfill{visiting.Id}{o.Id}", "Deliver", "sage", can, can ? null : G.CanCarry ? "Fill your jugs from your dairy tank first." : "Only farmers and owners deliver milk.") }, width);
                 if (clicked == 0) G.FillVisitorOrder(visiting.Id, o);
             }
 
@@ -762,24 +752,20 @@ public sealed partial class MainWindow
         foreach (var o in net.MyOrders.ToList())
         {
             var left = DateTimeOffset.FromUnixTimeSeconds(o.Expires) - DateTimeOffset.UtcNow;
-            if (Row($"##cancelord{o.Id}", "coin", $"{o.Oz} oz, {(o.MinGrade == 0 ? "any grade" : $"Grade {Grades.Name(o.MinGrade)}+")}",
+            if (Row($"##cancelord{o.Id}", "coin", $"{o.Oz} oz of milk",
                     $"{o.Coins} coins held · ends in {(left.TotalDays >= 1 ? $"{(int)left.TotalDays}d {left.Hours}h" : Mins(left))}", "Cancel", "cream", true, "Cancel and get the coins back.", width))
                 G.CancelBuyOrder(o);
         }
 
         ImGui.SetNextItemWidth(120);
         if (ImGui.SliderInt("oz##ordoz", ref orderOz, 1, DairyGame.MaxOrderOz)) orderCoins = -1;
-        ImGui.SameLine();
-        ImGui.SetNextItemWidth(120);
-        var names = Enumerable.Range(0, Grades.Count).Select(g => g == 0 ? "Any grade" : $"Grade {Grades.Name(g)}+").ToArray();
-        if (ImGui.Combo("##ordgrade", ref orderGrade, names, names.Length)) orderCoins = -1;
-        if (orderCoins < 0) orderCoins = DairyGame.SuggestedOrderCoins(orderOz, orderGrade);
+        if (orderCoins < 0) orderCoins = DairyGame.SuggestedOrderCoins(orderOz, 1);
         ImGui.SameLine();
         ImGui.SetNextItemWidth(110);
         ImGui.InputInt("coins##ordcoins", ref orderCoins, 5, 25);
         orderCoins = Math.Clamp(orderCoins, 1, orderOz * 40);
-        var problem = G.PostOrderProblem(orderOz, orderGrade, orderCoins);
+        var problem = G.PostOrderProblem(orderOz, 0, orderCoins);
         if (Ui.Button("##postorder", "Post buy order", new Vector2(170, 32), "honey", problem == null, problem ?? "The coins are held until a cow delivers or you cancel."))
-            G.PostBuyOrder(orderOz, orderGrade, orderCoins);
+            G.PostBuyOrder(orderOz, 0, orderCoins);
     }
 }

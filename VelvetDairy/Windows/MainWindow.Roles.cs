@@ -81,7 +81,7 @@ public sealed partial class MainWindow
         {
             ImGui.TextColored(g == cur ? Theme.RoseDeep : Theme.Ink, $"Grade {Grades.Name(g)}");
             ImGui.SameLine(90);
-            ImGui.TextColored(Theme.InkSoft, $"{G.PayRate(g):0.#} coins per oz" + (g == cur ? "  ·  yours now" : ""));
+            ImGui.TextColored(Theme.InkSoft, $"{G.PayRate(g):0.#} coins per oz" + (g > 0 ? $" · +{Catalog.GradeBoost[g] * 100:0}% speed and milk" : "") + (g == cur ? "  ·  yours now" : ""));
         }
 
         Gap(6);

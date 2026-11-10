@@ -123,7 +123,7 @@ public sealed class KitchenWindow : Window
 
         // What it takes, against what you have
         ImGui.TextColored(Theme.RoseDeep, "NEEDS");
-        Need($"{r.MilkOz * n} oz milk{(r.MinGrade > 0 ? $" (Grade {Grades.Name(r.MinGrade)}+)" : "")}", $"{G.OzAtOrAbove(r.MinGrade):0.#} oz in your jugs", G.OzAtOrAbove(r.MinGrade) >= r.MilkOz * n);
+        Need($"{r.MilkOz * n} oz milk", $"{G.Carried:0.#} oz in your jugs", G.Carried >= r.MilkOz * n);
         if (r.UsesCount > 0)
             Need($"{r.UsesCount * n} {Catalog.MadeName(r.Uses).ToLowerInvariant()}", $"you have {G.Count(r.Uses)}", G.Count(r.Uses) >= r.UsesCount * n);
         if (r.FarmerLevel > 1) Need($"Farmer level {r.FarmerLevel}", $"you're {G.FarmerLevel}", G.FarmerLevel >= r.FarmerLevel);

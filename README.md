@@ -59,7 +59,8 @@ Only the owner can take a role away from someone.
 - **By hand:** a farmer of your dairy stands close, targets you and presses **Milk**. Hand milking is faster, pays more and makes up a lost grade.
 - You're **paid the moment you're milked**, by grade: C 7, B 10, A 15, S 21, S+ 30 coins an ounce, plus a bonus for your dairy's level.
 
-**Grade and milk quality**
+**Your grade**
+- Your grade is about you, not your milk. Higher grades pay more, milk you faster and get more milk out: B +10%, A +20%, S +35%, S+ +50%. Milk itself is just milk: any of it fills any order.
 - Everyone starts at **Grade C**. Being milked, deliveries and quality treats build your **milk quality**, which unlocks B (150), A (800), S (2,600) and S+ (6,000).
 - **Keep getting milked:** after 3 days without a milking your grade slips one step. One milking brings it back. Going away? A **Dry-off tonic** holds your grade for 7 days.
 
@@ -136,6 +137,7 @@ Milk is for people who are actually playing.
 | `/vdairy hud` | Show or hide the HUD |
 | `/vdairy guide` | Open the how-to guide |
 | `/vdairy tutorial` | Run the first-time walkthrough again |
+| `/vdairy changes` | See what's new in recent updates |
 
 ---
 

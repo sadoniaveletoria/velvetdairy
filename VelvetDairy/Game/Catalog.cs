@@ -199,6 +199,9 @@ public static class Catalog
     public static readonly int[] StallTierUnlock = { 0, 1, 5, 10, 18 };
 
     public const float HandYield = 1.25f;
+    /// <summary>Your cow grade (C, B, A, S, S+) milks you this much faster and gives this much more milk.</summary>
+    public static readonly float[] GradeBoost = { 0f, 0.10f, 0.20f, 0.35f, 0.50f };
+    public static float GradeMult(int grade) => 1f + GradeBoost[Math.Clamp(grade, 0, GradeBoost.Length - 1)];
     public const float HandStrokeOz = 1f;
     // ----- Farmer chores -----
     public const float CleanBonus = 0.10f;      // a freshly cleaned stall milks 10% faster and gives 10% more xp (never less than its tier)

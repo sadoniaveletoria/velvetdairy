@@ -658,7 +658,7 @@ public sealed partial class MainWindow : Window
         var sealC = new Vector2(bmin.X + bw + 6, bmin.Y + bh * 0.3f);
         Ui.Seal(dl, sealC, 28, Grades.Name(grade), Theme.GradeColor(grade));
         if (ImGui.IsMouseHoveringRect(sealC - new Vector2(28, 28), sealC + new Vector2(28, 28)))
-            ImGui.SetTooltip($"Grade {Grades.Name(grade)} ({Grades.All[grade].Blurb}) if you're milked now.\nYour grade comes from your milk quality, and stays up as long as you're milked every few days." +
+            ImGui.SetTooltip($"Grade {Grades.Name(grade)} ({Grades.All[grade].Blurb}) if you're milked now.\nHigher grades pay more, milk faster and give more milk.\nYour grade comes from your milk quality, and stays up as long as you're milked every few days." +
                 (G.GradeSlip > 0 ? $"\nSlipped {G.GradeSlip} grade{(G.GradeSlip > 1 ? "s" : "")}: it's been a while since you were milked. Get milked to bring it back." : "") +
                 (cow.Taint > 0 ? "\nOff taste from dumped milk: one grade lower until it wears off." : "") +
                 "\nHand milking makes up one lost grade." + GradeCapNote());
@@ -885,7 +885,7 @@ public sealed partial class MainWindow : Window
                     ? $"The test farmhand milks you every few seconds. {s.Strokes} strokes so far."
                     : $"{s.Hand.Name} is milking you while they keep their Milk emote going (within {G.HandRange:0.#} y{(G.HandNeedsTarget ? ", targeting you" : "")}).";
             if (ListRow(Ico(s.Kind == SessionKind.Stall ? "bucket" : "ribbon"), who, Theme.Ink,
-                    new[] { new Line($"{s.Extracted * s.Yield:0.#} oz collected · Grade {Grades.Name(s.Grade)}", Theme.GradeColor(s.Grade)), new Line(hint, Theme.InkSoft) },
+                    new[] { new Line($"{s.Extracted * s.Yield:0.#} oz collected · Grade {Grades.Name(s.Grade)} cow", Theme.GradeColor(s.Grade)), new Line(hint, Theme.InkSoft) },
                     new[] { new Btn("##stop", "Stop", "cream") }, width, s.Progress, Theme.BlueDeep) == 0)
                 G.Stop();
             return;
@@ -967,7 +967,7 @@ public sealed partial class MainWindow : Window
             var grade = g;
             ListRow(c => Ui.Seal(ImGui.GetWindowDrawList(), c, 22, Grades.Name(grade), Theme.GradeColor(grade)),
                 $"Grade {Grades.Name(g)} · {Grades.All[g].Blurb}" + (g == cur ? "  ·  yours now" : ""), g == cur ? Theme.RoseDeep : Theme.Ink,
-                new[] { new Line($"{G.PayRate(g):0.#} coins per oz", Theme.HoneyDeep) }, Array.Empty<Btn>(), width);
+                new[] { new Line($"{G.PayRate(g):0.#} coins per oz" + (g > 0 ? $" · milks {Catalog.GradeBoost[g] * 100:0}% faster, {Catalog.GradeBoost[g] * 100:0}% more milk" : ""), Theme.HoneyDeep) }, Array.Empty<Btn>(), width);
         }
 
         Gap(4);
@@ -985,22 +985,17 @@ public sealed partial class MainWindow : Window
             Theme.InkSoft, width);
         Gap(6);
         ImGui.TextColored(Theme.Ink, $"Carrying {G.Carried:0.#} / {G.MaxCarry} oz");
-        if (G.Carried > 0)
-            ImGui.TextColored(Theme.InkSoft, string.Join(" · ", F.Tank!.Select((oz, g) => (oz, g)).Where(x => x.oz > 0.01f).Select(x => $"{Grades.Name(x.g)} {x.oz:0.#} oz")));
         Gap(6);
         SubHeading($"Dairy tank · {tank?.Total ?? 0:N1} oz", width);
-        for (var g = Grades.Count - 1; g >= 0; g--)
         {
-            var grade = g;
-            var have = tank?.ByGrade is { } t && g < t.Count ? t[g] : 0;
-            var p8 = G.TakeJugProblem(g, 8);
-            var p32 = G.TakeJugProblem(g, 32);
-            var clicked = ListRow(c => Ui.Seal(ImGui.GetWindowDrawList(), c, 22, Grades.Name(grade), Theme.GradeColor(grade)),
-                $"Grade {Grades.Name(g)}", have > 0 ? Theme.Ink : Theme.InkSoft,
-                new[] { new Line($"{have:0.#} oz in the tank · you carry {F.Tank![g]:0.#} oz", Theme.InkSoft) },
-                new[] { new Btn($"##jug8{g}", "Fill 8 oz", "cream", p8 == null, p8), new Btn($"##jug32{g}", "Fill 32 oz", "blue", p32 == null, p32) }, width);
-            if (clicked == 0) G.TakeJug(g, 8);
-            else if (clicked == 1) G.TakeJug(g, 32);
+            var have = tank?.Total ?? 0;
+            var p8 = G.TakeJugProblem(8);
+            var p32 = G.TakeJugProblem(32);
+            var clicked = ListRow(Ico("bottle"), "Milk", have > 0 ? Theme.Ink : Theme.InkSoft,
+                new[] { new Line($"{have:0.#} oz in the tank · you carry {G.Carried:0.#} oz", Theme.InkSoft) },
+                new[] { new Btn("##jug8", "Fill 8 oz", "cream", p8 == null, p8), new Btn("##jug32", "Fill 32 oz", "blue", p32 == null, p32) }, width);
+            if (clicked == 0) G.TakeJug(8);
+            else if (clicked == 1) G.TakeJug(32);
         }
     }
 
@@ -1011,13 +1006,12 @@ public sealed partial class MainWindow : Window
 
         foreach (var o in orders.ToList())
         {
-            var have = G.OzAtOrAbove(o.MinGrade);
+            var have = G.Carried;
             var can = G.CanFill(o);
-            var gradeText = o.MinGrade == 0 ? "any grade" : $"Grade {Grades.Name(o.MinGrade)} or better";
             var clicked = ListRow(Ico("bottle"), o.Customer, Theme.Ink,
                 new[]
                 {
-                    new Line($"{o.Oz} oz, {gradeText}", Theme.InkSoft),
+                    new Line($"{o.Oz} oz of milk", Theme.InkSoft),
                     new Line($"Pays {o.Coins} coins · {o.Xp} xp", Theme.HoneyDeep),
                     new Line($"You have {Math.Min(have, o.Oz):0} of {o.Oz} oz", can ? Theme.SageDeep : Theme.InkSoft),
                 },

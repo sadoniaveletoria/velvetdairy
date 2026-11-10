@@ -23,7 +23,7 @@ public sealed class Session
     public double LastActivity;    // last stroke (hand) or last second seated (stall)
     public int Strokes;
 
-    public float Yield => Kind == SessionKind.Hand ? Catalog.HandYield : Catalog.StallYield[Math.Clamp(Stall?.Tier ?? 1, 1, 4)];
+    public float Yield => (Kind == SessionKind.Hand ? Catalog.HandYield : Catalog.StallYield[Math.Clamp(Stall?.Tier ?? 1, 1, 4)]) * Catalog.GradeMult(Grade);
     public float Progress => StartMilk <= 0 ? 1f : Math.Clamp(Extracted / StartMilk, 0f, 1f);
 }
 
@@ -246,8 +246,7 @@ public sealed class DairyGame
 
                     break;
                 case "milk":
-                    var g = Math.Clamp(i.Grade, 0, Grades.Count - 1);
-                    F.Tank![g] += i.Oz;
+                    F.Tank![0] += i.Oz;   // milk is just milk now
                     break;
             }
 
@@ -307,20 +306,20 @@ public sealed class DairyGame
     public int MaxCarry => Catalog.FarmerTankSizes[FarmerTankTier];
     public float Carried => F.Tank!.Sum();
 
-    public string? TakeJugProblem(int grade, int oz)
+    public string? TakeJugProblem(int oz)
     {
         if (Blocked() != null) return Blocked();
         if (!CanCarry) return "Only farmers and the owner fill jugs from the dairy tank.";
         if (!Where.InDairy) return "Go to your dairy to fill jugs from its tank.";
         if (Carried + oz > MaxCarry) return $"Your {FarmerTankName.ToLowerInvariant()} holds {MaxCarry} oz. Buy a bigger farmer tank in the Shop.";
-        var inTank = Net.Progress?.Tank?.ByGrade is { } t && grade < t.Count ? t[grade] : 0;
-        if (inTank < oz) return $"The tank has {inTank:0.#} oz of Grade {Grades.Name(grade)}.";
+        var inTank = Net.Progress?.Tank?.Total ?? 0;
+        if (inTank < oz) return $"The tank has {inTank:0.#} oz.";
         return null;
     }
 
-    public void TakeJug(int grade, int oz)
+    public void TakeJug(int oz)
     {
-        var p = TakeJugProblem(grade, oz);
+        var p = TakeJugProblem(oz);
         if (p != null)
         {
             Fail(p);
@@ -328,18 +327,18 @@ public sealed class DairyGame
         }
 
         Touch();
-        Net.TakeFromTank(grade, oz, r =>
+        Net.TakeFromTank(0, oz, r =>
         {
-            F.Tank![r.Grade] += r.Oz;
+            F.Tank![0] += r.Oz;
             AddFarmerXp(Math.Max(1, r.Oz / 4));
             plugin.SaveConfig();
-            Say($"Filled {r.Oz} oz of Grade {Grades.Name(r.Grade)} from the dairy tank ({r.Left:0.#} oz left).", 1);
+            Say($"Filled {r.Oz} oz from the dairy tank ({r.Left:0.#} oz left).", 1);
         }, e => Fail(e));
     }
 
     // ----- Weekly creamery contract -----
 
-    public float TankOz(int grade) => Net.Progress?.Tank?.ByGrade is { } t && grade >= 0 && grade < t.Count ? t[grade] : 0;
+    public float TankOz => Net.Progress?.Tank?.Total ?? 0;
 
     /// <summary>The Grand Creamery (set by the developer), where contract milk is delivered.</summary>
     public CreameryInfo? Creamery => Net.Last?.Creamery;
@@ -370,7 +369,7 @@ public sealed class DairyGame
         wasAtCreamery = at;
     }
 
-    public string? ShipProblem(int grade, int oz)
+    public string? ShipProblem(int oz)
     {
         var c = Net.Progress?.Contract;
         if (Blocked() != null) return Blocked();
@@ -379,9 +378,8 @@ public sealed class DairyGame
         if (!CanCarry) return "Farmers and the owner ship milk to the contract.";
         if (Creamery is { } cr) { if (!AtCreamery) return $"Bring your jugs to {cr.Name} ({cr.Zone}) to ship them."; }
         else if (!Where.InDairy) return "Go to your dairy to ship milk.";
-        if (grade < c.MinGrade) return $"This contract needs Grade {Grades.Name(c.MinGrade)} or better.";
         if (oz < 1) return "Nothing left to ship.";
-        if (F.Tank![grade] < oz - 0.01f) return $"You carry {F.Tank[grade]:0.#} oz of Grade {Grades.Name(grade)}. Fill jugs at your dairy (Creamery > Jugs).";
+        if (Carried < oz - 0.01f) return $"You carry {Carried:0.#} oz. Fill jugs at your dairy (Creamery > Jugs).";
         return null;
     }
 
@@ -403,9 +401,9 @@ public sealed class DairyGame
         }, () => Say($"The Grand Creamery is now here ({zone}).", 1), e => Fail(e));
     }
 
-    public void Ship(int grade, int oz)
+    public void Ship(int oz)
     {
-        var p = ShipProblem(grade, oz);
+        var p = ShipProblem(oz);
         if (p != null)
         {
             Fail(p);
@@ -413,14 +411,27 @@ public sealed class DairyGame
         }
 
         Touch();
-        Net.ShipToContract(grade, oz, r =>
+        Net.ShipToContract(0, oz, r =>
         {
             F.DayDelivered++;
-            F.Tank![grade] = Math.Max(0, F.Tank[grade] - r.Shipped);
+            F.Tank![0] = Math.Max(0, F.Tank[0] - r.Shipped);
             AddFarmerXp(Math.Max(1, r.Shipped / 2));
             plugin.SaveConfig();
             Say(r.Finished ? $"Contract finished! The reward goes to {DairyName}." : $"Shipped {r.Shipped} oz to the contract ({r.OzDone:0} / {r.OzNeed} oz).", 1);
         }, e => Fail(e));
+    }
+
+    private bool jugsMerged;
+
+    /// <summary>Milk no longer has a grade: jugs carried from before are poured together.</summary>
+    private void MergeJugs()
+    {
+        jugsMerged = true;
+        var extra = 0f;
+        for (var g = 1; g < F.Tank!.Length; g++) { extra += F.Tank[g]; F.Tank[g] = 0; }
+        if (extra <= 0) return;
+        F.Tank[0] += extra;
+        plugin.SaveConfig();
     }
 
     /// <summary>Milk people had stored before milk paid at milking time: paid out once, at today's prices.</summary>
@@ -558,6 +569,7 @@ public sealed class DairyGame
     {
         now += dt;
         if (!F.StockPaidOut && Blocked() == null) PayOutOldStock();
+        if (F.StockPaidOut && !jugsMerged) MergeJugs();
         var wasInDairy = Where.InDairy;
         Where = Locate();
         // Tell the server right away when you arrive or leave, so jugs, chores and hand milking pay count at once
@@ -1050,7 +1062,7 @@ public sealed class DairyGame
             }
             else return;
 
-            Draw(Catalog.StallSpeed[Math.Clamp(s.Stall!.Tier, 1, 4)] * (Owned("letdown") > 0 ? 1.1f : 1f) * (Fresh(s.Stall) ? 1f + Catalog.CleanBonus : 1f) * dt);
+            Draw(Catalog.StallSpeed[Math.Clamp(s.Stall!.Tier, 1, 4)] * Catalog.GradeMult(s.Grade) * (Owned("letdown") > 0 ? 1.1f : 1f) * (Fresh(s.Stall) ? 1f + Catalog.CleanBonus : 1f) * dt);
         }
         else
         {
@@ -1062,7 +1074,7 @@ public sealed class DairyGame
 
             if (handFlowing)
             {
-                Draw(Catalog.HandSpeed * (Owned("udderbalm") > 0 ? 1.15f : 1f) * dt);
+                Draw(Catalog.HandSpeed * Catalog.GradeMult(s.Grade) * (Owned("udderbalm") > 0 ? 1.15f : 1f) * dt);
                 if (now >= nextSquirt)
                 {
                     nextSquirt = now + 2.5;
@@ -1150,7 +1162,7 @@ public sealed class DairyGame
 
         AddXp(xp);
         var by = s.Kind == SessionKind.Hand ? $" by {(s.Hand!.IsTest ? "the test farmhand" : s.Hand.Name)}" : "";
-        Say($"Milked{by}: {collected:0.#} oz of Grade {Grades.Name(s.Grade)}. +{pay} coins, +{xp} xp" + (reason != null ? $" ({reason})" : ""), 1);
+        Say($"Milked{by}: {collected:0.#} oz as a Grade {Grades.Name(s.Grade)} cow. +{pay} coins, +{xp} xp" + (reason != null ? $" ({reason})" : ""), 1);
         plugin.SaveConfig();
     }
 
@@ -2132,7 +2144,7 @@ public sealed class DairyGame
         return true;
     }
 
-    public float OzAtOrAbove(int grade) => F.Tank!.Skip(grade).Sum();
+    public float OzAtOrAbove(int grade) => Carried;   // milk has no grade any more: any milk fills anything
 
     // ----- Making things: farmers turn milk from their jugs into ingredients (butter for now) -----
 
@@ -2149,7 +2161,7 @@ public sealed class DairyGame
         if (r.UsesCount > 0 && Count(r.Uses) < r.UsesCount * count)
             return $"You need {r.UsesCount * count} {Catalog.MadeName(r.Uses).ToLowerInvariant()} (you have {Count(r.Uses)}).";
         if (OzAtOrAbove(r.MinGrade) < r.MilkOz * count)
-            return $"You need {r.MilkOz * count} oz of milk{(r.MinGrade > 0 ? $" (Grade {Grades.Name(r.MinGrade)} or better)" : "")} in your jugs. Fill them from the dairy tank on the Creamery tab.";
+            return $"You need {r.MilkOz * count} oz of milk in your jugs. Fill them from the dairy tank on the Creamery tab.";
         return null;
     }
 
@@ -2261,7 +2273,7 @@ public sealed class DairyGame
         if (r.UsesCount > 0) F.Pantry[r.Uses] = Count(r.Uses) - r.UsesCount;
 
         var left = (float)r.MilkOz;
-        for (var g = r.MinGrade; g < Grades.Count && left > 0; g++)
+        for (var g = 0; g < Grades.Count && left > 0; g++)
         {
             var take = Math.Min(left, F.Tank![g]);
             F.Tank[g] -= take;
@@ -2321,8 +2333,8 @@ public sealed class DairyGame
     private Order NewOrder()
     {
         var lvl = DeliveryLevel;
-        var maxGrade = BestTankGrade();   // orders ask for grades your dairy has
-        var grade = rng.Next(0, maxGrade + 1);
+        // Milk has no grade: any milk fills any order. Better-paying customers show up as your farmer level grows.
+        var grade = rng.Next(0, Math.Min(Grades.Count - 1, 1 + lvl / 15) + 1);
         var oz = 4 * rng.Next(2, 3 + Math.Min(6, lvl / 3));
         var coins = (int)Math.Round(oz * Grades.All[grade].Price * 1.6f) + 10;
         return new Order
@@ -2330,20 +2342,10 @@ public sealed class DairyGame
             Id = ++F.OrderSerial,
             Customer = Catalog.Customers[rng.Next(Catalog.Customers.Length)],
             Oz = oz,
-            MinGrade = grade,
+            MinGrade = 0,
             Coins = coins,
             Xp = (int)(oz * 2.5f) + 15 + grade * 10,
         };
-    }
-
-    /// <summary>Best grade in your dairy's tank (or what you carry), so orders ask for milk you can get.</summary>
-    private int BestTankGrade()
-    {
-        var best = 0;
-        var t = Net.Progress?.Tank?.ByGrade;
-        for (var g = 0; g < Grades.Count; g++)
-            if ((t != null && g < t.Count && t[g] >= 8) || F.Tank![g] >= 8) best = g;
-        return Math.Min(best, 2 + DeliveryLevel / 10);
     }
 
     public bool CanFill(Order o) => OzAtOrAbove(o.MinGrade) >= o.Oz;
@@ -2351,11 +2353,10 @@ public sealed class DairyGame
     public bool Fill(Order o)
     {
         if (Blocked() != null) return Fail(Blocked()!);
-        if (!CanFill(o)) return Fail($"You need {o.Oz} oz of Grade {Grades.Name(o.MinGrade)} or better.");
+        if (!CanFill(o)) return Fail($"You need {o.Oz} oz of milk in your jugs.");
 
-        // Use the lowest grade that still qualifies first
         var left = (float)o.Oz;
-        for (var g = o.MinGrade; g < Grades.Count && left > 0; g++)
+        for (var g = 0; g < Grades.Count && left > 0; g++)
         {
             var take = Math.Min(left, F.Tank![g]);
             F.Tank[g] -= take;
@@ -2572,7 +2573,7 @@ public sealed class DairyGame
         // The coins are held by the network until the order is filled or cancelled (then they come back in your inbox)
         F.Coins -= coins;
         plugin.SaveConfig();
-        Net.PostOrder(oz, grade, coins, () => Say($"Posted: {oz} oz of Grade {Grades.Name(grade)} or better for {coins} coins.", 1), e =>
+        Net.PostOrder(oz, grade, coins, () => Say($"Posted: {oz} oz of milk for {coins} coins.", 1), e =>
         {
             F.Coins += coins;
             plugin.SaveConfig();
@@ -2592,7 +2593,7 @@ public sealed class DairyGame
         // From inside your own dairy, or in person at the buyer's public area (which pays a bonus)
         if (VisitingDairy?.Id != o.DairyId && !Where.InDairy)
             return o.DairyPublic ? $"Deliver from inside your own dairy, or in person at {o.DairyName} for +10%." : "Deliver from inside your own dairy.";
-        if (OzAtOrAbove(o.MinGrade) < o.Oz) return $"You need {o.Oz} oz of Grade {Grades.Name(o.MinGrade)} or better in your tank.";
+        if (Carried < o.Oz) return $"You need {o.Oz} oz of milk in your jugs.";
         return null;
     }
 
@@ -2605,22 +2606,20 @@ public sealed class DairyGame
             return;
         }
 
-        // Take the milk now (lowest grade that still qualifies first); give it back if the delivery fails
+        // Take the milk now; give it back if the delivery fails
         var taken = new float[Grades.Count];
         var left = (float)o.Oz;
-        var lowest = -1;
-        for (var g = o.MinGrade; g < Grades.Count && left > 0; g++)
+        for (var g = 0; g < Grades.Count && left > 0; g++)
         {
             var take = Math.Min(left, F.Tank![g]);
             if (take <= 0) continue;
-            if (lowest < 0) lowest = g;
             F.Tank[g] -= take;
             taken[g] = take;
             left -= take;
         }
 
         plugin.SaveConfig();
-        Net.Fill(o, Math.Max(lowest, o.MinGrade), r =>
+        Net.Fill(o, 0, r =>
         {
             F.Stats.OrdersFilled++;
             F.DayOrders++;
@@ -2655,7 +2654,7 @@ public sealed class DairyGame
         var r = new Random(seed);
         for (var i = 0; i < 2; i++)
         {
-            var grade = Math.Min(BestTankGrade(), r.Next(0, 3));
+            var grade = r.Next(0, 3);   // only sets the pay: any milk fills it
             var oz = 8 * r.Next(1, 4);
             var key = $"{dairyId}:{i}";
             if (F.VisitOrdersDone.Contains(key)) continue;
@@ -2664,7 +2663,7 @@ public sealed class DairyGame
                 Id = i,
                 Customer = Catalog.Customers[r.Next(Catalog.Customers.Length)],
                 Oz = oz,
-                MinGrade = grade,
+                MinGrade = 0,
                 Coins = (int)Math.Round(oz * Grades.All[grade].Price * 2f) + 20,
                 Xp = (int)(oz * 3f) + 25 + grade * 10,
             });
@@ -2780,7 +2779,7 @@ public sealed class DairyGame
         F.Quality += amount;
         var after = Grades.Cap(F.Quality);
         for (var g = before + 1; g <= after; g++)
-            Say($"Milk quality up! Your milk can now be Grade {Grades.Name(g)} ({Grades.All[g].Blurb}).", 1);
+            Say($"Milk quality up! You can now be a Grade {Grades.Name(g)} cow ({Grades.All[g].Blurb}): faster milking, more milk and better pay.", 1);
     }
 
     /// <summary>Quality needed for the next grade, or null at the top.</summary>
