@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
 using VelvetDairy.Game;
@@ -66,6 +67,17 @@ public sealed partial class MainWindow
             else if (id.StartsWith("##psell1")) G.SellFeed(item, 1);
             else if (id.StartsWith("##psellall")) G.SellFeed(item, have);
             else if (id.StartsWith("##phide")) G.SetFeedHidden(item, !hidden);
+        }
+
+        // Ingredients farmers make (butter): only used to make other things
+        var ingredients = Catalog.Ingredients.Where(i => G.Count(i.Id) > 0).ToList();
+        if (ingredients.Count > 0)
+        {
+            SubHeading("Ingredients", width);
+            foreach (var i in ingredients)
+                ListRow(Ico(i.Icon), i.Name, Theme.Ink,
+                    new[] { new Line($"You have {G.Count(i.Id)}", Theme.Ink), new Line("Used to make things", Theme.SageDeep) }, Array.Empty<Btn>(), width);
+            shown += ingredients.Count;
         }
 
         if (shown == 0) Ui.Wrapped("Your pantry is empty. Feed and treats you buy in the Shop show up here.", Theme.InkSoft, width);

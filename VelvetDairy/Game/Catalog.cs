@@ -101,6 +101,24 @@ public static class Catalog
     // Each need is a milk bonus. Each use adds 30 minutes (half the bar, up to an hour) and has a 15-minute cooldown.
     // Food sets Fed, the trough or a mineral block sets Watered, resting sets Comfy, treats set Happy.
     // Using one again adds time, not more bonus; the newest one of a kind sets the bonus. All four at once: Contented on top.
+    // ----- Making things (farmers): ingredients go in the pantry; they're only used to make other things -----
+    public sealed record Ingredient(string Id, string Name, string Icon, string Desc);
+
+    /// <summary>Turn milk from your jugs into something. MilkOz of any grade from MinGrade up, at FarmerLevel or higher.</summary>
+    public sealed record Recipe(string Id, string Name, string Makes, int Amount, int MilkOz, int MinGrade, int FarmerLevel, int Xp, string Desc);
+
+    public static readonly IReadOnlyList<Ingredient> Ingredients = new[]
+    {
+        new Ingredient("butter", "Butter", "biscuit", "Churned from milk. An ingredient: it's used to make things (more recipes are coming)."),
+    };
+
+    public static readonly IReadOnlyList<Recipe> Recipes = new[]
+    {
+        new Recipe("butter", "Churn butter", "butter", 1, 16, 0, 1, 12, "Churn 16 oz of milk from your jugs into a pat of butter."),
+    };
+
+    public static Ingredient? IngredientById(string id) => Ingredients.FirstOrDefault(i => i.Id == id);
+
     public static readonly IReadOnlyList<FeedItem> Feed = new[]
     {
         new FeedItem("hay", "Meadow hay", "hay", 4, 1, "Plain and filling.", Fed: 0.04f),

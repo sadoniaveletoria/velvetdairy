@@ -596,6 +596,7 @@ public sealed partial class MainWindow : Window
         {
             DrawHandMilkCows(w);
             DrawCleanStalls(w);
+            DrawMake(w);
         }, true);
         Panel("##farmwork", new Vector2(mid + 7, min.Y), max, G.IsFarmer ? $"Farmer level {G.FarmerLevel}" : "Your work", w =>
         {

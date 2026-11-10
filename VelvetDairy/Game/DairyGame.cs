@@ -2133,6 +2133,43 @@ public sealed class DairyGame
 
     public float OzAtOrAbove(int grade) => F.Tank!.Skip(grade).Sum();
 
+    // ----- Making things: farmers turn milk from their jugs into ingredients (butter for now) -----
+
+    public string? MakeProblem(Catalog.Recipe r)
+    {
+        var b = Blocked();
+        if (b != null) return b;
+        if (!CanCarry) return "Only farmers make things.";
+        if (!Where.InDairy) return "Go to your dairy to use its kitchen.";
+        if (IsFarmer && FarmerLevel < r.FarmerLevel) return $"Unlocks at farmer level {r.FarmerLevel}.";
+        if (OzAtOrAbove(r.MinGrade) < r.MilkOz)
+            return $"You need {r.MilkOz} oz of milk{(r.MinGrade > 0 ? $" (Grade {Grades.Name(r.MinGrade)} or better)" : "")} in your jugs. Fill them from the dairy tank on the Creamery tab.";
+        return null;
+    }
+
+    public bool Make(Catalog.Recipe r)
+    {
+        var p = MakeProblem(r);
+        if (p != null) return Fail(p);
+        // Use the lowest grade that qualifies first
+        var left = (float)r.MilkOz;
+        for (var g = r.MinGrade; g < Grades.Count && left > 0; g++)
+        {
+            var take = Math.Min(left, F.Tank![g]);
+            F.Tank[g] -= take;
+            left -= take;
+        }
+
+        if (Networked) Net.UseCarried(r.MilkOz);
+        F.Pantry[r.Makes] = Count(r.Makes) + r.Amount;
+        AddFarmerXp(r.Xp);
+        Touch();
+        var name = Catalog.IngredientById(r.Makes)?.Name ?? r.Makes;
+        Say($"You made {r.Amount} {name.ToLowerInvariant()} from {r.MilkOz} oz of milk. +{r.Xp} farmer xp", 1);
+        plugin.SaveConfig();
+        return true;
+    }
+
     private void RefillOrders()
     {
         if (!CanCarry) return;   // farmers and owners deliver; cows are paid at milking time
