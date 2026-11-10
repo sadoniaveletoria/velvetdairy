@@ -26,74 +26,45 @@ public static class AreaOverlay
 
     public enum StallLook { Idle, Sitting, Milking, Dozing, Asleep }
 
-    // The floor under each stall's seat, found once per stall (and again if the stall moves)
-    private static readonly System.Collections.Generic.Dictionary<string, (Vector3 Seat, float Y)> floors = new();
-
     /// <summary>
-    /// The floor height under a stall: a ray straight down from just under the seat, so the square lies on the floor
-    /// instead of the seat. Falls back to a little below the seat when nothing is found.
-    /// </summary>
-    private static unsafe float FloorUnder(Stall s)
-    {
-        var seat = new Vector3(s.X, s.Y, s.Z);
-        if (floors.TryGetValue(s.Id, out var f) && f.Seat == seat) return f.Y;
-        try
-        {
-            if (FFXIVClientStructs.FFXIV.Common.Component.BGCollision.BGCollisionModule.RaycastMaterialFilter(
-                    seat - new Vector3(0, 0.15f, 0), new Vector3(0, -1, 0), out var hit, 3f))
-            {
-                floors[s.Id] = (seat, hit.Point.Y + 0.02f);
-                return hit.Point.Y + 0.02f;
-            }
-        }
-        catch
-        {
-            // no collision data right now
-        }
-
-        return s.Y - 0.45f;   // not found yet (the area may still be loading): try again next frame
-    }
-
-    /// <summary>
-    /// A small square flat on the ground under a stall's seat. Green; it pulses gently while you sit on it, drains like a
-    /// gauge while it milks you (<paramref name="fill"/> = milk left of what you started with), turns light red while
-    /// you doze on it and flashes red while you're asleep on it.
+    /// A small round badge floating over the head of whoever sits on a stall (at head height over an empty one).
+    /// Green; it pulses gently while someone sits there, drains like a gauge while it milks them (<paramref name="fill"/> =
+    /// milk left of what they started with), turns light red while they doze and flashes red while they're asleep.
     /// </summary>
     public static void DrawStall(Stall s, StallLook look, float fill)
     {
+        // A seated character's head is about 1.6 y above the seat
+        if (!Plugin.GameGui.WorldToScreen(new Vector3(s.X, s.Y + 1.6f, s.Z), out var c)) return;
         var dl = ImGui.GetBackgroundDrawList();
-        var c = new Vector3(s.X, FloorUnder(s), s.Z);
-        const float r = 0.45f;
-        var world = new[] { c + new Vector3(-r, 0, -r), c + new Vector3(r, 0, -r), c + new Vector3(r, 0, r), c + new Vector3(-r, 0, r) };
-        var pts = new Vector2[4];
-        for (var i = 0; i < 4; i++)
-            if (!Plugin.GameGui.WorldToScreen(world[i], out pts[i])) return;   // only drawn when the whole square is in view
+        const float r = 10f;
+        c -= new Vector2(0, r + 6);   // sit just above the head, not on it
 
         var t = (float)(System.Environment.TickCount64 / 1000.0);
-        var (col, fillA, edgeA) = look switch
+        var (col, a) = look switch
         {
-            StallLook.Sitting => (Green, 0.3f + 0.2f * (0.5f + 0.5f * System.MathF.Sin(t * 2.2f)), 0.95f),       // a slow breath
-            StallLook.Milking => (Green, 0.55f, 1f),
-            StallLook.Dozing => (LightRed, 0.4f, 0.9f),
-            StallLook.Asleep => System.MathF.Sin(t * 6f) > 0 ? (Red, 0.6f, 1f) : (Red, 0.12f, 0.5f),             // flashing
-            _ => (Green, 0.3f, 0.8f),
+            StallLook.Sitting => (Green, 0.55f + 0.4f * (0.5f + 0.5f * System.MathF.Sin(t * 2.2f))),   // a slow breath
+            StallLook.Milking => (Green, 0.95f),
+            StallLook.Dozing => (LightRed, 0.9f),
+            StallLook.Asleep => (Red, System.MathF.Sin(t * 6f) > 0 ? 1f : 0.25f),                        // flashing
+            _ => (Green, 0.6f),
         };
+        uint U(Vector4 v, float alpha) => ImGui.ColorConvertFloat4ToU32(v with { W = alpha });
 
-        var edge = ImGui.ColorConvertFloat4ToU32(col with { W = edgeA });
+        // A dark backing so it reads on any background, then the color
+        dl.AddCircleFilled(c, r + 2.5f, U(new Vector4(0.08f, 0.06f, 0.06f, 1f), 0.55f));
         if (look == StallLook.Milking)
         {
-            // The green drains toward the near edge as the milk comes out; what's left of the square stays faint
+            // Drains from the top down as the milk comes out
             fill = System.Math.Clamp(fill, 0f, 1f);
-            dl.AddQuadFilled(pts[0], pts[1], pts[2], pts[3], ImGui.ColorConvertFloat4ToU32(col with { W = 0.12f }));
-            var near0 = Plugin.GameGui.WorldToScreen(world[0], out var a0) ? a0 : pts[0];
-            var near1 = Plugin.GameGui.WorldToScreen(world[1], out var a1) ? a1 : pts[1];
-            if (Plugin.GameGui.WorldToScreen(Vector3.Lerp(world[1], world[2], fill), out var b1) &&
-                Plugin.GameGui.WorldToScreen(Vector3.Lerp(world[0], world[3], fill), out var b0) && fill > 0.001f)
-                dl.AddQuadFilled(near0, near1, b1, b0, ImGui.ColorConvertFloat4ToU32(col with { W = fillA }));
+            dl.AddCircleFilled(c, r, U(col, 0.18f));
+            var top = c.Y + r - 2 * r * fill;
+            dl.PushClipRect(new Vector2(c.X - r - 1, top), new Vector2(c.X + r + 1, c.Y + r + 1), true);
+            dl.AddCircleFilled(c, r, U(col, a));
+            dl.PopClipRect();
         }
-        else dl.AddQuadFilled(pts[0], pts[1], pts[2], pts[3], ImGui.ColorConvertFloat4ToU32(col with { W = fillA }));
+        else dl.AddCircleFilled(c, r, U(col, a));
 
-        dl.AddQuad(pts[0], pts[1], pts[2], pts[3], edge, 2f);
+        dl.AddCircle(c, r, U(col, 1f), 0, 1.8f);
     }
 
     /// <summary>A world-space line split into short pieces so it follows the view even when one end is off screen.</summary>

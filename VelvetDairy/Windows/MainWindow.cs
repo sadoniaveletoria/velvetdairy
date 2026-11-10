@@ -1593,8 +1593,8 @@ public sealed partial class MainWindow : Window
         if (ImGui.Checkbox("Show the owner HUD when I own a dairy", ref b)) { F.ShowOwnerHud = b; changed = true; }
 
         b = F.ShowStallMarkers;
-        if (ImGui.Checkbox("Mark the stalls on the ground (only you see it)", ref b)) { F.ShowStallMarkers = b; changed = true; }
-        if (ImGui.IsItemHovered()) ImGui.SetTooltip("A small green square on the ground under each of your dairy's stalls while you're in the dairy. It pulses while you sit on it, drains as it milks you, turns light red if you doze and flashes red if you fall asleep on it.");
+        if (ImGui.Checkbox("Show stall markers (only you see them)", ref b)) { F.ShowStallMarkers = b; changed = true; }
+        if (ImGui.IsItemHovered()) ImGui.SetTooltip("A small green circle over the head of whoever sits on each of your dairy's stalls (at head height over empty ones), while you're in the dairy. It pulses while someone sits, drains as they're milked, turns light red if they doze and flashes red if they fall asleep.");
         if (F.ShowStallMarkers)
         {
             var here = G.StallsHere().Count();
