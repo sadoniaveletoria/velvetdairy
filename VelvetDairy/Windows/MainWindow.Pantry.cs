@@ -10,11 +10,49 @@ namespace VelvetDairy.Windows;
 // Pantry tab: the feed and treats you own. Eat them (inside your dairy), sell back what you don't need, or hide it.
 public sealed partial class MainWindow
 {
+    private const string PantryFood = "Food & treats", PantryIngredients = "Ingredients", PantryShelf = "Dairy shelf";
+
+    /// <summary>Pantry tabs: what you eat, what you bake with, and your dairy's shelf (each its own short list).</summary>
     private void DrawPantry(Vector2 min, Vector2 max)
     {
+        var labels = new List<string> { PantryFood };
+        if (G.CanCarry || Catalog.Ingredients.Any(i => G.Count(i.Id) > 0)) labels.Add(PantryIngredients);
+        if (G.Networked && F.NetMember != null) labels.Add(PantryShelf);
+        var top = SubTabs("pantry", labels.ToArray(), min, max.X - min.X);
+        var which = labels[Math.Clamp(Sub("pantry"), 0, labels.Count - 1)];
         var mid = min.X + (max.X - min.X) * 0.58f;
-        Panel("##pantry", min, new Vector2(mid - 7, max.Y), "Your pantry", DrawPantryList);
-        Panel("##pantryinfo", new Vector2(mid + 7, min.Y), max, "Milk quality", DrawPantryInfo, true);
+        switch (which)
+        {
+            case PantryIngredients:
+                Panel("##pantryingr", top, new Vector2(mid - 7, max.Y), "Ingredients", DrawIngredients);
+                Panel("##pantryingrinfo", new Vector2(mid + 7, top.Y), max, "Baking", w =>
+                    Ui.Wrapped("Ingredients are only used to make other things in the Kitchen (Roles > Farmer > Open kitchen). Butter is churned from milk in your jugs.", Theme.InkSoft, w), true);
+                break;
+            case PantryShelf:
+                Panel("##pantryshelf", top, new Vector2(mid - 7, max.Y), "Dairy shelf", DrawShelf);
+                Panel("##pantryshelfinfo", new Vector2(mid + 7, top.Y), max, "How the shelf works", w =>
+                    Ui.Wrapped("Your dairy's farmers bake treats for the shelf. Buy them inside the dairy; the baker gets 80% of the price and the dairy fund 20%. " +
+                               "The owner sets the prices. What you buy goes to Food & treats.", Theme.InkSoft, w), true);
+                break;
+            default:
+                Panel("##pantry", top, new Vector2(mid - 7, max.Y), "Your pantry", DrawPantryList);
+                Panel("##pantryinfo", new Vector2(mid + 7, top.Y), max, "Milk quality", DrawPantryInfo, true);
+                break;
+        }
+    }
+
+    private void DrawIngredients(float width)
+    {
+        var have = Catalog.Ingredients.Where(i => G.Count(i.Id) > 0).ToList();
+        if (have.Count == 0)
+        {
+            Ui.Wrapped("No ingredients yet. Farmers make them in the Kitchen (Roles > Farmer > Open kitchen).", Theme.InkSoft, width);
+            return;
+        }
+
+        foreach (var i in have)
+            ListRow(Ico(i.Icon), i.Name, Theme.Ink,
+                new[] { new Line($"You have {G.Count(i.Id)}", Theme.Ink), new Line(i.Desc, Theme.InkSoft) }, Array.Empty<Btn>(), width);
     }
 
     private void DrawPantryList(float width)
@@ -25,8 +63,6 @@ public sealed partial class MainWindow
             Ui.Wrapped(problem + " You can still sell or hide things here.", Theme.RoseDeep, width);
             Gap(6);
         }
-
-        DrawShelf(width);
 
         var shown = 0;
         var hiddenCount = 0;
@@ -71,17 +107,6 @@ public sealed partial class MainWindow
             else if (id.StartsWith("##phide")) G.SetFeedHidden(item, !hidden);
         }
 
-        // Ingredients farmers make (butter): only used to make other things
-        var ingredients = Catalog.Ingredients.Where(i => G.Count(i.Id) > 0).ToList();
-        if (ingredients.Count > 0)
-        {
-            SubHeading("Ingredients", width);
-            foreach (var i in ingredients)
-                ListRow(Ico(i.Icon), i.Name, Theme.Ink,
-                    new[] { new Line($"You have {G.Count(i.Id)}", Theme.Ink), new Line("Used to make things", Theme.SageDeep) }, Array.Empty<Btn>(), width);
-            shown += ingredients.Count;
-        }
-
         if (shown == 0) Ui.Wrapped("Your pantry is empty. Feed and treats you buy in the Shop show up here.", Theme.InkSoft, width);
         Gap(6);
         var showEmpty = F.CareShowEmpty;
@@ -107,8 +132,13 @@ public sealed partial class MainWindow
         if (!G.Networked || F.NetMember == null) return;
         G.Net.RefreshShelf();
         var items = G.Net.Shelf;
-        if (items.Count == 0) return;
-        SubHeading("Dairy shelf", width);
+        if (items.Count == 0)
+        {
+            Ui.Wrapped("Loading the shelf...", Theme.InkSoft, width);
+            return;
+        }
+
+        if (items.All(s => s.Qty <= 0)) Ui.Wrapped("The shelf is empty right now. Your dairy's farmers bake treats for it in the Kitchen.", Theme.InkSoft, width);
         foreach (var s in items)
         {
             var feed = Catalog.FeedById(s.Item);
