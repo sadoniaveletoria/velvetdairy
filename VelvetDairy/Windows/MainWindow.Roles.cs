@@ -148,58 +148,26 @@ public sealed partial class MainWindow
         Ui.Wrapped($"Grooming cows ({Catalog.GroomXp} each, every 15 min per cow), cleaning stalls ({Catalog.CleanXp} each), hand milking pay, filling jugs, customer orders, deliveries and contract shipments.", Theme.InkSoft, width);
     }
 
-    /// <summary>Baked goods: farmers turn milk from their jugs into ingredients (butter for now).</summary>
+    /// <summary>The kitchen in one line: what's baking (or that nothing is), and a button that opens the Kitchen window.</summary>
     private void DrawMake(float width)
     {
         if (!G.CanCarry) return;
-        SubHeading("Baked goods", width);
-        Ui.Wrapped($"Bake with milk from your jugs. Butter goes in your pantry; treats go on the dairy shelf, where members buy them and you get 80%. You're carrying {G.Carried:0.#} oz.", Theme.InkSoft, width);
-        // Something in the oven: its progress, and a way to stop
-        if (G.Baking is { } b)
+        SubHeading("Kitchen", width);
+        var line = G.Baking is { } b
+            ? $"{b.Recipe.Name} · {F.Bake!.Done + 1} of {F.Bake.Count} · {(G.Where.InDairy ? $"{DairyGame.Wait(b.Left)} left" : "paused")}"
+            : $"Nothing baking · {Catalog.Recipes.Count} recipes";
+        ImGui.TextColored(Theme.Ink, line);
+        ImGui.SameLine();
+        if (ImGui.SmallButton("Open kitchen##openkitchen")) plugin.Kitchen.IsOpen = true;
+        if (ImGui.IsItemHovered()) ImGui.SetTooltip("Bake with milk from your jugs: butter for your pantry, treats for the dairy shelf.");
+        if (G.Baking is { } bb)
         {
-            var job = F.Bake!;
-            var clicked = ListRow(Ico(Catalog.MadeIcon(b.Recipe.Makes)), $"{b.Recipe.Name} · {job.Done + 1} of {job.Count}", Theme.Ink,
-                new[]
-                {
-                    new Line(G.Where.InDairy ? $"{Clock(b.Left)} left for the batch" : "Paused: go back into the dairy to keep going", G.Where.InDairy ? Theme.InkSoft : Theme.RoseDeep),
-                    new Line($"{job.Done} done so far", Theme.SageDeep),
-                },
-                new[] { new Btn("##bakecancel", "Stop", "cream", true, "Stop after keeping what's finished. Milk for unfinished ones stays in your jugs.") }, width,
-                b.Current, Theme.HoneyDeep);
-            if (clicked == 0) G.CancelBake();
-            return;
-        }
-
-        foreach (var rec in Catalog.Recipes)
-        {
-            var max = Math.Max(1, G.MaxMake(rec));
-            var n = Math.Clamp(bakeCount.GetValueOrDefault(rec.Id, 1), 1, Math.Max(1, max));
-            var why = G.MakeProblem(rec, n);
-            var madeName = Catalog.MadeName(rec.Makes).ToLowerInvariant();
-            var uses = rec.UsesCount > 0 ? $"{rec.UsesCount} {Catalog.MadeName(rec.Uses).ToLowerInvariant()} + " : "";
-            var clicked = ListRow(Ico(Catalog.MadeIcon(rec.Makes)), rec.Name, Theme.Ink,
-                new[]
-                {
-                    new Line($"{uses}{rec.MilkOz} oz milk{(rec.MinGrade > 0 ? $" (Grade {Grades.Name(rec.MinGrade)}+)" : "")} → {rec.Amount} {madeName}" +
-                             (rec.ToShelf ? " for the dairy shelf" : $" · you have {G.Count(rec.Makes)}"), Theme.InkSoft),
-                    new Line($"{n} = {n * rec.MilkOz} oz, {Clock(TimeSpan.FromSeconds(Catalog.TotalSeconds(rec, n)))} · +{n * rec.Xp} farmer xp", Theme.SageDeep),
-                },
-                new[]
-                {
-                    new Btn($"##bakeless{rec.Id}", "-", "cream", n > 1, "One fewer"),
-                    new Btn($"##bakemore{rec.Id}", "+", "cream", n < G.MaxMake(rec), "One more (each one takes a little longer than the last)"),
-                    new Btn($"##make{rec.Id}", "Bake", "honey", why == null, why ?? rec.Desc),
-                }, width,
-                Math.Min(1f, G.OzAtOrAbove(rec.MinGrade) / rec.MilkOz), why == null ? Theme.SageDeep : Theme.BlueDeep);
-            if (clicked == 0) bakeCount[rec.Id] = n - 1;
-            else if (clicked == 1) bakeCount[rec.Id] = n + 1;
-            else if (clicked == 2) G.StartBake(rec, n);
+            ImGui.PushStyleColor(ImGuiCol.PlotHistogram, Theme.HoneyDeep);
+            ImGui.ProgressBar(bb.Current, new Vector2(Math.Min(width, 320), 8), "");
+            ImGui.PopStyleColor();
         }
     }
 
-    private readonly System.Collections.Generic.Dictionary<string, int> bakeCount = new();
-
-    private static string Clock(TimeSpan t) => t.TotalHours >= 1 ? $"{(int)t.TotalHours}:{t.Minutes:00}:{t.Seconds:00}" : $"{(int)t.TotalMinutes}:{t.Seconds:00}";
 
     /// <summary>For farmers: one line with the milking animation, and a button that opens the picker in its own window.</summary>
     private void DrawMilkMod(float width)
