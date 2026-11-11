@@ -36,7 +36,7 @@ public sealed class ContextMenuHandler : IDisposable
         args.AddMenuItem(new MenuItem
         {
             Name = "Eorzea Milkers",
-            PrefixChar = 'V',
+            PrefixChar = 'M',
             IsSubmenu = true,
             OnClicked = clicked => clicked.OpenSubmenu(Build(name, worldId, worldName)),
         });

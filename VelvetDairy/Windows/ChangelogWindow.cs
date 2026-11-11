@@ -22,10 +22,10 @@ public sealed class ChangelogWindow : Window
     /// <summary>Newest first. Write these for players: what changed for them, not how.</summary>
     private static readonly Entry[] Entries =
     {
-        new("0.9.14", "Eorzea Milkers: your grade, baking and farmer tools", new[]
+        new("0.9.15", "Eorzea Milkers: your grade, baking and farmer tools", new[]
         {
             "# A new name",
-            "Velvet Dairy is now Eorzea Milkers. Your progress, dairy and settings are all kept. The command is now /milkers.",
+            "Velvet Dairy is now Eorzea Milkers, with a new icon and bottle labels. Your progress, dairy and settings are all kept. The command is now /milkers.",
             "# Your grade",
             "Milk no longer has a grade. Your cow grade still sets your pay, and now it also milks you faster and gets more milk out: B +10%, A +20%, S +35%, S+ +50%.",
             "Any milk fills any order, the weekly contract and every recipe. Jugs and the dairy tank just show ounces, and milk you already had was poured together.",
