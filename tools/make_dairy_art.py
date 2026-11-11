@@ -11,7 +11,7 @@ import os
 import sys
 
 import numpy as np
-from PIL import Image, ImageDraw, ImageFilter, ImageFont
+from PIL import ImageChops, Image, ImageDraw, ImageFilter, ImageFont
 
 OUT = sys.argv[1] if len(sys.argv) > 1 else "Assets"
 SS = 2
@@ -737,6 +737,19 @@ def portrait(ring, letter, size=256, patches=False):
     return img.resize((size, size), Image.LANCZOS)
 
 
+def you_portrait(size=256):
+    """Your portrait: the cow girl (tools/you_face.svg, rendered to you_face.png) inside the rose seal."""
+    s = 512
+    seal = portrait(ROSE, None, size=s)
+    face = Image.open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "you_face.png")).convert("RGBA").resize((470, 470), Image.LANCZOS)
+    inner = line_mask((s, s), lambda d: d.ellipse([s * 0.07, s * 0.07, s * 0.93, s * 0.93], fill=255))
+    layer = Image.new("RGBA", (s, s), (0, 0, 0, 0))
+    layer.alpha_composite(face, (21, 40))
+    layer.putalpha(ImageChops.multiply(layer.split()[3], inner))
+    seal.alpha_composite(layer)
+    return seal.resize((size, size), Image.LANCZOS)
+
+
 def main():
     ui = os.path.join(OUT, "ui")
     icons = os.path.join(OUT, "icons")
@@ -759,7 +772,7 @@ def main():
     seal().save(os.path.join(ui, "seal.png"), optimize=True)
     for name, (fn, ring) in ICONS.items():
         medallion(fn, ring).save(os.path.join(icons, f"{name}.png"), optimize=True)
-    portrait(ROSE, "drop", patches=True).save(os.path.join(avs, "you.png"), optimize=True)
+    you_portrait().save(os.path.join(avs, "you.png"), optimize=True)
     portrait(BLUE, "F").save(os.path.join(avs, "farmhand.png"), optimize=True)
     portrait(SAGE, "T").save(os.path.join(avs, "test.png"), optimize=True)
     print("done")
