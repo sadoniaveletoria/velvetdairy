@@ -52,7 +52,33 @@ public sealed class MilkAnimationWindow : Window
         if (G.MilkModPick is { } pick)
         {
             ImGui.TextColored(Theme.RoseDeep, "What the Milk button does");
-            ImGui.TextColored(Theme.Ink, $"{pick.Name}  ({pick.Command})");
+            var choices = G.MilkModChoices;
+            if (choices.Count > 1)
+            {
+                // The animation works with several emotes: pick which one you do
+                ImGui.SetNextItemWidth(Math.Min(320, width));
+                if (ImGui.BeginCombo("##milkmodemote", $"{pick.Name}  ({pick.Command})"))
+                {
+                    foreach (var c in choices)
+                    {
+                        var id = Emotes.Find(c.Command);
+                        var unlocked = id == 0 || Emotes.Unlocked(id);
+                        if (!unlocked) ImGui.PushStyleColor(ImGuiCol.Text, Theme.InkSoft);
+                        if (ImGui.Selectable($"{c.Name}  ({c.Command}){(unlocked ? "" : "  (not unlocked)")}##mme{c.Command}{c.Pose}", c == pick))
+                        {
+                            F.MilkModEmote = c.Command;
+                            plugin.SaveConfig();
+                        }
+
+                        if (!unlocked) ImGui.PopStyleColor();
+                    }
+
+                    ImGui.EndCombo();
+                }
+
+                Ui.Wrapped($"This animation works with {choices.Count} emotes; pick the one you want to do.", Theme.InkSoft, width);
+            }
+            else ImGui.TextColored(Theme.Ink, $"{pick.Name}  ({pick.Command})");
             Ui.Wrapped(pick.Pose >= 0
                     ? $"Your animation mod's choice is a sit pose (pose {pick.Pose}). The Milk button sits you down with the mod on; if it isn't the right pose, /cpose once you're seated."
                     : "That's the emote your animation mod's choice changes, so the Milk button does it with the mod on.",
@@ -110,8 +136,12 @@ public sealed class MilkAnimationWindow : Window
     private string modGroupsFor = "";
 
     /// <summary>"  → Sit on ground" after an option that changes an emote.</summary>
-    private string EmoteTag(string group, string option) =>
-        ModAnimations.ForOption(F.MilkModDir, group, option) is { } p ? $"   → {p.Name}" : "";
+    private string EmoteTag(string group, string option)
+    {
+        var all = ModAnimations.AllFromName(option);
+        if (all.Count > 1) return "   → " + string.Join(" / ", all.Select(p => p.Name));
+        return ModAnimations.ForOption(F.MilkModDir, group, option) is { } one ? $"   → {one.Name}" : "";
+    }
 
     /// <summary>The picked mod's options (like which animation it uses), chosen just for milking.</summary>
     private void DrawMilkModOptions()

@@ -136,24 +136,36 @@ public static class ModAnimations
         return list;
     }
 
-    // Animation mods name the emote each option replaces: "(Dom-Bdance/Sub-Hdance)" for a pair (the farmer is the Dom),
-    // "(Gsit0, 1)" or "[Bdance]" for one. The names are the game's emote commands (/bdance is Ball Dance) or a sit pose.
-    private static readonly Regex DomSlot = new(@"\bDom[\s:_-]+([A-Za-z]+)(\d*)", RegexOptions.IgnoreCase);
-    private static readonly Regex AnySlot = new(@"[\(\[]\s*([A-Za-z]+)(\d*)\s*[,\)\]/]", RegexOptions.IgnoreCase);
+    // Animation mods name the emotes an option replaces: "(Dom-Bdance/Sub-Hdance)" for a pair (the farmer is the Dom),
+    // "(Gsit0, 1)", "[Bdance]" or "(Blush/Confirm/Wave/Yes)" for one or several. The names are the game's emote
+    // commands (/bdance is Ball Dance) or a sit pose.
+    private static readonly Regex Brackets = new(@"[\(\[]([^\)\]]*)[\)\]]");
+    private static readonly Regex Token = new(@"^(?:(dom|sub|top|bottom|bot|giver|receiver)[\s:_-]+)?([A-Za-z]+)(\d*)$", RegexOptions.IgnoreCase);
 
-    /// <summary>The emote an option's name says it replaces (for a Dom/Sub pair, the Dom one: that's you, the farmer).</summary>
-    public static Pick? FromName(string option)
+    /// <summary>
+    /// Every emote an option's name says it works with, in the order written. For a Dom/Sub (or top/bottom) pair, only
+    /// the Dom (top, giver) ones: that's you, the farmer.
+    /// </summary>
+    public static List<Pick> AllFromName(string option)
     {
-        var m = DomSlot.Match(option);
-        if (!m.Success) m = AnySlot.Match(option);
-        while (m.Success)
-        {
-            if (Slot(m.Groups[1].Value, m.Groups[2].Value) is { } p) return p;
-            m = m.NextMatch();
-        }
+        var giver = new List<Pick>();
+        var any = new List<Pick>();
+        foreach (Match b in Brackets.Matches(option))
+            foreach (var part in Regex.Split(b.Groups[1].Value, @"[/,|&+;]|\bor\b", RegexOptions.IgnoreCase))
+            {
+                var m = Token.Match(part.Trim());
+                if (!m.Success || Slot(m.Groups[2].Value, m.Groups[3].Value) is not { } p) continue;
+                var role = m.Groups[1].Value.ToLowerInvariant();
+                if (role is "sub" or "bottom" or "bot" or "receiver") continue;
+                var into = role.Length > 0 ? giver : any;
+                if (!into.Any(x => x.Command == p.Command && x.Pose == p.Pose)) into.Add(p);
+            }
 
-        return null;
+        return giver.Count > 0 ? giver : any;
     }
+
+    /// <summary>The first emote an option's name says it replaces.</summary>
+    public static Pick? FromName(string option) => AllFromName(option).FirstOrDefault();
 
     private static Pick? Slot(string word, string digits)
     {
@@ -186,6 +198,18 @@ public static class ModAnimations
 
     /// <summary>The emote one option of a mod animates (null if it doesn't change an emote).</summary>
     public static Pick? ForOption(string modDir, string group, string option) => Of(modDir, group, option);
+
+    /// <summary>
+    /// Every emote the option picked for milking works with (an animation can name several, like
+    /// "(Blush/Confirm)"): the farmer picks which one the Milk button does. Empty when it doesn't say.
+    /// </summary>
+    public static List<Pick> ChoicesForMilking(string modDir, IReadOnlyDictionary<string, List<string>> picked)
+    {
+        foreach (var (_, options) in picked)
+            foreach (var o in options)
+                if (AllFromName(o) is { Count: > 0 } list) return list;
+        return new List<Pick>();
+    }
 
     /// <summary>
     /// The emote the mod animates with the options picked for milking: those options first, then the mod's

@@ -1301,6 +1301,7 @@ public sealed class DairyGame
     public const string MilkEmote = "/beesknees";
 
     private ModAnimations.Pick? modPick;
+    private List<ModAnimations.Pick> modChoices = new();
     private string modPickFor = "";
     private double modPickAt = -100;
 
@@ -1310,17 +1311,24 @@ public sealed class DairyGame
         get
         {
             if (F.MilkModDir.Length == 0) return null;
-            var key = F.MilkModDir + "|" + string.Join(";", F.MilkModOptions.Select(kv => kv.Key + "=" + string.Join(",", kv.Value)));
+            var key = F.MilkModDir + "|" + F.MilkModEmote + "|" + string.Join(";", F.MilkModOptions.Select(kv => kv.Key + "=" + string.Join(",", kv.Value)));
             if (key != modPickFor || now - modPickAt > 10)
             {
                 modPickFor = key;
                 modPickAt = now;
-                modPick = ModAnimations.ForMilking(F.MilkModDir, F.MilkModOptions);
+                modChoices = ModAnimations.ChoicesForMilking(F.MilkModDir, F.MilkModOptions);
+                // The animation names several emotes: the one you picked, else the first
+                modPick = modChoices.Count > 0
+                    ? modChoices.FirstOrDefault(c => c.Command.Equals(F.MilkModEmote, StringComparison.OrdinalIgnoreCase)) ?? modChoices[0]
+                    : ModAnimations.ForMilking(F.MilkModDir, F.MilkModOptions);
             }
 
             return modPick;
         }
     }
+
+    /// <summary>The emotes the picked animation works with, when its name lists more than one (you choose which).</summary>
+    public List<ModAnimations.Pick> MilkModChoices => MilkModPick != null ? modChoices : new List<ModAnimations.Pick>();
 
     /// <summary>
     /// The emote your Milk button does: the one your animation mod's picked option animates, else your own pick
