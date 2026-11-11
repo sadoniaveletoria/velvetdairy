@@ -22,6 +22,10 @@ public sealed class ChangelogWindow : Window
     /// <summary>Newest first. Write these for players: what changed for them, not how.</summary>
     private static readonly Entry[] Entries =
     {
+        new("0.9.29", "Choose the emote for your animation", new[]
+        {
+            "An animation that works with several emotes (like \"(Blush/Confirm/Wave/Yes)\") lists them all, and you choose which one the Milk button does in Herd Care > Animation.... Your choice is remembered.",
+        }),
         new("0.9.28", "Animation mods: the emote from the option's name", new[]
         {
             "Animation mod options now show which emote they use, read from the option's name: \"(Dom-Bdance/Sub-Hdance)\" means you (the farmer) do Ball Dance, \"(Gsit0, 1)\" means sit on the ground. The Milk button does that emote with the mod on.",
