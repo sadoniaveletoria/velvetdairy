@@ -569,7 +569,7 @@ public sealed partial class MainWindow : Window
         }
 
         var blocked = G.Blocked();
-        var milkH = G.Active != null || !G.AutoStall || !F.AutoHand ? 200f : 110f;
+        var milkH = G.Active != null || !G.AutoStall || !F.AutoHand ? 200f : 112f;
         var topMax = new Vector2(max.X, max.Y - milkH - 14);
         var leftW = 270f;
         var rightW = 330f;
@@ -889,12 +889,11 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        // Not being milked: a short how-to, plus Start buttons only when you've turned off starting by itself
-        var lines = new List<Line>
-        {
-            new(G.Where.InDairy ? "Sit on one of your dairy's stalls, or have a farmer stand close and press Milk on you." : "Go to your dairy to get milked.", Theme.Ink),
-            new(G.Stalls.Count == 0 ? "Your dairy has no stalls yet." : $"{G.Stalls.Count} stall{(G.Stalls.Count == 1 ? "" : "s")} in your dairy · hand milking is faster and pays more.", Theme.InkSoft),
-        };
+        // Not being milked: one short line, plus Start buttons only when you've turned off starting by itself
+        var how = !G.Where.InDairy ? "Not being milked. Go to your dairy to get milked."
+            : G.Stalls.Count == 0 ? "Not being milked. Your dairy has no stalls yet; a farmer can still hand milk you."
+            : "Not being milked. Sit on a stall, or have a farmer stand close and press Milk on you.";
+        ImGui.TextColored(Theme.InkSoft, how);
         var buttons = new List<Btn>();
         var starts = new List<Action>();
         if (!G.AutoStall)
@@ -912,7 +911,9 @@ public sealed partial class MainWindow : Window
                 starts.Add(() => G.StartHand(hand));
             }
 
-        var clicked = ListRow(Ico("bucket"), "Not being milked", Theme.Ink, lines, buttons, width);
+        if (buttons.Count == 0) return;
+        Gap(4);
+        var clicked = Buttons(buttons, width);
         if (clicked >= 0) starts[clicked]();
     }
 
