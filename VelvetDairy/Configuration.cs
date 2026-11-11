@@ -1,19 +1,91 @@
 using System;
 using System.Collections.Generic;
 using Dalamud.Configuration;
+using Newtonsoft.Json;
 
 namespace VelvetDairy;
 
 /// <summary>
-/// Saved settings. Everything for this version lives under <see cref="Farm"/> so it can't clash with saves from the old prototype.
+/// Saved settings. Each character has their own save in <see cref="Characters"/>; <see cref="Farm"/> is the one
+/// for the character you're logged in as.
 /// </summary>
 [Serializable]
 public class Configuration : IPluginConfiguration
 {
-    public int Version { get; set; } = 2;
-    public FarmSave Farm { get; set; } = new();
+    public int Version { get; set; } = 3;
 
-    public void EnsureDefaults() => Farm.EnsureDefaults();
+    /// <summary>
+    /// One save per character, keyed by the character's content id (in hex). That id never changes, so a save
+    /// follows its character through name changes and world transfers.
+    /// </summary>
+    public Dictionary<string, FarmSave> Characters { get; set; } = new();
+
+    /// <summary>The character whose save was used last: a new character copies its preferences (sound, HUD, 18+ check).</summary>
+    public string LastCharacter { get; set; } = "";
+
+    /// <summary>
+    /// The one save from before saves were per character (it was stored as "Farm"). It waits here until the player
+    /// says which character it belongs to, then moves into <see cref="Characters"/>.
+    /// </summary>
+    [JsonProperty("Farm")]
+    public FarmSave? Unclaimed { get; set; }
+
+    /// <summary>The character logged in now (null before the first one is seen).</summary>
+    [JsonIgnore]
+    public string? ActiveKey { get; private set; }
+
+    /// <summary>A blank save used until a character logs in. Never written to disk.</summary>
+    [JsonIgnore]
+    private FarmSave lobby = new();
+
+    /// <summary>The save of the character you're logged in as.</summary>
+    [JsonIgnore]
+    public FarmSave Farm
+    {
+        get => ActiveKey != null && Characters.TryGetValue(ActiveKey, out var f) ? f : lobby;
+        set
+        {
+            if (ActiveKey != null) Characters[ActiveKey] = value;
+            else lobby = value;
+        }
+    }
+
+    /// <summary>Switches to this character's save (made by the caller if it's new).</summary>
+    public void Use(string key)
+    {
+        ActiveKey = key;
+        LastCharacter = key;
+    }
+
+    /// <summary>A save for a character who hasn't played yet: a new game, with your preferences from the last character.</summary>
+    public FarmSave NewCharacterSave()
+    {
+        var from = Characters.GetValueOrDefault(LastCharacter) ?? Unclaimed;
+        var f = new FarmSave();
+        if (from != null)
+        {
+            f.Confirmed18 = from.Confirmed18;
+            f.ShowHud = from.ShowHud;
+            f.LockHud = from.LockHud;
+            f.ChatEcho = from.ChatEcho;
+            f.SoundOn = from.SoundOn;
+            f.SoundVolume = from.SoundVolume;
+            f.DevKey = from.DevKey;
+            f.NetEnabled = from.NetEnabled;
+            f.NetServerOverride = from.NetServerOverride;
+            f.TutorialDone = from.TutorialDone;
+            f.SeenChanges = from.SeenChanges;
+        }
+
+        f.EnsureDefaults();
+        return f;
+    }
+
+    public void EnsureDefaults()
+    {
+        Characters ??= new Dictionary<string, FarmSave>();
+        Farm.EnsureDefaults();
+    }
 }
 
 [Serializable]
@@ -85,8 +157,10 @@ public class FarmSave
     public List<string>? Log { get; set; }
 
     // ----- Eorzea Milkers Network -----
-    public string NetId { get; set; } = "";          // random id for this install (not your character)
-    public string NetKey { get; set; } = "";         // secret that proves it's this install
+    public string NetId { get; set; } = "";          // random id for this character's save (the server knows each character by it)
+    public string NetKey { get; set; } = "";         // secret that proves it's this save
+    public string CharName { get; set; } = "";         // the character this save belongs to, as last seen (to notice name changes and world transfers)
+    public string CharWorld { get; set; } = "";
     public bool NetEnabled { get; set; } = true;
     public string NetServerOverride { get; set; } = "";   // developer only: test server address
     public NetMember? NetMember { get; set; }         // the dairy you belong to (cached from the server)

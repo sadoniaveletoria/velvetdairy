@@ -226,6 +226,8 @@ async function route(request, env) {
 
   const routes = [
     ["POST", /^\/v1\/heartbeat$/, () => heartbeat(env, me, request)],
+    // Which character this save last played as (the plugin asks once, to hand a pre-update save to the right character)
+    ["GET", /^\/v1\/whoami$/, () => ({ charHash: me.char_hash || null })],
     ["GET", /^\/v1\/dairies$/, () => listDairies(env, me)],
     ["GET", /^\/v1\/dairy\/mine$/, () => myDairy(env, me)],
     ["PUT", /^\/v1\/dairy$/, () => putDairy(env, me, request)],
@@ -424,6 +426,17 @@ async function heartbeat(env, me, request) {
 
   // Share a little status with your own dairy (milk, grade...) so the owner's HUD can show it
   const mem = await membership(env, me.id);
+
+  // A name change or world transfer: the save follows the character, so show the new name to the dairy
+  const newName = clean(b.name, 40), newWorld = clean(b.worldName, 30);
+  if (mem && newName && (newName !== mem.name || (newWorld && newWorld !== mem.world_name))) {
+    await env.DB.batch([
+      env.DB.prepare("UPDATE members SET name = ?, world_name = ? WHERE install = ?").bind(newName, newWorld || mem.world_name, me.id),
+      env.DB.prepare("UPDATE dairies SET owner_name = ? WHERE owner = ?").bind(newName, me.id),
+    ]);
+    mem.name = newName;
+    if (newWorld) mem.world_name = newWorld;
+  }
   if (mem && b.status && typeof b.status === "object") {
     // Only known fields, kept small: what a member shares with their own dairy
     const st = b.status || {};
@@ -674,6 +687,15 @@ async function putDairy(env, me, request) {
     if (atAddress && atAddress.owner !== me.id) fail(409, "This address is already registered as a dairy.");
   }
 
+  // World and data center names: only from a client that says which world they're for, and only if that's the
+  // dairy's world (older plugins sent wherever the owner was standing, so a listing saved while visiting another
+  // data center showed the wrong one)
+  let worldName = clean(b.worldName, 30), dcName = clean(b.dcName, 30);
+  if (existing && !area && Number(b.namesFor) !== Number(world)) {
+    worldName = existing.world_name;
+    dcName = existing.dc_name;
+  }
+
   const id = existing ? existing.id : randomId();
   await env.DB.prepare(`
     INSERT INTO dairies (id, owner, house_id, name, description, is_public, show_owner, owner_name, world, world_name, dc_name,
@@ -685,7 +707,7 @@ async function putDairy(env, me, request) {
       dc_name = excluded.dc_name, district = excluded.district, district_kind = excluded.district_kind, updated = excluded.updated,
       house_id = excluded.house_id, world = excluded.world, ward = excluded.ward, plot = excluded.plot, room = excluded.room`)
     .bind(id, me.id, hid, name, clean(b.description, 140), b.isPublic ? 1 : 0, b.showOwner ? 1 : 0,
-      clean(b.ownerName, 40), world, clean(b.worldName, 30), clean(b.dcName, 30),
+      clean(b.ownerName, 40), world, worldName, dcName,
       clean(area ? area.zone : b.district, 30), districtKind, ward, plot, room, t).run();
 
   if (area) {

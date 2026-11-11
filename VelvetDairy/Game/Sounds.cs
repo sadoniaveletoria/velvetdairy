@@ -32,8 +32,11 @@ public sealed class Sounds : IDisposable
         this.plugin = plugin;
         dir = Path.Combine(Plugin.PluginInterface.AssemblyLocation.Directory?.FullName ?? "", "Assets", "sounds");
         CustomDir = Path.Combine(Plugin.PluginInterface.ConfigDirectory.FullName, "sounds");
-        plugin.Game.Stroked += () => Play("squirt.wav", 0.8f);
+        Attach(plugin.Game);
     }
+
+    /// <summary>Listens to this game for sounds (again after switching character, when the game starts over).</summary>
+    public void Attach(DairyGame game) => game.Stroked += () => Play("squirt.wav", 0.8f);
 
     private readonly System.Diagnostics.Stopwatch clock = System.Diagnostics.Stopwatch.StartNew();
     private double loopAt = -1;   // when the loop should take over from the start sound

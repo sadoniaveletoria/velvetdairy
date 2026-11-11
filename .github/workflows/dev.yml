@@ -1,0 +1,64 @@
+name: Private dev build
+
+# Builds any dev-* branch so changes can be tried before they go to testing. It only uploads the plugin as a
+# download on the workflow run: no release, no repo.json change, so no player is ever offered it.
+on:
+  push:
+    branches: [ 'dev-*' ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Download Dalamud
+        shell: pwsh
+        run: |
+          Invoke-WebRequest -Uri https://goatcorp.github.io/dalamud-distrib/latest.zip -OutFile latest.zip
+          $dest = "$env:AppData\XIVLauncher\addon\Hooks\dev"
+          New-Item -ItemType Directory -Force -Path $dest | Out-Null
+          Expand-Archive -Force latest.zip $dest
+          "DALAMUD_HOME=$dest\" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Write the save-signing key
+        shell: pwsh
+        env:
+          KEY: ${{ secrets.VELVET_INTEGRITY_KEY }}
+        run: |
+          # Same key as the real builds, so a dev build reads your real save
+          if ($env:KEY) {
+            $value = '"' + $env:KEY.Trim() + '"'
+          } else {
+            "::warning::VELVET_INTEGRITY_KEY secret not set; this build uses the public testing key."
+            $value = 'TestingKeyHex'
+          }
+          @"
+          namespace VelvetDairy.Game;
+
+          public static partial class Integrity
+          {
+              private const string KeyHex = $value;
+          }
+          "@ | Out-File -Encoding utf8 VelvetDairy/Game/IntegrityKey.cs
+
+      - name: Build
+        run: dotnet build VelvetDairy/VelvetDairy.csproj -c Release
+
+      - name: Unpack for Dev Plugin Locations
+        shell: pwsh
+        run: Expand-Archive -Force VelvetDairy/bin/Release/VelvetDairy/latest.zip dev-build
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: EorzeaMilkers-dev-${{ github.ref_name }}
+          path: dev-build
+          retention-days: 14

@@ -74,6 +74,19 @@ await test("owner registers a dairy and joins it", async () => {
   assert.deepEqual(hb.data.membership, { dairyId: dairy, dairy: "Rose Hollow", role: "cow", roles: ["cow"], isOwner: true, level: 1 });
 });
 
+await test("a dairy's data center comes from its own world, not where the owner is standing", async () => {
+  const listed = async () => (await call(alice, "GET", "/v1/dairies")).data.dairies.find(d => d.mine);
+  const before = await listed();
+  // An older plugin saving the listing while visiting another data center: names are kept
+  await call(alice, "PUT", "/v1/dairy", dairyBody({ worldName: "Hyperion", dcName: "Primal" }));
+  assert.equal((await listed()).dcName, before.dcName);
+  // Names for the dairy's own world are taken
+  await call(alice, "PUT", "/v1/dairy", dairyBody({ worldName: "Hyperion", dcName: "Primal", namesFor: 40 }));
+  assert.equal((await listed()).dcName, "Primal");
+  await call(alice, "PUT", "/v1/dairy", dairyBody({ namesFor: 40 }));
+  assert.equal((await listed()).dcName, "Aether");
+});
+
 await test("an address can only be registered once", async () => {
   const r = await call(erin, "PUT", "/v1/dairy", dairyBody({ name: "Thief Farm" }));
   assert.equal(r.status, 409);
@@ -465,6 +478,21 @@ await test("a dairy can be a box anywhere; boxes can't overlap; standing inside 
   // Renaming keeps the box
   assert.equal((await call(fay, "PUT", "/v1/dairy", { name: "Meadow Barn", isPublic: true, role: "farmer" })).status, 200);
   assert.equal((await call(fay, "GET", "/v1/dairy/mine")).data.dairy.area.x, 100);
+});
+
+await test("whoami tells a save which character it last played as", async () => {
+  assert.equal((await call(alice, "GET", "/v1/whoami")).data.charHash, alice.hash);
+  const nobody = player("Never Beat");
+  assert.equal((await call(nobody, "GET", "/v1/whoami")).data.charHash, null);
+});
+
+await test("a renamed member shows the new name to their dairy", async () => {
+  await beat(bob, { name: "Bobby Hand", worldName: "Sargatanas" });
+  const r = await call(bob, "GET", "/v1/dairy/mine");
+  const me = r.data.members.find(m => m.name === "Bobby Hand");
+  assert.ok(me, "new name on the roster");
+  assert.equal(me.worldName ?? me.world, "Sargatanas");
+  await beat(bob, { name: "Bob Hand", worldName: "Gilgamesh" });
 });
 
 await test("stats work without logging in", async () => {
