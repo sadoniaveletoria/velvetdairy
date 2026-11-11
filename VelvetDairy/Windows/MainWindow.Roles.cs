@@ -93,7 +93,7 @@ public sealed partial class MainWindow
     private void DrawCowEmotes(float width)
     {
         SubHeading("Being hand milked", width);
-        Ui.Wrapped("A farmer of your dairy milks you by pressing Milk on you (HUD > Hand milk): they stand close, target you and their plugin does a looping emote. Someone just doing an emote near you never milks you. Milk flows until you're empty or they stop.", Theme.InkSoft, width);
+        Ui.Wrapped("A farmer of your dairy milks you by pressing Milk on you (HUD > Herd Care): they stand close, target you and their plugin does a looping emote. Someone just doing an emote near you never milks you. Milk flows until you're empty or they stop.", Theme.InkSoft, width);
         var any = F.AnyLoopEmote;
         if (ImGui.Checkbox("Any looping emote counts##anyloop", ref any))
         {
@@ -138,7 +138,7 @@ public sealed partial class MainWindow
         if (shown == 0) ImGui.TextColored(Theme.InkSoft, "Every farmer tank is unlocked.");
 
         SubHeading("What farmers do", width);
-        Ui.Wrapped("Hand milk your dairy's cows (Hand milk button): stand close, target them and press Milk; it does the emote and stops when they're empty. You get 25% of what the cow is paid, on top.", Theme.Ink, width);
+        Ui.Wrapped("Hand milk your dairy's cows (Herd Care button): stand close, target them and press Milk; it does the emote and stops when they're empty. You get 25% of what the cow is paid, on top.", Theme.Ink, width);
         Ui.Wrapped("Fill your farmer tank from the dairy tank (top of the Kitchen) and deliver it: customer orders, other dairies' buy and visitor orders, and the weekly contract at the Grand Creamery.", Theme.Ink, width);
         Ui.Wrapped("Invite people and give them roles, the farmer role included.", Theme.Ink, width);
 
@@ -150,7 +150,7 @@ public sealed partial class MainWindow
     private void DrawFarmerButtons(float width)
     {
         var buttons = new System.Collections.Generic.List<Btn>();
-        if (G.IsFarmer) buttons.Add(new Btn("##farmhandmilk", "Hand milk", "rose", true, "Your dairy's cows: target, milk and groom them."));
+        if (G.IsFarmer) buttons.Add(new Btn("##farmhandmilk", "Herd Care", "rose", true, "Your dairy's cows and bulls: milk, groom and feed them."));
         if (G.CanCarry) buttons.Add(new Btn("##farmkitchen", "Kitchen", "honey", true, "Fill your jugs from the dairy tank and bake."));
         if (buttons.Count == 0) return;
         Gap(4);

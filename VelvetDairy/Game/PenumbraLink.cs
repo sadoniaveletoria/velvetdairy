@@ -61,7 +61,7 @@ public static class PenumbraLink
             return ec switch
             {
                 0 or 1 => null,
-                5 or 6 => "Penumbra can't find that mod anymore. Pick it again in Hand milk > Animation.",
+                5 or 6 => "Penumbra can't find that mod anymore. Pick it again in Herd Care > Animation.",
                 _ => $"Penumbra couldn't switch the mod on (code {ec}).",
             };
         }

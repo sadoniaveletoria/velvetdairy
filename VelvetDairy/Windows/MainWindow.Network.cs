@@ -260,7 +260,7 @@ public sealed partial class MainWindow
                 Panel("##stallside", new Vector2(mid + 7, top.Y), max, G.IsOwner ? "Stall upgrades" : "Hand milking", w =>
                 {
                     if (G.IsOwner) DrawStallUpgrades(w);
-                    else Ui.Wrapped("Cows: your milking emotes are on Roles > Cow. Farmers: the dairy's cows and the emotes that milk them are in Hand milk (HUD).", Theme.InkSoft, w);
+                    else Ui.Wrapped("Cows: your milking emotes are on Roles > Cow. Farmers: the dairy's cows and the emotes that milk them are in Herd Care (HUD).", Theme.InkSoft, w);
                 }, true);
                 break;
             default:

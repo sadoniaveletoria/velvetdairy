@@ -78,8 +78,8 @@ Only the owner can take a role away from someone.
 
 ## Playing as a farmer
 
-- **Hand milking:** press **Hand milk** on the HUD (or Roles → Farmer), stand near a cow, press **Target**, then **Milk**. Your character does the milking emote (/beesknees by default, or one you choose) until the cow is empty, then stops by itself. You earn 25% of what the cow is paid, on top of their pay.
-- **Your own animation:** if you use Penumbra, pick an animation mod and its options with **Animation…** in the Hand milk window. It switches on only while you milk.
+- **Hand milking:** press **Herd Care** on the HUD (or Roles → Farmer), stand near a cow, press **Target**, then **Milk**. Your character does the milking emote (/beesknees by default, or one you choose) until the cow is empty, then stops by itself. You earn 25% of what the cow is paid, on top of their pay.
+- **Your own animation:** if you use Penumbra, pick an animation mod and its options with **Animation…** in the Herd Care window. It switches on only while you milk.
 - **Chores:** **Groom** a cow (they get 30 minutes of Happy), **Feed** a cow or bull a treat from the dairy shelf (free, but not to yourself), and **Clean** an empty stall (cows milked there get a bonus for an hour). All earn farmer XP.
 - **Baked goods:** bake with milk from your jugs in the **Kitchen** (the Kitchen button on the HUD). For now that's **butter** (16 oz of milk → 1 butter, 30 seconds of churning). Pick how many with − and +; each one in a batch takes a little longer than the last, so 5 take about 4 minutes and 10 about 10½. A progress bar shows how it's going; it pauses if you leave the dairy, and **Stop** keeps what's finished. Butter goes in your Pantry and is only used to make other things. **Butter cookies** (1 butter + 8 oz of milk → 3 cookies) go on the **dairy shelf**.
 - **Jugs:** fill them from the dairy tank at the top of the **Kitchen** window. Bigger farmer tanks unlock as your farmer level grows.

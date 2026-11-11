@@ -6,7 +6,7 @@ using VelvetDairy.Game;
 namespace VelvetDairy.Windows;
 
 /// <summary>
-/// Hand milking in its own window (HUD > Hand milk): your dairy's cows, how close and how full they are,
+/// Herd Care in its own window (HUD > Herd Care): your dairy's cows, how close and how full they are,
 /// and Target / Milk / Groom for each, with the milking animation picker one click away.
 /// </summary>
 public sealed class MilkingWindow : Window
@@ -15,7 +15,7 @@ public sealed class MilkingWindow : Window
     private FarmSave F => plugin.Config.Farm;
     private DairyGame G => plugin.Game;
 
-    public MilkingWindow(Plugin plugin) : base("Hand milking##VelvetDairyHandMilk", ImGuiWindowFlags.NoCollapse)
+    public MilkingWindow(Plugin plugin) : base("Herd Care##VelvetDairyHandMilk", ImGuiWindowFlags.NoCollapse)
     {
         this.plugin = plugin;
         Size = new Vector2(520, 460);

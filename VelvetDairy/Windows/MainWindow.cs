@@ -1307,7 +1307,7 @@ public sealed partial class MainWindow : Window
 
     private void DrawFarmhands(float width)
     {
-        Ui.Wrapped("Only a farmer of your dairy can hand milk you: they stand close, target you and press Milk (HUD > Hand milk). " +
+        Ui.Wrapped("Only a farmer of your dairy can hand milk you: they stand close, target you and press Milk (HUD > Herd Care). " +
                    "Just doing an emote near you never counts. It flows until you're empty.", Theme.InkSoft, width);
         Gap(6);
         var reg = G.RegisterProblem();
@@ -1702,7 +1702,7 @@ public sealed partial class MainWindow : Window
         Ui.Wrapped("1. Join a dairy (Dairies tab, ask the owner for an invite) or start your own on the Dairy tab.\n" +
                    "2. Cows: milk fills up over time, faster with Fed, Watered, Comfy and Happy (Barn > Care).\n" +
                    "3. Get milked on one of your dairy's stalls, or by a farmer pressing Milk on you. You're paid by your grade.\n" +
-                   "4. Farmers: Hand milk and Kitchen are on the HUD. Fill jugs in the Kitchen, then deliver on the Creamery tab.\n" +
+                   "4. Farmers: Herd Care and Kitchen are on the HUD. Fill jugs in the Kitchen, then deliver on the Creamery tab.\n" +
                    "5. Spend coins in the Shop. The full guide is the ? at the top, or /milkers guide.", Theme.Ink, width);
 
         SubHeading("Credits", width);

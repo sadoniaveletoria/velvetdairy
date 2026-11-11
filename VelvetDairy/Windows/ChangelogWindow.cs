@@ -22,7 +22,7 @@ public sealed class ChangelogWindow : Window
     /// <summary>Newest first. Write these for players: what changed for them, not how.</summary>
     private static readonly Entry[] Entries =
     {
-        new("0.9.13", "Eorzea Milkers: your grade, baking and farmer tools", new[]
+        new("0.9.14", "Eorzea Milkers: your grade, baking and farmer tools", new[]
         {
             "# A new name",
             "Velvet Dairy is now Eorzea Milkers. Your progress, dairy and settings are all kept. The command is now /milkers.",
@@ -34,11 +34,11 @@ public sealed class ChangelogWindow : Window
             "Cookies go on your dairy's shelf. Members buy them inside the dairy: the baker gets 80% and the fund 20%. The owner sets the price.",
             "The Pantry has tabs: Food & treats, Ingredients and the Dairy shelf.",
             "# Farmer tools",
-            "Two new buttons under the HUD: Hand milk (your dairy's cows with Target, Milk and Groom) and Kitchen. Each opens its own window.",
+            "Two new buttons under the HUD: Herd Care (your dairy's cows and bulls: Milk, Groom and Feed) and Kitchen. Each opens its own window.",
             "Fill your jugs at the top of the Kitchen (Fill 8 oz, Fill 32 oz or Fill up). The Jugs tab on the Creamery is gone.",
-            "Pick your milking emote and animation mod from the Hand milk window.",
+            "Pick your milking emote and animation mod from the Herd Care window.",
             "Customer orders pay a little better as your farmer level grows.",
-            "Feed your dairy's cows and bulls from the dairy shelf (Feed in the Hand milk window). It's free for the farmer, but you can't feed yourself.",
+            "Feed your dairy's cows and bulls from the dairy shelf (Feed in the Herd Care window). It's free for the farmer, but you can't feed yourself.",
             "# Deliveries",
             "Fill other dairies' buy orders from inside your own dairy. Delivering in person at a public dairy pays 10% more.",
             "Private dairies can post buy orders too.",

@@ -18,7 +18,7 @@ public sealed class HudWindow : Window
     private DairyGame G => plugin.Game;
 
     private static readonly Vector2 HudSize = new(330, 168);
-    private const float ButtonRow = 38f;   // farmers get a row of buttons under the card: Hand milk and Kitchen
+    private const float ButtonRow = 38f;   // farmers get a row of buttons under the card: Herd Care and Kitchen
 
     private bool ShowHandMilk => G.IsFarmer;
     private bool ShowKitchen => G.CanCarry;
@@ -211,7 +211,7 @@ public sealed class HudWindow : Window
                 "Your milk spoiled. Pour it all out (no xp or coins).", new Vector2(o.X + size.X - 124, o.Y + size.Y - 54)))
             G.DumpMilk();
 
-        // Farmers: Hand milk and Kitchen, each opening its own window
+        // Farmers: Herd Care and Kitchen, each opening its own window
         if (ShowHandMilk || ShowKitchen)
         {
             var by = o.Y + size.Y - 10;
@@ -220,7 +220,7 @@ public sealed class HudWindow : Window
             var bx = o.X + 20;
             if (ShowHandMilk)
             {
-                if (Ui.Button("##hudhandmilk", "Hand milk", new Vector2(bw2, 30), "rose", true, "Your dairy's cows: target, milk and groom them.", new Vector2(bx, by)))
+                if (Ui.Button("##hudhandmilk", "Herd Care", new Vector2(bw2, 30), "rose", true, "Your dairy's cows and bulls: milk, groom and feed them.", new Vector2(bx, by)))
                     plugin.Milking.Toggle();
                 bx += bw2 + 10;
             }
