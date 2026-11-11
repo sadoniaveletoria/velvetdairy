@@ -812,6 +812,10 @@ public sealed class DairyGame
     /// <summary>A treat a farmer fed you: its Happy bonus (a bigger one already going is kept) and its milk boost.</summary>
     private void ApplyTreat(FeedItem item)
     {
+        // Counts as your treat for the next 15 minutes, the same as eating one yourself
+        var cd = DateTime.UtcNow.AddMinutes(Catalog.NeedCooldownMinutes);
+        if (item.Happy > 0) Cow.HappyReadyUtc = cd;
+        if (item.Fed > 0) Cow.FedReadyUtc = cd;
         if (item.Fed > 0)
         {
             Cow.FedBonus = Cow.Hunger <= 0 ? item.Fed : Math.Max(Cow.FedBonus, item.Fed);
@@ -1603,7 +1607,7 @@ public sealed class DairyGame
     private ShelfItem? FeedStock => Net.Shelf.FirstOrDefault(x => x.Qty > 0 && Catalog.FeedById(x.Item) != null);
 
     public string FeedTip => FeedStock is { } st
-        ? $"Give them {Catalog.MadeName(st.Item).ToLowerInvariant()} from the dairy shelf ({st.Qty} left). Free; +{Catalog.FeedXp} farmer xp. Once every 15 minutes each."
+        ? $"Give them {Catalog.MadeName(st.Item).ToLowerInvariant()} from the dairy shelf ({st.Qty} left). Free; +{Catalog.FeedXp} farmer xp. One treat per cow or bull every 15 minutes, whoever gives it."
         : "The dairy shelf is empty. Bake some in the Kitchen.";
 
     public string? FeedProblem(string name, string id, float distance)
@@ -1615,7 +1619,10 @@ public sealed class DairyGame
         Net.RefreshShelf();
         if (FeedStock == null) return "The dairy shelf is empty. Bake some in the Kitchen.";
         if (distance < 0 || distance > HandRange) return $"Get within {HandRange:0} yalms of {name} first.";
-        if (feedReady.TryGetValue(id, out var t) && t > now) return $"You can feed {name} again in {Wait(TimeSpan.FromSeconds(t - now))}.";
+        if (feedReady.TryGetValue(id, out var t) && t > now) return $"{name} can have another treat in {Wait(TimeSpan.FromSeconds(t - now))}.";
+        var treatAt = Net.Mine?.Members.FirstOrDefault(m => m.Id == id)?.Status?.TreatAt ?? 0;
+        var nowUnix = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        if (treatAt > nowUnix) return $"{name} can have another treat in {Wait(TimeSpan.FromSeconds(treatAt - nowUnix))}.";
         return null;
     }
 

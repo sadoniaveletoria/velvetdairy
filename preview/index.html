@@ -349,7 +349,7 @@ function barn(s, W) {
     <h3>Care</h3>
     ${row("grain", "Wheat grain ×4", "Fed +4% for 30 min", [["Eat", "sage"]])}
     ${row("water", "Spring water ×6", "Watered +8% for 30 min", [["Drink", "blue"]])}
-    ${row("biscuit", "Butter cookies ×3", "Happy +8%, +30% milk for 20 min", [["Eat", "rose"]])}</div>`;
+    ${row("biscuit", "Butter cookies ×3", "Happy +6%, +30% milk for 15 min", [["Eat", "rose"]])}</div>`;
   const how = s.st === "away" ? "Not being milked. Go to your dairy to get milked." : "Not being milked. Sit on a stall, or have a farmer stand close and press Milk on you.";
   const milking = idle
     ? `<div class="panel" style="left:${Pad}px;right:${Pad}px;top:${bottom - milkH}px;height:${milkH}px"><h3>Milking</h3><div class="soft jup16" style="font-size:16px">${how}</div></div>`
@@ -395,11 +395,11 @@ const RECIPES = {
   butter: { name: "Churn butter", makes: "Butter", icon: "milk", group: "Ingredients", milk: 16, uses: "", secs: 30, xp: 12, amount: 1,
     effects: ["An ingredient: used to make butter cookies. It can't be eaten on its own.", "+12 farmer xp for each one."] },
   buns: { name: "Bake cream buns", makes: "Cream buns", icon: "biscuit", group: "Treats", milk: 12, uses: "1 flour", usesNote: "3 in the dairy pantry", uses2: "1 butter", secs: 75, xp: 25, amount: 2, level: 10,
-    effects: ["For cows: Fed +6% milk speed, Happy +10% milk speed, filling half the bar (30 minutes).", "Milk boost: +30% milk for 30 minutes.",
+    effects: ["For cows: Fed +5% milk speed, Happy +7% milk speed, filling half the bar (30 minutes).", "Milk boost: +30% milk for 20 minutes.",
       "Goes on the dairy shelf at 70 coins each (the owner sets it). You get 56 for each one a member buys; the fund gets the rest.",
       "Farmers can also feed them to cows and bulls for free (Herd Care > Feed). Bulls get bull xp.", "Each bake makes 2 and gives +25 farmer xp."] },
   cookies: { name: "Bake butter cookies", makes: "Butter cookies", icon: "biscuit", group: "Treats", level: 3, milk: 8, uses: "1 butter", usesNote: "5 in the dairy pantry", secs: 45, xp: 15, amount: 3,
-    effects: ["For cows: Happy +8% milk speed, filling half the bar (30 minutes).", "Milk boost: +30% milk for 20 minutes.",
+    effects: ["For cows: Happy +6% milk speed, filling half the bar (30 minutes).", "Milk boost: +30% milk for 15 minutes.",
       "Goes on the dairy shelf at 40 coins each (the owner sets it). You get 32 for each one a member buys; the fund gets the rest.",
       "Farmers can also feed them to cows and bulls for free (Herd Care > Feed). Bulls get bull xp.", "Each bake makes 3 and gives +15 farmer xp."] },
 };

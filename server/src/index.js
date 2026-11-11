@@ -442,6 +442,7 @@ async function heartbeat(env, me, request) {
       anyEmote: st.anyEmote === undefined ? true : !!st.anyEmote,   // older plugins don't say; any looping emote is their default
       ask: !!st.ask,                     // a cow who wants to Allow each hand milking first (a pop-up)
       refused: clean(st.refused, 40),    // a cow: the farmer they just told "Not now"
+      treatAt: Math.max(0, Math.floor(num(st.treatAt))),   // a cow: when she can have her next treat (unix seconds; her own 15 min cooldown)
     });
     if (status !== mem.status) await env.DB.prepare("UPDATE members SET status = ? WHERE install = ?").bind(status, me.id).run();
   }
@@ -1120,11 +1121,14 @@ async function shelfFeed(env, me, request) {
   if (!inOwnDairy(me, mem)) fail(400, "Go to your dairy to feed from its shelf.");
   const toId = String(b.to || "");
   if (toId === me.id) fail(400, "You can't feed yourself for free. Buy it from the shelf instead.");
-  const to = await env.DB.prepare("SELECT install, name, role FROM members WHERE install = ? AND dairy_id = ?").bind(toId, mem.dairy_id).first();
+  const to = await env.DB.prepare("SELECT install, name, role, status FROM members WHERE install = ? AND dairy_id = ?").bind(toId, mem.dairy_id).first();
   if (!to || !(hasRole(to, "cow") || hasRole(to, "bull"))) fail(400, "You can feed your dairy's cows and bulls.");
   const t = now();
-  const last = await env.DB.prepare("SELECT at FROM feeds WHERE farmer = ? AND member = ?").bind(me.id, to.install).first();
-  if (last && t - last.at < FEED_COOLDOWN) fail(400, `You can feed ${to.name} again in ${Math.ceil((FEED_COOLDOWN - (t - last.at)) / 60)} min.`);
+  // One treat per cow or bull every 15 minutes, whoever gives it (and a cow's own treat counts too)
+  const last = await env.DB.prepare("SELECT MAX(at) AS at FROM feeds WHERE member = ?").bind(to.install).first();
+  let readyAt = last?.at ? last.at + FEED_COOLDOWN : 0;
+  try { readyAt = Math.max(readyAt, JSON.parse(to.status || "{}").treatAt || 0); } catch { /* no status yet */ }
+  if (readyAt > t) fail(400, `${to.name} can have another treat in ${Math.ceil((readyAt - t) / 60)} min.`);
   for (let tries = 0; tries < 3; tries++) {
     const row = await env.DB.prepare("SELECT * FROM shelf WHERE dairy_id = ? AND item = ? AND qty > 0 ORDER BY created, id LIMIT 1")
       .bind(mem.dairy_id, item).first();

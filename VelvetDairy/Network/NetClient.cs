@@ -290,6 +290,7 @@ public sealed class NetClient : IDisposable
                 Milking = g.MilkingCowName ?? "",
                 Ask = g.IsCow && !F.AutoHand,
                 Refused = g.RefusedFarmer,
+                TreatAt = g.IsCow && F.Cow.HappyReadyUtc > DateTime.UtcNow ? new DateTimeOffset(DateTime.SpecifyKind(F.Cow.HappyReadyUtc, DateTimeKind.Utc)).ToUnixTimeSeconds() : 0,
             },
         };
         Call<HeartbeatReply>("POST", "/v1/heartbeat", body, r =>
