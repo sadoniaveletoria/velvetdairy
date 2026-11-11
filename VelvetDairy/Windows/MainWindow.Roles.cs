@@ -251,9 +251,11 @@ public sealed partial class MainWindow
             }
 
             lines.Add(new Line($"Milk does {G.MilkEmoteFor(st)} for you", Theme.BlueDeep));
+            if (!G.CowAcceptsMyEmote(st))
+                lines.Add(new Line($"They only count {string.Join(", ", st!.Emotes)}: pick one of those in Animation... to milk them", Theme.Warn));
             // Target first; once they're your target the button becomes Milk (does their first looping milking emote for you)
             var targeted = Plugin.TargetManager.Target is Dalamud.Game.ClientState.Objects.SubKinds.IPlayerCharacter tp && tp.Name.TextValue.Equals(c.Name, StringComparison.OrdinalIgnoreCase);
-            // Your Milk emote (Roles > Farmer) if this cow accepts it; otherwise /beesknees or their first one
+            // Always your own pick (Herd Care > Animation)
             var milkEmote = G.MilkEmoteFor(st);
             var buttons = Array.Empty<Btn>();
             if (near >= 0 && c.Online)

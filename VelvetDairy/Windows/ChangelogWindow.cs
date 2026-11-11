@@ -22,6 +22,11 @@ public sealed class ChangelogWindow : Window
     /// <summary>Newest first. Write these for players: what changed for them, not how.</summary>
     private static readonly Entry[] Entries =
     {
+        new("0.9.26", "Your Milk emote, every time", new[]
+        {
+            "The Milk button always does the emote or pose you picked (Herd Care > Animation...). Before, it quietly switched to /beesknees on cows who only count their own list.",
+            "If a cow only counts certain emotes and yours isn't one of them, their row in Herd Care tells you which ones they count.",
+        }),
         new("0.9.25", "Milk in any pose, and island dairies", new[]
         {
             "Farmers pick what the Milk button does from a list of every emote (search it, or one click for Bee's Knees, Sit, Sit on ground or Doze). Sit poses count as milking now, so an animation mod that changes a sit pose works too. Once seated, /cpose to the pose you want.",

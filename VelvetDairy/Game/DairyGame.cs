@@ -1300,18 +1300,23 @@ public sealed class DairyGame
 
     public const string MilkEmote = "/beesknees";
 
-    /// <summary>
-    /// The emote your Milk button does on this cow: your own pick (Roles > Farmer) when they accept it,
-    /// otherwise /beesknees or the first one on their list.
-    /// </summary>
+    /// <summary>The emote your Milk button does: always your own pick (Herd Care > Animation), /beesknees if you haven't picked one.</summary>
     public string MilkEmoteFor(MemberStatus? st)
     {
         var mine = F.MilkButtonEmote.Trim();
         if (mine.Length > 0 && !mine.StartsWith('/')) mine = "/" + mine;
-        var theirs = st?.Emotes is { Count: > 0 } list ? list[0] : MilkEmote;
-        if (mine.Length == 0 || Emotes.Find(mine) == 0) return theirs;
-        if (st == null || st.AnyEmote || st.Emotes.Any(e => e.Trim().Equals(mine, StringComparison.OrdinalIgnoreCase))) return mine;
-        return theirs;
+        return mine.Length == 0 || Emotes.Find(mine) == 0 ? MilkEmote : mine;
+    }
+
+    /// <summary>
+    /// Does this cow count your emote? Most allow any emote or sit pose; a cow who turned that off only counts the ones
+    /// they listed (compared by the game's emote, so /sit and /groundsit don't count for each other).
+    /// </summary>
+    public bool CowAcceptsMyEmote(MemberStatus? st)
+    {
+        if (st == null || st.AnyEmote || st.Emotes.Count == 0) return true;
+        var id = Emotes.Find(MilkEmoteFor(st));
+        return st.Emotes.Any(e => Emotes.Find(e) == id);
     }
 
     // ----- Farmer side: stop the milking emote once the cow is empty -----
