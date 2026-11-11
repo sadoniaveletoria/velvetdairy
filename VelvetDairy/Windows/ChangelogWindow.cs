@@ -22,6 +22,10 @@ public sealed class ChangelogWindow : Window
     /// <summary>Newest first. Write these for players: what changed for them, not how.</summary>
     private static readonly Entry[] Entries =
     {
+        new("0.9.31", "Better pay", new[]
+        {
+            "Daily pay goes much further: the first 3,000 coins of the day are paid in full (was 1,500), then half up to 8,000 (was a quarter up to 4,000), then a tenth. A few hours of milking now buys the top Shop items in days, not weeks.",
+        }),
         new("0.9.30", "Dairy count", new[]
         {
             "The Dairies list shows how many dairies there are (and how many are public) at the top, and how many your search leaves.",

@@ -118,12 +118,13 @@ public sealed class Plugin : IDalamudPlugin
         claimSystem.AddWindow(Claim);
         contextMenu = new ContextMenuHandler(this);
 
+        Diag.Info("start", $"Eorzea Milkers {Version} loaded · {Config.Characters.Count} character save(s){(Config.Unclaimed != null ? ", old save unclaimed" : "")}");
         TellIntegrity(integrity);
         if (integrity != Integrity.Result.Fine) SaveConfig();
 
         CommandManager.AddHandler(Command, new CommandInfo(OnCommand)
         {
-            HelpMessage = "Open Eorzea Milkers. \"/milkers hud\" shows or hides the HUD, \"/milkers guide\" opens How to play, \"/milkers tutorial\" runs the walkthrough, \"/milkers changes\" shows what's new.",
+            HelpMessage = "Open Eorzea Milkers. \"/milkers hud\" shows or hides the HUD, \"/milkers guide\" opens How to play, \"/milkers tutorial\" runs the walkthrough, \"/milkers changes\" shows what's new, \"/milkers support\" copies support info for the Discord.",
         });
 
         PluginInterface.UiBuilder.Draw += DrawWindows;
@@ -190,6 +191,17 @@ public sealed class Plugin : IDalamudPlugin
         PluginInterface.SavePluginConfig(Config);
     }
 
+    /// <summary>Copies the support info (setup + recent log) to the clipboard and saves it next to the settings.</summary>
+    public void CopySupportInfo()
+    {
+        var text = Diag.Report(this);
+        Dalamud.Bindings.ImGui.ImGui.SetClipboardText(text);
+        var path = System.IO.Path.Combine(PluginInterface.ConfigDirectory.FullName, "support-info.txt");
+        try { System.IO.File.WriteAllText(path, text); }
+        catch (Exception e) { Diag.Warn("support", "Couldn't save support-info.txt", e); }
+        ChatGui.Print("Support info copied. Paste it in #bug-reports on the Discord (it's also saved as support-info.txt in the plugin's settings folder).", "Eorzea Milkers");
+    }
+
     private void DrawWindows()
     {
         if (Claim.IsOpen) claimSystem.Draw();
@@ -199,6 +211,7 @@ public sealed class Plugin : IDalamudPlugin
 
     private static void TellIntegrity(Integrity.Result r)
     {
+        if (r is Integrity.Result.Restored or Integrity.Result.Reset) Diag.Warn("save", $"Save check: {r}");
         switch (r)
         {
             case Integrity.Result.Restored:
@@ -275,6 +288,7 @@ public sealed class Plugin : IDalamudPlugin
     /// <summary>The player said whether the old save belongs to this character.</summary>
     public void AnswerClaim(string key, bool mine)
     {
+        Diag.Info("save", $"Old save {(mine ? "given to" : "not given to")} character {key[..Math.Min(8, key.Length)]}");
         if (mine && Config.Unclaimed != null)
         {
             Config.Characters[key] = Config.Unclaimed;
@@ -303,8 +317,10 @@ public sealed class Plugin : IDalamudPlugin
             SaveConfig();
         }
 
-        if (!Config.Characters.ContainsKey(key)) Config.Characters[key] = Config.NewCharacterSave();
+        var fresh = !Config.Characters.ContainsKey(key);
+        if (fresh) Config.Characters[key] = Config.NewCharacterSave();
         Config.Use(key);
+        Diag.Info("save", $"Playing as character {key[..Math.Min(8, key.Length)]} ({(fresh ? "new save" : "existing save")})");
 
         var r = Integrity.Check(Config.Farm, key, out var save);
         Config.Farm = save;
@@ -371,6 +387,8 @@ public sealed class Plugin : IDalamudPlugin
         var a = args.Trim();
         if (a.Equals("guide", StringComparison.OrdinalIgnoreCase) || a.Equals("help", StringComparison.OrdinalIgnoreCase))
             Guide.Open();
+        else if (a.Equals("support", StringComparison.OrdinalIgnoreCase) || a.Equals("log", StringComparison.OrdinalIgnoreCase))
+            CopySupportInfo();
         else if (a.Equals("tutorial", StringComparison.OrdinalIgnoreCase))
             Tutorial.Start();
         else if (a.Equals("changes", StringComparison.OrdinalIgnoreCase) || a.Equals("new", StringComparison.OrdinalIgnoreCase))

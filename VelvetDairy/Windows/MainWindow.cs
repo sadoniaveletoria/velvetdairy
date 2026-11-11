@@ -1018,11 +1018,11 @@ public sealed partial class MainWindow : Window
         var rate = Catalog.TaperRate(F.DayEarned);
         ImGui.TextColored(rate < 1f ? Theme.HoneyDeep : Theme.InkSoft,
             rate >= 1f ? $"Earned today: {F.DayEarned:N0} · full pay until {Catalog.FullEarnings:N0}"
-                : rate >= 0.25f ? $"Earned today: {F.DayEarned:N0} · pay is at a quarter until {Catalog.QuarterEarnings:N0}, then a tenth"
+                : rate >= 0.5f ? $"Earned today: {F.DayEarned:N0} · pay is at half until {Catalog.HalfEarnings:N0}, then a tenth"
                 : $"Earned today: {F.DayEarned:N0} · pay is at a tenth until the daily reset");
         if (ImGui.IsItemHovered())
             ImGui.SetTooltip($"Everything the game pays you in a day (milking, hand milking shares, orders, goals, awards) counts together.\n" +
-                             $"The first {Catalog.FullEarnings:N0} coins are paid in full, then a quarter up to {Catalog.QuarterEarnings:N0}, then a tenth.\n" +
+                             $"The first {Catalog.FullEarnings:N0} coins are paid in full, then half up to {Catalog.HalfEarnings:N0}, then a tenth.\n" +
                              "XP is never reduced, and coins from other players (shelf sales, buy orders) aren't counted. Resets with the daily reset.");
     }
 
@@ -1794,6 +1794,10 @@ public sealed partial class MainWindow : Window
                    "3. Get milked on one of your dairy's stalls, or by a farmer pressing Milk on you. You're paid by your grade.\n" +
                    "4. Farmers: Herd Care and Kitchen are on the HUD. Fill jugs in the Kitchen, then deliver on the Creamery tab.\n" +
                    "5. Spend coins in the Shop. The full guide is the ? at the top, or /milkers guide.", Theme.Ink, width);
+
+        SubHeading("Having trouble?", width);
+        Ui.Wrapped("Copy your support info and paste it in #bug-reports on the Discord: it has your setup and what the plugin did recently (no passwords or keys). Also: /milkers support.", Theme.Ink, width);
+        if (ImGui.Button("Copy support info##helpsupport")) plugin.CopySupportInfo();
 
         SubHeading("Community", width);
         Ui.Wrapped("Questions, finding a dairy, update news and testing builds: join the Eorzea Milkers Discord (18+).", Theme.Ink, width);

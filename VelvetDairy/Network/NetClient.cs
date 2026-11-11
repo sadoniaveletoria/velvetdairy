@@ -194,6 +194,7 @@ public sealed class NetClient : IDisposable
                 var text = await http.GetStringAsync(NetworkFileUrl + "?t=" + DateTime.UtcNow.Ticks);
                 var file = JsonSerializer.Deserialize<NetworkFile>(text, Json);
                 var api = file?.Api?.Trim().TrimEnd('/');
+                Diag.Info("net", string.IsNullOrEmpty(api) ? "network.json has no server" : $"Server found: {api}");
                 if (!string.IsNullOrEmpty(api) && api.StartsWith("https://"))
                     mainThread.Enqueue(() =>
                     {
@@ -202,8 +203,9 @@ public sealed class NetClient : IDisposable
                         Status = "Connecting...";
                     });
             }
-            catch
+            catch (Exception e)
             {
+                Diag.Warn("net", "Couldn't read network.json", e);
                 mainThread.Enqueue(() => Status = "The Eorzea Milkers network isn't set up yet. Playing locally.");
             }
         });
@@ -299,6 +301,7 @@ public sealed class NetClient : IDisposable
                         msg = $"Server error ({(int)res.StatusCode}).";
                     }
 
+                    Diag.Warn("net", $"{method} {path} -> {(int)res.StatusCode} {msg}");
                     mainThread.Enqueue(() =>
                     {
                         Connected = true;
@@ -308,7 +311,7 @@ public sealed class NetClient : IDisposable
             }
             catch (Exception e)
             {
-                Plugin.Log.Debug($"Eorzea Milkers network: {e.Message}");
+                Diag.Warn("net", $"{method} {path} failed", e);
                 mainThread.Enqueue(() =>
                 {
                     Connected = false;
