@@ -74,7 +74,11 @@ jobs:
           $global:LASTEXITCODE = 0
           gh release upload testing VelvetDairy/bin/Release/VelvetDairy/latest.zip --clobber --repo $repo
           gh release edit testing --repo $repo --prerelease --title "Velvet Dairy testing $version"
-          "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          # Updates are numbered with three parts (0.9.11), but the built plugin always says four (0.9.11.0), and Dalamud
+          # only installs it when repo.json says exactly what the plugin says
+          $v = [version]$version
+          $full = "{0}.{1}.{2}.{3}" -f $v.Major, $v.Minor, [Math]::Max($v.Build, 0), [Math]::Max($v.Revision, 0)
+          "version=$full" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
   list:
     needs: build
