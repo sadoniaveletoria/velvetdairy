@@ -38,21 +38,55 @@ public sealed class MilkAnimationWindow : Window
         DrawPicker(width);
     }
 
+    private string emoteSearch = "";
+
+    private void SetEmote(string command)
+    {
+        F.MilkButtonEmote = command.Equals(DairyGame.MilkEmote, StringComparison.OrdinalIgnoreCase) ? "" : command;
+        plugin.SaveConfig();
+    }
+
     private void DrawEmote(float width)
     {
-        ImGui.TextColored(Theme.RoseDeep, "Milk button emote");
-        ImGui.SetNextItemWidth(180);
-        var em = F.MilkButtonEmote;
-        if (ImGui.InputTextWithHint("##milkbtnemote", DairyGame.MilkEmote, ref em, 30))
+        ImGui.TextColored(Theme.RoseDeep, "Milk button emote or pose");
+        Ui.Wrapped("What you do while you milk: any emote that keeps going (like /beesknees) or a sit pose (/sit, /groundsit, /doze). Use the one your animation mod changes. Once you're seated you can /cpose to the pose you want.", Theme.InkSoft, width);
+
+        var cur = F.MilkButtonEmote.Length == 0 ? DairyGame.MilkEmote : F.MilkButtonEmote.StartsWith('/') ? F.MilkButtonEmote : "/" + F.MilkButtonEmote;
+        var curId = Emotes.Find(cur);
+        var label = curId == 0 ? cur : $"{Emotes.Name(curId)}  ({cur})";
+
+        // The usual picks, one click
+        foreach (var (cmd, name) in new[] { ("/beesknees", "Bee's Knees"), ("/sit", "Sit"), ("/groundsit", "Sit on ground"), ("/doze", "Doze") })
         {
-            F.MilkButtonEmote = em.Trim();
-            plugin.SaveConfig();
+            var on = cur.Equals(cmd, StringComparison.OrdinalIgnoreCase);
+            if (on) ImGui.PushStyleColor(ImGuiCol.Button, Theme.Sage);
+            if (ImGui.SmallButton($"{name}##mbq{cmd}")) SetEmote(cmd);
+            if (on) ImGui.PopStyleColor();
+            ImGui.SameLine();
         }
 
-        if (ImGui.IsItemHovered()) ImGui.SetTooltip("If a cow only accepts their own list of emotes and yours isn't on it, the button uses theirs.");
-        Ui.Wrapped("The emote the Milk button does. Use the one your animation mod changes; it has to be a looping one. Empty = /beesknees.", Theme.InkSoft, width);
-        var typed = F.MilkButtonEmote.Length == 0 ? "" : F.MilkButtonEmote.StartsWith('/') ? F.MilkButtonEmote : "/" + F.MilkButtonEmote;
-        if (typed.Length > 0 && Emotes.Find(typed) == 0) ImGui.TextColored(Theme.Warn, $"{typed} isn't an emote the game knows, so the Milk button uses /beesknees.");
+        ImGui.NewLine();
+        ImGui.SetNextItemWidth(Math.Min(320, width));
+        if (ImGui.BeginCombo("##milkbtnemote", label, ImGuiComboFlags.HeightLarge))
+        {
+            ImGui.SetNextItemWidth(-1);
+            if (ImGui.IsWindowAppearing()) ImGui.SetKeyboardFocusHere();
+            ImGui.InputTextWithHint("##milkemotesearch", "Search emotes", ref emoteSearch, 40);
+            foreach (var (id, cmd, name) in Emotes.Choices())
+            {
+                if (emoteSearch.Length > 0 && !name.Contains(emoteSearch, StringComparison.OrdinalIgnoreCase) && !cmd.Contains(emoteSearch, StringComparison.OrdinalIgnoreCase)) continue;
+                var unlocked = Emotes.Unlocked(id);
+                if (!unlocked) ImGui.PushStyleColor(ImGuiCol.Text, Theme.InkSoft);
+                if (ImGui.Selectable($"{name}  {cmd}{(unlocked ? "" : "  (not unlocked)")}##mbe{id}", id == curId)) SetEmote(cmd);
+                if (!unlocked) ImGui.PopStyleColor();
+            }
+
+            ImGui.EndCombo();
+        }
+
+        if (curId != 0 && !Emotes.Unlocked(curId)) ImGui.TextColored(Theme.Warn, "Your character hasn't unlocked this one, so the game won't do it.");
+        if (curId == 0) ImGui.TextColored(Theme.Warn, $"{cur} isn't an emote the game knows, so the Milk button uses /beesknees.");
+        ImGui.TextColored(Theme.InkSoft, "If a cow only accepts their own list and yours isn't on it, the button uses theirs.");
         ImGui.Spacing();
     }
 

@@ -22,6 +22,13 @@ public sealed class ChangelogWindow : Window
     /// <summary>Newest first. Write these for players: what changed for them, not how.</summary>
     private static readonly Entry[] Entries =
     {
+        new("0.9.25", "Milk in any pose, and island dairies", new[]
+        {
+            "Farmers pick what the Milk button does from a list of every emote (search it, or one click for Bee's Knees, Sit, Sit on ground or Doze). Sit poses count as milking now, so an animation mod that changes a sit pose works too. Once seated, /cpose to the pose you want.",
+            "When the cow is empty after a sit pose, you're left seated: get up when you like.",
+            "Cows who allow \"any emote\" (the default) accept sit poses too.",
+            "A dairy on your Island Sanctuary or in an inn room is now yours alone: it no longer clashes with other players' dairies at the same spot on their own island. Dairies already there are fixed the next time their owner visits.",
+        }),
         new("0.9.24", "A save for each character", new[]
         {
             "Each character now has their own Eorzea Milkers progress: their own levels, coins, roles, pantry and dairy. Before, every character on your PC shared one save.",

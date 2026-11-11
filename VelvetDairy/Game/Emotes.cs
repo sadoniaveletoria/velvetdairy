@@ -85,6 +85,50 @@ public static class Emotes
         return c->Mode == CharacterModes.EmoteLoop ? c->EmoteController.EmoteId : (ushort)0;
     }
 
+    /// <summary>
+    /// The emote or pose a character is holding for milking (0 = none): a looping emote like /beesknees, or sitting
+    /// (/sit, /groundsit, /doze, in any /cpose pose). Animation mods often change a sit pose, so those count too.
+    /// </summary>
+    public static unsafe ushort MilkPose(IGameObject? o)
+    {
+        if (o is not ICharacter || o.Address == nint.Zero) return 0;
+        var c = (CSCharacter*)o.Address;
+        if (c->Mode == CharacterModes.EmoteLoop) return c->EmoteController.EmoteId;
+        if (c->Mode == CharacterModes.InPositionLoop) return c->EmoteController.EmoteId != 0 ? c->EmoteController.EmoteId : Find("/groundsit");
+        return 0;
+    }
+
+    /// <summary>Sitting, rather than in an emote loop (stopping it isn't done for you: you get up when you like).</summary>
+    public static unsafe bool Seated(IGameObject? o) =>
+        o is ICharacter && o.Address != nint.Zero && ((CSCharacter*)o.Address)->Mode == CharacterModes.InPositionLoop;
+
+    private static List<(ushort Id, string Command, string Name)>? choices;
+
+    /// <summary>Every emote with a text command, by name (for the Milk button's picker).</summary>
+    public static List<(ushort Id, string Command, string Name)> Choices()
+    {
+        if (choices != null) return choices;
+        var list = new List<(ushort, string, string)>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var e in Plugin.DataManager.GetExcelSheet<Emote>())
+        {
+            var cmd = e.TextCommand.ValueNullable?.Command.ExtractText().Trim() ?? "";
+            var name = e.Name.ExtractText().Trim();
+            if (e.RowId == 0 || cmd.Length < 2 || name.Length == 0 || !seen.Add(cmd)) continue;
+            list.Add(((ushort)e.RowId, cmd, name));
+        }
+
+        list.Sort((a, b) => string.Compare(a.Item3, b.Item3, StringComparison.OrdinalIgnoreCase));
+        return choices = list;
+    }
+
+    /// <summary>Has your character unlocked this emote?</summary>
+    public static unsafe bool Unlocked(ushort id)
+    {
+        var ui = FFXIVClientStructs.FFXIV.Client.Game.UI.UIState.Instance();
+        return ui == null || ui->IsEmoteUnlocked(id);
+    }
+
     /// <summary>Sitting on furniture (chair, bed, bench).</summary>
     public static unsafe bool InPositionLoop(IGameObject? o)
     {

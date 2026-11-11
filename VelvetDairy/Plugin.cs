@@ -220,7 +220,7 @@ public sealed class Plugin : IDalamudPlugin
     public bool Waiting => Claim.IsOpen || askingFor != null;
 
     /// <summary>The logged-in character's content id: the same through name changes and world transfers. 0 when not logged in.</summary>
-    private static unsafe ulong ContentId()
+    internal static unsafe ulong ContentId()
     {
         var ps = FFXIVClientStructs.FFXIV.Client.Game.UI.PlayerState.Instance();
         return ps == null ? 0 : ps->ContentId;

@@ -584,6 +584,7 @@ public sealed class DairyGame
         if (!F.StockPaidOut && Blocked() == null) PayOutOldStock();
         if (F.StockPaidOut && !jugsMerged) MergeJugs();
         var wasInDairy = Where.InDairy;
+        FixSoloArea();
         Where = Locate();
         // Tell the server right away when you arrive or leave, so jugs, chores and hand milking pay count at once
         if (Networked && Where.InDairy != wasInDairy) Net.Poke();
@@ -1277,7 +1278,7 @@ public sealed class DairyGame
         var me = Plugin.ObjectTable.LocalPlayer;
         var o = HandObject(fh);
         if (me == null || o == null) return new FarmhandSight(false, 0, 0, false);
-        return new FarmhandSight(true, Vector3.Distance(me.Position, o.Position), Emotes.Looping(o), o.TargetObjectId == me.GameObjectId);
+        return new FarmhandSight(true, Vector3.Distance(me.Position, o.Position), Emotes.MilkPose(o), o.TargetObjectId == me.GameObjectId);
     }
 
     /// <summary>
@@ -1462,7 +1463,7 @@ public sealed class DairyGame
             }
         }
 
-        var loop = Emotes.Looping(me);
+        var loop = Emotes.MilkPose(me);
         if (milkingEmote == 0)
         {
             // Remember whichever loop you're actually in once it starts
@@ -1504,10 +1505,12 @@ public sealed class DairyGame
         if (!done) return;
         var cow = milkingCow;
         // There's no "stop emote" in the game; any other emote ends the loop, so give a quiet pat (no chat text)
+        // A sit pose is left alone: you get up when you like
+        var seated = Emotes.Seated(me);
         if (Emotes.Looping(me) != 0 && !Emotes.Perform("/pet motion")) Emotes.Perform("/pet");
         StopWatchingMilking();
         F.DayCowsMilked++;
-        Say($"{cow} is empty.", 1);
+        Say(seated ? $"{cow} is empty. You can get up." : $"{cow} is empty.", 1);
     }
 
     // ----- Farmer chores: cleaning stalls and grooming cows -----
@@ -1713,7 +1716,7 @@ public sealed class DairyGame
         }
     }
 
-    /// <summary>Is this farmer milking you right now: a looping emote (yours, or any if allowed), close, and targeting you?</summary>
+    /// <summary>Is this farmer milking you right now: a looping emote or sit pose (yours, or any if allowed), close, and targeting you?</summary>
     private bool Milking(FarmhandSight s) =>
         s.Present && s.Emote != 0 && s.Distance <= HandRange && (!HandNeedsTarget || s.TargetingYou) &&
         (F.AnyLoopEmote || HandEmoteIds().Contains(s.Emote));
@@ -1947,7 +1950,7 @@ public sealed class DairyGame
         {
             territory = Plugin.ClientState.TerritoryType,
             world = me.CurrentWorld.RowId,
-            house = Estate.Current()?.HouseId.ToString() ?? "",
+            house = Estate.PlaceKey(),
             x = me.Position.X, y = me.Position.Y, z = me.Position.Z,
         };
     }
@@ -1958,11 +1961,35 @@ public sealed class DairyGame
         var house = Estate.Current();
         if (a.House.Length > 0)
         {
-            if (house == null || !ulong.TryParse(a.House, out var hid) || !Estate.Same(hid, house.Value.HouseId)) return false;
+            if (house != null)
+            {
+                if (!ulong.TryParse(a.House, out var hid) || !Estate.Same(hid, house.Value.HouseId)) return false;
+            }
+            // Your island or inn room: the box is yours only
+            else if (a.House != Estate.PlaceKey()) return false;
         }
-        else if (house != null) return false;
+        else if (house != null || Estate.SoloPlace(a.Territory)) return false;
 
         return a.Contains(me.Position);
+    }
+
+    private bool soloFixed;
+
+    /// <summary>
+    /// A dairy marked on an Island Sanctuary or in an inn room before those were told apart by whose they are:
+    /// the first time its owner is back there, it's saved again as theirs, so it stops clashing with other players' copies.
+    /// </summary>
+    private void FixSoloArea()
+    {
+        if (soloFixed || !Networked || F.NetMember is not { IsOwner: true, Area: { House.Length: 0 } a }) return;
+        var me = Plugin.ObjectTable.LocalPlayer;
+        if (me == null || Plugin.ClientState.TerritoryType != a.Territory || me.CurrentWorld.RowId != a.World || !Estate.SoloPlace(a.Territory)) return;
+        var key = Estate.PlaceKey();
+        if (key.Length == 0) return;
+        soloFixed = true;
+        var mine = a.Copy();
+        mine.House = key;
+        PublishDairy(F.NetMember.Dairy, mine);
     }
 
     /// <summary>Starts marking out the dairy: your current box if you're there, or a new one centered on you.</summary>
@@ -1984,7 +2011,7 @@ public sealed class DairyGame
         {
             Territory = Plugin.ClientState.TerritoryType,
             World = me.CurrentWorld.RowId,
-            House = house?.HouseId.ToString() ?? "",
+            House = Estate.PlaceKey(),
             X = me.Position.X, Y = me.Position.Y, Z = me.Position.Z,
             Rot = me.Rotation,
             MapId = Plugin.ClientState.MapId,

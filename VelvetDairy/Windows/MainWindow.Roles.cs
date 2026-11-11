@@ -93,9 +93,9 @@ public sealed partial class MainWindow
     private void DrawCowEmotes(float width)
     {
         SubHeading("Being hand milked", width);
-        Ui.Wrapped("A farmer of your dairy milks you by pressing Milk on you (HUD > Herd Care): they stand close, target you and their plugin does a looping emote. Someone just doing an emote near you never milks you. Milk flows until you're empty or they stop.", Theme.InkSoft, width);
+        Ui.Wrapped("A farmer of your dairy milks you by pressing Milk on you (HUD > Herd Care): they stand close, target you and their plugin does their milking emote or pose (like /beesknees or a sit pose). Someone just doing an emote near you never milks you. Milk flows until you're empty or they stop.", Theme.InkSoft, width);
         var any = F.AnyLoopEmote;
-        if (ImGui.Checkbox("Any looping emote counts##anyloop", ref any))
+        if (ImGui.Checkbox("Any emote or sit pose counts##anyloop", ref any))
         {
             F.AnyLoopEmote = any;
             plugin.SaveConfig();
