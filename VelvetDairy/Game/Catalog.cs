@@ -107,7 +107,15 @@ public static class Catalog
     /// <summary>Turn milk from your jugs into something. MilkOz of any grade from MinGrade up, at FarmerLevel or higher.</summary>
     /// <summary>Uses/UsesCount: an ingredient from your pantry each one needs. ToShelf: what's made goes on the dairy shelf, not your pantry.</summary>
     public sealed record Recipe(string Id, string Name, string Makes, int Amount, int MilkOz, int MinGrade, int FarmerLevel, int Xp, int Seconds, string Desc,
-        string Uses = "", int UsesCount = 0, bool ToShelf = false);
+        string Uses = "", int UsesCount = 0, bool ToShelf = false, string Uses2 = "", int UsesCount2 = 0)
+    {
+        /// <summary>Every ingredient this takes per batch (one or two kinds).</summary>
+        public IEnumerable<(string Id, int Count)> Needs()
+        {
+            if (UsesCount > 0) yield return (Uses, UsesCount);
+            if (UsesCount2 > 0) yield return (Uses2, UsesCount2);
+        }
+    }
 
     /// <summary>Each one in a batch takes a quarter longer than the one before, so big batches take much longer.</summary>
     public static float BatchSeconds(Recipe r, int index) => r.Seconds * (1f + 0.25f * index);
@@ -121,18 +129,21 @@ public static class Catalog
 
     public static readonly IReadOnlyList<Ingredient> Ingredients = new[]
     {
-        new Ingredient("butter", "Butter", "biscuit", "Churned from milk. An ingredient: it's used to make things (more recipes are coming)."),
-        new Ingredient("flour", "Flour", "grain", "Milled from wheat grain. An ingredient for baking (more recipes are coming)."),
+        new Ingredient("butter", "Butter", "biscuit", "Churned from milk. An ingredient for butter cookies and cream buns."),
+        new Ingredient("flour", "Flour", "grain", "Milled from wheat grain. An ingredient for cream buns."),
     };
 
     public static readonly IReadOnlyList<Recipe> Recipes = new[]
     {
         new Recipe("butter", "Churn butter", "butter", 1, 16, 0, 1, 12, 30, "Churn 16 oz of milk from your jugs into a pat of butter."),
-        new Recipe("flour", "Mill flour", "flour", 1, 0, 0, 1, 6, 20, "Mill 2 wheat grain (from the Shop) into flour for the dairy pantry.",
+        new Recipe("flour", "Mill flour", "flour", 1, 0, 0, 6, 6, 20, "Mill 2 wheat grain (from the Shop) into flour for the dairy pantry.",
             Uses: "hay", UsesCount: 2),
-        new Recipe("cookies", "Bake butter cookies", "cookies", 3, 8, 0, 1, 15, 45,
+        new Recipe("cookies", "Bake butter cookies", "cookies", 3, 8, 0, 3, 15, 45,
             "1 butter and 8 oz of milk make 3 butter cookies for the dairy shelf. Members buy them; you get 80% of the price.",
             Uses: "butter", UsesCount: 1, ToShelf: true),
+        new Recipe("buns", "Bake cream buns", "buns", 2, 12, 0, 10, 25, 75,
+            "1 flour, 1 butter and 12 oz of milk make 2 cream buns for the dairy shelf: a bigger treat than cookies. Members buy them; you get 80% of the price.",
+            Uses: "flour", UsesCount: 1, ToShelf: true, Uses2: "butter", UsesCount2: 1),
     };
 
     public static Ingredient? IngredientById(string id) => Ingredients.FirstOrDefault(i => i.Id == id);
@@ -159,6 +170,7 @@ public static class Catalog
         new FeedItem("starclover", "Star clover", "starclover", 200, 1, "Rare and sweet. A big step up in milk quality, and faster milk for 30 minutes.", Happy: 0.10f, Quality: 100, BoostMinutes: 30),
         // Baked by your dairy's farmers and bought off the dairy shelf (not sold in the Shop)
         new FeedItem("cookies", "Butter cookies", "biscuit", 0, 1, "Baked by your dairy's farmers. Happy, and a milk boost for 20 minutes.", Happy: 0.08f, BoostMinutes: 20, Baked: true),
+        new FeedItem("buns", "Cream buns", "biscuit", 0, 1, "Baked by your dairy's farmers. Filling, very happy, and a milk boost for 30 minutes.", Fed: 0.06f, Happy: 0.10f, BoostMinutes: 30, Baked: true),
         // Going away: keeps your grade from slipping
         new FeedItem("tonic", "Dry-off tonic", "water", 150, 1, "Going away? Your grade won't slip for 7 days, however long since you were milked. Use another to add 7 more.", HoldDays: 7),
     };
@@ -203,7 +215,7 @@ public static class Catalog
 
     public const float HandYield = 1.25f;
     /// <summary>What can go on the dairy shelf, in the server's order (a "fed" inbox item says which by its place here).</summary>
-    public static readonly string[] ShelfOrder = { "cookies" };
+    public static readonly string[] ShelfOrder = { "cookies", "buns" };
     public const int DailyPaidOz = 1500;   // milk you're paid for each day; past it you still get xp (matches the server's daily tank limit)
 
     // Everything you earn from the game in a day (milking, hand milking shares, orders, goals, awards) tapers off together:

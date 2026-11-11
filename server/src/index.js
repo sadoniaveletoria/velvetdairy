@@ -46,7 +46,10 @@ const COW_DAILY_HAND_OZ = 800;
 const MAX_TAKE_OZ = 96;
 const IN_PERSON_BONUS = 0.1;
 // Baked treats members buy off their dairy's shelf: item -> default price and the owner's allowed range (coins each)
-const SHELF_ITEMS = { cookies: { name: "Butter cookies", price: 40, min: 10, max: 150 } };
+const SHELF_ITEMS = {
+  cookies: { name: "Butter cookies", price: 40, min: 10, max: 150 },
+  buns: { name: "Cream buns", price: 70, min: 15, max: 250 },
+};
 const SHELF_BAKER_SHARE = 0.8;      // the rest goes to the dairy fund
 const SHELF_MAX_STOCK = 200;        // per item per dairy      // delivering a buy order in person at the buyer's public area pays 10% more
 const CLEAN_SECONDS = 3600;         // a cleaned stall stays fresh this long

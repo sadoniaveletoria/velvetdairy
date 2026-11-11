@@ -259,5 +259,6 @@ public sealed class BakeJob
     public int Count { get; set; }
     public int Done { get; set; }
     public float Elapsed { get; set; }
-    public int Borrowed { get; set; }   // ingredients taken from the dairy pantry for this job (used first; leftovers go back)
+    public int Borrowed { get; set; }   // (older builds) ingredients taken from the dairy pantry for this job
+    public Dictionary<string, int> BorrowedBy { get; set; } = new();   // ingredients taken from the dairy pantry, by kind (leftovers go back)
 }

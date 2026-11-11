@@ -116,12 +116,15 @@ public sealed class KitchenWindow : Window
             {
                 if (selected.Length == 0) selected = r.Id;
                 var ready = G.MakeProblem(r) == null;
+                var locked = G.FarmerLevel < r.FarmerLevel;
                 var dl = ImGui.GetWindowDrawList();
                 var p = ImGui.GetCursorScreenPos();
                 var h = ImGui.GetTextLineHeight();
                 dl.AddCircleFilled(p + new Vector2(5, h / 2 + 1), 3.5f, ImGui.ColorConvertFloat4ToU32(ready ? Theme.SageDeep : Theme.InkSoft with { W = 0.4f }));
                 ImGui.SetCursorScreenPos(p + new Vector2(14, 0));
-                if (ImGui.Selectable($"{r.Name}##kr{r.Id}", selected == r.Id)) selected = r.Id;
+                if (locked) ImGui.PushStyleColor(ImGuiCol.Text, Theme.InkSoft with { W = 0.6f });
+                if (ImGui.Selectable(locked ? $"{r.Name}  (Lv {r.FarmerLevel})##kr{r.Id}" : $"{r.Name}##kr{r.Id}", selected == r.Id)) selected = r.Id;
+                if (locked) ImGui.PopStyleColor();
                 if (ImGui.IsItemHovered()) ImGui.SetTooltip(ready ? "You can make this now." : G.MakeProblem(r) ?? "");
             }
 
@@ -152,10 +155,10 @@ public sealed class KitchenWindow : Window
         // What it takes, against what you have
         ImGui.TextColored(Theme.RoseDeep, "NEEDS");
         if (r.MilkOz > 0) Need($"{r.MilkOz * n} oz milk", $"{G.Carried:0.#} oz in your jugs", G.Carried >= r.MilkOz * n);
-        if (r.UsesCount > 0)
-            Need($"{r.UsesCount * n} {Catalog.MadeName(r.Uses).ToLowerInvariant()}",
-                Catalog.IngredientById(r.Uses) != null ? $"{G.IngredientCount(r.Uses)} in the dairy pantry" : $"you have {G.Count(r.Uses)} (Shop)",
-                G.IngredientCount(r.Uses) >= r.UsesCount * n);
+        foreach (var (id, per) in r.Needs())
+            Need($"{per * n} {Catalog.MadeName(id).ToLowerInvariant()}",
+                Catalog.IngredientById(id) != null ? $"{G.IngredientCount(id)} in the dairy pantry" : $"you have {G.Count(id)} (Shop)",
+                G.IngredientCount(id) >= per * n);
         if (r.FarmerLevel > 1) Need($"Farmer level {r.FarmerLevel}", $"you're {G.FarmerLevel}", G.FarmerLevel >= r.FarmerLevel);
         ImGui.Spacing();
 
@@ -214,7 +217,7 @@ public sealed class KitchenWindow : Window
         }
         else
         {
-            var usedIn = Catalog.Recipes.Where(x => x.Uses == r.Makes).Select(x => x.Name.Replace("Bake ", "").Replace("Churn ", "")).ToList();
+            var usedIn = Catalog.Recipes.Where(x => x.Needs().Any(n => n.Id == r.Makes)).Select(x => x.Name.Replace("Bake ", "").Replace("Churn ", "")).ToList();
             lines.Add(usedIn.Count > 0 ? $"An ingredient: used to make {string.Join(", ", usedIn)}. It can't be eaten on its own." : "An ingredient for other recipes.");
         }
 

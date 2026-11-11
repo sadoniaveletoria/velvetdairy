@@ -11,7 +11,9 @@ window.PREVIEW = {
     "Everything the game pays you in a day now adds up together, across all your roles: the first 1,500 coins are paid in full, then a quarter up to 4,000, then a tenth. XP is never reduced, and coins from other players (shelf sales, buy orders) don't count. Creamery > Your pay shows where you are; it resets each day.",
     "# Kitchen",
     "Ingredients are shared: butter (and anything else a farmer makes to bake with) goes into the dairy pantry, and every farmer of the dairy can bake with it. Butter you already had moves there too.",
-    "Meadow hay is now Wheat grain. Farmers can buy it in the Shop and mill 2 into flour in the Kitchen. Flour is an ingredient for recipes that are coming.",
+    "Meadow hay is now Wheat grain. Farmers can buy it in the Shop and mill 2 into flour in the Kitchen.",
+    "New treat: Cream buns (1 flour, 1 butter and 12 oz of milk make 2) for the dairy shelf. Filling, very happy, and a 30 minute milk boost.",
+    "Recipes unlock with your farmer level: butter at 1, butter cookies at 3, flour at 6, cream buns at 10. Locked ones show their level in the Kitchen.",
     "# Levels",
     "The role tags at the top of the main window now show your level (COW 23, FARMER 12), and fill up as you get closer to the next one. Hover one for the exact xp.",
     "The tags are a little slimmer, and where you are is one word: HERE, RESTING, PRIVATE or AWAY (hover it for more)."

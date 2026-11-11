@@ -812,6 +812,12 @@ public sealed class DairyGame
     /// <summary>A treat a farmer fed you: its Happy bonus (a bigger one already going is kept) and its milk boost.</summary>
     private void ApplyTreat(FeedItem item)
     {
+        if (item.Fed > 0)
+        {
+            Cow.FedBonus = Cow.Hunger <= 0 ? item.Fed : Math.Max(Cow.FedBonus, item.Fed);
+            Cow.Hunger = Fill(Cow.Hunger);
+        }
+
         if (item.Happy > 0)
         {
             Cow.HappyBonus = Cow.Mood <= 0 ? item.Happy : Math.Max(Cow.HappyBonus, item.Happy);
@@ -2352,13 +2358,14 @@ public sealed class DairyGame
         if (!CanCarry) return "Only farmers bake.";
         if (F.Bake != null) return "You're already baking something. Wait for it or cancel it.";
         if (!Where.InDairy) return "Go to your dairy to use its kitchen.";
-        if (IsFarmer && FarmerLevel < r.FarmerLevel) return $"Unlocks at farmer level {r.FarmerLevel}.";
+        if (FarmerLevel < r.FarmerLevel) return $"Unlocks at farmer level {r.FarmerLevel} (you're {FarmerLevel}).";
         if (count < 1) return "Pick how many to make.";
         if (r.ToShelf && (!Networked || F.NetMember == null)) return "Baking for the shelf needs your dairy on the network.";
-        if (r.UsesCount > 0 && IngredientCount(r.Uses) < r.UsesCount * count)
-            return Catalog.IngredientById(r.Uses) != null
-                ? $"You need {r.UsesCount * count} {Catalog.MadeName(r.Uses).ToLowerInvariant()} (the dairy pantry has {IngredientCount(r.Uses)})."
-                : $"You need {r.UsesCount * count} {Catalog.MadeName(r.Uses).ToLowerInvariant()} (you have {Count(r.Uses)}). Buy more in the Shop.";
+        foreach (var (id, per) in r.Needs())
+            if (IngredientCount(id) < per * count)
+                return Catalog.IngredientById(id) != null
+                    ? $"You need {per * count} {Catalog.MadeName(id).ToLowerInvariant()} (the dairy pantry has {IngredientCount(id)})."
+                    : $"You need {per * count} {Catalog.MadeName(id).ToLowerInvariant()} (you have {Count(id)}). Buy more in the Shop.";
         if (r.MilkOz > 0 && OzAtOrAbove(r.MinGrade) < r.MilkOz * count)
             return $"You need {r.MilkOz * count} oz of milk in your jugs. Fill them from the dairy tank at the top of the Kitchen.";
         return null;
@@ -2411,7 +2418,7 @@ public sealed class DairyGame
 
     /// <summary>How many of this you could make with the milk in your jugs.</summary>
     public int MaxMake(Catalog.Recipe r) =>
-        Math.Min(r.MilkOz > 0 ? (int)(OzAtOrAbove(r.MinGrade) / r.MilkOz) : 999, r.UsesCount > 0 ? IngredientCount(r.Uses) / r.UsesCount : 999);
+        r.Needs().Aggregate(r.MilkOz > 0 ? (int)(OzAtOrAbove(r.MinGrade) / r.MilkOz) : 999, (m, n) => Math.Min(m, IngredientCount(n.Id) / n.Count));
 
     /// <summary>Ingredients you can bake with: any of your own (from before they were shared) plus the dairy pantry.</summary>
     public int IngredientCount(string id) => Count(id) + (Networked && F.NetMember != null ? Net.DairyPantry.GetValueOrDefault(id) : 0);
@@ -2425,30 +2432,51 @@ public sealed class DairyGame
         if (takingIngredients) return false;
 
         // Ingredients come from your own stock first, then the dairy pantry (taken now, so nobody else uses them meanwhile)
-        var borrow = r.UsesCount > 0 ? Math.Max(0, r.UsesCount * count - Count(r.Uses)) : 0;
-        if (borrow > 0)
+        var borrow = r.Needs().Select(n => (n.Id, Qty: Math.Max(0, n.Count * count - Count(n.Id)))).Where(b => b.Qty > 0).ToList();
+        if (borrow.Count > 0)
         {
             takingIngredients = true;
-            Net.PantryTake(r.Uses, borrow, () =>
+            var got = new Dictionary<string, int>();
+            void Next(int i)
             {
-                takingIngredients = false;
-                F.Pantry[r.Uses] = Count(r.Uses) + borrow;
-                BeginBake(r, count, borrow);
-            }, e =>
-            {
-                takingIngredients = false;
-                Fail(e);
-            });
+                if (i >= borrow.Count)
+                {
+                    takingIngredients = false;
+                    BeginBake(r, count, got);
+                    return;
+                }
+
+                var (id, qty) = borrow[i];
+                Net.PantryTake(id, qty, () =>
+                {
+                    F.Pantry[id] = Count(id) + qty;
+                    got[id] = qty;
+                    Next(i + 1);
+                }, e =>
+                {
+                    takingIngredients = false;
+                    // Put back anything already taken for this bake
+                    foreach (var (bid, bq) in got)
+                    {
+                        F.Pantry[bid] = Count(bid) - bq;
+                        Net.PantryAdd(bid, bq, () => { }, _ => F.Pantry[bid] = Count(bid) + bq);
+                    }
+
+                    Fail(e);
+                });
+            }
+
+            Next(0);
             return true;
         }
 
-        BeginBake(r, count, 0);
+        BeginBake(r, count, new Dictionary<string, int>());
         return true;
     }
 
-    private void BeginBake(Catalog.Recipe r, int count, int borrowed)
+    private void BeginBake(Catalog.Recipe r, int count, Dictionary<string, int> borrowed)
     {
-        F.Bake = new BakeJob { Recipe = r.Id, Count = count, Borrowed = borrowed };
+        F.Bake = new BakeJob { Recipe = r.Id, Count = count, BorrowedBy = borrowed };
         Touch();
         Say($"{r.Name}: {count} batch{(count == 1 ? "" : "es")}, about {Wait(TimeSpan.FromSeconds(Catalog.TotalSeconds(r, count)))}. Stay in the dairy while it works.", 0);
         plugin.SaveConfig();
@@ -2458,16 +2486,22 @@ public sealed class DairyGame
     private void ReturnBorrowed(BakeJob j)
     {
         var r = Catalog.RecipeById(j.Recipe);
-        if (r == null || r.UsesCount <= 0 || j.Borrowed <= 0) return;
-        var left = Math.Min(Count(r.Uses), Math.Max(0, j.Borrowed - j.Done * r.UsesCount));
-        if (left <= 0) return;
-        F.Pantry[r.Uses] = Count(r.Uses) - left;
-        var item = r.Uses;
-        Net.PantryAdd(item, left, () => { }, _ =>
+        if (r == null) return;
+        var borrowed = new Dictionary<string, int>(j.BorrowedBy ?? new());
+        if (j.Borrowed > 0 && r.UsesCount > 0 && !borrowed.ContainsKey(r.Uses)) borrowed[r.Uses] = j.Borrowed;   // a bake started on an older build
+        foreach (var (id, per) in r.Needs())
         {
-            F.Pantry[item] = Count(item) + left;   // couldn't put them back: keep them so nothing's lost
-            plugin.SaveConfig();
-        });
+            if (!borrowed.TryGetValue(id, out var took) || took <= 0) continue;
+            var left = Math.Min(Count(id), Math.Max(0, took - j.Done * per));
+            if (left <= 0) continue;
+            F.Pantry[id] = Count(id) - left;
+            var item = id;
+            Net.PantryAdd(item, left, () => { }, _ =>
+            {
+                F.Pantry[item] = Count(item) + left;   // couldn't put them back: keep them so nothing's lost
+                plugin.SaveConfig();
+            });
+        }
     }
 
     /// <summary>Ingredients made before they were shared go to the dairy pantry (once, when you're a farmer of a dairy).</summary>
@@ -2535,16 +2569,17 @@ public sealed class DairyGame
         if (j.Elapsed < Catalog.BatchSeconds(r, j.Done)) return;
 
         // One finished: the milk comes out of your jugs now (lowest grade that qualifies first), and any ingredient
-        if (OzAtOrAbove(r.MinGrade) < r.MilkOz || (r.UsesCount > 0 && Count(r.Uses) < r.UsesCount))
+        var short_ = r.Needs().FirstOrDefault(n => Count(n.Id) < n.Count).Id;
+        if (OzAtOrAbove(r.MinGrade) < r.MilkOz || short_ != null)
         {
             F.Bake = null;
             ReturnBorrowed(j);
-            Fail($"Ran out of {(OzAtOrAbove(r.MinGrade) < r.MilkOz ? "milk" : Catalog.MadeName(r.Uses).ToLowerInvariant())}: you made {j.Done} of {j.Count}.");
+            Fail($"Ran out of {(OzAtOrAbove(r.MinGrade) < r.MilkOz ? "milk" : Catalog.MadeName(short_!).ToLowerInvariant())}: you made {j.Done} of {j.Count}.");
             plugin.SaveConfig();
             return;
         }
 
-        if (r.UsesCount > 0) F.Pantry[r.Uses] = Count(r.Uses) - r.UsesCount;
+        foreach (var (id, per) in r.Needs()) F.Pantry[id] = Count(id) - per;
 
         var left = (float)r.MilkOz;
         for (var g = 0; g < Grades.Count && left > 0; g++)
