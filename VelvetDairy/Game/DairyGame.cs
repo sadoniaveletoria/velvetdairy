@@ -1998,6 +1998,18 @@ public sealed class DairyGame
         a == null ? b == null : b != null && a.Territory == b.Territory && a.World == b.World && a.House == b.House &&
                                  a.X == b.X && a.Y == b.Y && a.Z == b.Z && a.Width == b.Width && a.Length == b.Length && a.Rot == b.Rot && a.Height == b.Height && a.WholeHouse == b.WholeHouse;
 
+    /// <summary>
+    /// Which copy of the zone to tell the server you're in. On your island or in an inn room, a dairy box made before
+    /// those were told apart has no owner on it, so it's matched the old way ("") until it's saved again as yours.
+    /// </summary>
+    private string PositionKey()
+    {
+        var key = Estate.PlaceKey();
+        if (Estate.Current() != null || !Estate.SoloPlace(Plugin.ClientState.TerritoryType)) return key;
+        var boxes = new[] { F.NetMember?.Area, F.NetMember?.PrivateArea };
+        return boxes.Any(b => b != null && b.Territory == Plugin.ClientState.TerritoryType && b.House == key) ? key : "";
+    }
+
     /// <summary>Where you are, for the server to tell which dairy (if any) you're standing in.</summary>
     public object? Position()
     {
@@ -2007,7 +2019,7 @@ public sealed class DairyGame
         {
             territory = Plugin.ClientState.TerritoryType,
             world = me.CurrentWorld.RowId,
-            house = Estate.PlaceKey(),
+            house = PositionKey(),
             x = me.Position.X, y = me.Position.Y, z = me.Position.Z,
         };
     }
@@ -2025,7 +2037,8 @@ public sealed class DairyGame
             // Your island or inn room: the box is yours only
             else if (a.House != Estate.PlaceKey()) return false;
         }
-        else if (house != null || Estate.SoloPlace(a.Territory)) return false;
+        // A box with no house: outdoors, or an island / inn room box from before they were told apart (still works)
+        else if (house != null) return false;
 
         return a.Contains(me.Position);
     }
