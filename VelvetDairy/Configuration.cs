@@ -259,4 +259,5 @@ public sealed class BakeJob
     public int Count { get; set; }
     public int Done { get; set; }
     public float Elapsed { get; set; }
+    public int Borrowed { get; set; }   // ingredients taken from the dairy pantry for this job (used first; leftovers go back)
 }

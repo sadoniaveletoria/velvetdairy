@@ -16,7 +16,7 @@ public sealed partial class MainWindow
     private void DrawPantry(Vector2 min, Vector2 max)
     {
         var labels = new List<string> { PantryFood };
-        if (G.CanCarry || Catalog.Ingredients.Any(i => G.Count(i.Id) > 0)) labels.Add(PantryIngredients);
+        if (G.CanCarry || Catalog.Ingredients.Any(i => G.IngredientCount(i.Id) > 0)) labels.Add(PantryIngredients);
         if (G.Networked && F.NetMember != null) labels.Add(PantryShelf);
         var top = SubTabs("pantry", labels.ToArray(), min, max.X - min.X);
         var which = labels[Math.Clamp(Sub("pantry"), 0, labels.Count - 1)];
@@ -43,7 +43,9 @@ public sealed partial class MainWindow
 
     private void DrawIngredients(float width)
     {
-        var have = Catalog.Ingredients.Where(i => G.Count(i.Id) > 0).ToList();
+        G.Net.RefreshPantry();
+        Ui.Wrapped("Ingredients are shared: whatever any farmer makes goes into the dairy pantry, and every farmer can bake with it.", Theme.InkSoft, width);
+        var have = Catalog.Ingredients.Where(i => G.IngredientCount(i.Id) > 0).ToList();
         if (have.Count == 0)
         {
             Ui.Wrapped("No ingredients yet. Farmers make them in the Kitchen (HUD > Kitchen).", Theme.InkSoft, width);
@@ -52,7 +54,7 @@ public sealed partial class MainWindow
 
         foreach (var i in have)
             ListRow(Ico(i.Icon), i.Name, Theme.Ink,
-                new[] { new Line($"You have {G.Count(i.Id)}", Theme.Ink), new Line(i.Desc, Theme.InkSoft) }, Array.Empty<Btn>(), width);
+                new[] { new Line($"{G.IngredientCount(i.Id)} in the dairy pantry", Theme.Ink), new Line(i.Desc, Theme.InkSoft) }, Array.Empty<Btn>(), width);
     }
 
     private void DrawPantryList(float width)

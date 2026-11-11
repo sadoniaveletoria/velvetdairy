@@ -245,6 +245,9 @@ async function route(request, env) {
     ["POST", /^\/v1\/shelf\/stock$/, () => shelfStock(env, me, request)],
     ["POST", /^\/v1\/shelf\/buy$/, () => shelfBuy(env, me, request)],
     ["POST", /^\/v1\/shelf\/feed$/, () => shelfFeed(env, me, request)],
+    ["GET", /^\/v1\/pantry$/, () => pantryView(env, me)],
+    ["POST", /^\/v1\/pantry\/add$/, () => pantryAdd(env, me, request)],
+    ["POST", /^\/v1\/pantry\/take$/, () => pantryTake(env, me, request)],
     ["PUT", /^\/v1\/shelf\/price$/, () => shelfPrice(env, me, request)],
     ["PUT", /^\/v1\/dairy\/private$/, () => putPrivate(env, me, request)],
     ["DELETE", /^\/v1\/dairy\/private$/, () => deletePrivate(env, me)],
@@ -1054,6 +1057,55 @@ async function shelfBuy(env, me, request) {
     return { ok: true, price, baker: row.baker_name, bakerCut, fundCut };
   }
   fail(409, "Someone else just bought that. Try again.");
+}
+
+// ----- The dairy pantry: ingredients farmers bake (butter) are shared by all the dairy's farmers -----
+
+const PANTRY_ITEMS = { butter: "Butter", flour: "Flour" };
+const PANTRY_MAX = 200;
+
+function pantryItem(b) {
+  const item = String(b.item || "");
+  if (!PANTRY_ITEMS[item]) fail(400, "That isn't an ingredient.");
+  return item;
+}
+
+async function pantryMember(env, me, needHere) {
+  const mem = await membership(env, me.id);
+  if (!mem) fail(400, "Join a dairy first.");
+  if (!(mem.is_owner || hasRole(mem, "farmer"))) fail(403, "Only farmers and the owner use the dairy pantry.");
+  if (needHere && !inOwnDairy(me, mem)) fail(400, "Go to your dairy to use its pantry.");
+  return mem;
+}
+
+async function pantryView(env, me) {
+  const mem = await membership(env, me.id);
+  if (!mem) return { items: {} };
+  const rows = (await env.DB.prepare("SELECT item, qty FROM dairy_pantry WHERE dairy_id = ? AND qty > 0").bind(mem.dairy_id).all()).results;
+  return { items: Object.fromEntries(rows.map(r => [r.item, r.qty])) };
+}
+
+async function pantryAdd(env, me, request) {
+  const b = await body(request);
+  const item = pantryItem(b);
+  const qty = int(b.qty, 1, 50, "qty");
+  const mem = await pantryMember(env, me, false);
+  const have = await env.DB.prepare("SELECT qty FROM dairy_pantry WHERE dairy_id = ? AND item = ?").bind(mem.dairy_id, item).first();
+  if ((have?.qty ?? 0) + qty > PANTRY_MAX) fail(400, `The dairy pantry holds up to ${PANTRY_MAX} ${PANTRY_ITEMS[item].toLowerCase()}.`);
+  const row = await env.DB.prepare(`INSERT INTO dairy_pantry (dairy_id, item, qty) VALUES (?, ?, ?)
+    ON CONFLICT(dairy_id, item) DO UPDATE SET qty = qty + excluded.qty RETURNING qty`).bind(mem.dairy_id, item, qty).first();
+  return { ok: true, qty: row.qty };
+}
+
+async function pantryTake(env, me, request) {
+  const b = await body(request);
+  const item = pantryItem(b);
+  const qty = int(b.qty, 1, 50, "qty");
+  const mem = await pantryMember(env, me, true);
+  const row = await env.DB.prepare("UPDATE dairy_pantry SET qty = qty - ? WHERE dairy_id = ? AND item = ? AND qty >= ? RETURNING qty")
+    .bind(qty, mem.dairy_id, item, qty).first();
+  if (!row) fail(409, `The dairy pantry doesn't have ${qty} ${PANTRY_ITEMS[item].toLowerCase()}.`);
+  return { ok: true, qty: row.qty };
 }
 
 /** A farmer feeds something from the shelf to a cow or bull of the dairy: free, but never to themselves. */

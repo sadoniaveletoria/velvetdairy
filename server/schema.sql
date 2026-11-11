@@ -221,6 +221,14 @@ CREATE TABLE IF NOT EXISTS stall_clean (
   by_name   TEXT NOT NULL DEFAULT ''
 );
 
+-- Ingredients a dairy's farmers baked (butter), shared by all of them.
+CREATE TABLE IF NOT EXISTS dairy_pantry (
+  dairy_id  TEXT NOT NULL,
+  item      TEXT NOT NULL,
+  qty       INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (dairy_id, item)
+);
+
 -- When a farmer last fed a cow or bull from the dairy shelf (once per farmer per member every 15 minutes).
 CREATE TABLE IF NOT EXISTS feeds (
   farmer  TEXT NOT NULL,

@@ -122,11 +122,14 @@ public static class Catalog
     public static readonly IReadOnlyList<Ingredient> Ingredients = new[]
     {
         new Ingredient("butter", "Butter", "biscuit", "Churned from milk. An ingredient: it's used to make things (more recipes are coming)."),
+        new Ingredient("flour", "Flour", "grain", "Milled from wheat grain. An ingredient for baking (more recipes are coming)."),
     };
 
     public static readonly IReadOnlyList<Recipe> Recipes = new[]
     {
         new Recipe("butter", "Churn butter", "butter", 1, 16, 0, 1, 12, 30, "Churn 16 oz of milk from your jugs into a pat of butter."),
+        new Recipe("flour", "Mill flour", "flour", 1, 0, 0, 1, 6, 20, "Mill 2 wheat grain (from the Shop) into flour for the dairy pantry.",
+            Uses: "hay", UsesCount: 2),
         new Recipe("cookies", "Bake butter cookies", "cookies", 3, 8, 0, 1, 15, 45,
             "1 butter and 8 oz of milk make 3 butter cookies for the dairy shelf. Members buy them; you get 80% of the price.",
             Uses: "butter", UsesCount: 1, ToShelf: true),
@@ -141,7 +144,7 @@ public static class Catalog
 
     public static readonly IReadOnlyList<FeedItem> Feed = new[]
     {
-        new FeedItem("hay", "Meadow hay", "hay", 4, 1, "Plain and filling.", Fed: 0.04f),
+        new FeedItem("hay", "Wheat grain", "grain", 4, 1, "Plain and filling. Farmers can also mill it into flour in the Kitchen.", Fed: 0.04f),
         new FeedItem("grain", "Sweet grain", "grain", 12, 2, "A better meal.", Fed: 0.07f),
         new FeedItem("clover", "Fresh clover", "clover", 15, 3, "A treat. Makes you happy and speeds up your milk for a while.", Happy: 0.05f, BoostMinutes: 15),
         new FeedItem("salt", "Salt lick", "salt", 20, 4, "A salty treat. Happy, and a short milk boost.", Happy: 0.04f, BoostMinutes: 10),

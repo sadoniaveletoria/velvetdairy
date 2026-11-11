@@ -1,14 +1,17 @@
 // Made by preview/build.py from the plugin's source. Don't edit by hand.
 window.PREVIEW = {
- "version": "0.9.21",
+ "version": "0.9.22",
  "changes": [
   {
-   "version": "0.9.21",
-   "title": "Pay and levels",
+   "version": "0.9.22",
+   "title": "Pay, levels and the kitchen",
    "notes": [
     "# Pay",
     "New pay per ounce: C 6, B 8, A 10, S 12, S+ 14 coins. Higher grades still milk faster and give more milk.",
     "Everything the game pays you in a day now adds up together, across all your roles: the first 1,500 coins are paid in full, then a quarter up to 4,000, then a tenth. XP is never reduced, and coins from other players (shelf sales, buy orders) don't count. Creamery > Your pay shows where you are; it resets each day.",
+    "# Kitchen",
+    "Ingredients are shared: butter (and anything else a farmer makes to bake with) goes into the dairy pantry, and every farmer of the dairy can bake with it. Butter you already had moves there too.",
+    "Meadow hay is now Wheat grain. Farmers can buy it in the Shop and mill 2 into flour in the Kitchen. Flour is an ingredient for recipes that are coming.",
     "# Levels",
     "The role tags at the top of the main window now show your level (COW 23, FARMER 12), and fill up as you get closer to the next one. Hover one for the exact xp.",
     "The tags are a little slimmer, and where you are is one word: HERE, RESTING, PRIVATE or AWAY (hover it for more)."

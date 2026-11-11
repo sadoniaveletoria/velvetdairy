@@ -383,3 +383,8 @@ public sealed class ErrorReply
 {
     public string Error { get; set; } = "";
 }
+
+public sealed class PantryReply
+{
+    public Dictionary<string, int>? Items { get; set; }
+}

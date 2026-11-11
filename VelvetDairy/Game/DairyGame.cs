@@ -2355,9 +2355,11 @@ public sealed class DairyGame
         if (IsFarmer && FarmerLevel < r.FarmerLevel) return $"Unlocks at farmer level {r.FarmerLevel}.";
         if (count < 1) return "Pick how many to make.";
         if (r.ToShelf && (!Networked || F.NetMember == null)) return "Baking for the shelf needs your dairy on the network.";
-        if (r.UsesCount > 0 && Count(r.Uses) < r.UsesCount * count)
-            return $"You need {r.UsesCount * count} {Catalog.MadeName(r.Uses).ToLowerInvariant()} (you have {Count(r.Uses)}).";
-        if (OzAtOrAbove(r.MinGrade) < r.MilkOz * count)
+        if (r.UsesCount > 0 && IngredientCount(r.Uses) < r.UsesCount * count)
+            return Catalog.IngredientById(r.Uses) != null
+                ? $"You need {r.UsesCount * count} {Catalog.MadeName(r.Uses).ToLowerInvariant()} (the dairy pantry has {IngredientCount(r.Uses)})."
+                : $"You need {r.UsesCount * count} {Catalog.MadeName(r.Uses).ToLowerInvariant()} (you have {Count(r.Uses)}). Buy more in the Shop.";
+        if (r.MilkOz > 0 && OzAtOrAbove(r.MinGrade) < r.MilkOz * count)
             return $"You need {r.MilkOz * count} oz of milk in your jugs. Fill them from the dairy tank at the top of the Kitchen.";
         return null;
     }
@@ -2409,17 +2411,84 @@ public sealed class DairyGame
 
     /// <summary>How many of this you could make with the milk in your jugs.</summary>
     public int MaxMake(Catalog.Recipe r) =>
-        Math.Min((int)(OzAtOrAbove(r.MinGrade) / r.MilkOz), r.UsesCount > 0 ? Count(r.Uses) / r.UsesCount : int.MaxValue);
+        Math.Min(r.MilkOz > 0 ? (int)(OzAtOrAbove(r.MinGrade) / r.MilkOz) : 999, r.UsesCount > 0 ? IngredientCount(r.Uses) / r.UsesCount : 999);
+
+    /// <summary>Ingredients you can bake with: any of your own (from before they were shared) plus the dairy pantry.</summary>
+    public int IngredientCount(string id) => Count(id) + (Networked && F.NetMember != null ? Net.DairyPantry.GetValueOrDefault(id) : 0);
+
+    private bool takingIngredients;
 
     public bool StartBake(Catalog.Recipe r, int count)
     {
         var p = MakeProblem(r, count);
         if (p != null) return Fail(p);
-        F.Bake = new BakeJob { Recipe = r.Id, Count = count };
+        if (takingIngredients) return false;
+
+        // Ingredients come from your own stock first, then the dairy pantry (taken now, so nobody else uses them meanwhile)
+        var borrow = r.UsesCount > 0 ? Math.Max(0, r.UsesCount * count - Count(r.Uses)) : 0;
+        if (borrow > 0)
+        {
+            takingIngredients = true;
+            Net.PantryTake(r.Uses, borrow, () =>
+            {
+                takingIngredients = false;
+                F.Pantry[r.Uses] = Count(r.Uses) + borrow;
+                BeginBake(r, count, borrow);
+            }, e =>
+            {
+                takingIngredients = false;
+                Fail(e);
+            });
+            return true;
+        }
+
+        BeginBake(r, count, 0);
+        return true;
+    }
+
+    private void BeginBake(Catalog.Recipe r, int count, int borrowed)
+    {
+        F.Bake = new BakeJob { Recipe = r.Id, Count = count, Borrowed = borrowed };
         Touch();
         Say($"{r.Name}: {count} batch{(count == 1 ? "" : "es")}, about {Wait(TimeSpan.FromSeconds(Catalog.TotalSeconds(r, count)))}. Stay in the dairy while it works.", 0);
         plugin.SaveConfig();
-        return true;
+    }
+
+    /// <summary>When a bake ends early, ingredients borrowed from the dairy pantry that weren't used go back to it.</summary>
+    private void ReturnBorrowed(BakeJob j)
+    {
+        var r = Catalog.RecipeById(j.Recipe);
+        if (r == null || r.UsesCount <= 0 || j.Borrowed <= 0) return;
+        var left = Math.Min(Count(r.Uses), Math.Max(0, j.Borrowed - j.Done * r.UsesCount));
+        if (left <= 0) return;
+        F.Pantry[r.Uses] = Count(r.Uses) - left;
+        var item = r.Uses;
+        Net.PantryAdd(item, left, () => { }, _ =>
+        {
+            F.Pantry[item] = Count(item) + left;   // couldn't put them back: keep them so nothing's lost
+            plugin.SaveConfig();
+        });
+    }
+
+    /// <summary>Ingredients made before they were shared go to the dairy pantry (once, when you're a farmer of a dairy).</summary>
+    private bool sharedOldIngredients;
+
+    private void ShareOldIngredients()
+    {
+        if (sharedOldIngredients || !Networked || F.NetMember == null || !CanCarry || F.Bake != null) return;
+        sharedOldIngredients = true;
+        foreach (var ing in Catalog.Ingredients)
+        {
+            var n = Math.Min(50, Count(ing.Id));
+            if (n <= 0) continue;
+            var id = ing.Id;
+            F.Pantry[id] = Count(id) - n;
+            Net.PantryAdd(id, n, () => Say($"Your {n} {ing.Name.ToLowerInvariant()} went into the dairy pantry for every farmer to use.", 0), _ =>
+            {
+                F.Pantry[id] = Count(id) + n;
+                plugin.SaveConfig();
+            });
+        }
     }
 
     public void CancelBake()
@@ -2427,6 +2496,7 @@ public sealed class DairyGame
         var j = F.Bake;
         if (j == null) return;
         F.Bake = null;
+        ReturnBorrowed(j);
         Say(j.Done > 0 ? $"Stopped baking. You kept the {j.Done} you finished." : "Stopped baking.", 0);
         plugin.SaveConfig();
     }
@@ -2446,6 +2516,12 @@ public sealed class DairyGame
     /// <summary>Baking only moves along while you're in the dairy (it waits while you're away or logged out).</summary>
     private void TickBake(float dt)
     {
+        if (CanCarry && Networked && F.NetMember != null)
+        {
+            ShareOldIngredients();
+            if (Where.InDairy) Net.RefreshPantry();
+        }
+
         if (F.Bake is not { } j) return;
         var r = Catalog.RecipeById(j.Recipe);
         if (r == null || j.Done >= j.Count)
@@ -2462,6 +2538,7 @@ public sealed class DairyGame
         if (OzAtOrAbove(r.MinGrade) < r.MilkOz || (r.UsesCount > 0 && Count(r.Uses) < r.UsesCount))
         {
             F.Bake = null;
+            ReturnBorrowed(j);
             Fail($"Ran out of {(OzAtOrAbove(r.MinGrade) < r.MilkOz ? "milk" : Catalog.MadeName(r.Uses).ToLowerInvariant())}: you made {j.Done} of {j.Count}.");
             plugin.SaveConfig();
             return;
@@ -2477,7 +2554,7 @@ public sealed class DairyGame
             left -= take;
         }
 
-        if (Networked) Net.UseCarried(r.MilkOz);
+        if (Networked && r.MilkOz > 0) Net.UseCarried(r.MilkOz);
         if (r.ToShelf)
         {
             // Onto the dairy shelf; if the server says no, they come to your pantry instead so nothing's lost
@@ -2490,6 +2567,17 @@ public sealed class DairyGame
                 plugin.SaveConfig();
             });
         }
+        else if (Networked && F.NetMember != null && Catalog.Ingredients.Any(i => i.Id == r.Makes))
+        {
+            // Ingredients go to the dairy pantry, shared by every farmer; if the server says no, they stay with you
+            var made = r.Makes;
+            var amount = r.Amount;
+            Net.PantryAdd(made, amount, () => { }, e =>
+            {
+                F.Pantry[made] = Count(made) + amount;
+                plugin.SaveConfig();
+            });
+        }
         else F.Pantry[r.Makes] = Count(r.Makes) + r.Amount;
         AddFarmerXp(r.Xp);
         j.Done++;
@@ -2498,7 +2586,7 @@ public sealed class DairyGame
         if (j.Done >= j.Count)
         {
             F.Bake = null;
-            Say($"Done: {j.Count * r.Amount} {name} {(r.ToShelf ? "on the dairy shelf" : "in your pantry")}. +{j.Count * r.Xp} farmer xp", 1);
+            Say($"Done: {j.Count * r.Amount} {name} {(r.ToShelf ? "on the dairy shelf" : Networked && F.NetMember != null ? "in the dairy pantry" : "in your pantry")}. +{j.Count * r.Xp} farmer xp", 1);
         }
 
         plugin.SaveConfig();

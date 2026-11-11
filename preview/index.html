@@ -347,7 +347,7 @@ function barn(s, W) {
     <p class="soft" style="margin:10px 0 0;font-size:14px">Grade ${GRADES[s.grade]} · ${PAY[s.grade]} coins per oz${s.grade ? ` · milks ${GRADE_BOOST[s.grade] * 100}% faster, ${GRADE_BOOST[s.grade] * 100}% more milk` : ""}</p></div>`;
   const care = `<div class="panel" style="left:${mid + 7}px;top:${top}px;right:${Pad}px;bottom:${760 - (bottom - milkH - 14)}px">
     <h3>Care</h3>
-    ${row("hay", "Timothy hay ×4", "Fed +10% for 30 min", [["Eat", "sage"]])}
+    ${row("grain", "Wheat grain ×4", "Fed +4% for 30 min", [["Eat", "sage"]])}
     ${row("water", "Spring water ×6", "Watered +8% for 30 min", [["Drink", "blue"]])}
     ${row("biscuit", "Butter cookies ×3", "Happy +8%, +30% milk for 20 min", [["Eat", "rose"]])}</div>`;
   const how = s.st === "away" ? "Not being milked. Go to your dairy to get milked." : "Not being milked. Sit on a stall, or have a farmer stand close and press Milk on you.";
@@ -390,9 +390,11 @@ function herd(s) {
 
 // ---------------------------------------------------------------- Kitchen (KitchenWindow.cs)
 const RECIPES = {
+  flour: { name: "Mill flour", makes: "Flour", icon: "grain", group: "Ingredients", milk: 0, uses: "2 wheat grain", usesNote: "you have 6 (Shop)", secs: 20, xp: 6, amount: 1,
+    effects: ["An ingredient for other recipes.", "+6 farmer xp for each one."] },
   butter: { name: "Churn butter", makes: "Butter", icon: "milk", group: "Ingredients", milk: 16, uses: "", secs: 30, xp: 12, amount: 1,
     effects: ["An ingredient: used to make butter cookies. It can't be eaten on its own.", "+12 farmer xp for each one."] },
-  cookies: { name: "Bake butter cookies", makes: "Butter cookies", icon: "biscuit", group: "Treats", milk: 8, uses: "1 butter", secs: 45, xp: 15, amount: 3,
+  cookies: { name: "Bake butter cookies", makes: "Butter cookies", icon: "biscuit", group: "Treats", milk: 8, uses: "1 butter", usesNote: "5 in the dairy pantry", secs: 45, xp: 15, amount: 3,
     effects: ["For cows: Happy +8% milk speed, filling half the bar (30 minutes).", "Milk boost: +30% milk for 20 minutes.",
       "Goes on the dairy shelf at 40 coins each (the owner sets it). You get 32 for each one a member buys; the fund gets the rest.",
       "Farmers can also feed them to cows and bulls for free (Herd Care > Feed). Bulls get bull xp.", "Each bake makes 3 and gives +15 farmer xp."] },
@@ -407,12 +409,12 @@ function kitchen(s) {
       <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center"><span style="font-size:16px">Your jugs: 40 / 96 oz</span><span class="soft" style="font-size:15px">· dairy tank 312.5 oz</span></div>
       <div style="display:flex;gap:6px;align-items:center"><div class="prog" style="width:260px"><i style="width:42%;background:var(--BlueDeep)"></i></div>${ibtn("Fill 8 oz", "cream", 84, 24)}${ibtn("Fill 32 oz", "cream", 90, 24)}${ibtn("Fill up", "blue", 80, 24)}</div>
       <hr class="s">${baking}
-      <div class="soft" style="font-size:14px">In your pantry: butter 2</div>
+      <div class="soft" style="font-size:14px">In the dairy pantry: butter 5 · flour 3</div>
       <div class="kgrid"><div class="klist"><span class="mini" style="cursor:text">Search recipes...</span>${groups}</div>
       <div style="display:grid;gap:6px;align-content:start">
         <div style="font-size:21px">${r.name}</div>
         <div class="sect">Makes</div><div style="font-size:15px">${r.amount} ${r.makes.toLowerCase()} · ${r.secs} s each</div>
-        <div class="sect">Needs</div><div style="font-size:15px">${r.milk} oz milk <span class="soft">· 40 oz in your jugs</span>${r.uses ? `<br>${r.uses} <span class="soft">· 2 in your pantry</span>` : ""}</div>
+        <div class="sect">Needs</div><div style="font-size:15px">${r.milk ? `${r.milk} oz milk <span class="soft">· 40 oz in your jugs</span>` : ""}${r.uses ? `${r.milk ? "<br>" : ""}${r.uses} <span class="soft">· ${r.usesNote}</span>` : ""}</div>
         <div class="sect">What it does</div><div style="font-size:15px;display:grid;gap:3px">${r.effects.map(e => `<div>${esc(e)}</div>`).join("")}</div>
         <div style="display:flex;gap:6px;align-items:center;margin-top:4px">${ibtn("−", "cream", 34, 28)}<span class="num" style="min-width:24px;text-align:center">1</span>${ibtn("+", "cream", 34, 28)}${ibtn("Max", "cream", 54, 28)}${ibtn("Bake", "honey", 90, 30)}</div>
       </div></div>

@@ -42,8 +42,9 @@ public sealed class KitchenWindow : Window
         ImGui.Separator();
         ImGui.Spacing();
         DrawBaking();
-        var stock = string.Join(" · ", Catalog.Ingredients.Where(i => G.Count(i.Id) > 0).Select(i => $"{i.Name.ToLowerInvariant()} {G.Count(i.Id)}"));
-        if (stock.Length > 0) ImGui.TextColored(Theme.InkSoft, $"In your pantry: {stock}");
+        G.Net.RefreshPantry();
+        var stock = string.Join(" · ", Catalog.Ingredients.Where(i => G.IngredientCount(i.Id) > 0).Select(i => $"{i.Name.ToLowerInvariant()} {G.IngredientCount(i.Id)}"));
+        ImGui.TextColored(Theme.InkSoft, stock.Length > 0 ? $"In the dairy pantry: {stock}" : "The dairy pantry is empty. Ingredients any farmer makes go there for everyone.");
         ImGui.Spacing();
 
         var avail = ImGui.GetContentRegionAvail();
@@ -139,7 +140,7 @@ public sealed class KitchenWindow : Window
         ImGui.SetCursorScreenPos(p + new Vector2(44, 0));
         ImGui.TextColored(Theme.Ink, r.Name);
         ImGui.SetCursorScreenPos(p + new Vector2(44, ImGui.GetTextLineHeightWithSpacing()));
-        ImGui.TextColored(Theme.InkSoft, $"{Group(r)} · {(r.ToShelf ? "goes on the dairy shelf" : "goes in your pantry")}");
+        ImGui.TextColored(Theme.InkSoft, $"{Group(r)} · {(r.ToShelf ? "goes on the dairy shelf" : "goes in the dairy pantry, for every farmer")}");
         ImGui.SetCursorScreenPos(p + new Vector2(0, 44));
         Ui.Wrapped(r.Desc, Theme.InkSoft, width);
         ImGui.Spacing();
@@ -150,14 +151,16 @@ public sealed class KitchenWindow : Window
 
         // What it takes, against what you have
         ImGui.TextColored(Theme.RoseDeep, "NEEDS");
-        Need($"{r.MilkOz * n} oz milk", $"{G.Carried:0.#} oz in your jugs", G.Carried >= r.MilkOz * n);
+        if (r.MilkOz > 0) Need($"{r.MilkOz * n} oz milk", $"{G.Carried:0.#} oz in your jugs", G.Carried >= r.MilkOz * n);
         if (r.UsesCount > 0)
-            Need($"{r.UsesCount * n} {Catalog.MadeName(r.Uses).ToLowerInvariant()}", $"you have {G.Count(r.Uses)}", G.Count(r.Uses) >= r.UsesCount * n);
+            Need($"{r.UsesCount * n} {Catalog.MadeName(r.Uses).ToLowerInvariant()}",
+                Catalog.IngredientById(r.Uses) != null ? $"{G.IngredientCount(r.Uses)} in the dairy pantry" : $"you have {G.Count(r.Uses)} (Shop)",
+                G.IngredientCount(r.Uses) >= r.UsesCount * n);
         if (r.FarmerLevel > 1) Need($"Farmer level {r.FarmerLevel}", $"you're {G.FarmerLevel}", G.FarmerLevel >= r.FarmerLevel);
         ImGui.Spacing();
 
         ImGui.TextColored(Theme.RoseDeep, "MAKES");
-        ImGui.TextColored(Theme.Ink, $"{r.Amount * n} {made}{(r.ToShelf ? " for the shelf" : $" (you have {G.Count(r.Makes)})")}");
+        ImGui.TextColored(Theme.Ink, $"{r.Amount * n} {made}{(r.ToShelf ? " for the shelf" : $" ({G.IngredientCount(r.Makes)} in the dairy pantry)")}");
         ImGui.TextColored(Theme.InkSoft, $"{Clock(TimeSpan.FromSeconds(Catalog.TotalSeconds(r, n)))} · +{r.Xp * n} farmer xp");
         if (n > 1) ImGui.TextColored(Theme.InkSoft, "Each one in a batch takes a little longer than the last.");
         ImGui.Spacing();
