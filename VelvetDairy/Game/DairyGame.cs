@@ -1159,8 +1159,10 @@ public sealed class DairyGame
         EaseTaint(Catalog.TaintPerMilking);
         AddQuality(collected * (s.Kind == SessionKind.Hand ? Grades.QualityPerOzHand : Grades.QualityPerOz));
         // The dairy pays for the milk right away (up to the day's paid amount); the milk itself goes into the dairy's tank
+        // Full pay for the first DailyFullPayOz of the day, a quarter after that, nothing past DailyPaidOz (xp always)
         var paidOz = Math.Clamp(Catalog.DailyPaidOz - F.DayOz, 0, collected);
-        var pay = (int)Math.Round(paidOz * PayRate(s.Grade));
+        var fullOz = Math.Clamp(Catalog.DailyFullPayOz - F.DayOz, 0, paidOz);
+        var pay = (int)Math.Round((fullOz + (paidOz - fullOz) * Catalog.LatePayRate) * PayRate(s.Grade));
         Earn(pay);
         F.Stats.TotalOz += collected;
         F.DayOz += collected;
@@ -1194,7 +1196,8 @@ public sealed class DairyGame
         AddXp(xp);
         var by = s.Kind == SessionKind.Hand ? $" by {(s.Hand!.IsTest ? "the test farmhand" : s.Hand.Name)}" : "";
         Say($"Milked{by}: {collected:0.#} oz as a Grade {Grades.Name(s.Grade)} cow. +{pay} coins, +{xp} xp" +
-            (paidOz < collected - 0.05f ? $" (you've been paid for {Catalog.DailyPaidOz:N0} oz today; more milk still gives xp)" : "") +
+            (paidOz < collected - 0.05f ? $" (you've been paid for {Catalog.DailyPaidOz:N0} oz today; more milk still gives xp)"
+                : fullOz < paidOz - 0.05f ? $" (past {Catalog.DailyFullPayOz} oz today, milk pays a quarter; xp is the same)" : "") +
             (reason != null ? $" ({reason})" : ""), 1);
         plugin.SaveConfig();
     }

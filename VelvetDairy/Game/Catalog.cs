@@ -13,8 +13,8 @@ public static class Grades
         new Grade("C", 7.0f, "Thin"),
         new Grade("B", 10.0f, "Good"),
         new Grade("A", 15.0f, "Rich"),
-        new Grade("S", 21.0f, "Cream"),
-        new Grade("S+", 30.0f, "Velvet"),
+        new Grade("S", 17.0f, "Cream"),
+        new Grade("S+", 20.0f, "Velvet"),
     };
 
     public static int Count => All.Count;
@@ -202,6 +202,8 @@ public static class Catalog
     /// <summary>What can go on the dairy shelf, in the server's order (a "fed" inbox item says which by its place here).</summary>
     public static readonly string[] ShelfOrder = { "cookies" };
     public const int DailyPaidOz = 1500;   // milk you're paid for each day; past it you still get xp (matches the server's daily tank limit)
+    public const int DailyFullPayOz = 300; // the first this many oz a day get full pay...
+    public const float LatePayRate = 0.25f; // ...the rest (up to DailyPaidOz) a quarter of it
     public const int FeedXp = 10;          // farmer xp for feeding a cow or bull from the shelf
     public const int FedBullXp = 20;       // bull xp for being fed
     /// <summary>Your cow grade (C, B, A, S, S+) milks you this much faster and gives this much more milk.</summary>

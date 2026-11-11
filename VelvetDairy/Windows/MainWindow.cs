@@ -979,9 +979,10 @@ public sealed partial class MainWindow : Window
         var bonus = (G.DairyPayBonus - 1) * 100;
         ImGui.TextColored(Theme.InkSoft, $"Dairy level bonus: +{bonus:0}% · your looks bonus: +{(G.PriceBonus - 1) * 100:0}%");
         if (G.Networked) ImGui.TextColored(Theme.InkSoft, "Each dairy level raises pay by 2%. Hand milking also pays your farmer a share (not taken from you).");
-        ImGui.TextColored(F.DayOz >= Catalog.DailyPaidOz ? Theme.HoneyDeep : Theme.InkSoft,
+        ImGui.TextColored(F.DayOz >= Catalog.DailyFullPayOz ? Theme.HoneyDeep : Theme.InkSoft,
             F.DayOz >= Catalog.DailyPaidOz ? $"Milk given today: {F.DayOz:0.#} oz · paid for {Catalog.DailyPaidOz:N0} oz (the most a day); more still gives xp"
-                : $"Milk given today: {F.DayOz:0.#} oz · paid up to {Catalog.DailyPaidOz:N0} oz a day");
+                : F.DayOz >= Catalog.DailyFullPayOz ? $"Milk given today: {F.DayOz:0.#} oz · past {Catalog.DailyFullPayOz} oz, milk pays a quarter (xp is the same)"
+                : $"Milk given today: {F.DayOz:0.#} oz · full pay for the first {Catalog.DailyFullPayOz} oz a day");
     }
 
     /// <summary>One line on what you carry, with a button to the Kitchen where jugs are filled.</summary>

@@ -59,7 +59,7 @@ Only the owner can take a role away from someone.
 **Getting milked** (only inside your dairy)
 - **At a stall:** sit on its seat and it starts by itself.
 - **By hand:** a farmer of your dairy stands close, targets you and presses **Milk**. Hand milking is faster, pays more and makes up a lost grade.
-- You're **paid the moment you're milked**, by grade: C 7, B 10, A 15, S 21, S+ 30 coins an ounce, plus a bonus for your dairy's level. Pay covers up to 1,500 oz a day; milk past that still gives XP.
+- You're **paid the moment you're milked**, by grade: C 7, B 10, A 15, S 17, S+ 20 coins an ounce, plus a bonus for your dairy's level. The first 300 oz each day get full pay; after that a quarter, up to 1,500 oz a day. XP is the same all day.
 - **Ask first (optional):** turn off "Farmers can start milking me without asking" on Roles → Cow and you get an Allow / Not now pop-up each time a farmer presses Milk on you.
 
 **Your grade**

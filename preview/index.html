@@ -171,7 +171,7 @@ document.getElementById("ver").textContent = P.version;
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
-const GRADES = ["C", "B", "A", "S", "S+"], GRADE_BOOST = [0, .10, .20, .35, .50], PAY = [7, 10, 15, 21, 30];
+const GRADES = ["C", "B", "A", "S", "S+"], GRADE_BOOST = [0, .10, .20, .35, .50], PAY = [7, 10, 15, 17, 20];
 const GRADE_COL = ["var(--StoneDeep, #8a827d)", "var(--SageDeep)", "var(--BlueDeep)", "var(--RoseDeep)", "var(--HoneyDeep)"];
 const BOTTLE_OZ = { 1: 8, 2: 16, 3: 24, 4: 32, 5: 48 };
 // Where milk sits in each bottle image (Ui.cs BottleStyle): top, bottom, drop y, drop x
