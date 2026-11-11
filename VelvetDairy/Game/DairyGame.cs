@@ -1897,7 +1897,12 @@ public sealed class DairyGame
     {
         var me = Plugin.ObjectTable.LocalPlayer;
         if (me == null) return;
-        var world = me.CurrentWorld.ValueNullable;
+        // The world (and its data center) is the dairy's, not wherever you happen to be standing: a new or moved
+        // area's world, else the world your dairy is already on, else here
+        var worldId = area?.World
+                      ?? (F.NetMember?.IsOwner == true && Net.Mine?.Dairy is { World: > 0 } d ? d.World : (uint?)null)
+                      ?? me.CurrentWorld.RowId;
+        var world = Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.World>().GetRowOrDefault(worldId) ?? me.CurrentWorld.ValueNullable;
         var body = new
         {
             name,
@@ -1905,9 +1910,9 @@ public sealed class DairyGame
             isPublic = F.ListPublic,
             showOwner = F.ListShowName,
             ownerName = me.Name.TextValue,
-            worldName = (area != null ? Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.World>().GetRowOrDefault(area.World)?.Name.ExtractText() : null)
-                        ?? world?.Name.ExtractText() ?? "",
+            worldName = world?.Name.ExtractText() ?? "",
             dcName = world?.DataCenter.ValueNullable?.Name.ExtractText() ?? "",
+            namesFor = worldId,   // the world those names belong to: the server only takes them if it's the dairy's world
             role = F.OwnerRoles!.FirstOrDefault() ?? "none",
             roles = F.OwnerRoles,
             area,

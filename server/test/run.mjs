@@ -74,6 +74,19 @@ await test("owner registers a dairy and joins it", async () => {
   assert.deepEqual(hb.data.membership, { dairyId: dairy, dairy: "Rose Hollow", role: "cow", roles: ["cow"], isOwner: true, level: 1 });
 });
 
+await test("a dairy's data center comes from its own world, not where the owner is standing", async () => {
+  const listed = async () => (await call(alice, "GET", "/v1/dairies")).data.dairies.find(d => d.mine);
+  const before = await listed();
+  // An older plugin saving the listing while visiting another data center: names are kept
+  await call(alice, "PUT", "/v1/dairy", dairyBody({ worldName: "Hyperion", dcName: "Primal" }));
+  assert.equal((await listed()).dcName, before.dcName);
+  // Names for the dairy's own world are taken
+  await call(alice, "PUT", "/v1/dairy", dairyBody({ worldName: "Hyperion", dcName: "Primal", namesFor: 40 }));
+  assert.equal((await listed()).dcName, "Primal");
+  await call(alice, "PUT", "/v1/dairy", dairyBody({ namesFor: 40 }));
+  assert.equal((await listed()).dcName, "Aether");
+});
+
 await test("an address can only be registered once", async () => {
   const r = await call(erin, "PUT", "/v1/dairy", dairyBody({ name: "Thief Farm" }));
   assert.equal(r.status, 409);

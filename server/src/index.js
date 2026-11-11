@@ -687,6 +687,15 @@ async function putDairy(env, me, request) {
     if (atAddress && atAddress.owner !== me.id) fail(409, "This address is already registered as a dairy.");
   }
 
+  // World and data center names: only from a client that says which world they're for, and only if that's the
+  // dairy's world (older plugins sent wherever the owner was standing, so a listing saved while visiting another
+  // data center showed the wrong one)
+  let worldName = clean(b.worldName, 30), dcName = clean(b.dcName, 30);
+  if (existing && !area && Number(b.namesFor) !== Number(world)) {
+    worldName = existing.world_name;
+    dcName = existing.dc_name;
+  }
+
   const id = existing ? existing.id : randomId();
   await env.DB.prepare(`
     INSERT INTO dairies (id, owner, house_id, name, description, is_public, show_owner, owner_name, world, world_name, dc_name,
@@ -698,7 +707,7 @@ async function putDairy(env, me, request) {
       dc_name = excluded.dc_name, district = excluded.district, district_kind = excluded.district_kind, updated = excluded.updated,
       house_id = excluded.house_id, world = excluded.world, ward = excluded.ward, plot = excluded.plot, room = excluded.room`)
     .bind(id, me.id, hid, name, clean(b.description, 140), b.isPublic ? 1 : 0, b.showOwner ? 1 : 0,
-      clean(b.ownerName, 40), world, clean(b.worldName, 30), clean(b.dcName, 30),
+      clean(b.ownerName, 40), world, worldName, dcName,
       clean(area ? area.zone : b.district, 30), districtKind, ward, plot, room, t).run();
 
   if (area) {
