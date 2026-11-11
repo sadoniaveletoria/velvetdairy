@@ -738,13 +738,13 @@ def portrait(ring, letter, size=256, patches=False):
 
 
 def you_portrait(size=256):
-    """Your portrait: the cow girl (tools/you_face.svg, rendered to you_face.png) inside the rose seal."""
+    """Your portrait: the cow girl art (tools/you_face.png) inside the rose seal."""
     s = 512
     seal = portrait(ROSE, None, size=s)
-    face = Image.open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "you_face.png")).convert("RGBA").resize((470, 470), Image.LANCZOS)
+    face = Image.open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "you_face.png")).convert("RGBA").resize((430, 430), Image.LANCZOS)
     inner = line_mask((s, s), lambda d: d.ellipse([s * 0.07, s * 0.07, s * 0.93, s * 0.93], fill=255))
     layer = Image.new("RGBA", (s, s), (0, 0, 0, 0))
-    layer.alpha_composite(face, (21, 40))
+    layer.alpha_composite(face, (41, 52))
     layer.putalpha(ImageChops.multiply(layer.split()[3], inner))
     seal.alpha_composite(layer)
     return seal.resize((size, size), Image.LANCZOS)
