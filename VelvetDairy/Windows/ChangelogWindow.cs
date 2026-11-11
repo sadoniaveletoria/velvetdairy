@@ -22,32 +22,16 @@ public sealed class ChangelogWindow : Window
     /// <summary>Newest first. Write these for players: what changed for them, not how.</summary>
     private static readonly Entry[] Entries =
     {
-        new("0.9.29", "Choose the emote for your animation", new[]
+        new("0.9.29", "Milking animations and island dairies", new[]
         {
-            "An animation that works with several emotes (like \"(Blush/Confirm/Wave/Yes)\") lists them all, and you choose which one the Milk button does in Herd Care > Animation.... Your choice is remembered.",
-        }),
-        new("0.9.28", "Animation mods: the emote from the option's name", new[]
-        {
-            "Animation mod options now show which emote they use, read from the option's name: \"(Dom-Bdance/Sub-Hdance)\" means you (the farmer) do Ball Dance, \"(Gsit0, 1)\" means sit on the ground. The Milk button does that emote with the mod on.",
-            "Short emote commands that mods use (like /bdance) are understood everywhere.",
-        }),
-        new("0.9.27", "Pick the animation, the Milk button does the rest", new[]
-        {
-            "Pick an animation mod in Herd Care > Animation..., then the animation you want from its options. Each option shows the emote it changes (like → Sit on ground), and the Milk button does that emote with the mod on. No need to pick the emote yourself.",
-            "Mods that change a sit pose sit you down; /cpose once seated if it isn't the right pose.",
-            "The emote list no longer says emotes you have (like Bee's Knees) aren't unlocked.",
-        }),
-        new("0.9.26", "Your Milk emote, every time", new[]
-        {
-            "The Milk button always does the emote or pose you picked (Herd Care > Animation...). Before, it quietly switched to /beesknees on cows who only count their own list.",
-            "If a cow only counts certain emotes and yours isn't one of them, their row in Herd Care tells you which ones they count.",
-        }),
-        new("0.9.25", "Milk in any pose, and island dairies", new[]
-        {
-            "Farmers pick what the Milk button does from a list of every emote (search it, or one click for Bee's Knees, Sit, Sit on ground or Doze). Sit poses count as milking now, so an animation mod that changes a sit pose works too. Once seated, /cpose to the pose you want.",
-            "When the cow is empty after a sit pose, you're left seated: get up when you like.",
-            "Cows who allow \"any emote\" (the default) accept sit poses too.",
-            "A dairy on your Island Sanctuary or in an inn room is now yours alone: it no longer clashes with other players' dairies at the same spot on their own island. Dairies already there are fixed the next time their owner visits.",
+            "# Milking animations",
+            "Pick an animation mod in Herd Care > Animation..., then the animation you want from its options. Each option shows the emote it uses, read from its name: \"(Dom-Bdance/Sub-Hdance)\" means you (the farmer) do Ball Dance, \"(Gsit0, 1)\" means sit on the ground. The Milk button switches the mod on, does that emote and switches it off when the cow is empty.",
+            "An animation that works with several emotes (like \"(Blush/Confirm/Wave/Yes)\") lists them all, and you choose which one you do. Your choice is remembered.",
+            "No animation mod? Pick the Milk button's emote from a list of every emote (search it, or one click for Bee's Knees, Sit, Sit on ground or Doze).",
+            "Sit poses count as milking. Once seated, /cpose to the pose you want; when the cow is empty you're left seated, so get up when you like.",
+            "The Milk button always does your emote. If a cow only counts certain emotes and yours isn't one of them, their row in Herd Care tells you which ones they count. Cows who allow any emote (the default) accept sit poses too.",
+            "# Island Sanctuary and inn room dairies",
+            "A dairy on your Island Sanctuary or in an inn room is yours alone and no longer clashes with other players' dairies at the same spot on their own island. Dairies already there are fixed the next time their owner visits.",
         }),
         new("0.9.24", "A save for each character", new[]
         {
