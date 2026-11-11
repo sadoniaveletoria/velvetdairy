@@ -1392,6 +1392,15 @@ public sealed class DairyGame
             var byMe = st != null && st.HandBy.Equals(myName, StringComparison.OrdinalIgnoreCase);
             if (byMe) sawMilking = true;
             else if (sawMilking && st != null) done = true;
+            else if (!sawMilking && now - milkingSince > 60)
+            {
+                // A minute and their plugin never started: they may ask first and haven't said yes, or can't be milked right now
+                if (Emotes.Looping(me) != 0 && !Emotes.Perform("/pet motion")) Emotes.Perform("/pet");
+                var who = milkingCow;
+                StopWatchingMilking();
+                Say($"{who} didn't start milking. They may need to press Allow, or can't be milked right now.", 2);
+                return;
+            }
         }
 
         if (!done) return;

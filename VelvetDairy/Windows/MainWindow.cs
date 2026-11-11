@@ -1047,7 +1047,7 @@ public sealed partial class MainWindow : Window
         var cur = ImGui.GetCursorScreenPos();
         Ui.Bar(ImGui.GetWindowDrawList(), cur + new Vector2(0, 6), cur + new Vector2(Math.Min(width, 360), 14), G.MaxCarry > 0 ? Math.Clamp(G.Carried / G.MaxCarry, 0, 1) : 0, Theme.BlueDeep);
         ImGui.Dummy(new Vector2(width, 20));
-        Ui.Wrapped("Fill it at your dairy (HUD > Kitchen). Farmer xp comes from hand milking pay, filling jugs, deliveries and contracts.", Theme.InkSoft, width);
+        Ui.Wrapped("Fill it at your dairy (HUD > Kitchen). Farmer xp comes from hand milking, grooming, cleaning stalls, baking, filling jugs, deliveries and contracts.", Theme.InkSoft, width);
     }
 
     private void DrawBottleShop(float width)
@@ -1697,11 +1697,11 @@ public sealed partial class MainWindow : Window
         if (me != null) ImGui.TextColored(Theme.Ink, $"Position: {me.Position.X:0.0}, {me.Position.Y:0.0}, {me.Position.Z:0.0}");
 
         SubHeading("How to play", width);
-        Ui.Wrapped("1. Dairy tab: go inside a house and press Register here.\n" +
-                   "2. Sit on a chair or bed there and press Add the seat I'm on. That's your stall.\n" +
-                   "3. Your milk fills up over time, faster while you rest in the dairy. Keep your needs up with the Care list.\n" +
-                   "4. Sit in your stall to be milked, or have a registered farmhand milk you by hand for a better grade.\n" +
-                   "5. Creamery tab: deliver orders or sell cups. Spend coins in the Shop on feed, bigger and extra bottles, and stall upgrades.", Theme.Ink, width);
+        Ui.Wrapped("1. Join a dairy (Dairies tab, ask the owner for an invite) or start your own on the Dairy tab.\n" +
+                   "2. Cows: milk fills up over time, faster with Fed, Watered, Comfy and Happy (Barn > Care).\n" +
+                   "3. Get milked on one of your dairy's stalls, or by a farmer pressing Milk on you. You're paid by your grade.\n" +
+                   "4. Farmers: Hand milk and Kitchen are on the HUD. Fill jugs in the Kitchen, then deliver on the Creamery tab.\n" +
+                   "5. Spend coins in the Shop. The full guide is the ? at the top, or /vdairy guide.", Theme.Ink, width);
 
         SubHeading("Credits", width);
         Ui.Wrapped("Milking machine sound: \"Milk Pump Step02\" by Erdie, freesound.org/s/49877 (cut into start, loop and stop).", Theme.InkSoft, width);
