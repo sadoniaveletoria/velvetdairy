@@ -25,8 +25,11 @@ public static class Emotes
             var tc = e.TextCommand.ValueNullable;
             if (tc != null)
             {
+                // Every way to type it: /balldance, and its short forms like /bdance (animation mods name emotes by these)
                 Add(map, tc.Value.Command.ExtractText(), id);
                 Add(map, tc.Value.ShortCommand.ExtractText(), id);
+                Add(map, tc.Value.Alias.ExtractText(), id);
+                Add(map, tc.Value.ShortAlias.ExtractText(), id);
             }
 
             var name = e.Name.ExtractText().Replace(" ", "");
