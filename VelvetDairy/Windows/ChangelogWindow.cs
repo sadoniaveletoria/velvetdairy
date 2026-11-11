@@ -22,6 +22,12 @@ public sealed class ChangelogWindow : Window
     /// <summary>Newest first. Write these for players: what changed for them, not how.</summary>
     private static readonly Entry[] Entries =
     {
+        new("0.9.27", "Pick the animation, the Milk button does the rest", new[]
+        {
+            "Pick an animation mod in Herd Care > Animation..., then the animation you want from its options. Each option shows the emote it changes (like → Sit on ground), and the Milk button does that emote with the mod on. No need to pick the emote yourself.",
+            "Mods that change a sit pose sit you down; /cpose once seated if it isn't the right pose.",
+            "The emote list no longer says emotes you have (like Bee's Knees) aren't unlocked.",
+        }),
         new("0.9.26", "Your Milk emote, every time", new[]
         {
             "The Milk button always does the emote or pose you picked (Herd Care > Animation...). Before, it quietly switched to /beesknees on cows who only count their own list.",
