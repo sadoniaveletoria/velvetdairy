@@ -104,6 +104,21 @@ public sealed partial class MainWindow : Window
         dairyName = plugin.Config.Farm.Dairy?.Name ?? "My Dairy";
     }
 
+    /// <summary>Another character logged in: listen to their game and forget what was typed or loaded for the last one.</summary>
+    public void OnCharacterChanged()
+    {
+        plugin.Game.Toast += Toasts.Add;
+        dairyName = F.Dairy?.Name ?? "My Dairy";
+        creameryName = "";
+        listDescription = "";
+        listLoaded = false;
+        shownMilk = -1;
+        lastWholeOz = -1;
+        seenDump = 0;
+        ticked18 = false;
+        tab = TabBarn;
+    }
+
     // =====================================================================
     // Window style: light cream instead of the default dark ImGui
     // =====================================================================

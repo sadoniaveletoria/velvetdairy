@@ -81,17 +81,7 @@ public sealed class NetClient : IDisposable
 
     public void Update()
     {
-        while (mainThread.TryDequeue(out var a))
-        {
-            try
-            {
-                a();
-            }
-            catch (Exception e)
-            {
-                Plugin.Log.Warning(e, "Eorzea Milkers network callback failed");
-            }
-        }
+        Pump();
 
         if (Now >= nextUpdateCheck) CheckForUpdate();
         if (!F.NetEnabled || !F.Confirmed18 || Plugin.ObjectTable.LocalPlayer == null) return;
@@ -114,6 +104,75 @@ public sealed class NetClient : IDisposable
             nextVisit = t + 45;
             RefreshOrders(here.Id);
         }
+    }
+
+    /// <summary>Runs the replies that came back, on the game's thread.</summary>
+    public void Pump()
+    {
+        while (mainThread.TryDequeue(out var a))
+        {
+            try
+            {
+                a();
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.Warning(e, "Eorzea Milkers network callback failed");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Asks the server which character a save from before per-character saves last played as (a hash of name and
+    /// home world, or null if it never connected, the network is off, or the server can't be reached in time).
+    /// </summary>
+    public void LastCharacterOf(FarmSave old, Action<string?> done)
+    {
+        if (!old.NetEnabled || string.IsNullOrEmpty(old.NetId) || string.IsNullOrEmpty(old.NetKey))
+        {
+            done(null);
+            return;
+        }
+
+        var api = Api;
+        if (api == null && plugin.Dev && !string.IsNullOrWhiteSpace(old.NetServerOverride)) api = old.NetServerOverride.Trim().TrimEnd('/');
+        var id = old.NetId;
+        var key = old.NetKey;
+        Task.Run(async () =>
+        {
+            string? hash = null;
+            try
+            {
+                using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(10));
+                if (api == null)
+                {
+                    var text = await http.GetStringAsync(NetworkFileUrl + "?t=" + DateTime.UtcNow.Ticks, cts.Token);
+                    api = JsonSerializer.Deserialize<NetworkFile>(text, Json)?.Api?.Trim().TrimEnd('/');
+                    if (api == null || !api.StartsWith("https://")) api = null;
+                }
+
+                if (api != null)
+                {
+                    using var req = new HttpRequestMessage(HttpMethod.Get, api + "/v1/whoami");
+                    req.Headers.Add("X-VD-Id", id);
+                    req.Headers.Add("X-VD-Key", key);
+                    using var res = await http.SendAsync(req, cts.Token);
+                    if (res.IsSuccessStatusCode)
+                        hash = JsonSerializer.Deserialize<WhoAmIReply>(await res.Content.ReadAsStringAsync(cts.Token), Json)?.CharHash;
+                }
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.Debug(e, "Eorzea Milkers couldn't ask whose the old save is");
+            }
+
+            mainThread.Enqueue(() => done(hash));
+        });
+    }
+
+    private sealed class WhoAmIReply
+    {
+        public string? CharHash { get; set; }
     }
 
     private double nextVisit;
@@ -272,6 +331,9 @@ public sealed class NetClient : IDisposable
         {
             version = Plugin.Version,
             charHash = MyCharHash(),
+            // So a name change or world transfer shows up on your dairy's roster
+            name = Plugin.ObjectTable.LocalPlayer?.Name.TextValue ?? "",
+            worldName = Plugin.ObjectTable.LocalPlayer?.HomeWorld.ValueNullable?.Name.ExtractText() ?? "",
             houseId = here?.HouseId.ToString(),
             pos = g.Position(),
             // Held until you're awake: the server only counts them then

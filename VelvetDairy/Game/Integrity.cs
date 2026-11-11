@@ -26,7 +26,9 @@ public static partial class Integrity
     /// <summary>True when this build has no real key (CI fell back to the testing key).</summary>
     public static bool UsingTestingKey => KeyHex == TestingKeyHex;
 
-    private static string BackupPath => Path.Combine(Plugin.PluginInterface.ConfigDirectory.FullName, "save-backup.json");
+    /// <summary>Each character's last good save sits next to the settings; null is the save from before saves were per character.</summary>
+    public static string BackupPath(string? key) =>
+        Path.Combine(Plugin.PluginInterface.ConfigDirectory.FullName, key == null ? "save-backup.json" : $"save-backup-{key[..Math.Min(16, key.Length)]}.json");
 
     /// <summary>A stable text version of everything worth cheating on. Numbers are rounded so tiny float differences never matter.</summary>
     private static string Canonical(FarmSave f)
@@ -82,14 +84,15 @@ public static partial class Integrity
         CryptographicOperations.FixedTimeEquals(Encoding.ASCII.GetBytes(f.Seal), Encoding.ASCII.GetBytes(Sign(f, keyHex ?? KeyHex)));
 
     /// <summary>Signs the save and keeps a copy of it as the last good backup.</summary>
-    public static void Seal(FarmSave f)
+    public static void Seal(FarmSave f, string? key)
     {
         f.Seal = Sign(f);
         try
         {
-            var tmp = BackupPath + ".tmp";
+            var path = BackupPath(key);
+            var tmp = path + ".tmp";
             File.WriteAllText(tmp, JsonSerializer.Serialize(f));
-            File.Move(tmp, BackupPath, true);
+            File.Move(tmp, path, true);
         }
         catch (Exception e)
         {
@@ -99,11 +102,11 @@ public static partial class Integrity
 
     /// <summary>
     /// Checks the loaded save. Edited saves are replaced by the last good backup, or reset if there isn't one.
-    /// Returns what happened; config.Farm may be replaced.
+    /// Returns what happened; <paramref name="save"/> is the save to use (the same one unless it was edited).
     /// </summary>
-    public static Result Check(Configuration config)
+    public static Result Check(FarmSave f, string? key, out FarmSave save)
     {
-        var f = config.Farm;
+        save = f;
         // Saves from before signing existed (and brand new saves) have no seal yet: accept them once
         if (string.IsNullOrEmpty(f.Seal)) return Result.NewSave;
         if (Valid(f)) return Result.Fine;
@@ -113,13 +116,14 @@ public static partial class Integrity
         Plugin.Log.Warning("Eorzea Milkers: the save doesn't match its signature (edited outside the game).");
         try
         {
-            if (File.Exists(BackupPath))
+            var path = BackupPath(key);
+            if (File.Exists(path))
             {
-                var backup = JsonSerializer.Deserialize<FarmSave>(File.ReadAllText(BackupPath));
+                var backup = JsonSerializer.Deserialize<FarmSave>(File.ReadAllText(path));
                 if (backup != null && Valid(backup))
                 {
                     backup.EditsCaught = f.EditsCaught + 1;
-                    config.Farm = backup;
+                    save = backup;
                     return Result.Restored;
                 }
             }
@@ -140,7 +144,7 @@ public static partial class Integrity
             HiddenFeed = f.HiddenFeed,
             EditsCaught = f.EditsCaught + 1,
         };
-        config.Farm = fresh;
+        save = fresh;
         return Result.Reset;
     }
 }

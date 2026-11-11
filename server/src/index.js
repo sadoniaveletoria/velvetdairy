@@ -226,6 +226,8 @@ async function route(request, env) {
 
   const routes = [
     ["POST", /^\/v1\/heartbeat$/, () => heartbeat(env, me, request)],
+    // Which character this save last played as (the plugin asks once, to hand a pre-update save to the right character)
+    ["GET", /^\/v1\/whoami$/, () => ({ charHash: me.char_hash || null })],
     ["GET", /^\/v1\/dairies$/, () => listDairies(env, me)],
     ["GET", /^\/v1\/dairy\/mine$/, () => myDairy(env, me)],
     ["PUT", /^\/v1\/dairy$/, () => putDairy(env, me, request)],
@@ -424,6 +426,17 @@ async function heartbeat(env, me, request) {
 
   // Share a little status with your own dairy (milk, grade...) so the owner's HUD can show it
   const mem = await membership(env, me.id);
+
+  // A name change or world transfer: the save follows the character, so show the new name to the dairy
+  const newName = clean(b.name, 40), newWorld = clean(b.worldName, 30);
+  if (mem && newName && (newName !== mem.name || (newWorld && newWorld !== mem.world_name))) {
+    await env.DB.batch([
+      env.DB.prepare("UPDATE members SET name = ?, world_name = ? WHERE install = ?").bind(newName, newWorld || mem.world_name, me.id),
+      env.DB.prepare("UPDATE dairies SET owner_name = ? WHERE owner = ?").bind(newName, me.id),
+    ]);
+    mem.name = newName;
+    if (newWorld) mem.world_name = newWorld;
+  }
   if (mem && b.status && typeof b.status === "object") {
     // Only known fields, kept small: what a member shares with their own dairy
     const st = b.status || {};

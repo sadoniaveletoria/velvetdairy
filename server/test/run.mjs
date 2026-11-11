@@ -467,6 +467,21 @@ await test("a dairy can be a box anywhere; boxes can't overlap; standing inside 
   assert.equal((await call(fay, "GET", "/v1/dairy/mine")).data.dairy.area.x, 100);
 });
 
+await test("whoami tells a save which character it last played as", async () => {
+  assert.equal((await call(alice, "GET", "/v1/whoami")).data.charHash, alice.hash);
+  const nobody = player("Never Beat");
+  assert.equal((await call(nobody, "GET", "/v1/whoami")).data.charHash, null);
+});
+
+await test("a renamed member shows the new name to their dairy", async () => {
+  await beat(bob, { name: "Bobby Hand", worldName: "Sargatanas" });
+  const r = await call(bob, "GET", "/v1/dairy/mine");
+  const me = r.data.members.find(m => m.name === "Bobby Hand");
+  assert.ok(me, "new name on the roster");
+  assert.equal(me.worldName ?? me.world, "Sargatanas");
+  await beat(bob, { name: "Bob Hand", worldName: "Gilgamesh" });
+});
+
 await test("stats work without logging in", async () => {
   const r = await call(null, "GET", "/v1/stats");
   assert.equal(r.status, 200);

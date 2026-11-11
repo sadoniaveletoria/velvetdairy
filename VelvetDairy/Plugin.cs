@@ -33,11 +33,11 @@ public sealed class Plugin : IDalamudPlugin
     private const string Command = "/milkers";
 
     public Configuration Config { get; }
-    public DairyGame Game { get; }
+    public DairyGame Game { get; private set; }
     public MainWindow MainWindow { get; }
     public HudWindow Hud { get; }
     public Sounds Sounds { get; }
-    public NetClient Net { get; }
+    public NetClient Net { get; private set; }
     public OwnerHudWindow OwnerHud { get; }
     public MembersWindow Members { get; }
     public GuideWindow Guide { get; }
@@ -47,11 +47,13 @@ public sealed class Plugin : IDalamudPlugin
     public MilkingWindow Milking { get; }
     public MilkAskWindow MilkAskPopup { get; }
     public TutorialWindow Tutorial { get; }
+    public CharacterClaimWindow Claim { get; }
 
     /// <summary>This build's version, sent to the network so old versions can be told to update.</summary>
     public static string Version { get; } = typeof(Plugin).Assembly.GetName().Version?.ToString() ?? "0";
 
     private readonly WindowSystem windowSystem = new("VelvetDairy");
+    private readonly WindowSystem claimSystem = new("VelvetDairyClaim");
     private readonly ContextMenuHandler contextMenu;
     private readonly Art art;
     private readonly Fonts fonts;
@@ -70,10 +72,17 @@ public sealed class Plugin : IDalamudPlugin
         }
 
         Config = cfg ?? new Configuration();
-
-        // Catch saves edited outside the game before anything uses them
-        var integrity = Integrity.Check(Config);
         Config.EnsureDefaults();
+
+        // The save from before saves were per character: catch edits now, before it's handed to a character
+        var integrity = Integrity.Result.Fine;
+        if (Config.Unclaimed != null)
+        {
+            integrity = Integrity.Check(Config.Unclaimed, null, out var old);
+            old.EnsureDefaults();
+            Config.Unclaimed = old;
+            if (integrity != Integrity.Result.Fine) Integrity.Seal(old, null);
+        }
 
         art = new Art();
         fonts = new Fonts();
@@ -105,18 +114,11 @@ public sealed class Plugin : IDalamudPlugin
         windowSystem.AddWindow(Changes);
         Tutorial = new TutorialWindow(this, fonts);
         windowSystem.AddWindow(Tutorial);
+        Claim = new CharacterClaimWindow(this, fonts);
+        claimSystem.AddWindow(Claim);
         contextMenu = new ContextMenuHandler(this);
 
-        switch (integrity)
-        {
-            case Integrity.Result.Restored:
-                ChatGui.Print("Your save was changed outside the game, so it was put back to your last saved progress.", "Eorzea Milkers");
-                break;
-            case Integrity.Result.Reset:
-                ChatGui.Print("Your save was changed outside the game and no good backup was found, so your progress started over. Your dairy, stalls and farmhands were kept.", "Eorzea Milkers");
-                break;
-        }
-
+        TellIntegrity(integrity);
         if (integrity != Integrity.Result.Fine) SaveConfig();
 
         CommandManager.AddHandler(Command, new CommandInfo(OnCommand)
@@ -124,7 +126,7 @@ public sealed class Plugin : IDalamudPlugin
             HelpMessage = "Open Eorzea Milkers. \"/milkers hud\" shows or hides the HUD, \"/milkers guide\" opens How to play, \"/milkers tutorial\" runs the walkthrough, \"/milkers changes\" shows what's new.",
         });
 
-        PluginInterface.UiBuilder.Draw += windowSystem.Draw;
+        PluginInterface.UiBuilder.Draw += DrawWindows;
         PluginInterface.UiBuilder.Draw += DrawOverlay;
         chatHandler = m => OnChat(m);
         ChatGui.ChatMessage += chatHandler;
@@ -137,6 +139,14 @@ public sealed class Plugin : IDalamudPlugin
     private void OnFrameworkUpdate(IFramework fw)
     {
         var dt = (float)fw.UpdateDelta.TotalSeconds;
+        WatchCharacter();
+        // Waiting to hear whose the old save is: nothing runs meanwhile (but the server's answer still comes in)
+        if (Waiting || Config.ActiveKey == null)
+        {
+            Net.Pump();
+            return;
+        }
+
         Game.Update(dt);
         Sounds.Update();
         Net.Update();
@@ -163,19 +173,173 @@ public sealed class Plugin : IDalamudPlugin
 
         PluginInterface.UiBuilder.OpenConfigUi -= MainWindow.Toggle;
         PluginInterface.UiBuilder.OpenMainUi -= MainWindow.Toggle;
-        PluginInterface.UiBuilder.Draw -= windowSystem.Draw;
+        PluginInterface.UiBuilder.Draw -= DrawWindows;
         PluginInterface.UiBuilder.Draw -= DrawOverlay;
         if (chatHandler != null) ChatGui.ChatMessage -= chatHandler;
         CommandManager.RemoveHandler(Command);
         windowSystem.RemoveAllWindows();
+        claimSystem.RemoveAllWindows();
         fonts.Dispose();
         SaveConfig();
     }
 
     public void SaveConfig()
     {
-        Integrity.Seal(Config.Farm);
+        // The blank save shown before a character logs in is never written out
+        if (Config.ActiveKey != null) Integrity.Seal(Config.Farm, Config.ActiveKey);
         PluginInterface.SavePluginConfig(Config);
+    }
+
+    private void DrawWindows()
+    {
+        if (Claim.IsOpen) claimSystem.Draw();
+        else if (askingFor != null) return;
+        else if (Config.ActiveKey != null) windowSystem.Draw();   // saves are per character: nothing to show until one logs in
+    }
+
+    private static void TellIntegrity(Integrity.Result r)
+    {
+        switch (r)
+        {
+            case Integrity.Result.Restored:
+                ChatGui.Print("Your save was changed outside the game, so it was put back to your last saved progress.", "Eorzea Milkers");
+                break;
+            case Integrity.Result.Reset:
+                ChatGui.Print("Your save was changed outside the game and no good backup was found, so your progress started over. Your dairy, stalls and farmhands were kept.", "Eorzea Milkers");
+                break;
+        }
+    }
+
+    // ----- One save per character -----
+    // Each character keeps their own save (and their own id on the network, so the server sees them as different players).
+    // The save follows whoever is logged in; logging out keeps the last one until another character logs in.
+
+    private string? askingFor;   // waiting for the server to say whose the old save is
+
+    /// <summary>Waiting to find out whose the old save is: nothing runs and only the question shows.</summary>
+    public bool Waiting => Claim.IsOpen || askingFor != null;
+
+    /// <summary>The logged-in character's content id: the same through name changes and world transfers. 0 when not logged in.</summary>
+    private static unsafe ulong ContentId()
+    {
+        var ps = FFXIVClientStructs.FFXIV.Client.Game.UI.PlayerState.Instance();
+        return ps == null ? 0 : ps->ContentId;
+    }
+
+    private void WatchCharacter()
+    {
+        var me = ObjectTable.LocalPlayer;
+        if (me == null) return;
+        var cid = ContentId();
+        if (cid == 0) return;
+        var key = cid.ToString("x16");
+        if (key == Config.ActiveKey || key == askingFor || (Claim.IsOpen && Claim.Key == key)) return;
+
+        if (!Config.Characters.ContainsKey(key) && Config.Unclaimed != null)
+        {
+            // The old save never got past the 18+ check, so there's nothing to keep
+            if (!Config.Unclaimed.Confirmed18)
+            {
+                Config.Unclaimed = null;
+            }
+            else
+            {
+                // Ask the server which character the old save last played as. If it's this one, the progress just
+                // moves over; only if it isn't (or nobody knows) does the player get asked.
+                var name = me.Name.TextValue;
+                var world = me.HomeWorld.ValueNullable?.Name.ExtractText() ?? "";
+                var hash = NetClient.CharHash(name, me.HomeWorld.RowId);
+                Claim.IsOpen = false;
+                askingFor = key;
+                Net.LastCharacterOf(Config.Unclaimed, last =>
+                {
+                    if (askingFor != key) return;   // someone else logged in meanwhile
+                    askingFor = null;
+                    if (last != null && last == hash)
+                    {
+                        AnswerClaim(key, true);
+                        ChatGui.Print($"Eorzea Milkers now keeps a save for each character. Your progress is saved on {name}.", "Eorzea Milkers");
+                    }
+                    else
+                    {
+                        Claim.Ask(key, name, world);
+                    }
+                });
+                return;
+            }
+        }
+
+        SwitchTo(key);
+    }
+
+    /// <summary>The player said whether the old save belongs to this character.</summary>
+    public void AnswerClaim(string key, bool mine)
+    {
+        if (mine && Config.Unclaimed != null)
+        {
+            Config.Characters[key] = Config.Unclaimed;
+            Config.Unclaimed = null;
+            // Its last good backup comes along too
+            try
+            {
+                var from = Integrity.BackupPath(null);
+                if (System.IO.File.Exists(from)) System.IO.File.Move(from, Integrity.BackupPath(key), true);
+            }
+            catch (Exception e)
+            {
+                Log.Warning(e, "Eorzea Milkers couldn't move the save backup");
+            }
+        }
+
+        SwitchTo(key);
+    }
+
+    private void SwitchTo(string key)
+    {
+        if (Config.ActiveKey != null)
+        {
+            Game.Stop("Switched character.");
+            Game.EndMilkMod();
+            SaveConfig();
+        }
+
+        if (!Config.Characters.ContainsKey(key)) Config.Characters[key] = Config.NewCharacterSave();
+        Config.Use(key);
+
+        var r = Integrity.Check(Config.Farm, key, out var save);
+        Config.Farm = save;
+        Config.EnsureDefaults();
+        devCache = null;
+
+        // Name change or world transfer: the save follows the character (the next heartbeat updates your dairy's roster)
+        var me = ObjectTable.LocalPlayer;
+        var name = me?.Name.TextValue ?? "";
+        var world = me?.HomeWorld.ValueNullable?.Name.ExtractText() ?? "";
+        if (name.Length > 0)
+        {
+            var f = Config.Farm;
+            if (f.CharName.Length > 0 && (f.CharName != name || (world.Length > 0 && f.CharWorld != world)))
+            {
+                var was = f.CharWorld != world && world.Length > 0 ? $"{f.CharName} ({f.CharWorld})" : f.CharName;
+                ChatGui.Print($"Welcome back! Your Eorzea Milkers progress followed you from {was}.", "Eorzea Milkers");
+            }
+
+            f.CharName = name;
+            if (world.Length > 0) f.CharWorld = world;
+        }
+
+        // Everything the game and network remember belongs to the old character: start both over
+        Net.Dispose();
+        Net = new NetClient(this);
+        Game = new DairyGame(this);
+        Sounds.Attach(Game);
+        MainWindow.OnCharacterChanged();
+        Kitchen.IsOpen = false;
+        Milking.IsOpen = false;
+        Members.IsOpen = false;
+
+        TellIntegrity(r);
+        SaveConfig();
     }
 
     // ----- Developer mode -----
@@ -196,6 +360,14 @@ public sealed class Plugin : IDalamudPlugin
 
     private void OnCommand(string command, string args)
     {
+        if (Config.ActiveKey == null || Waiting)
+        {
+            ChatGui.Print(Waiting
+                ? "One moment: Eorzea Milkers is finding this character's save."
+                : "Log in to a character first: each character has their own Eorzea Milkers progress.", "Eorzea Milkers");
+            return;
+        }
+
         var a = args.Trim();
         if (a.Equals("guide", StringComparison.OrdinalIgnoreCase) || a.Equals("help", StringComparison.OrdinalIgnoreCase))
             Guide.Open();
@@ -240,6 +412,7 @@ public sealed class Plugin : IDalamudPlugin
     /// <summary>The dairy box being marked out, drawn on the ground (only while editing).</summary>
     private void DrawOverlay()
     {
+        if (Config.ActiveKey == null || Waiting) return;
         if (Game.Draft is { } d && ClientState.TerritoryType == d.Territory) Windows.AreaOverlay.Draw(d);
         if (Config.Farm.ShowStallMarkers && Game.Where.InDairy && Game.Blocked() == null)
             // While you're in the dairy with markers on, fetch everyone's stall states every 10 seconds
