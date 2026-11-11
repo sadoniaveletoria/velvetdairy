@@ -1705,6 +1705,11 @@ public sealed partial class MainWindow : Window
                    "4. Farmers: Herd Care and Kitchen are on the HUD. Fill jugs in the Kitchen, then deliver on the Creamery tab.\n" +
                    "5. Spend coins in the Shop. The full guide is the ? at the top, or /milkers guide.", Theme.Ink, width);
 
+        SubHeading("Community", width);
+        Ui.Wrapped("Questions, finding a dairy, update news and testing builds: join the Eorzea Milkers Discord (18+).", Theme.Ink, width);
+        if (ImGui.Button("Join the Discord##helpdiscord")) Plugin.OpenDiscord();
+        if (ImGui.IsItemHovered()) ImGui.SetTooltip(Plugin.DiscordUrl);
+
         SubHeading("Credits", width);
         Ui.Wrapped("Milking machine sound: \"Milk Pump Step02\" by Erdie, freesound.org/s/49877 (cut into start, loop and stop).", Theme.InkSoft, width);
     }

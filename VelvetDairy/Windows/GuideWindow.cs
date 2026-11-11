@@ -165,6 +165,12 @@ public sealed class GuideWindow : Window
         for (var i = 0; i < Topics.Length; i++)
             if (ImGui.Selectable($"{Topics[i].Title}##guide{i}", topic == i))
                 topic = i;
+        ImGui.Spacing();
+        ImGui.Separator();
+        ImGui.Spacing();
+        if (Ui.Button("##guidediscord", "Join the Discord", new Vector2(ImGui.GetContentRegionAvail().X, 30), "blue", true,
+                "Questions, finding a dairy, update news and testing builds (18+). Opens in your browser."))
+            Plugin.OpenDiscord();
         ImGui.EndChild();
         ImGui.SameLine();
 

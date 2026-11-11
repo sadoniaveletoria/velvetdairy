@@ -22,6 +22,11 @@ public sealed class ChangelogWindow : Window
     /// <summary>Newest first. Write these for players: what changed for them, not how.</summary>
     private static readonly Entry[] Entries =
     {
+        new("0.9.17", "Join the Discord", new[]
+        {
+            "Eorzea Milkers has a Discord (18+): ask questions, find a dairy or players, and get update news and testing builds first.",
+            "Open it from the Join the Discord button here, in the guide (the ? button), or in Settings > Help.",
+        }),
         new("0.9.16", "Eorzea Milkers: your grade, baking and farmer tools", new[]
         {
             "# A new name",
@@ -170,6 +175,8 @@ public sealed class ChangelogWindow : Window
             ImGui.SameLine();
         }
 
+        if (Ui.Button("##changesdiscord", "Join the Discord", new Vector2(160, 32), "blue", true, "Update news, help and testing builds (18+). Opens in your browser.")) Plugin.OpenDiscord();
+        ImGui.SameLine();
         if (Ui.Button("##changesok", "Got it", new Vector2(120, 32), "sage", true, null)) IsOpen = false;
     }
 }

@@ -4,6 +4,8 @@ A dairy life game for FFXIV, played with friends. Be a **cow** who makes milk, a
 
 > **Work in progress.** Expect changes and new features in updates. The **Bull** role is coming in a later update.
 
+**Join the community Discord (18+):** <https://discord.gg/yacq26rw4u>. Ask questions, find a dairy, and get update news and testing builds first.
+
 ---
 
 ## Getting started
