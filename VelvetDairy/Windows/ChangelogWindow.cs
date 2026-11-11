@@ -22,6 +22,10 @@ public sealed class ChangelogWindow : Window
     /// <summary>Newest first. Write these for players: what changed for them, not how.</summary>
     private static readonly Entry[] Entries =
     {
+        new("0.9.30", "Dairy count", new[]
+        {
+            "The Dairies list shows how many dairies there are (and how many are public) at the top, and how many your search leaves.",
+        }),
         new("0.9.29", "Milking animations and island dairies", new[]
         {
             "# Milking animations",

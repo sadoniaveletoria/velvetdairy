@@ -148,6 +148,11 @@ public sealed partial class MainWindow
                                     (f.Length == 0 || d.Name.Contains(f, StringComparison.OrdinalIgnoreCase) || d.WorldName.Contains(f, StringComparison.OrdinalIgnoreCase) ||
                                      d.District.Contains(f, StringComparison.OrdinalIgnoreCase) || d.Owner.Contains(f, StringComparison.OrdinalIgnoreCase)))
             .OrderByDescending(d => d.Level).ThenByDescending(d => d.CowsHere).ThenByDescending(d => d.IsPublic).ThenBy(d => d.Name).ToList();
+        // How many there are (and how many the search or Public only leaves)
+        var pub = list.Count(d => d.IsPublic);
+        var count = $"{list.Count} dair{(list.Count == 1 ? "y" : "ies")} · {pub} public";
+        ImGui.TextColored(Theme.BlueDeep, shown.Count == list.Count ? count : $"Showing {shown.Count} of {count}");
+        Gap(4);
         if (shown.Count == 0) Ui.Wrapped(list.Count == 0 ? "No dairies yet. Be the first: register your estate on the Dairy tab." : "Nothing matches.", Theme.InkSoft, width);
 
         foreach (var d in shown)
