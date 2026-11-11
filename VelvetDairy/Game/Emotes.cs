@@ -125,8 +125,11 @@ public static class Emotes
     /// <summary>Has your character unlocked this emote?</summary>
     public static unsafe bool Unlocked(ushort id)
     {
+        // Emotes everyone has have no unlock link; the rest (quests, items, the Mog Station) are checked by it
+        var link = (uint)(Plugin.DataManager.GetExcelSheet<Emote>().GetRowOrDefault(id)?.UnlockLink ?? 0);
+        if (link == 0) return true;
         var ui = FFXIVClientStructs.FFXIV.Client.Game.UI.UIState.Instance();
-        return ui == null || ui->IsEmoteUnlocked(id);
+        return ui == null || ui->IsUnlockLinkUnlockedOrQuestCompleted((uint)link);
     }
 
     /// <summary>Sitting on furniture (chair, bed, bench).</summary>

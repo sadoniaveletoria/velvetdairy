@@ -34,7 +34,7 @@ public sealed class MilkingWindow : Window
     {
         // Clicking in Eorzea Milkers's own windows counts as being awake
         if (ImGui.IsWindowHovered(ImGuiHoveredFlags.ChildWindows) && ImGui.IsMouseClicked(ImGuiMouseButton.Left)) G.Touch();
-        var emote = F.MilkButtonEmote.Length > 0 ? (F.MilkButtonEmote.StartsWith('/') ? F.MilkButtonEmote : "/" + F.MilkButtonEmote) : DairyGame.MilkEmote;
+        var emote = G.MilkEmoteFor(null);
         var mod = F.MilkModDir.Length == 0 ? "no animation mod" : PenumbraLink.NameOf(F.MilkModDir);
         ImGui.TextColored(Theme.InkSoft, $"Milk does {emote} · {mod}");
         ImGui.SameLine();

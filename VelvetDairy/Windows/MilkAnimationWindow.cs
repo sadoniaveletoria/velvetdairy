@@ -32,10 +32,11 @@ public sealed class MilkAnimationWindow : Window
     public override void Draw()
     {
         var width = ImGui.GetContentRegionAvail().X;
-        DrawEmote(width);
+        // The mod (and its animation) first: when it changes an emote, that decides what the Milk button does
+        DrawPicker(width);
         ImGui.Separator();
         ImGui.Spacing();
-        DrawPicker(width);
+        DrawEmote(width);
     }
 
     private string emoteSearch = "";
@@ -48,6 +49,20 @@ public sealed class MilkAnimationWindow : Window
 
     private void DrawEmote(float width)
     {
+        if (G.MilkModPick is { } pick)
+        {
+            ImGui.TextColored(Theme.RoseDeep, "What the Milk button does");
+            ImGui.TextColored(Theme.Ink, $"{pick.Name}  ({pick.Command})");
+            Ui.Wrapped(pick.Pose >= 0
+                    ? $"Your animation mod's choice is a sit pose (pose {pick.Pose}). The Milk button sits you down with the mod on; if it isn't the right pose, /cpose once you're seated."
+                    : "That's the emote your animation mod's choice changes, so the Milk button does it with the mod on.",
+                Theme.InkSoft, width);
+            Ui.Wrapped("To pick your own emote instead, set the animation mod to None.", Theme.InkSoft, width);
+            return;
+        }
+
+        if (F.MilkModDir.Length > 0)
+            Ui.Wrapped("Couldn't tell which emote your animation mod changes (pick its option above), so pick the emote it animates here.", Theme.HoneyDeep, width);
         ImGui.TextColored(Theme.RoseDeep, "Milk button emote or pose");
         Ui.Wrapped("What you do while you milk: any emote that keeps going (like /beesknees) or a sit pose (/sit, /groundsit, /doze). Use the one your animation mod changes. Once you're seated you can /cpose to the pose you want.", Theme.InkSoft, width);
 
@@ -94,6 +109,10 @@ public sealed class MilkAnimationWindow : Window
     private System.Collections.Generic.List<(string Group, string[] Options, bool Single)>? modGroups;
     private string modGroupsFor = "";
 
+    /// <summary>"  → Sit on ground" after an option that changes an emote.</summary>
+    private string EmoteTag(string group, string option) =>
+        ModAnimations.ForOption(F.MilkModDir, group, option) is { } p ? $"   → {p.Name}" : "";
+
     /// <summary>The picked mod's options (like which animation it uses), chosen just for milking.</summary>
     private void DrawMilkModOptions()
     {
@@ -125,7 +144,7 @@ public sealed class MilkAnimationWindow : Window
                     }
 
                     foreach (var o in options)
-                        if (ImGui.Selectable($"{o}##mmo{group}{o}", picked is { Count: > 0 } && picked[0] == o))
+                        if (ImGui.Selectable($"{o}{EmoteTag(group, o)}##mmo{group}{o}", picked is { Count: > 0 } && picked[0] == o))
                         {
                             F.MilkModOptions[group] = new System.Collections.Generic.List<string> { o };
                             changed = true;
@@ -151,7 +170,7 @@ public sealed class MilkAnimationWindow : Window
                     foreach (var o in options)
                     {
                         var b = on.Contains(o);
-                        if (ImGui.Checkbox($"{o}##mmc{group}{o}", ref b))
+                        if (ImGui.Checkbox($"{o}{EmoteTag(group, o)}##mmc{group}{o}", ref b))
                         {
                             if (b) on.Add(o);
                             else on.Remove(o);
@@ -181,7 +200,7 @@ public sealed class MilkAnimationWindow : Window
         }
 
         ImGui.TextColored(Theme.RoseDeep, "Animation mod (Penumbra)");
-        Ui.Wrapped("Pick a mod that changes your milking emote. The Milk button switches it on for your character just before the emote and back off when the cow is empty. Your Penumbra settings aren't changed. Others see it only if they sync your mods (like with Mare).",
+        Ui.Wrapped("Pick an animation mod, and below it the animation you want. The Milk button switches the mod on for your character, does the emote that animation changes, and switches it back off when the cow is empty. Your Penumbra settings aren't changed. Others see it only if they sync your mods (like with Mare).",
             Theme.InkSoft, width);
         modList ??= PenumbraLink.Sorted();
         var current = F.MilkModDir.Length == 0 ? "None" : modList.FirstOrDefault(m => m.Dir == F.MilkModDir).Name ?? F.MilkModDir;

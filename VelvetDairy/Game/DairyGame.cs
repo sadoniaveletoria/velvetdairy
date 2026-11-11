@@ -1300,9 +1300,35 @@ public sealed class DairyGame
 
     public const string MilkEmote = "/beesknees";
 
-    /// <summary>The emote your Milk button does: always your own pick (Herd Care > Animation), /beesknees if you haven't picked one.</summary>
+    private ModAnimations.Pick? modPick;
+    private string modPickFor = "";
+    private double modPickAt = -100;
+
+    /// <summary>The emote your milking animation mod (with the options you picked) animates, if it changes one.</summary>
+    public ModAnimations.Pick? MilkModPick
+    {
+        get
+        {
+            if (F.MilkModDir.Length == 0) return null;
+            var key = F.MilkModDir + "|" + string.Join(";", F.MilkModOptions.Select(kv => kv.Key + "=" + string.Join(",", kv.Value)));
+            if (key != modPickFor || now - modPickAt > 10)
+            {
+                modPickFor = key;
+                modPickAt = now;
+                modPick = ModAnimations.ForMilking(F.MilkModDir, F.MilkModOptions);
+            }
+
+            return modPick;
+        }
+    }
+
+    /// <summary>
+    /// The emote your Milk button does: the one your animation mod's picked option animates, else your own pick
+    /// (Herd Care > Animation), else /beesknees.
+    /// </summary>
     public string MilkEmoteFor(MemberStatus? st)
     {
+        if (MilkModPick is { } p && Emotes.Find(p.Command) != 0) return p.Command;
         var mine = F.MilkButtonEmote.Trim();
         if (mine.Length > 0 && !mine.StartsWith('/')) mine = "/" + mine;
         return mine.Length == 0 || Emotes.Find(mine) == 0 ? MilkEmote : mine;
