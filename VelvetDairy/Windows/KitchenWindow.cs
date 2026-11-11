@@ -132,6 +132,7 @@ public sealed class KitchenWindow : Window
     {
         var r = Catalog.RecipeById(selected) ?? Catalog.Recipes.FirstOrDefault();
         if (r == null) return;
+        if (r.ToShelf) G.Net.RefreshShelf();   // for the shelf price (at most every 30 seconds)
         var dl = ImGui.GetWindowDrawList();
         var p = ImGui.GetCursorScreenPos();
         Ui.Icon(dl, Catalog.MadeIcon(r.Makes), p + new Vector2(18, 18), 18);
@@ -161,6 +162,11 @@ public sealed class KitchenWindow : Window
         if (n > 1) ImGui.TextColored(Theme.InkSoft, "Each one in a batch takes a little longer than the last.");
         ImGui.Spacing();
 
+        // What it's good for, so you can tell whether it's worth making
+        ImGui.TextColored(Theme.RoseDeep, "WHAT IT DOES");
+        foreach (var line in Effects(r)) Ui.Wrapped(line, Theme.Ink, width);
+        ImGui.Spacing();
+
         // How many, then Bake
         if (Ui.Button($"##kless{r.Id}", "-", new Vector2(30, 28), "cream", n > 1, "One fewer")) amount[r.Id] = n - 1;
         ImGui.SameLine();
@@ -178,6 +184,39 @@ public sealed class KitchenWindow : Window
             ImGui.Spacing();
             Ui.Wrapped(why, Theme.RoseDeep, width);
         }
+    }
+
+    /// <summary>The made item's bonuses, what it's used for, and (shelf items) what it sells for.</summary>
+    private List<string> Effects(Catalog.Recipe r)
+    {
+        var lines = new List<string>();
+        if (Catalog.FeedById(r.Makes) is { } f)
+        {
+            var parts = new List<string>();
+            if (f.Fed > 0) parts.Add($"Fed +{f.Fed * 100:0}% milk speed");
+            if (f.Water > 0) parts.Add($"Watered +{f.Water * 100:0}%");
+            if (f.Happy > 0) parts.Add($"Happy +{f.Happy * 100:0}% milk speed");
+            if (parts.Count > 0) lines.Add($"For cows: {string.Join(", ", parts)}, filling half the bar (30 minutes).");
+            if (f.BoostMinutes > 0) lines.Add($"Milk boost: +{Catalog.TreatBonus * 100:0}% milk for {f.BoostMinutes} minutes.");
+            if (f.Quality > 0) lines.Add($"Milk quality +{f.Quality:0}.");
+            if (r.ToShelf)
+            {
+                var shelf = G.Net.Shelf.FirstOrDefault(x => x.Item == r.Makes);
+                var price = shelf?.Price ?? 0;
+                lines.Add(price > 0
+                    ? $"Goes on the dairy shelf at {price} coins each (the owner sets it). You get {Math.Floor(price * 0.8):0} for each one a member buys; the fund gets the rest."
+                    : "Goes on the dairy shelf. You get 80% of the price for each one a member buys; the fund gets the rest.");
+                lines.Add("Farmers can also feed them to cows and bulls for free (Herd Care > Feed). Bulls get bull xp.");
+            }
+        }
+        else
+        {
+            var usedIn = Catalog.Recipes.Where(x => x.Uses == r.Makes).Select(x => x.Name.Replace("Bake ", "").Replace("Churn ", "")).ToList();
+            lines.Add(usedIn.Count > 0 ? $"An ingredient: used to make {string.Join(", ", usedIn)}. It can't be eaten on its own." : "An ingredient for other recipes.");
+        }
+
+        lines.Add(r.Amount > 1 ? $"Each bake makes {r.Amount} and gives +{r.Xp} farmer xp." : $"+{r.Xp} farmer xp for each one.");
+        return lines;
     }
 
     private static void Need(string what, string have, bool ok)

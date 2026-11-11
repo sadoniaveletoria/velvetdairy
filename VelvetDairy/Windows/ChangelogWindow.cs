@@ -22,7 +22,7 @@ public sealed class ChangelogWindow : Window
     /// <summary>Newest first. Write these for players: what changed for them, not how.</summary>
     private static readonly Entry[] Entries =
     {
-        new("0.9.15", "Eorzea Milkers: your grade, baking and farmer tools", new[]
+        new("0.9.16", "Eorzea Milkers: your grade, baking and farmer tools", new[]
         {
             "# A new name",
             "Velvet Dairy is now Eorzea Milkers, with a new icon and bottle labels. Your progress, dairy and settings are all kept. The command is now /milkers.",
@@ -35,6 +35,7 @@ public sealed class ChangelogWindow : Window
             "The Pantry has tabs: Food & treats, Ingredients and the Dairy shelf.",
             "# Farmer tools",
             "Two new buttons under the HUD: Herd Care (your dairy's cows and bulls: Milk, Groom and Feed) and Kitchen. Each opens its own window.",
+            "Each recipe in the Kitchen shows what it does: its bonuses for cows, what it's used for, and what it sells for on the shelf.",
             "Fill your jugs at the top of the Kitchen (Fill 8 oz, Fill 32 oz or Fill up). The Jugs tab on the Creamery is gone.",
             "Pick your milking emote and animation mod from the Herd Care window.",
             "Customer orders pay a little better as your farmer level grows.",
