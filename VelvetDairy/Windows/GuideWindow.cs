@@ -67,7 +67,8 @@ public sealed class GuideWindow : Window
         new("Grades and pay", new[]
         {
             "Everyone starts at Grade C. Milk quality builds as you get milked, fill goals and eat quality treats: B at 150, A at 800, S at 2,600 and S+ at 6,000.",
-            "Pay per ounce: C 7, B 10, A 15, S 17, S+ 20 coins. The first 300 oz each day get full pay; after that milk pays a quarter, up to 1,500 oz a day. XP is the same all day. Better grades also give more XP.",
+            "Pay per ounce: C 6, B 8, A 10, S 12, S+ 14 coins. Better grades also give more XP.",
+            "Everything the game pays you in a day (milking, hand milking shares, orders, goals, awards) adds up together: the first 1,500 coins are paid in full, then a quarter up to 4,000, then a tenth. XP is never reduced, coins from other players don't count, and it resets each day. Creamery > Your pay shows where you are.",
             "Your grade also makes milking faster and gives more milk each time: B +10%, A +20%, S +35%, S+ +50%.",
             "Milk itself has no grade: once it's in the dairy tank, any milk fills any order, contract or recipe.",
             "Your grade is your milk quality, and it stays there as long as you're milked. Go 3 days without being milked and it slips one grade (one more every 3 days after). One milking brings it right back. A Dry-off tonic stops it slipping while you're away.",

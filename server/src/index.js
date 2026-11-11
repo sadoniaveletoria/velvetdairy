@@ -38,7 +38,7 @@ const DELIVERER_XP_PER_OZ = 1;      // and the deliverer's own dairy this much
 const MAX_DONATION = 100000;
 const TIER_PRICE = [0, 0, 150, 400, 900];   // fund coins to raise a stall to this tier
 const LEADERBOARD_SIZE = 20;
-const GRADE_PRICE = [7, 10, 15, 17, 20];   // coins per oz the dairy pays a cow, by grade (C..S+)
+const GRADE_PRICE = [6, 8, 10, 12, 14];   // coins per oz the dairy pays a cow, by grade (C..S+)
 const PAY_PER_LEVEL = 0.02;         // each dairy level adds 2% to what it pays
 const FARMER_CUT = 0.25;            // a farmer gets this share of what the cow was paid for a hand milking
 const FARMER_DAILY_COINS = 4500;
@@ -1165,7 +1165,8 @@ async function handPay(env, me, request) {
       ON CONFLICT(install, day) DO UPDATE SET oz = oz + excluded.oz`).bind(cowKey, day, counted),
     env.DB.prepare(`INSERT INTO member_pump (install, day, oz) VALUES (?, ?, ?)
       ON CONFLICT(install, day) DO UPDATE SET oz = oz + excluded.oz`).bind(farmKey, day, coins),
-    inboxStmt(env, farmer.install, "payout", coins, 0, 0, `${mem.name || "A cow"} paid you ${coins} coins for hand milking ${Math.round(counted * 10) / 10} oz.`),
+    // grade 1 marks game-made coins (the plugin counts them toward the day's tapering earnings); 0 = from another player
+    inboxStmt(env, farmer.install, "payout", coins, 0, 1, `${mem.name || "A cow"} paid you ${coins} coins for hand milking ${Math.round(counted * 10) / 10} oz.`),
   ]);
   return { ok: true, coins };
 }

@@ -228,8 +228,9 @@ public sealed class DairyGame
             switch (i.Kind)
             {
                 case "payout":
-                    // Payouts come from farmer work: hand milking shares and deliveries
-                    Earn(i.Coins);
+                    // Payouts come from farmer work: hand milking shares (game-made, grade 1: they taper) and coins from other players
+                    if (i.Grade == 1) Earn(i.Coins);
+                    else Receive(i.Coins);
                     AddFarmerXp(Math.Max(5, i.Coins / 8));
                     break;
                 case "refund":
@@ -457,7 +458,7 @@ public sealed class DairyGame
         var coins = 0;
         for (var g = 0; g < Grades.Count; g++) coins += (int)Math.Round(F.Tank[g] * Grades.All[g].Price * PriceBonus);
         Array.Clear(F.Tank);
-        Earn(coins);
+        Receive(coins);
         Say($"Milk now pays when you're milked. The {oz:0.#} oz you had stored was paid out: +{coins} coins.", 1);
         plugin.SaveConfig();
     }
@@ -1158,12 +1159,11 @@ public sealed class DairyGame
         var collected = s.Extracted * s.Yield;
         EaseTaint(Catalog.TaintPerMilking);
         AddQuality(collected * (s.Kind == SessionKind.Hand ? Grades.QualityPerOzHand : Grades.QualityPerOz));
-        // The dairy pays for the milk right away (up to the day's paid amount); the milk itself goes into the dairy's tank
-        // Full pay for the first DailyFullPayOz of the day, a quarter after that, nothing past DailyPaidOz (xp always)
+        // The dairy pays for the milk right away (up to the day's paid amount; tapering with the day's earnings);
+        // the milk itself goes into the dairy's tank
         var paidOz = Math.Clamp(Catalog.DailyPaidOz - F.DayOz, 0, collected);
-        var fullOz = Math.Clamp(Catalog.DailyFullPayOz - F.DayOz, 0, paidOz);
-        var pay = (int)Math.Round((fullOz + (paidOz - fullOz) * Catalog.LatePayRate) * PayRate(s.Grade));
-        Earn(pay);
+        var rateBefore = Catalog.TaperRate(F.DayEarned);
+        var pay = Earn((int)Math.Round(paidOz * PayRate(s.Grade)));
         F.Stats.TotalOz += collected;
         F.DayOz += collected;
         F.Stats.BestGrade = Math.Max(F.Stats.BestGrade, s.Grade);
@@ -1197,7 +1197,7 @@ public sealed class DairyGame
         var by = s.Kind == SessionKind.Hand ? $" by {(s.Hand!.IsTest ? "the test farmhand" : s.Hand.Name)}" : "";
         Say($"Milked{by}: {collected:0.#} oz as a Grade {Grades.Name(s.Grade)} cow. +{pay} coins, +{xp} xp" +
             (paidOz < collected - 0.05f ? $" (you've been paid for {Catalog.DailyPaidOz:N0} oz today; more milk still gives xp)"
-                : fullOz < paidOz - 0.05f ? $" (past {Catalog.DailyFullPayOz} oz today, milk pays a quarter; xp is the same)" : "") +
+                : Catalog.TaperRate(F.DayEarned) < rateBefore || rateBefore < 1f ? $" (you've earned a lot today, so pay is at {(Catalog.TaperRate(F.DayEarned) >= 0.25f ? "a quarter" : "a tenth")}; xp is the same)" : "") +
             (reason != null ? $" ({reason})" : ""), 1);
         plugin.SaveConfig();
     }
@@ -2562,7 +2562,7 @@ public sealed class DairyGame
 
         F.Orders!.Remove(o);
         if (Networked) Net.UseCarried(o.Oz);
-        Earn(o.Coins);
+        var paid = Earn(o.Coins);
         if (CanCarry) AddFarmerXp(o.Xp);   // delivering is farmer work
         else AddXp(o.Xp);
         F.Stats.OrdersFilled++;
@@ -2571,7 +2571,7 @@ public sealed class DairyGame
         EaseTaint(Catalog.TaintPerOrder);
         AddQuality(Grades.QualityPerOrder);
         if (F.Orders.Count < 3 && DateTime.UtcNow >= F.NextOrderUtc) F.NextOrderUtc = DateTime.UtcNow.AddMinutes(20);
-        Say($"{o.Customer} paid {o.Coins} coins. +{o.Xp} xp", 1);
+        Say($"{o.Customer} paid {paid} coins{(paid < o.Coins ? $" (of {o.Coins}: you've earned a lot today)" : "")}. +{o.Xp} xp", 1);
         plugin.SaveConfig();
         return true;
     }
@@ -2925,15 +2925,15 @@ public sealed class DairyGame
     {
         if (Claimed(g) || g.Have < g.Need) return false;
         F.DayClaimed |= 1 << g.Bit;
-        Earn(GoalCoins);
+        var goalPaid = Earn(GoalCoins);
         if (g.Farmer) AddFarmerXp(GoalXp);
         else AddXp(GoalXp);
         F.Stats.DailiesDone++;
         // Each set has its own bonus for finishing all four
         var all = Goals().Where(x => x.Farmer == g.Farmer).All(Claimed);
-        if (all) Earn(AllGoalsCoins);
+        if (all) goalPaid += Earn(AllGoalsCoins);
         var set = g.Farmer ? "farmer" : "cow";
-        Say(all ? $"All {set} goals done! +{GoalCoins + AllGoalsCoins} coins" : $"Daily goal done. +{GoalCoins} coins, +{GoalXp} {set} xp", 1);
+        Say(all ? $"All {set} goals done! +{goalPaid} coins" : $"Daily goal done. +{goalPaid} coins, +{GoalXp} {set} xp", 1);
         plugin.SaveConfig();
         return true;
     }
@@ -2946,6 +2946,7 @@ public sealed class DairyGame
         if (F.DayKey == key) return;
         F.DayKey = key;
         F.DayOz = 0;
+        F.DayEarned = 0;
         F.DayOrders = 0;
         F.DayCare = 0;
         F.DayHand = 0;
@@ -2962,7 +2963,19 @@ public sealed class DairyGame
     // XP, coins, awards, messages
     // =================================================================
 
-    private void Earn(int coins)
+    /// <summary>Coins the game pays you. They taper with what you've earned today (see Catalog.Tapered); returns what you got.</summary>
+    private int Earn(int coins)
+    {
+        if (coins <= 0) return 0;
+        var got = Catalog.Tapered(F.DayEarned, coins);
+        F.DayEarned += coins;
+        F.Coins += got;
+        F.Stats.CoinsEarned += got;
+        return got;
+    }
+
+    /// <summary>Coins from another player (shelf sales, buy orders) or paid back: never tapered.</summary>
+    private void Receive(int coins)
     {
         F.Coins += coins;
         F.Stats.CoinsEarned += coins;
@@ -3037,8 +3050,8 @@ public sealed class DairyGame
         {
             if (F.Awards.Contains(a.Id) || !a.Earned(F)) continue;
             F.Awards.Add(a.Id);
-            Earn(25);
-            Say($"Award: {a.Name}. +25 coins", 1);
+            var awardPaid = Earn(25);
+            Say($"Award: {a.Name}. +{awardPaid} coins", 1);
         }
     }
 
@@ -3101,7 +3114,7 @@ public sealed class DairyGame
     public void DevCoins()
     {
         if (!Dev) return;
-        Earn(500);
+        Receive(500);
     }
 
     public void DevResetNeeds()

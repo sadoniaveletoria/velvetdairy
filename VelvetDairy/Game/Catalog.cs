@@ -10,11 +10,11 @@ public static class Grades
 {
     public static readonly IReadOnlyList<Grade> All = new[]
     {
-        new Grade("C", 7.0f, "Thin"),
-        new Grade("B", 10.0f, "Good"),
-        new Grade("A", 15.0f, "Rich"),
-        new Grade("S", 17.0f, "Cream"),
-        new Grade("S+", 20.0f, "Velvet"),
+        new Grade("C", 6.0f, "Thin"),
+        new Grade("B", 8.0f, "Good"),
+        new Grade("A", 10.0f, "Rich"),
+        new Grade("S", 12.0f, "Cream"),
+        new Grade("S+", 14.0f, "Velvet"),
     };
 
     public static int Count => All.Count;
@@ -202,8 +202,32 @@ public static class Catalog
     /// <summary>What can go on the dairy shelf, in the server's order (a "fed" inbox item says which by its place here).</summary>
     public static readonly string[] ShelfOrder = { "cookies" };
     public const int DailyPaidOz = 1500;   // milk you're paid for each day; past it you still get xp (matches the server's daily tank limit)
-    public const int DailyFullPayOz = 300; // the first this many oz a day get full pay...
-    public const float LatePayRate = 0.25f; // ...the rest (up to DailyPaidOz) a quarter of it
+
+    // Everything you earn from the game in a day (milking, hand milking shares, orders, goals, awards) tapers off together:
+    // the first FullEarnings coins are paid in full, then a quarter up to QuarterEarnings, then a tenth. Coins from other
+    // players (shelf sales, buy orders) aren't touched. No cap, but more play pays less and less.
+    public const int FullEarnings = 1500;
+    public const int QuarterEarnings = 4000;
+
+    /// <summary>What `gross` coins are actually worth when `earnedToday` (gross) were already earned today.</summary>
+    public static int Tapered(float earnedToday, int gross)
+    {
+        double pay = 0, at = earnedToday, left = gross;
+        foreach (var (upTo, rate) in new (double, double)[] { (FullEarnings, 1.0), (QuarterEarnings, 0.25), (double.MaxValue, 0.10) })
+        {
+            if (left <= 0) break;
+            var room = Math.Max(0, upTo - at);
+            var part = Math.Min(room, left);
+            pay += part * rate;
+            at += part;
+            left -= part;
+        }
+
+        return (int)Math.Round(pay);
+    }
+
+    /// <summary>The share of each new coin you get right now (1, 0.25 or 0.1).</summary>
+    public static float TaperRate(float earnedToday) => earnedToday < FullEarnings ? 1f : earnedToday < QuarterEarnings ? 0.25f : 0.10f;
     public const int FeedXp = 10;          // farmer xp for feeding a cow or bull from the shelf
     public const int FedBullXp = 20;       // bull xp for being fed
     /// <summary>Your cow grade (C, B, A, S, S+) milks you this much faster and gives this much more milk.</summary>
