@@ -4,7 +4,7 @@ window.PREVIEW = {
  "changes": [
   {
    "version": "0.9.23",
-   "title": "Pay, levels and the kitchen",
+   "title": "Pay, the kitchen, levels and Discord",
    "notes": [
     "# Pay",
     "New pay per ounce: C 6, B 8, A 10, S 12, S+ 14 coins. Higher grades still milk faster and give more milk.",
@@ -19,13 +19,8 @@ window.PREVIEW = {
     "Need something the Shop sells for a recipe (like wheat grain)? The Kitchen has a Buy button next to it that opens the Shop right on that item.",
     "# Levels",
     "The role tags at the top of the main window now show your level (COW 23, FARMER 12), and fill up as you get closer to the next one. Hover one for the exact xp.",
-    "The tags are a little slimmer, and where you are is one word: HERE, RESTING, PRIVATE or AWAY (hover it for more)."
-   ]
-  },
-  {
-   "version": "0.9.18",
-   "title": "Join the Discord",
-   "notes": [
+    "The tags are a little slimmer, and where you are is one word: HERE, RESTING, PRIVATE or AWAY (hover it for more).",
+    "# Discord",
     "Eorzea Milkers has a Discord (18+): ask questions, find a dairy or players, and get update news and testing builds first.",
     "Open it with the Discord button at the top right of the main window, the Join the Discord button here, in the guide (the ? button), or in Settings > Help."
    ]
