@@ -266,9 +266,13 @@ const HEADER_LINKS = [["Discord", "blue"]];   // header, under the coins (MainWi
 function mainWin(s) {
   const W = s.mw, Pad = 16;
   // Header
-  const roles = [s.cow && ["COW", "var(--RoseDeep)"], s.farmer && ["FARMER", "var(--SageDeep)"], s.owner && ["OWNER", "var(--RoseDeep)"]].filter(Boolean);
+  // Roles with their level; the fill shows how far to the next level (hover for the numbers)
+  const roles = [s.cow && ["COW 23", "var(--RoseDeep)", .6, "Cow level 23\n1,212 / 2,020 xp to level 24 (60%)"],
+    s.farmer && ["FARMER 12", "var(--SageDeep)", .25, "Farmer level 12\n171 / 684 xp to level 13 (25%)"],
+    s.owner && ["OWNER", "var(--RoseDeep)"]].filter(Boolean);
   const where = s.st === "away" ? ["AWAY", "var(--InkSoft)"] : ["IN THE DAIRY", "var(--SageDeep)"];
-  const pills = [...roles, ["DAIRY LV 7", "var(--BlueDeep)"], where].map(([t, c]) => `<span class="pill" style="color:${c};border-color:${c};background:color-mix(in srgb, ${c} 14%, transparent)">${t}</span>`).join("");
+  const pills = [...roles, ["DAIRY LV 7", "var(--BlueDeep)"], where].map(([t, c, p, tip]) => `<span class="pill" ${tip ? `title="${tip}"` : ""} style="color:${c};border-color:${c};background:${p != null
+      ? `linear-gradient(90deg, color-mix(in srgb, ${c} 36%, transparent) ${p * 100}%, color-mix(in srgb, ${c} 14%, transparent) ${p * 100}%)` : `color-mix(in srgb, ${c} 14%, transparent)`}">${t}</span>`).join("");
   const brandW = measure("MILKERS", "42px 'Pathway Gothic One'");
   const head = `<div class="mw-head">
     <img class="abs" src="assets/avatars/you.png" alt="Your portrait" style="left:${Pad}px;top:14px;width:60px;height:60px">

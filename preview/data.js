@@ -1,7 +1,14 @@
 // Made by preview/build.py from the plugin's source. Don't edit by hand.
 window.PREVIEW = {
- "version": "0.9.18",
+ "version": "0.9.19",
  "changes": [
+  {
+   "version": "0.9.19",
+   "title": "Your levels at a glance",
+   "notes": [
+    "The role tags at the top of the main window now show your level (COW 23, FARMER 12), and fill up as you get closer to the next one. Hover one for the exact xp."
+   ]
+  },
   {
    "version": "0.9.18",
    "title": "Join the Discord",

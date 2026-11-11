@@ -223,19 +223,36 @@ public sealed partial class MainWindow : Window
         var dairyTitle = G.Networked ? member?.Dairy ?? "No dairy yet" : F.Dairy?.Name ?? "No dairy yet";
         Ui.Text(dl, fonts.Heading, dairyTitle, new Vector2(mx, o.Y + 14), Theme.Ink);
         var px = mx;
-        void Pill(string text, Vector4 color, string? tip = null)
+        void Pill(string text, Vector4 color, string? tip = null, float progress = -1)
         {
             var size = Ui.Measure(fonts.Small, text);
             var a0 = new Vector2(px, o.Y + 42);
             var a1 = a0 + new Vector2(size.X + 16, size.Y + 2);
             dl.AddRectFilled(a0, a1, Ui.U(color, 0.14f), 99);
+            // A role's level: how far to the next one, as a fill inside the pill
+            if (progress >= 0) dl.AddRectFilled(a0, new Vector2(a0.X + (a1.X - a0.X) * Math.Clamp(progress, 0f, 1f), a1.Y), Ui.U(color, 0.22f), 99);
             dl.AddRect(a0, a1, Ui.U(color, 0.55f), 99, ImDrawFlags.None, 1f);
             Ui.Text(dl, fonts.Small, text, a0 + new Vector2(8, 1), color);
             if (tip != null && ImGui.IsMouseHoveringRect(a0, a1)) ImGui.SetTooltip(tip);
             px = a1.X + 6;
         }
 
-        foreach (var r in G.MyRoles) Pill(r.ToUpperInvariant(), r == "farmer" ? Theme.SageDeep : r == "bull" ? Theme.HoneyDeep : Theme.RoseDeep);
+        foreach (var r in G.MyRoles)
+        {
+            var color = r == "farmer" ? Theme.SageDeep : r == "bull" ? Theme.HoneyDeep : Theme.RoseDeep;
+            var xp = r switch { "cow" => F.Xp, "farmer" => F.FarmerXp, "bull" => F.BullXp, _ => -1 };
+            if (xp < 0)
+            {
+                Pill(r.ToUpperInvariant(), color);
+                continue;
+            }
+
+            var (lvl, into, need) = Leveling.FromXp(xp);
+            var name = char.ToUpperInvariant(r[0]) + r[1..];
+            var tip = lvl >= Leveling.MaxLevel ? $"{name} level {lvl} (the top level)"
+                : $"{name} level {lvl}\n{into:N0} / {need:N0} xp to level {lvl + 1} ({(int)(100f * into / Math.Max(1, need))}%)";
+            Pill($"{r.ToUpperInvariant()} {lvl}", color, tip, lvl >= Leveling.MaxLevel ? 1f : into / (float)Math.Max(1, need));
+        }
         if (G.Networked && member != null) Pill($"DAIRY LV {G.DairyLevel}", Theme.BlueDeep);
         // Where you are: in the dairy (or its private place) or away from it
         if (member != null || F.Dairy != null)
