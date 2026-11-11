@@ -38,6 +38,27 @@ public static class Estate
         return 0;
     }
 
+    /// <summary>
+    /// Zones where every player gets their own copy at the same positions: the Island Sanctuary and inn rooms.
+    /// Nobody else can come in, so the copy is told apart by whose it is.
+    /// </summary>
+    public static bool SoloPlace(uint territory)
+    {
+        var use = Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.TerritoryType>().GetRowOrDefault(territory)?.TerritoryIntendedUse.RowId;
+        return use is 49 or 2;   // Island Sanctuary, inn room
+    }
+
+    /// <summary>
+    /// Which copy of the zone you're in, for dairy boxes: the house's id inside a house or apartment, your own
+    /// character's id on your island or in an inn room, and "" anywhere else (everyone shares the open world).
+    /// </summary>
+    public static string PlaceKey()
+    {
+        if (Current() is { } h) return h.HouseId.ToString();
+        if (SoloPlace(Plugin.ClientState.TerritoryType) && Plugin.ContentId() is var cid and > 0) return cid.ToString();
+        return "";
+    }
+
     /// <summary>The house you're standing in, or null outside housing.</summary>
     public static unsafe Address? Current()
     {

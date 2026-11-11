@@ -22,6 +22,17 @@ public sealed class ChangelogWindow : Window
     /// <summary>Newest first. Write these for players: what changed for them, not how.</summary>
     private static readonly Entry[] Entries =
     {
+        new("0.9.29", "Milking animations and island dairies", new[]
+        {
+            "# Milking animations",
+            "Pick an animation mod in Herd Care > Animation..., then the animation you want from its options. Each option shows the emote it uses, read from its name: \"(Dom-Bdance/Sub-Hdance)\" means you (the farmer) do Ball Dance, \"(Gsit0, 1)\" means sit on the ground. The Milk button switches the mod on, does that emote and switches it off when the cow is empty.",
+            "An animation that works with several emotes (like \"(Blush/Confirm/Wave/Yes)\") lists them all, and you choose which one you do. Your choice is remembered.",
+            "No animation mod? Pick the Milk button's emote from a list of every emote (search it, or one click for Bee's Knees, Sit, Sit on ground or Doze).",
+            "Sit poses count as milking. Once seated, /cpose to the pose you want; when the cow is empty you're left seated, so get up when you like.",
+            "The Milk button always does your emote. If a cow only counts certain emotes and yours isn't one of them, their row in Herd Care tells you which ones they count. Cows who allow any emote (the default) accept sit poses too.",
+            "# Island Sanctuary and inn room dairies",
+            "A dairy on your Island Sanctuary or in an inn room is yours alone and no longer clashes with other players' dairies at the same spot on their own island. Dairies already there are fixed the next time their owner visits.",
+        }),
         new("0.9.24", "A save for each character", new[]
         {
             "Each character now has their own Eorzea Milkers progress: their own levels, coins, roles, pantry and dairy. Before, every character on your PC shared one save.",

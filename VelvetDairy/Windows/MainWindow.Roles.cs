@@ -93,9 +93,9 @@ public sealed partial class MainWindow
     private void DrawCowEmotes(float width)
     {
         SubHeading("Being hand milked", width);
-        Ui.Wrapped("A farmer of your dairy milks you by pressing Milk on you (HUD > Herd Care): they stand close, target you and their plugin does a looping emote. Someone just doing an emote near you never milks you. Milk flows until you're empty or they stop.", Theme.InkSoft, width);
+        Ui.Wrapped("A farmer of your dairy milks you by pressing Milk on you (HUD > Herd Care): they stand close, target you and their plugin does their milking emote or pose (like /beesknees or a sit pose). Someone just doing an emote near you never milks you. Milk flows until you're empty or they stop.", Theme.InkSoft, width);
         var any = F.AnyLoopEmote;
-        if (ImGui.Checkbox("Any looping emote counts##anyloop", ref any))
+        if (ImGui.Checkbox("Any emote or sit pose counts##anyloop", ref any))
         {
             F.AnyLoopEmote = any;
             plugin.SaveConfig();
@@ -251,9 +251,11 @@ public sealed partial class MainWindow
             }
 
             lines.Add(new Line($"Milk does {G.MilkEmoteFor(st)} for you", Theme.BlueDeep));
+            if (!G.CowAcceptsMyEmote(st))
+                lines.Add(new Line($"They only count {string.Join(", ", st!.Emotes)}: pick one of those in Animation... to milk them", Theme.Warn));
             // Target first; once they're your target the button becomes Milk (does their first looping milking emote for you)
             var targeted = Plugin.TargetManager.Target is Dalamud.Game.ClientState.Objects.SubKinds.IPlayerCharacter tp && tp.Name.TextValue.Equals(c.Name, StringComparison.OrdinalIgnoreCase);
-            // Your Milk emote (Roles > Farmer) if this cow accepts it; otherwise /beesknees or their first one
+            // Always your own pick (Herd Care > Animation)
             var milkEmote = G.MilkEmoteFor(st);
             var buttons = Array.Empty<Btn>();
             if (near >= 0 && c.Online)

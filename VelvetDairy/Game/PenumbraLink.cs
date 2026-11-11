@@ -27,6 +27,10 @@ public static class PenumbraLink
     public static Dictionary<string, string>? Mods() => Try(() =>
         Plugin.PluginInterface.GetIpcSubscriber<Dictionary<string, string>>("Penumbra.GetModList").InvokeFunc());
 
+    /// <summary>Penumbra's mod folder (where each mod's files are), or null.</summary>
+    public static string? ModRoot() => Try(() =>
+        Plugin.PluginInterface.GetIpcSubscriber<string>("Penumbra.GetModDirectory").InvokeFunc());
+
     /// <summary>A mod's option groups: group name -> (its options, whether only one can be on at a time). Null if not found.</summary>
     public static List<(string Group, string[] Options, bool Single)>? Groups(string modDir) => Try(() =>
         Plugin.PluginInterface.GetIpcSubscriber<string, string, IReadOnlyDictionary<string, (string[], int)>?>("Penumbra.GetAvailableModSettings.V5")

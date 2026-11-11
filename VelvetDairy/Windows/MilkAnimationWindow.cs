@@ -32,33 +32,116 @@ public sealed class MilkAnimationWindow : Window
     public override void Draw()
     {
         var width = ImGui.GetContentRegionAvail().X;
-        DrawEmote(width);
+        // The mod (and its animation) first: when it changes an emote, that decides what the Milk button does
+        DrawPicker(width);
         ImGui.Separator();
         ImGui.Spacing();
-        DrawPicker(width);
+        DrawEmote(width);
+    }
+
+    private string emoteSearch = "";
+
+    private void SetEmote(string command)
+    {
+        F.MilkButtonEmote = command.Equals(DairyGame.MilkEmote, StringComparison.OrdinalIgnoreCase) ? "" : command;
+        plugin.SaveConfig();
     }
 
     private void DrawEmote(float width)
     {
-        ImGui.TextColored(Theme.RoseDeep, "Milk button emote");
-        ImGui.SetNextItemWidth(180);
-        var em = F.MilkButtonEmote;
-        if (ImGui.InputTextWithHint("##milkbtnemote", DairyGame.MilkEmote, ref em, 30))
+        if (G.MilkModPick is { } pick)
         {
-            F.MilkButtonEmote = em.Trim();
-            plugin.SaveConfig();
+            ImGui.TextColored(Theme.RoseDeep, "What the Milk button does");
+            var choices = G.MilkModChoices;
+            if (choices.Count > 1)
+            {
+                // The animation works with several emotes: pick which one you do
+                ImGui.SetNextItemWidth(Math.Min(320, width));
+                if (ImGui.BeginCombo("##milkmodemote", $"{pick.Name}  ({pick.Command})"))
+                {
+                    foreach (var c in choices)
+                    {
+                        var id = Emotes.Find(c.Command);
+                        var unlocked = id == 0 || Emotes.Unlocked(id);
+                        if (!unlocked) ImGui.PushStyleColor(ImGuiCol.Text, Theme.InkSoft);
+                        if (ImGui.Selectable($"{c.Name}  ({c.Command}){(unlocked ? "" : "  (not unlocked)")}##mme{c.Command}{c.Pose}", c == pick))
+                        {
+                            F.MilkModEmote = c.Command;
+                            plugin.SaveConfig();
+                        }
+
+                        if (!unlocked) ImGui.PopStyleColor();
+                    }
+
+                    ImGui.EndCombo();
+                }
+
+                Ui.Wrapped($"This animation works with {choices.Count} emotes; pick the one you want to do.", Theme.InkSoft, width);
+            }
+            else ImGui.TextColored(Theme.Ink, $"{pick.Name}  ({pick.Command})");
+            Ui.Wrapped(pick.Pose >= 0
+                    ? $"Your animation mod's choice is a sit pose (pose {pick.Pose}). The Milk button sits you down with the mod on; if it isn't the right pose, /cpose once you're seated."
+                    : "That's the emote your animation mod's choice changes, so the Milk button does it with the mod on.",
+                Theme.InkSoft, width);
+            Ui.Wrapped("To pick your own emote instead, set the animation mod to None.", Theme.InkSoft, width);
+            return;
         }
 
-        if (ImGui.IsItemHovered()) ImGui.SetTooltip("If a cow only accepts their own list of emotes and yours isn't on it, the button uses theirs.");
-        Ui.Wrapped("The emote the Milk button does. Use the one your animation mod changes; it has to be a looping one. Empty = /beesknees.", Theme.InkSoft, width);
-        var typed = F.MilkButtonEmote.Length == 0 ? "" : F.MilkButtonEmote.StartsWith('/') ? F.MilkButtonEmote : "/" + F.MilkButtonEmote;
-        if (typed.Length > 0 && Emotes.Find(typed) == 0) ImGui.TextColored(Theme.Warn, $"{typed} isn't an emote the game knows, so the Milk button uses /beesknees.");
+        if (F.MilkModDir.Length > 0)
+            Ui.Wrapped("Couldn't tell which emote your animation mod changes (pick its option above), so pick the emote it animates here.", Theme.HoneyDeep, width);
+        ImGui.TextColored(Theme.RoseDeep, "Milk button emote or pose");
+        Ui.Wrapped("What you do while you milk: any emote that keeps going (like /beesknees) or a sit pose (/sit, /groundsit, /doze). Use the one your animation mod changes. Once you're seated you can /cpose to the pose you want.", Theme.InkSoft, width);
+
+        var cur = F.MilkButtonEmote.Length == 0 ? DairyGame.MilkEmote : F.MilkButtonEmote.StartsWith('/') ? F.MilkButtonEmote : "/" + F.MilkButtonEmote;
+        var curId = Emotes.Find(cur);
+        var label = curId == 0 ? cur : $"{Emotes.Name(curId)}  ({cur})";
+
+        // The usual picks, one click
+        foreach (var (cmd, name) in new[] { ("/beesknees", "Bee's Knees"), ("/sit", "Sit"), ("/groundsit", "Sit on ground"), ("/doze", "Doze") })
+        {
+            var on = cur.Equals(cmd, StringComparison.OrdinalIgnoreCase);
+            if (on) ImGui.PushStyleColor(ImGuiCol.Button, Theme.Sage);
+            if (ImGui.SmallButton($"{name}##mbq{cmd}")) SetEmote(cmd);
+            if (on) ImGui.PopStyleColor();
+            ImGui.SameLine();
+        }
+
+        ImGui.NewLine();
+        ImGui.SetNextItemWidth(Math.Min(320, width));
+        if (ImGui.BeginCombo("##milkbtnemote", label, ImGuiComboFlags.HeightLarge))
+        {
+            ImGui.SetNextItemWidth(-1);
+            if (ImGui.IsWindowAppearing()) ImGui.SetKeyboardFocusHere();
+            ImGui.InputTextWithHint("##milkemotesearch", "Search emotes", ref emoteSearch, 40);
+            foreach (var (id, cmd, name) in Emotes.Choices())
+            {
+                if (emoteSearch.Length > 0 && !name.Contains(emoteSearch, StringComparison.OrdinalIgnoreCase) && !cmd.Contains(emoteSearch, StringComparison.OrdinalIgnoreCase)) continue;
+                var unlocked = Emotes.Unlocked(id);
+                if (!unlocked) ImGui.PushStyleColor(ImGuiCol.Text, Theme.InkSoft);
+                if (ImGui.Selectable($"{name}  {cmd}{(unlocked ? "" : "  (not unlocked)")}##mbe{id}", id == curId)) SetEmote(cmd);
+                if (!unlocked) ImGui.PopStyleColor();
+            }
+
+            ImGui.EndCombo();
+        }
+
+        if (curId != 0 && !Emotes.Unlocked(curId)) ImGui.TextColored(Theme.Warn, "Your character hasn't unlocked this one, so the game won't do it.");
+        if (curId == 0) ImGui.TextColored(Theme.Warn, $"{cur} isn't an emote the game knows, so the Milk button uses /beesknees.");
+        ImGui.TextColored(Theme.InkSoft, "If a cow only accepts their own list and yours isn't on it, the button uses theirs.");
         ImGui.Spacing();
     }
 
     private System.Collections.Generic.List<(string Dir, string Name)>? modList;
     private System.Collections.Generic.List<(string Group, string[] Options, bool Single)>? modGroups;
     private string modGroupsFor = "";
+
+    /// <summary>"  → Sit on ground" after an option that changes an emote.</summary>
+    private string EmoteTag(string group, string option)
+    {
+        var all = ModAnimations.AllFromName(option);
+        if (all.Count > 1) return "   → " + string.Join(" / ", all.Select(p => p.Name));
+        return ModAnimations.ForOption(F.MilkModDir, group, option) is { } one ? $"   → {one.Name}" : "";
+    }
 
     /// <summary>The picked mod's options (like which animation it uses), chosen just for milking.</summary>
     private void DrawMilkModOptions()
@@ -91,7 +174,7 @@ public sealed class MilkAnimationWindow : Window
                     }
 
                     foreach (var o in options)
-                        if (ImGui.Selectable($"{o}##mmo{group}{o}", picked is { Count: > 0 } && picked[0] == o))
+                        if (ImGui.Selectable($"{o}{EmoteTag(group, o)}##mmo{group}{o}", picked is { Count: > 0 } && picked[0] == o))
                         {
                             F.MilkModOptions[group] = new System.Collections.Generic.List<string> { o };
                             changed = true;
@@ -117,7 +200,7 @@ public sealed class MilkAnimationWindow : Window
                     foreach (var o in options)
                     {
                         var b = on.Contains(o);
-                        if (ImGui.Checkbox($"{o}##mmc{group}{o}", ref b))
+                        if (ImGui.Checkbox($"{o}{EmoteTag(group, o)}##mmc{group}{o}", ref b))
                         {
                             if (b) on.Add(o);
                             else on.Remove(o);
@@ -147,7 +230,7 @@ public sealed class MilkAnimationWindow : Window
         }
 
         ImGui.TextColored(Theme.RoseDeep, "Animation mod (Penumbra)");
-        Ui.Wrapped("Pick a mod that changes your milking emote. The Milk button switches it on for your character just before the emote and back off when the cow is empty. Your Penumbra settings aren't changed. Others see it only if they sync your mods (like with Mare).",
+        Ui.Wrapped("Pick an animation mod, and below it the animation you want. The Milk button switches the mod on for your character, does the emote that animation changes, and switches it back off when the cow is empty. Your Penumbra settings aren't changed. Others see it only if they sync your mods (like with Mare).",
             Theme.InkSoft, width);
         modList ??= PenumbraLink.Sorted();
         var current = F.MilkModDir.Length == 0 ? "None" : modList.FirstOrDefault(m => m.Dir == F.MilkModDir).Name ?? F.MilkModDir;
