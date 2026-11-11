@@ -88,7 +88,7 @@ public static class Grades
 /// <summary>A feed or treat you buy, keep in the pantry and use inside your dairy.</summary>
 public sealed record FeedItem(
     string Id, string Name, string Icon, int Price, int Unlock, string Desc,
-    float Fed = 0, float Water = 0, float Happy = 0, int BoostMinutes = 0, float Quality = 0, int HoldDays = 0);
+    float Fed = 0, float Water = 0, float Happy = 0, int BoostMinutes = 0, float Quality = 0, int HoldDays = 0, bool Baked = false);
 
 /// <summary>Something you buy once or in levels.</summary>
 public sealed record Upgrade(string Id, string Name, string Icon, int[] Prices, int[] Unlocks, string Desc, bool Cosmetic = false, bool Farmer = false)
@@ -101,6 +101,44 @@ public static class Catalog
     // Each need is a milk bonus. Each use adds 30 minutes (half the bar, up to an hour) and has a 15-minute cooldown.
     // Food sets Fed, the trough or a mineral block sets Watered, resting sets Comfy, treats set Happy.
     // Using one again adds time, not more bonus; the newest one of a kind sets the bonus. All four at once: Contented on top.
+    // ----- Making things (farmers): ingredients go in the pantry; they're only used to make other things -----
+    public sealed record Ingredient(string Id, string Name, string Icon, string Desc);
+
+    /// <summary>Turn milk from your jugs into something. MilkOz of any grade from MinGrade up, at FarmerLevel or higher.</summary>
+    /// <summary>Uses/UsesCount: an ingredient from your pantry each one needs. ToShelf: what's made goes on the dairy shelf, not your pantry.</summary>
+    public sealed record Recipe(string Id, string Name, string Makes, int Amount, int MilkOz, int MinGrade, int FarmerLevel, int Xp, int Seconds, string Desc,
+        string Uses = "", int UsesCount = 0, bool ToShelf = false);
+
+    /// <summary>Each one in a batch takes a quarter longer than the one before, so big batches take much longer.</summary>
+    public static float BatchSeconds(Recipe r, int index) => r.Seconds * (1f + 0.25f * index);
+
+    public static float TotalSeconds(Recipe r, int count, int from = 0)
+    {
+        var t = 0f;
+        for (var i = from; i < count; i++) t += BatchSeconds(r, i);
+        return t;
+    }
+
+    public static readonly IReadOnlyList<Ingredient> Ingredients = new[]
+    {
+        new Ingredient("butter", "Butter", "biscuit", "Churned from milk. An ingredient: it's used to make things (more recipes are coming)."),
+    };
+
+    public static readonly IReadOnlyList<Recipe> Recipes = new[]
+    {
+        new Recipe("butter", "Churn butter", "butter", 1, 16, 0, 1, 12, 30, "Churn 16 oz of milk from your jugs into a pat of butter."),
+        new Recipe("cookies", "Bake butter cookies", "cookies", 3, 8, 0, 1, 15, 45,
+            "1 butter and 8 oz of milk make 3 butter cookies for the dairy shelf. Members buy them; you get 80% of the price.",
+            Uses: "butter", UsesCount: 1, ToShelf: true),
+    };
+
+    public static Ingredient? IngredientById(string id) => Ingredients.FirstOrDefault(i => i.Id == id);
+
+    /// <summary>The name of something you can make: an ingredient or a baked treat.</summary>
+    public static string MadeName(string id) => IngredientById(id)?.Name ?? FeedById(id)?.Name ?? id;
+    public static string MadeIcon(string id) => IngredientById(id)?.Icon ?? FeedById(id)?.Icon ?? "bottle";
+    public static Recipe? RecipeById(string id) => Recipes.FirstOrDefault(r => r.Id == id);
+
     public static readonly IReadOnlyList<FeedItem> Feed = new[]
     {
         new FeedItem("hay", "Meadow hay", "hay", 4, 1, "Plain and filling.", Fed: 0.04f),
@@ -116,6 +154,8 @@ public static class Catalog
         new FeedItem("biscuit", "Cream biscuit", "biscuit", 30, 1, "A rich little treat. Builds your milk quality and speeds up your milk for 30 minutes.", Happy: 0.04f, Quality: 20, BoostMinutes: 30),
         new FeedItem("alfalfa", "Golden alfalfa", "alfalfa", 80, 1, "Prized hay. Builds your milk quality a lot and speeds up your milk for 30 minutes.", Fed: 0.06f, Quality: 50, BoostMinutes: 30),
         new FeedItem("starclover", "Star clover", "starclover", 200, 1, "Rare and sweet. A big step up in milk quality, and faster milk for 30 minutes.", Happy: 0.10f, Quality: 100, BoostMinutes: 30),
+        // Baked by your dairy's farmers and bought off the dairy shelf (not sold in the Shop)
+        new FeedItem("cookies", "Butter cookies", "biscuit", 0, 1, "Baked by your dairy's farmers. Happy, and a milk boost for 20 minutes.", Happy: 0.08f, BoostMinutes: 20, Baked: true),
         // Going away: keeps your grade from slipping
         new FeedItem("tonic", "Dry-off tonic", "water", 150, 1, "Going away? Your grade won't slip for 7 days, however long since you were milked. Use another to add 7 more.", HoldDays: 7),
     };
@@ -159,6 +199,14 @@ public static class Catalog
     public static readonly int[] StallTierUnlock = { 0, 1, 5, 10, 18 };
 
     public const float HandYield = 1.25f;
+    /// <summary>What can go on the dairy shelf, in the server's order (a "fed" inbox item says which by its place here).</summary>
+    public static readonly string[] ShelfOrder = { "cookies" };
+    public const int DailyPaidOz = 1500;   // milk you're paid for each day; past it you still get xp (matches the server's daily tank limit)
+    public const int FeedXp = 10;          // farmer xp for feeding a cow or bull from the shelf
+    public const int FedBullXp = 20;       // bull xp for being fed
+    /// <summary>Your cow grade (C, B, A, S, S+) milks you this much faster and gives this much more milk.</summary>
+    public static readonly float[] GradeBoost = { 0f, 0.10f, 0.20f, 0.35f, 0.50f };
+    public static float GradeMult(int grade) => 1f + GradeBoost[Math.Clamp(grade, 0, GradeBoost.Length - 1)];
     public const float HandStrokeOz = 1f;
     // ----- Farmer chores -----
     public const float CleanBonus = 0.10f;      // a freshly cleaned stall milks 10% faster and gives 10% more xp (never less than its tier)

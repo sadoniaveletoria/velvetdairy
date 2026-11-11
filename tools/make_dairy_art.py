@@ -1,5 +1,5 @@
 """
-Generates Velvet Dairy's art in the boutique creamery style: warm cream, dusty rose, powder blue, sage.
+Generates Eorzea Milkers' art in the boutique creamery style: warm cream, dusty rose, powder blue, sage.
 Matte surfaces, fine lines, a classic serif. Nothing glossy or cute.
 
     python3 make_dairy_art.py <output Assets folder>
@@ -11,7 +11,7 @@ import os
 import sys
 
 import numpy as np
-from PIL import Image, ImageDraw, ImageFilter, ImageFont
+from PIL import ImageChops, Image, ImageDraw, ImageFilter, ImageFont
 
 OUT = sys.argv[1] if len(sys.argv) > 1 else "Assets"
 SS = 2
@@ -333,9 +333,9 @@ def bottle_label(front, box, trim, size_name, oval=False):
     h = y1 - y0
     w = x1 - x0
     scale = min(1.0, w / (W_ * 0.68))
-    place(front, text_layer("VELVET", H_ * 0.032 * scale, trim[1], 0.25), (cx, y0 + h * 0.30))
+    place(front, text_layer("EORZEA", H_ * 0.030 * scale, trim[1], 0.25), (cx, y0 + h * 0.30))
     front.alpha_composite(solid(line_mask((W_, H_), lambda d: d.line([(cx - w * 0.24, y0 + h * 0.47), (cx + w * 0.24, y0 + h * 0.47)], fill=255, width=s)), trim[1], 0.7))
-    place(front, text_layer("Dairy", H_ * 0.055 * scale, INK), (cx, y0 + h * 0.64))
+    place(front, text_layer("Milkers", H_ * 0.046 * scale, INK), (cx, y0 + h * 0.64))
     place(front, text_layer(size_name, H_ * 0.017 * scale, trim[1], 0.3), (cx, y0 + h * 0.86))
 
 
@@ -398,7 +398,7 @@ def bottle_layers(tier):
         # Name plate on the neck
         plate = rmask(W_, H_, int(W_ * 0.02), [int(W_ * 0.34), int(H_ * 0.145), int(W_ * 0.66), int(H_ * 0.205)])
         front.alpha_composite(grad_fill(plate, trim[0], trim[1]))
-        place(front, text_layer("VELVET", H_ * 0.024, (255, 255, 255), 0.25), (W_ * 0.5, H_ * 0.176))
+        place(front, text_layer("EORZEA", H_ * 0.022, (255, 255, 255), 0.25), (W_ * 0.5, H_ * 0.176))
         place(front, text_layer(name, H_ * 0.018, (110, 104, 102), 0.3), (W_ * 0.5, H_ * 0.955))
     else:
         glass_front(front, outer, inner, kind)
@@ -619,7 +619,7 @@ def sym_gear(img, s):
 def sym_coin(img, s):
     flat(img, s, lambda d: d.ellipse(B(s, (0.26, 0.26, 0.74, 0.74)), fill=255), HONEY[0])
     stroke(img, s, lambda d: d.ellipse(B(s, (0.31, 0.31, 0.69, 0.69)), outline=255, width=SS * 2), HONEY[1])
-    place(img, text_layer("V", s * 0.24, HONEY[1]), (s * 0.5, s * 0.5))
+    flat(img, s, lambda d: d.polygon(drop_points(s, 0.5, 0.5, 0.2), fill=255), HONEY[1])
 
 
 def sym_bottle(img, s):
@@ -687,6 +687,26 @@ ICONS = {
 
 # ---------------------------------------------------------------- portraits
 
+def drop_points(s, cx, cy, h):
+    """A milk drop: a point on top, round at the bottom, h tall (all as fractions of s), centred on (cx, cy)."""
+    r = h * 0.36
+    bx, by = cx, cy + h / 2 - r          # centre of the round bottom
+    top = (cx * s, (cy - h / 2) * s)
+    pts = [top]
+    for k in range(41):
+        a = math.radians(-35 + 250 * k / 40)   # sweep around the bottom from right to left
+        pts.append(((bx + math.cos(a) * r) * s, (by + math.sin(a) * r) * s))
+    return pts
+
+
+def portrait_drop(img, s, color):
+    """The 'you' portrait's mark: a milk drop with a soft shine."""
+    m = line_mask((s, s), lambda d: d.polygon(drop_points(s, 0.5, 0.5, 0.46), fill=255))
+    img.alpha_composite(solid(m, color))
+    shine = line_mask((s, s), lambda d: d.ellipse([s * 0.42, s * 0.5, s * 0.48, s * 0.62], fill=255))
+    img.alpha_composite(solid(shine.filter(ImageFilter.GaussianBlur(s * 0.006)), (255, 255, 255), 0.55))
+
+
 def portrait(ring, letter, size=256, patches=False):
     s = size * SS
     img = Image.new("RGBA", (s, s), (0, 0, 0, 0))
@@ -710,9 +730,24 @@ def portrait(ring, letter, size=256, patches=False):
     img.alpha_composite(face)
     rule = line_mask((s, s), lambda d: d.ellipse([s * 0.12, s * 0.12, s * 0.88, s * 0.88], outline=255, width=SS * 2))
     img.alpha_composite(solid(rule, ring[1], 0.5))
-    if letter:
+    if letter == "drop":
+        portrait_drop(img, s, ring[1])
+    elif letter:
         place(img, text_layer(letter, s * 0.42, ring[1]), (s / 2, s / 2 + s * 0.01))
     return img.resize((size, size), Image.LANCZOS)
+
+
+def you_portrait(size=256):
+    """Your portrait: the cow girl art (tools/you_face.png) inside the rose seal."""
+    s = 512
+    seal = portrait(ROSE, None, size=s)
+    face = Image.open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "you_face.png")).convert("RGBA").resize((430, 430), Image.LANCZOS)
+    inner = line_mask((s, s), lambda d: d.ellipse([s * 0.07, s * 0.07, s * 0.93, s * 0.93], fill=255))
+    layer = Image.new("RGBA", (s, s), (0, 0, 0, 0))
+    layer.alpha_composite(face, (41, 52))
+    layer.putalpha(ImageChops.multiply(layer.split()[3], inner))
+    seal.alpha_composite(layer)
+    return seal.resize((size, size), Image.LANCZOS)
 
 
 def main():
@@ -737,7 +772,7 @@ def main():
     seal().save(os.path.join(ui, "seal.png"), optimize=True)
     for name, (fn, ring) in ICONS.items():
         medallion(fn, ring).save(os.path.join(icons, f"{name}.png"), optimize=True)
-    portrait(ROSE, "V", patches=True).save(os.path.join(avs, "you.png"), optimize=True)
+    you_portrait().save(os.path.join(avs, "you.png"), optimize=True)
     portrait(BLUE, "F").save(os.path.join(avs, "farmhand.png"), optimize=True)
     portrait(SAGE, "T").save(os.path.join(avs, "test.png"), optimize=True)
     print("done")

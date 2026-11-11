@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace VelvetDairy.Network;
 
-// Shapes of what the Velvet Dairy Network server sends back (see server/src/index.js). JSON is camelCase.
+// Shapes of what the Eorzea Milkers Network server sends back (see server/src/index.js). JSON is camelCase.
 
 public sealed class HeartbeatReply
 {
@@ -270,6 +270,8 @@ public sealed class MemberStatus
     public string HandBy { get; set; } = "";            // the farmer milking her right now, if any
     public bool AnyEmote { get; set; } = true;          // any looping emote milks them (not only their list)
     public string Milking { get; set; } = "";           // a farmer: the cow they pressed Milk on right now
+    public bool Ask { get; set; }                       // a cow who presses Allow before each hand milking
+    public string Refused { get; set; } = "";           // a cow: the farmer they just told "Not now"
 }
 
 public sealed class StallInfo
@@ -281,6 +283,27 @@ public sealed class StallInfo
     public float Z { get; set; }
     public int Tier { get; set; }
     public long CleanUntil { get; set; }   // unix seconds; a farmer cleaned it and it's fresh until then (0 = not fresh)
+}
+
+public sealed class ShelfItem
+{
+    public string Item { get; set; } = "";
+    public string Name { get; set; } = "";
+    public int Qty { get; set; }
+    public int Price { get; set; }
+    public int Min { get; set; }
+    public int Max { get; set; }
+}
+
+public sealed class ShelfReply
+{
+    public List<ShelfItem> Items { get; set; } = new();
+}
+
+public sealed class ShelfBuyReply
+{
+    public int Price { get; set; }
+    public string Baker { get; set; } = "";
 }
 
 public sealed class CleanReply
@@ -308,6 +331,8 @@ public sealed class BuyOrder
     public int MinGrade { get; set; }
     public int Coins { get; set; }
     public long Expires { get; set; }
+    public string DairyName { get; set; } = "";   // board only
+    public bool DairyPublic { get; set; }          // board only: can also be delivered in person for a bonus
 }
 
 public sealed class InboxReply
@@ -343,6 +368,8 @@ public sealed class AcceptReply
 public sealed class FillReply
 {
     public int Coins { get; set; }
+    public int Bonus { get; set; }      // extra for delivering in person
+    public bool InPerson { get; set; }
     public int Oz { get; set; }
     public string Dairy { get; set; } = "";
 }

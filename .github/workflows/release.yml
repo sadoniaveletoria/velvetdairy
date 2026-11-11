@@ -87,6 +87,6 @@ jobs:
         with:
           tag_name: ${{ steps.rel.outputs.tag }}
           target_commitish: ${{ github.sha }}
-          name: Velvet Dairy ${{ steps.rel.outputs.tag }}
+          name: Eorzea Milkers ${{ steps.rel.outputs.tag }}
           files: VelvetDairy/bin/Release/VelvetDairy/latest.zip
           generate_release_notes: true

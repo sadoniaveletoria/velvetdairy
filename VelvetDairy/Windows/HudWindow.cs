@@ -18,9 +18,13 @@ public sealed class HudWindow : Window
     private DairyGame G => plugin.Game;
 
     private static readonly Vector2 HudSize = new(330, 168);
+    private const float ButtonRow = 38f;   // farmers get a row of buttons under the card: Herd Care and Kitchen
+
+    private bool ShowHandMilk => G.IsFarmer;
+    private bool ShowKitchen => G.CanCarry;
 
     public HudWindow(Plugin plugin, Art art, Fonts fonts)
-        : base("Velvet Dairy HUD##VelvetDairyHud",
+        : base("Eorzea Milkers HUD##VelvetDairyHud",
             ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse |
             ImGuiWindowFlags.NoBackground | ImGuiWindowFlags.NoFocusOnAppearing | ImGuiWindowFlags.NoNav | ImGuiWindowFlags.NoCollapse |
             ImGuiWindowFlags.NoDocking)
@@ -40,6 +44,7 @@ public sealed class HudWindow : Window
 
     public override void PreDraw()
     {
+        Size = HudSize + new Vector2(0, ShowHandMilk || ShowKitchen ? ButtonRow : 0);
         if (F.LockHud) Flags |= ImGuiWindowFlags.NoMove;
         else Flags &= ~ImGuiWindowFlags.NoMove;
         ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, Vector2.Zero);
@@ -48,15 +53,24 @@ public sealed class HudWindow : Window
 
     public override void PostDraw() => ImGui.PopStyleVar(2);
 
+    /// <summary>Shortens a line with "..." so it always stays inside the card.</summary>
+    private string Fit(string text, float width)
+    {
+        if (Ui.Measure(fonts.Small, text).X <= width) return text;
+        while (text.Length > 4 && Ui.Measure(fonts.Small, text + "...").X > width) text = text[..^1];
+        return text.TrimEnd(' ', '·') + "...";
+    }
+
     public override void Draw()
     {
-        // Clicking in Velvet Dairy's own windows counts as being awake (mouse movement alone doesn't)
+        // Clicking in Eorzea Milkers's own windows counts as being awake (mouse movement alone doesn't)
         if (ImGui.IsWindowHovered(ImGuiHoveredFlags.ChildWindows) && ImGui.IsMouseClicked(ImGuiMouseButton.Left)) G.Touch();
 
         var dl = ImGui.GetWindowDrawList();
         var o = ImGui.GetWindowPos();
-        var size = ImGui.GetWindowSize();
-        Ui.Card(dl, o, o + size);
+        var whole = ImGui.GetWindowSize();
+        Ui.Card(dl, o, o + whole);
+        var size = HudSize;   // the bottle, needs and status keep their place; buttons go below
 
         var cow = F.Cow;
         var cap = G.Capacity;
@@ -72,8 +86,8 @@ public sealed class HudWindow : Window
         var bh = size.Y - 34;
         var bmin = o + new Vector2(20, 17);
         var flow = G.Active != null ? Ui.Flow.Draining
-            : G.Paused || G.Overfull || G.Spoiled || G.Blocked() != null ? Ui.Flow.Still
-            : Ui.Flow.Filling;
+            : G.MilkComing ? Ui.Flow.Filling
+            : Ui.Flow.Still;
         var bSize = G.BottleSize;
         var bCount = G.BottleCount;
         var full = Math.Min(bCount, (int)(shown / bSize + 0.001f));
@@ -140,17 +154,17 @@ public sealed class HudWindow : Window
         }
         else if (G.Wake == DairyGame.Wakefulness.Asleep)
         {
-            status = "Asleep · no milk until you move";
+            status = "Asleep · move to wake up";
             col = Theme.Warn;
         }
         else if (G.Wake == DairyGame.Wakefulness.Dozing)
         {
-            status = "Dozing · milk at half speed";
+            status = "Dozing · half-speed milk";
             col = Theme.HoneyDeep;
         }
         else if (G.Tired && G.ProducesMilk)
         {
-            status = "Tired · half speed until tomorrow";
+            status = "Tired · half speed today";
             col = Theme.HoneyDeep;
         }
         else if (G.Where.InDairy)
@@ -188,7 +202,7 @@ public sealed class HudWindow : Window
 
         var textRight = o.X + size.X - 20 - (G.Spoiled ? 112 : 0);
         dl.PushClipRect(new Vector2(x, o.Y), new Vector2(textRight, o.Y + size.Y), true);
-        Ui.Text(dl, fonts.Small, status, new Vector2(x, o.Y + size.Y - 46), col);
+        Ui.Text(dl, fonts.Small, Fit(status, textRight - x), new Vector2(x, o.Y + size.Y - 46), col);
         dl.PopClipRect();
 
         // Spoiled milk: the only way forward is to pour it out
@@ -196,6 +210,28 @@ public sealed class HudWindow : Window
             Ui.Button("##huddump", "Dump milk", new Vector2(104, 30), "rose", true,
                 "Your milk spoiled. Pour it all out (no xp or coins).", new Vector2(o.X + size.X - 124, o.Y + size.Y - 54)))
             G.DumpMilk();
+
+        // Farmers: Herd Care and Kitchen, each opening its own window
+        if (ShowHandMilk || ShowKitchen)
+        {
+            var by = o.Y + size.Y - 10;
+            var both = ShowHandMilk && ShowKitchen;
+            var bw2 = both ? (size.X - 50) / 2 : size.X - 40;
+            var bx = o.X + 20;
+            if (ShowHandMilk)
+            {
+                if (Ui.Button("##hudhandmilk", "Herd Care", new Vector2(bw2, 30), "rose", true, "Your dairy's cows and bulls: milk, groom and feed them.", new Vector2(bx, by)))
+                    plugin.Milking.Toggle();
+                bx += bw2 + 10;
+            }
+
+            if (ShowKitchen)
+            {
+                var tip = G.Baking is { } bk ? $"Baking {bk.Recipe.Name} ({F.Bake!.Done + 1} of {F.Bake.Count})." : "Fill your jugs from the dairy tank and bake.";
+                if (Ui.Button("##hudkitchen", G.Baking != null ? "Kitchen (baking)" : "Kitchen", new Vector2(bw2, 30), "honey", true, tip, new Vector2(bx, by)))
+                    plugin.Kitchen.Toggle();
+            }
+        }
 
         // Double-click or right-click the card to open the main window (dragging it still moves it)
         if (ImGui.IsWindowHovered() && !ImGui.IsAnyItemHovered())

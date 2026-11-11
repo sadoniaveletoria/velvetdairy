@@ -9,7 +9,7 @@ namespace VelvetDairy.Windows;
 /// <summary>
 /// First-run walkthrough: what the game is, picking a path, and for owners, setting up a dairy step by step
 /// (play role, name and listing, marking out the area, the first stall, inviting people).
-/// Shows once after the 18+ check; "/vdairy tutorial" runs it again.
+/// Shows once after the 18+ check; "/milkers tutorial" runs it again.
 /// </summary>
 public sealed class TutorialWindow : Window
 {
@@ -31,7 +31,7 @@ public sealed class TutorialWindow : Window
         "Bull: a role only for now (more is coming).",
     };
 
-    public TutorialWindow(Plugin plugin, Fonts fonts) : base("Welcome to Velvet Dairy##VelvetDairyTutorial", ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.AlwaysAutoResize)
+    public TutorialWindow(Plugin plugin, Fonts fonts) : base("Welcome to Eorzea Milkers##VelvetDairyTutorial", ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.AlwaysAutoResize)
     {
         this.plugin = plugin;
         this.fonts = fonts;
@@ -52,7 +52,7 @@ public sealed class TutorialWindow : Window
 
     public override void OnClose()
     {
-        // Closing it any time counts as seen; "/vdairy tutorial" brings it back
+        // Closing it any time counts as seen; "/milkers tutorial" brings it back
         if (!F.TutorialDone)
         {
             F.TutorialDone = true;
@@ -94,7 +94,7 @@ public sealed class TutorialWindow : Window
         switch (step)
         {
             case Step.Welcome:
-                Title("Welcome to Velvet Dairy");
+                Title("Welcome to Eorzea Milkers");
                 Para("A dairy life game for adults. You play a cow, a farmer, a bull or the owner of your own dairy, alone or with friends.");
                 Soft("Work in progress: expect changes and new things in updates. Nothing is ever said in public chat, and nothing moves your character for you.");
                 if (Next()) step = Step.Loop;
@@ -177,7 +177,7 @@ public sealed class TutorialWindow : Window
 
             case Step.OwnerInvite:
                 Title("Step 5: invite people");
-                Para("Right-click a player > Velvet Dairy > Invite as a cow, bull or farmer. Or target them and use the invite buttons on Dairy > Overview.");
+                Para("Right-click a player > Eorzea Milkers > Invite as a cow, bull or farmer. Or target them and use the invite buttons on Dairy > Overview.");
                 Para("Farmers can invite cows and bulls too. Manage members opens a list where you can change roles or remove people.");
                 Soft("Every week your dairy gets a creamery contract (Dairy > Contract). Fill it together for dairy XP and fund coins.");
                 if (Next()) step = Step.Done;
@@ -186,7 +186,7 @@ public sealed class TutorialWindow : Window
             case Step.Done:
                 Title("You're all set!");
                 Para("The full guide explains everything in more detail: roles, care, pay, levels, your dairy, deliveries and contracts.");
-                Soft("Open it any time with the ? in the main window or /vdairy guide. /vdairy tutorial runs this walkthrough again.");
+                Soft("Open it any time with the ? in the main window or /milkers guide. /milkers tutorial runs this walkthrough again.");
                 if (ImGui.Button("Open the guide##tutguide", new Vector2(160, 30))) plugin.Guide.Open();
                 ImGui.SameLine();
                 if (Next("Start playing"))

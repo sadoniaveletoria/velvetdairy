@@ -2,7 +2,7 @@ name: Testing build
 
 # Pushing to the `testing` branch builds the plugin and puts it on the rolling "testing" pre-release (latest.zip), then
 # sets TestingAssemblyVersion in repo.json on main. Only people who turned on Dalamud's plugin testing builds (and
-# chose to receive testing versions of Velvet Dairy) get it; everyone else stays on the normal release.
+# chose to receive testing versions of Eorzea Milkers) get it; everyone else stays on the normal release.
 # To ship a tested build to everyone: merge `testing` into main with the same <Version> (release.yml publishes it).
 on:
   push:
@@ -69,12 +69,16 @@ jobs:
           $repo = "${{ github.repository }}"
           gh release view testing --repo $repo *> $null
           if ($LASTEXITCODE -ne 0) {
-            gh release create testing --repo $repo --prerelease --target "${{ github.sha }}" --title "Velvet Dairy testing $version" --notes "Testing builds for opted-in testers. Not the normal release."
+            gh release create testing --repo $repo --prerelease --target "${{ github.sha }}" --title "Eorzea Milkers testing $version" --notes "Testing builds for opted-in testers. Not the normal release."
           }
           $global:LASTEXITCODE = 0
           gh release upload testing VelvetDairy/bin/Release/VelvetDairy/latest.zip --clobber --repo $repo
-          gh release edit testing --repo $repo --prerelease --title "Velvet Dairy testing $version"
-          "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          gh release edit testing --repo $repo --prerelease --title "Eorzea Milkers testing $version"
+          # Updates are numbered with three parts (0.9.11), but the built plugin always says four (0.9.11.0), and Dalamud
+          # only installs it when repo.json says exactly what the plugin says
+          $v = [version]$version
+          $full = "{0}.{1}.{2}.{3}" -f $v.Major, $v.Minor, [Math]::Max($v.Build, 0), [Math]::Max($v.Revision, 0)
+          "version=$full" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
   list:
     needs: build

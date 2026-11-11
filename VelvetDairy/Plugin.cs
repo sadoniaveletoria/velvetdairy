@@ -25,7 +25,7 @@ public sealed class Plugin : IDalamudPlugin
     [PluginService] internal static IPluginLog Log { get; private set; } = null!;
     [PluginService] internal static IGameGui GameGui { get; private set; } = null!;
 
-    private const string Command = "/vdairy";
+    private const string Command = "/milkers";
 
     public Configuration Config { get; }
     public DairyGame Game { get; }
@@ -36,6 +36,11 @@ public sealed class Plugin : IDalamudPlugin
     public OwnerHudWindow OwnerHud { get; }
     public MembersWindow Members { get; }
     public GuideWindow Guide { get; }
+    public MilkAnimationWindow MilkAnimation { get; }
+    public KitchenWindow Kitchen { get; }
+    public ChangelogWindow Changes { get; }
+    public MilkingWindow Milking { get; }
+    public MilkAskWindow MilkAskPopup { get; }
     public TutorialWindow Tutorial { get; }
 
     /// <summary>This build's version, sent to the network so old versions can be told to update.</summary>
@@ -56,7 +61,7 @@ public sealed class Plugin : IDalamudPlugin
         }
         catch (Exception e)
         {
-            Log.Warning(e, "Velvet Dairy: couldn't read the old save, starting fresh.");
+            Log.Warning(e, "Eorzea Milkers: couldn't read the old save, starting fresh.");
         }
 
         Config = cfg ?? new Configuration();
@@ -83,6 +88,16 @@ public sealed class Plugin : IDalamudPlugin
         windowSystem.AddWindow(Members);
         Guide = new GuideWindow(this, fonts);
         windowSystem.AddWindow(Guide);
+        MilkAnimation = new MilkAnimationWindow(this);
+        windowSystem.AddWindow(MilkAnimation);
+        Kitchen = new KitchenWindow(this);
+        windowSystem.AddWindow(Kitchen);
+        Milking = new MilkingWindow(this);
+        MilkAskPopup = new MilkAskWindow(this);
+        windowSystem.AddWindow(MilkAskPopup);
+        windowSystem.AddWindow(Milking);
+        Changes = new ChangelogWindow(this, fonts);
+        windowSystem.AddWindow(Changes);
         Tutorial = new TutorialWindow(this, fonts);
         windowSystem.AddWindow(Tutorial);
         contextMenu = new ContextMenuHandler(this);
@@ -90,10 +105,10 @@ public sealed class Plugin : IDalamudPlugin
         switch (integrity)
         {
             case Integrity.Result.Restored:
-                ChatGui.Print("Your save was changed outside the game, so it was put back to your last saved progress.", "Velvet Dairy");
+                ChatGui.Print("Your save was changed outside the game, so it was put back to your last saved progress.", "Eorzea Milkers");
                 break;
             case Integrity.Result.Reset:
-                ChatGui.Print("Your save was changed outside the game and no good backup was found, so your progress started over. Your dairy, stalls and farmhands were kept.", "Velvet Dairy");
+                ChatGui.Print("Your save was changed outside the game and no good backup was found, so your progress started over. Your dairy, stalls and farmhands were kept.", "Eorzea Milkers");
                 break;
         }
 
@@ -101,7 +116,7 @@ public sealed class Plugin : IDalamudPlugin
 
         CommandManager.AddHandler(Command, new CommandInfo(OnCommand)
         {
-            HelpMessage = "Open Velvet Dairy. \"/vdairy hud\" shows or hides the HUD, \"/vdairy guide\" opens How to play, \"/vdairy tutorial\" runs the walkthrough.",
+            HelpMessage = "Open Eorzea Milkers. \"/milkers hud\" shows or hides the HUD, \"/milkers guide\" opens How to play, \"/milkers tutorial\" runs the walkthrough, \"/milkers changes\" shows what's new.",
         });
 
         PluginInterface.UiBuilder.Draw += windowSystem.Draw;
@@ -121,6 +136,7 @@ public sealed class Plugin : IDalamudPlugin
         Sounds.Update();
         Net.Update();
         Tutorial.CheckFirstRun();
+        if (!Tutorial.IsOpen) Changes.CheckAfterUpdate();
 
         // Needs and milk change every second; write them out now and then
         saveTimer += dt;
@@ -158,7 +174,7 @@ public sealed class Plugin : IDalamudPlugin
     }
 
     // ----- Developer mode -----
-    // On automatically when loaded from Dev Plugin Locations. On a live install, "/vdairy dev <phrase>" turns it on.
+    // On automatically when loaded from Dev Plugin Locations. On a live install, "/milkers dev <phrase>" turns it on.
     // Only the SHA-256 of the phrase is in the code, so reading the source or the settings file doesn't reveal it.
     // To change the phrase: PowerShell
     //   $p="your-new-phrase"; [BitConverter]::ToString([Security.Cryptography.SHA256]::Create().ComputeHash([Text.Encoding]::UTF8.GetBytes($p))).Replace("-","")
@@ -180,6 +196,8 @@ public sealed class Plugin : IDalamudPlugin
             Guide.Open();
         else if (a.Equals("tutorial", StringComparison.OrdinalIgnoreCase))
             Tutorial.Start();
+        else if (a.Equals("changes", StringComparison.OrdinalIgnoreCase) || a.Equals("new", StringComparison.OrdinalIgnoreCase))
+            Changes.OpenAll();
         else if (a.Equals("hud", StringComparison.OrdinalIgnoreCase))
         {
             Config.Farm.ShowHud = !Config.Farm.ShowHud;
@@ -193,14 +211,14 @@ public sealed class Plugin : IDalamudPlugin
                 Config.Farm.DevKey = "";
                 devCache = null;
                 SaveConfig();
-                ChatGui.Print(PluginInterface.IsDev ? "Developer key cleared (still on because this is a dev build)." : "Developer mode off.", "Velvet Dairy");
+                ChatGui.Print(PluginInterface.IsDev ? "Developer key cleared (still on because this is a dev build)." : "Developer mode off.", "Eorzea Milkers");
             }
             else if (KeyOk(phrase))
             {
                 Config.Farm.DevKey = phrase;
                 devCache = null;
                 SaveConfig();
-                ChatGui.Print("Developer mode on. See Settings → Developer.", "Velvet Dairy");
+                ChatGui.Print("Developer mode on. See Settings → Developer.", "Eorzea Milkers");
             }
             else
             {
@@ -218,6 +236,10 @@ public sealed class Plugin : IDalamudPlugin
     private void DrawOverlay()
     {
         if (Game.Draft is { } d && ClientState.TerritoryType == d.Territory) Windows.AreaOverlay.Draw(d);
+        if (Config.Farm.ShowStallMarkers && Game.Where.InDairy && Game.Blocked() == null)
+            // While you're in the dairy with markers on, fetch everyone's stall states every 10 seconds
+            if (Game.Networked) Game.Net.MineWithin(10);
+            foreach (var s in Game.StallsHere()) Windows.AreaOverlay.DrawStall(s);
     }
 
     private IChatGui.OnHandleableChatMessageDelegate? chatHandler;

@@ -1,4 +1,4 @@
-// Local tests for the Velvet Dairy Network worker, using Node's built-in SQLite as a stand-in for D1.
+// Local tests for the Eorzea Milkers Network worker, using Node's built-in SQLite as a stand-in for D1.
 //   node --no-warnings server/test/run.mjs
 import { DatabaseSync } from "node:sqlite";
 import { readFileSync } from "node:fs";
@@ -193,11 +193,11 @@ await test("dairy XP: only in the dairy, capped per member per day", async () =>
   assert.equal((await beat(bob, { houseId: ELSEWHERE, pumped: [10], awake: true })).data.pumped, 0, "away");
   assert.equal((await beat(bob, { houseId: HOUSE, pumped: [10], awake: false })).data.pumped, 0, "asleep");
   const tank = (await call(alice, "GET", "/v1/dairy/mine")).data.progress.tank;
-  assert.deepEqual(tank.byGrade, [10, 0, 2.5, 0, 0]);
+  assert.deepEqual(tank.byGrade, [12.5, 0, 0, 0, 0], "plain milk: grades don't matter any more");
   assert.equal(tank.total, 12.5);
   assert.equal(tank.pumpers[0].oz, 12.5);
   // Farmers and owners fill jugs from the tank; others can't
-  assert.equal((await call(bob, "POST", "/v1/dairy/tank/take", { grade: 0, oz: 4 })).data.left, 6);
+  assert.equal((await call(bob, "POST", "/v1/dairy/tank/take", { grade: 0, oz: 4 })).data.left, 8.5);
   assert.equal((await call(bob, "POST", "/v1/dairy/tank/take", { grade: 0, oz: 50 })).status, 400, "not that much");
   assert.equal((await call(carl, "POST", "/v1/dairy/tank/take", { grade: 0, oz: 1 })).status, 403, "bulls can't");
   // A cow's hand milking pays the farmer a share
@@ -237,7 +237,7 @@ await test("dairy XP: only in the dairy, capped per member per day", async () =>
   c = (await call(alice, "GET", "/v1/dairy/mine")).data.progress;
   assert.equal(c.contract.completed, true);
   assert.equal(c.fund, fundBefore + 800);
-  assert.equal(c.tank.byGrade[1], 40);
+  assert.equal(c.tank.byGrade[0], 48.5, "all one milk: the 8.5 left plus 240 pumped less 200 taken");
   assert.equal((await call(bob, "POST", "/v1/carry/use", { oz: 1 })).data.carried, 3);
   sqlite.exec("DELETE FROM settings");
   await beat(bob);
@@ -287,6 +287,43 @@ await test("private place: members count as in the dairy there, nobody else sees
   await beat(bob, { houseId: ELSEWHERE, awake: true });
 });
 
+await test("dairy shelf: farmers stock it, members buy, baker and fund are paid, owner sets the price", async () => {
+  await beat(bob, { houseId: HOUSE, awake: true });
+  await beat(carl, { houseId: HOUSE, awake: true });
+  assert.equal((await call(carl, "POST", "/v1/shelf/stock", { item: "cookies", qty: 3 })).status, 403, "bulls don't bake");
+  assert.equal((await call(bob, "POST", "/v1/shelf/stock", { item: "rocks", qty: 3 })).status, 400, "only shelf items");
+  assert.equal((await call(bob, "POST", "/v1/shelf/stock", { item: "cookies", qty: 3 })).status, 200);
+  let v = (await call(carl, "GET", "/v1/shelf")).data.items.find(i => i.item === "cookies");
+  assert.equal(v.qty, 3);
+  assert.equal(v.price, 40, "default price");
+  assert.equal((await call(bob, "PUT", "/v1/shelf/price", { item: "cookies", price: 50 })).status, 403, "only the owner prices");
+  assert.equal((await call(alice, "PUT", "/v1/shelf/price", { item: "cookies", price: 999 })).status, 400, "within range");
+  assert.equal((await call(alice, "PUT", "/v1/shelf/price", { item: "cookies", price: 50 })).status, 200);
+  const before = (await call(alice, "GET", "/v1/dairy/mine")).data.progress.fund;
+  await call(bob, "POST", "/v1/inbox/claim");
+  const r = await call(carl, "POST", "/v1/shelf/buy", { item: "cookies" });
+  assert.equal(r.status, 200);
+  assert.equal(r.data.price, 50);
+  assert.equal(r.data.bakerCut, 40);
+  assert.equal((await call(alice, "GET", "/v1/dairy/mine")).data.progress.fund, before + 10, "fund gets 20%");
+  assert.ok((await call(bob, "POST", "/v1/inbox/claim")).data.items.some(i => i.kind === "payout" && i.coins === 40), "the baker is paid");
+  assert.equal((await call(carl, "GET", "/v1/shelf")).data.items.find(i => i.item === "cookies").qty, 2);
+  // Farmers feed cows and bulls from the shelf for free, but never themselves
+  await call(carl, "POST", "/v1/inbox/claim");
+  assert.equal((await call(bob, "POST", "/v1/shelf/feed", { item: "cookies", to: bob.id })).status, 400, "not yourself");
+  assert.equal((await call(carl, "POST", "/v1/shelf/feed", { item: "cookies", to: alice.id })).status, 403, "only farmers");
+  const coinsBefore = (await call(bob, "POST", "/v1/inbox/claim")).data.items.length;
+  assert.equal((await call(bob, "POST", "/v1/shelf/feed", { item: "cookies", to: carl.id })).status, 200);
+  const fed = (await call(carl, "POST", "/v1/inbox/claim")).data.items.find(i => i.kind === "fed");
+  assert.ok(fed && fed.grade === 0, "the bull gets the cookie");
+  assert.equal((await call(bob, "POST", "/v1/inbox/claim")).data.items.length, coinsBefore, "nobody is paid for it");
+  assert.equal((await call(carl, "GET", "/v1/shelf")).data.items.find(i => i.item === "cookies").qty, 1);
+  assert.equal((await call(bob, "POST", "/v1/shelf/feed", { item: "cookies", to: carl.id })).status, 400, "once every 15 minutes each");
+  await beat(carl, { houseId: ELSEWHERE, awake: true });
+  assert.equal((await call(carl, "POST", "/v1/shelf/buy", { item: "cookies" })).status, 400, "only in the dairy");
+  await beat(bob, { houseId: ELSEWHERE, awake: true });
+});
+
 await test("farmer removes a bull; can't remove the owner", async () => {
   assert.equal((await call(bob, "DELETE", `/v1/members/${alice.id}`)).status, 400);
   assert.equal((await call(bob, "DELETE", `/v1/members/${carl.id}`)).status, 200);
@@ -330,11 +367,15 @@ await test("buy orders: owner only, price limits", async () => {
   assert.equal(r.status, 200);
   orderId = r.data.id;
   assert.equal((await call(dana, "GET", `/v1/dairies/${dairy}/orders`)).data.orders.length, 1);
+  const board = (await call(dana, "GET", "/v1/orders/board")).data.orders;
+  assert.equal(board.length, 1, "other dairies' orders are on the board");
+  assert.equal(board[0].dairyName.length > 0, true);
+  assert.equal((await call(alice, "GET", "/v1/orders/board")).data.orders.length, 0, "not your own dairy's");
 });
 
-await test("delivery must be in person and meet the grade", async () => {
+await test("delivery: from your own dairy or in person, and meet the grade", async () => {
   assert.equal((await call(dana, "POST", `/v1/orders/${orderId}/fill`, { grade: 2, houseId: ELSEWHERE })).status, 400);
-  assert.equal((await call(dana, "POST", `/v1/orders/${orderId}/fill`, { grade: 0, houseId: HOUSE })).status, 400);
+  assert.equal((await call(dana, "POST", `/v1/orders/${orderId}/fill`, { grade: 0, houseId: ELSEWHERE })).status, 400, "not from just anywhere");
   assert.equal((await call(alice, "POST", `/v1/orders/${orderId}/fill`, { grade: 2, houseId: HOUSE })).status, 400, "own order");
 });
 
@@ -345,19 +386,27 @@ await test("delivery pays the seller and gives the owner the milk, once", async 
   assert.equal((await call(carl, "POST", `/v1/orders/${orderId}/fill`, { grade: 2, houseId: HOUSE })).status, 409);
   const d = (await call(dana, "POST", "/v1/inbox/claim")).data.items;
   assert.equal(d[0].kind, "payout");
-  assert.equal(d[0].coins, 200);
+  assert.equal(d[0].coins, 220, "in person pays 10% more");
   assert.equal((await call(dana, "POST", "/v1/inbox/claim")).data.items.length, 0);
   const a = (await call(alice, "POST", "/v1/inbox/claim")).data.items;
   assert.ok(a.some(i => i.kind === "notice"), "owner is told");
   const tank = (await call(alice, "GET", "/v1/dairy/mine")).data.progress.tank;
-  assert.ok(tank.byGrade[2] >= 16, "the milk went into the buying dairy's tank");
+  assert.ok(tank.byGrade[0] >= 16, "the milk went into the buying dairy's tank");
 });
 
-await test("going private cancels and refunds open orders", async () => {
-  await call(alice, "POST", "/v1/orders", { oz: 8, minGrade: 0, coins: 40 });
+await test("private dairies keep their orders; farmers deliver from their own dairy (no bonus)", async () => {
+  const o = (await call(alice, "POST", "/v1/orders", { oz: 8, minGrade: 0, coins: 40 })).data.id;
   await call(alice, "PUT", "/v1/dairy", dairyBody({ isPublic: false }));
-  const items = (await call(alice, "POST", "/v1/inbox/claim")).data.items;
-  assert.equal(items.filter(i => i.kind === "refund")[0].coins, 40);
+  assert.equal((await call(alice, "POST", "/v1/inbox/claim")).data.items.filter(i => i.kind === "refund").length, 0, "nothing refunded");
+  assert.ok((await call(erin, "GET", "/v1/orders/board")).data.orders.some(x => x.id === o && !x.dairyPublic), "on the board, marked private");
+  sqlite.exec(`INSERT INTO carried (install, oz) VALUES ('${erin.id}', 8) ON CONFLICT(install) DO UPDATE SET oz = 8`);
+  await beat(erin, { houseId: ELSEWHERE, awake: true });
+  assert.equal((await call(erin, "POST", `/v1/orders/${o}/fill`, { grade: 1, houseId: ELSEWHERE })).status, 400, "not from just anywhere");
+  await beat(erin, { houseId: HOUSE2, awake: true });
+  const r = await call(erin, "POST", `/v1/orders/${o}/fill`, { grade: 1, houseId: HOUSE2 });
+  assert.equal(r.status, 200, "from inside Erin's own dairy");
+  assert.equal(r.data.inPerson, false);
+  assert.equal(r.data.coins, 40, "no in-person bonus");
 });
 
 await test("closing a dairy removes members and tells them", async () => {

@@ -53,7 +53,7 @@ public static class Lifestream
         }
         catch (Exception e)
         {
-            Plugin.Log.Warning(e, "Velvet Dairy couldn't ask Lifestream to travel");
+            Plugin.Log.Warning(e, "Eorzea Milkers couldn't ask Lifestream to travel");
             return "Lifestream couldn't start the trip (it may need an update).";
         }
     }

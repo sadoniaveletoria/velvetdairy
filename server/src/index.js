@@ -1,4 +1,4 @@
-// Velvet Dairy Network: online count, dairy directory, roles and invites, shared stalls, buy orders and deliveries.
+// Eorzea Milkers Network: online count, dairy directory, roles and invites, shared stalls, buy orders and deliveries.
 // Runs as a Cloudflare Worker with a D1 database (schema.sql). Every plugin install talks to it over HTTPS.
 //
 // Auth: each install makes a random id and secret key the first time. Requests send both
@@ -44,9 +44,15 @@ const FARMER_CUT = 0.25;            // a farmer gets this share of what the cow 
 const FARMER_DAILY_COINS = 4500;
 const COW_DAILY_HAND_OZ = 800;
 const MAX_TAKE_OZ = 96;
+const IN_PERSON_BONUS = 0.1;
+// Baked treats members buy off their dairy's shelf: item -> default price and the owner's allowed range (coins each)
+const SHELF_ITEMS = { cookies: { name: "Butter cookies", price: 40, min: 10, max: 150 } };
+const SHELF_BAKER_SHARE = 0.8;      // the rest goes to the dairy fund
+const SHELF_MAX_STOCK = 200;        // per item per dairy      // delivering a buy order in person at the buyer's public area pays 10% more
 const CLEAN_SECONDS = 3600;         // a cleaned stall stays fresh this long
 const CLEAN_AGAIN_SECONDS = 1800;   // and can be cleaned again once this much (or less) is left
 const GROOM_COOLDOWN = 900;         // one groom per farmer per cow every 15 minutes
+const FEED_COOLDOWN = 900;          // a farmer can feed each cow or bull from the shelf once every 15 minutes
 // Developer (same phrase hash as the plugin's dev mode)
 const DEV_KEY_HASH = "7d4e0a8c4a26de8d2843e2a563f667d74beda3b81ffa447c22bd40d93b5af76f";
 // Weekly contracts
@@ -235,8 +241,14 @@ async function route(request, env) {
     ["POST", /^\/v1\/stalls\/([0-9a-f]{24})\/tier$/, m => upgradeStall(env, me, m[1], request)],
     ["POST", /^\/v1\/stalls\/([0-9a-f]{24})\/clean$/, m => cleanStall(env, me, m[1])],
     ["POST", /^\/v1\/groom$/, () => groom(env, me, request)],
+    ["GET", /^\/v1\/shelf$/, () => shelfView(env, me)],
+    ["POST", /^\/v1\/shelf\/stock$/, () => shelfStock(env, me, request)],
+    ["POST", /^\/v1\/shelf\/buy$/, () => shelfBuy(env, me, request)],
+    ["POST", /^\/v1\/shelf\/feed$/, () => shelfFeed(env, me, request)],
+    ["PUT", /^\/v1\/shelf\/price$/, () => shelfPrice(env, me, request)],
     ["PUT", /^\/v1\/dairy\/private$/, () => putPrivate(env, me, request)],
     ["DELETE", /^\/v1\/dairy\/private$/, () => deletePrivate(env, me)],
+    ["GET", /^\/v1\/orders\/board$/, () => orderBoard(env, me)],
     ["GET", /^\/v1\/orders\/mine$/, () => myOrders(env, me)],
     ["POST", /^\/v1\/orders$/, () => postOrder(env, me, request)],
     ["GET", /^\/v1\/dairies\/([0-9a-f]{24})\/orders$/, m => dairyOrders(env, me, m[1])],
@@ -418,7 +430,12 @@ async function heartbeat(env, me, request) {
       emotes: Array.isArray(st.emotes) ? st.emotes.slice(0, 8).map(e => clean(e, 24)).filter(Boolean) : [],
       handBy: clean(st.handBy, 40),
       milking: clean(st.milking, 40),   // a farmer: the cow they pressed Milk on (hand milking only counts then)
+      // A cow on a stall, so everyone's stall highlight shows it: which stall, awake/dozing/asleep, and the milking drain
+      stall: clean(st.stall, 40), wake: Math.max(0, Math.min(2, Math.floor(num(st.wake)))),
+      drainLeft: Math.max(0, Math.min(1, num(st.drainLeft))), drainRate: Math.max(0, Math.min(1, num(st.drainRate))), drainAt: Math.floor(num(st.drainAt)),
       anyEmote: st.anyEmote === undefined ? true : !!st.anyEmote,   // older plugins don't say; any looping emote is their default
+      ask: !!st.ask,                     // a cow who wants to Allow each hand milking first (a pop-up)
+      refused: clean(st.refused, 40),    // a cow: the farmer they just told "Not now"
     });
     if (status !== mem.status) await env.DB.prepare("UPDATE members SET status = ? WHERE install = ?").bind(status, me.id).run();
   }
@@ -452,13 +469,13 @@ async function heartbeat(env, me, request) {
     const room = Math.max(0, Math.min(PUMP_PER_BEAT, MEMBER_DAILY_PUMP - used));
     const scale = asking > room ? room / asking : 1;
     const stmts = [];
-    pump.forEach((oz, grade) => {
-      const add = Math.round(oz * scale * 100) / 100;
-      if (add <= 0) return;
-      pumped += add;
-      stmts.push(env.DB.prepare(`INSERT INTO dairy_tank (dairy_id, grade, oz) VALUES (?, ?, ?)
-        ON CONFLICT(dairy_id, grade) DO UPDATE SET oz = oz + excluded.oz`).bind(mem.dairy_id, grade, add));
-    });
+    // Milk isn't graded any more (cows are): it all goes into the tank as plain ounces (kept in the grade 0 row)
+    const add = Math.round(asking * scale * 100) / 100;
+    if (add > 0) {
+      pumped = add;
+      stmts.push(env.DB.prepare(`INSERT INTO dairy_tank (dairy_id, grade, oz) VALUES (?, 0, ?)
+        ON CONFLICT(dairy_id, grade) DO UPDATE SET oz = oz + excluded.oz`).bind(mem.dairy_id, add));
+    }
     if (pumped > 0) {
       stmts.push(env.DB.prepare(`INSERT INTO member_pump (install, day, oz) VALUES (?, ?, ?)
         ON CONFLICT(install, day) DO UPDATE SET oz = oz + excluded.oz`).bind(me.id, day, pumped));
@@ -594,8 +611,10 @@ async function progressOut(env, dairyId, stallCount) {
 /** The dairy's milk tank by grade, and its top pumpers. */
 async function tankOf(env, dairyId) {
   const rows = (await env.DB.prepare("SELECT grade, oz FROM dairy_tank WHERE dairy_id = ?").bind(dairyId).all()).results;
+  // Milk isn't graded any more: everything shows as plain ounces (in the first slot, for older plugins)
   const byGrade = [0, 0, 0, 0, 0];
-  for (const r of rows) if (r.grade >= 0 && r.grade < 5) byGrade[r.grade] = Math.round(r.oz * 10) / 10;
+  for (const r of rows) byGrade[0] += r.oz;
+  byGrade[0] = Math.round(byGrade[0] * 10) / 10;
   const top = (await env.DB.prepare("SELECT name, oz FROM tank_contrib WHERE dairy_id = ? ORDER BY oz DESC LIMIT 10").bind(dairyId).all()).results;
   return {
     byGrade,
@@ -680,8 +699,7 @@ async function putDairy(env, me, request) {
       .bind(me.id, id, role, clean(b.ownerName, 40), clean(b.worldName, 30), t).run();
   }
 
-  // Going private closes the shop: open buy orders are cancelled and refunded
-  if (!b.isPublic) await refundOpenOrders(env, me.id, "Your dairy went private, so this buy order was cancelled.");
+  // Private dairies keep their buy orders: farmers deliver to them from their own dairies
   return { id };
 }
 
@@ -722,6 +740,8 @@ async function deleteDairy(env, me) {
     env.DB.prepare("DELETE FROM contracts WHERE dairy_id = ?").bind(d.id),
     env.DB.prepare("DELETE FROM dairy_area WHERE dairy_id = ?").bind(d.id),
     env.DB.prepare("DELETE FROM dairy_private WHERE dairy_id = ?").bind(d.id),
+    env.DB.prepare("DELETE FROM shelf WHERE dairy_id = ?").bind(d.id),
+    env.DB.prepare("DELETE FROM shelf_price WHERE dairy_id = ?").bind(d.id),
     env.DB.prepare("DELETE FROM contract_contrib WHERE dairy_id = ?").bind(d.id),
     env.DB.prepare("UPDATE invites SET status = 'cancelled' WHERE dairy_id = ? AND status = 'pending'").bind(d.id),
     env.DB.prepare("DELETE FROM dairies WHERE id = ?").bind(d.id),
@@ -967,6 +987,119 @@ async function groom(env, me, request) {
   return { ok: true, next: t + GROOM_COOLDOWN };
 }
 
+// ---------------------------------------------------------------- the dairy shelf
+
+async function shelfPriceOf(env, dairyId, item) {
+  const row = await env.DB.prepare("SELECT price FROM shelf_price WHERE dairy_id = ? AND item = ?").bind(dairyId, item).first();
+  return row ? row.price : SHELF_ITEMS[item].price;
+}
+
+function shelfItem(b) {
+  const item = String(b.item || "");
+  if (!SHELF_ITEMS[item]) fail(400, "That can't go on the shelf.");
+  return item;
+}
+
+/** What's on your dairy's shelf: each item, how many, and its price. */
+async function shelfView(env, me) {
+  const mem = await membership(env, me.id);
+  if (!mem) return { items: [] };
+  const rows = (await env.DB.prepare("SELECT item, SUM(qty) AS qty FROM shelf WHERE dairy_id = ? GROUP BY item").bind(mem.dairy_id).all()).results;
+  const items = [];
+  for (const [item, def] of Object.entries(SHELF_ITEMS)) {
+    const r = rows.find(x => x.item === item);
+    items.push({ item, name: def.name, qty: r ? r.qty : 0, price: await shelfPriceOf(env, mem.dairy_id, item), min: def.min, max: def.max });
+  }
+  return { items };
+}
+
+/** A farmer (or the owner) puts what they baked on the shelf. */
+async function shelfStock(env, me, request) {
+  const b = await body(request);
+  const item = shelfItem(b);
+  const qty = int(b.qty, 1, 50, "qty");
+  const mem = await membership(env, me.id);
+  if (!mem || !(mem.is_owner || hasRole(mem, "farmer"))) fail(403, "Only farmers and the owner stock the shelf.");
+  const have = await env.DB.prepare("SELECT COALESCE(SUM(qty), 0) AS n FROM shelf WHERE dairy_id = ? AND item = ?").bind(mem.dairy_id, item).first();
+  if (have.n + qty > SHELF_MAX_STOCK) fail(400, `The shelf holds up to ${SHELF_MAX_STOCK} ${SHELF_ITEMS[item].name.toLowerCase()}.`);
+  await env.DB.prepare("INSERT INTO shelf (dairy_id, item, baker, baker_name, qty, created) VALUES (?, ?, ?, ?, ?, ?)")
+    .bind(mem.dairy_id, item, me.id, mem.name || "", qty, now()).run();
+  return { ok: true, qty: have.n + qty };
+}
+
+/** A member buys one off the shelf: the baker gets their share (inbox), the fund gets the rest. Coins come from the buyer's plugin. */
+async function shelfBuy(env, me, request) {
+  const b = await body(request);
+  const item = shelfItem(b);
+  const mem = await membership(env, me.id);
+  if (!mem) fail(400, "Join a dairy first.");
+  if (!inOwnDairy(me, mem)) fail(400, "Go to your dairy to buy from its shelf.");
+  const price = await shelfPriceOf(env, mem.dairy_id, item);
+  // Oldest batch first; only one buyer can take each one
+  for (let tries = 0; tries < 3; tries++) {
+    const row = await env.DB.prepare("SELECT * FROM shelf WHERE dairy_id = ? AND item = ? AND qty > 0 ORDER BY created, id LIMIT 1")
+      .bind(mem.dairy_id, item).first();
+    if (!row) fail(409, `The shelf is out of ${SHELF_ITEMS[item].name.toLowerCase()}.`);
+    const took = await env.DB.prepare("UPDATE shelf SET qty = qty - 1 WHERE id = ? AND qty > 0 RETURNING qty").bind(row.id).first();
+    if (!took) continue;
+    const bakerCut = row.baker === me.id ? 0 : Math.floor(price * SHELF_BAKER_SHARE);
+    const fundCut = price - bakerCut;
+    const stmts = [
+      env.DB.prepare("DELETE FROM shelf WHERE id = ? AND qty <= 0").bind(row.id),
+      env.DB.prepare(`INSERT INTO dairy_progress (dairy_id, fund, week) VALUES (?, ?, ?)
+        ON CONFLICT(dairy_id) DO UPDATE SET fund = fund + excluded.fund`).bind(mem.dairy_id, fundCut, weekKey()),
+    ];
+    if (bakerCut > 0) stmts.push(inboxStmt(env, row.baker, "payout", bakerCut, 0, 0, `${mem.name || "Someone"} bought your ${SHELF_ITEMS[item].name.toLowerCase()}: +${bakerCut} coins.`));
+    await env.DB.batch(stmts);
+    return { ok: true, price, baker: row.baker_name, bakerCut, fundCut };
+  }
+  fail(409, "Someone else just bought that. Try again.");
+}
+
+/** A farmer feeds something from the shelf to a cow or bull of the dairy: free, but never to themselves. */
+async function shelfFeed(env, me, request) {
+  const b = await body(request);
+  const item = shelfItem(b);
+  const mem = await membership(env, me.id);
+  if (!mem || !hasRole(mem, "farmer")) fail(403, "Only farmers feed from the shelf.");
+  if (!inOwnDairy(me, mem)) fail(400, "Go to your dairy to feed from its shelf.");
+  const toId = String(b.to || "");
+  if (toId === me.id) fail(400, "You can't feed yourself for free. Buy it from the shelf instead.");
+  const to = await env.DB.prepare("SELECT install, name, role FROM members WHERE install = ? AND dairy_id = ?").bind(toId, mem.dairy_id).first();
+  if (!to || !(hasRole(to, "cow") || hasRole(to, "bull"))) fail(400, "You can feed your dairy's cows and bulls.");
+  const t = now();
+  const last = await env.DB.prepare("SELECT at FROM feeds WHERE farmer = ? AND member = ?").bind(me.id, to.install).first();
+  if (last && t - last.at < FEED_COOLDOWN) fail(400, `You can feed ${to.name} again in ${Math.ceil((FEED_COOLDOWN - (t - last.at)) / 60)} min.`);
+  for (let tries = 0; tries < 3; tries++) {
+    const row = await env.DB.prepare("SELECT * FROM shelf WHERE dairy_id = ? AND item = ? AND qty > 0 ORDER BY created, id LIMIT 1")
+      .bind(mem.dairy_id, item).first();
+    if (!row) fail(409, `The shelf is out of ${SHELF_ITEMS[item].name.toLowerCase()}.`);
+    const took = await env.DB.prepare("UPDATE shelf SET qty = qty - 1 WHERE id = ? AND qty > 0 RETURNING qty").bind(row.id).first();
+    if (!took) continue;
+    await env.DB.batch([
+      env.DB.prepare("DELETE FROM shelf WHERE id = ? AND qty <= 0").bind(row.id),
+      env.DB.prepare(`INSERT INTO feeds (farmer, member, at) VALUES (?, ?, ?) ON CONFLICT(farmer, member) DO UPDATE SET at = excluded.at`).bind(me.id, to.install, t),
+      // grade carries which shelf item it was (its place in SHELF_ITEMS)
+      inboxStmt(env, to.install, "fed", 0, 0, Object.keys(SHELF_ITEMS).indexOf(item),
+        `${mem.name || "A farmer"} fed you ${SHELF_ITEMS[item].name.toLowerCase()} from the dairy shelf.`),
+    ]);
+    return { ok: true, next: t + FEED_COOLDOWN };
+  }
+  fail(409, "Someone else just took that. Try again.");
+}
+
+/** The owner sets a shelf item's price, within its range. */
+async function shelfPrice(env, me, request) {
+  const b = await body(request);
+  const item = shelfItem(b);
+  const d = await ownedDairy(env, me);
+  const def = SHELF_ITEMS[item];
+  const price = int(b.price, def.min, def.max, "price");
+  await env.DB.prepare(`INSERT INTO shelf_price (dairy_id, item, price) VALUES (?, ?, ?)
+    ON CONFLICT(dairy_id, item) DO UPDATE SET price = excluded.price`).bind(d.id, item, price).run();
+  return { ok: true, price };
+}
+
 // ---------------------------------------------------------------- pay, tank jugs
 
 const payBonus = level => Math.round((1 + PAY_PER_LEVEL * (level - 1)) * 100) / 100;
@@ -983,13 +1116,25 @@ async function takeFromTank(env, me, request) {
   if (!mem) fail(400, "Join a dairy first.");
   if (!mem.is_owner && !hasRole(mem, "farmer")) fail(403, "Only farmers and the owner fill jugs from the dairy tank.");
   if (!inOwnDairy(me, mem)) fail(400, "Go to your dairy to fill jugs from its tank.");
-  const grade = int(b.grade, 0, GRADES - 1, "grade");
   const oz = int(b.oz, 1, MAX_TAKE_OZ, "oz");
-  const r = await env.DB.prepare("UPDATE dairy_tank SET oz = oz - ? WHERE dairy_id = ? AND grade = ? AND oz >= ? RETURNING oz")
-    .bind(oz, mem.dairy_id, grade, oz).first();
-  if (!r) fail(400, `The tank doesn't have ${oz} oz of Grade ${gradeName(grade)}.`);
+  // Plain milk: older graded milk was merged into the grade 0 row
+  await mergeTank(env, mem.dairy_id);
+  const r = await env.DB.prepare("UPDATE dairy_tank SET oz = oz - ? WHERE dairy_id = ? AND grade = 0 AND oz >= ? RETURNING oz")
+    .bind(oz, mem.dairy_id, oz).first();
+  if (!r) fail(400, `The tank doesn't have ${oz} oz.`);
   await env.DB.prepare(`INSERT INTO carried (install, oz) VALUES (?, ?) ON CONFLICT(install) DO UPDATE SET oz = oz + excluded.oz`).bind(me.id, oz).run();
-  return { ok: true, oz, grade, left: Math.round(r.oz * 10) / 10 };
+  return { ok: true, oz, grade: 0, left: Math.round(r.oz * 10) / 10 };
+}
+
+/** Milk from before grades went away: fold every graded row into plain ounces (the grade 0 row). */
+async function mergeTank(env, dairyId) {
+  const rest = await env.DB.prepare("SELECT COALESCE(SUM(oz), 0) AS oz FROM dairy_tank WHERE dairy_id = ? AND grade > 0").bind(dairyId).first();
+  if (!rest || rest.oz <= 0) return;
+  await env.DB.batch([
+    env.DB.prepare(`INSERT INTO dairy_tank (dairy_id, grade, oz) VALUES (?, 0, ?)
+      ON CONFLICT(dairy_id, grade) DO UPDATE SET oz = oz + excluded.oz`).bind(dairyId, rest.oz),
+    env.DB.prepare("DELETE FROM dairy_tank WHERE dairy_id = ? AND grade > 0").bind(dairyId),
+  ]);
 }
 
 /** A cow's plugin reports a hand milking; the farmer who did it gets a share, in their inbox. */
@@ -1027,7 +1172,7 @@ async function handPay(env, me, request) {
 
 // ---------------------------------------------------------------- weekly contracts
 
-const contractMinGrade = level => level >= 15 ? 3 : level >= 10 ? 2 : level >= 5 ? 1 : 0;
+const contractMinGrade = () => 0;   // milk isn't graded any more: any milk fills the contract
 
 /** This week's contract for a dairy, made the first time anyone looks (sized by the dairy's level then). */
 async function contractFor(env, dairyId, level) {
@@ -1045,7 +1190,7 @@ async function contractOut(env, dairyId, level) {
   const top = (await env.DB.prepare("SELECT name, oz FROM contract_contrib WHERE dairy_id = ? AND week = ? ORDER BY oz DESC LIMIT 5")
     .bind(dairyId, c.week).all()).results;
   return {
-    week: c.week, ozNeed: c.oz_need, ozDone: Math.round(c.oz_done * 10) / 10, minGrade: c.min_grade,
+    week: c.week, ozNeed: c.oz_need, ozDone: Math.round(c.oz_done * 10) / 10, minGrade: 0,
     rewardXp: c.reward_xp, rewardFund: c.reward_fund, completed: !!c.completed,
     shippers: top.map(x => ({ name: x.name, oz: Math.round(x.oz * 10) / 10 })),
   };
@@ -1066,7 +1211,6 @@ async function shipToContract(env, me, request) {
   const p = await progressOf(env, mem.dairy_id);
   const c = await contractFor(env, mem.dairy_id, p.level);
   if (c.completed) fail(409, "This week's contract is already done.");
-  if (grade < c.min_grade) fail(400, `This contract needs Grade ${gradeName(c.min_grade)} or better.`);
   const want = Math.min(int(b.oz, 1, CONTRACT_MAX_OZ, "oz"), Math.ceil(c.oz_need - c.oz_done));
   if (want <= 0) fail(409, "This week's contract is already full.");
   if (!(await useCarriedOz(env, me.id, want))) fail(400, "You can only ship milk you've carried out of your dairy's tank.");
@@ -1211,6 +1355,17 @@ async function myOrders(env, me) {
   return { orders: rows.results.map(orderOut) };
 }
 
+/** Every open buy order from other dairies, best paying first: farmers fill these from their own dairy. */
+async function orderBoard(env, me) {
+  const home = await membership(env, me.id);
+  const rows = (await env.DB.prepare(`
+    SELECT o.*, d.name AS dairy_name, d.is_public AS dairy_public
+    FROM orders o JOIN dairies d ON d.id = o.dairy_id
+    WHERE o.status = 'open' AND o.expires >= ? AND o.owner != ? AND o.dairy_id != ?
+    ORDER BY o.coins * 1.0 / o.oz DESC LIMIT 60`).bind(now(), me.id, home ? home.dairy_id : "").all()).results;
+  return { orders: rows.map(o => ({ ...orderOut(o), dairyName: o.dairy_name, dairyPublic: !!o.dairy_public })) };
+}
+
 async function dairyOrders(env, me, dairyId) {
   const d = await env.DB.prepare("SELECT * FROM dairies WHERE id = ?").bind(dairyId).first();
   if (!d || (!d.is_public && d.owner !== me.id)) fail(404, "That dairy isn't public.");
@@ -1222,9 +1377,8 @@ async function dairyOrders(env, me, dairyId) {
 async function postOrder(env, me, request) {
   const b = await body(request);
   const d = await ownedDairy(env, me);
-  if (!d.is_public) fail(400, "Make your dairy public to post buy orders.");
   const oz = int(b.oz, 1, MAX_ORDER_OZ, "amount");
-  const minGrade = int(b.minGrade, 0, GRADES - 1, "grade");
+  const minGrade = 0;   // milk isn't graded any more: orders just ask for ounces
   const coins = int(b.coins, oz * MIN_COINS_PER_OZ, oz * MAX_COINS_PER_OZ, "price");
   const open = await env.DB.prepare("SELECT COUNT(*) AS n FROM orders WHERE owner = ? AND status = 'open'").bind(me.id).first();
   if (open.n >= MAX_OPEN_ORDERS) fail(400, `You can have ${MAX_OPEN_ORDERS} buy orders open at a time.`);
@@ -1259,12 +1413,17 @@ async function fillOrder(env, me, id, request) {
   const o = await env.DB.prepare("SELECT * FROM orders WHERE id = ?").bind(id).first();
   if (!o || o.status !== "open") fail(409, "Someone already filled that order.");
   if (o.owner === me.id) fail(400, "You can't fill your own order.");
-  if (grade < o.min_grade) fail(400, "Your milk's grade is too low for this order.");
 
   const d = await env.DB.prepare("SELECT * FROM dairies WHERE id = ?").bind(o.dairy_id).first();
-  if (!d || !d.is_public) fail(409, "That dairy isn't taking deliveries.");
+  if (!d) fail(409, "That dairy isn't taking deliveries.");
+  // Delivered from inside your own dairy (the milk goes over by cart), or in person at their public area for a bonus.
+  // Private places never count: only the buyer's own members can be "in" those.
   const here = (await dairyInArea(env, b.pos)) || (await dairyAt(env, b.houseId));
-  if (!here || here.id !== d.id) fail(400, `Deliveries are made in person: go to ${d.name} first.`);
+  const inPerson = !!here && here.id === d.id && !!d.is_public;
+  const home = await membership(env, me.id);
+  if (!inPerson && !(home && inOwnDairy(me, home)))
+    fail(400, d.is_public ? `Deliver from inside your own dairy, or in person at ${d.name} for a bonus.` : "Deliver from inside your own dairy.");
+  const bonus = inPerson ? Math.round(o.coins * IN_PERSON_BONUS) : 0;
 
   const day = today();
   const delivered = me.deliver_day === day ? me.deliver_oz : 0;
@@ -1283,16 +1442,16 @@ async function fillOrder(env, me, id, request) {
 
   await env.DB.batch([
     env.DB.prepare("UPDATE installs SET deliver_day = ?, deliver_oz = ? WHERE id = ?").bind(day, delivered + o.oz, me.id),
-    inboxStmt(env, me.id, "payout", o.coins, 0, 0, `${d.name} paid ${o.coins} coins for your ${o.oz} oz.`),
+    inboxStmt(env, me.id, "payout", o.coins + bonus, 0, 0,
+      `${d.name} paid ${o.coins} coins for your ${o.oz} oz${bonus ? ` (+${bonus} for delivering in person)` : ""}.`),
     // The milk goes into the buying dairy's tank
-    env.DB.prepare(`INSERT INTO dairy_tank (dairy_id, grade, oz) VALUES (?, ?, ?)
-      ON CONFLICT(dairy_id, grade) DO UPDATE SET oz = oz + excluded.oz`).bind(d.id, grade, o.oz),
+    env.DB.prepare(`INSERT INTO dairy_tank (dairy_id, grade, oz) VALUES (?, 0, ?)
+      ON CONFLICT(dairy_id, grade) DO UPDATE SET oz = oz + excluded.oz`).bind(d.id, o.oz),
     inboxStmt(env, o.owner, "notice", 0, 0, 0, `A delivery filled your buy order: ${o.oz} oz of Grade ${gradeName(grade)} went into your dairy's tank.`),
     addXpStmt(env, d.id, o.oz * DELIVERY_XP_PER_OZ),
   ]);
-  const home = await membership(env, me.id);
   if (home && home.dairy_id !== d.id) await addXpStmt(env, home.dairy_id, o.oz * DELIVERER_XP_PER_OZ).run();
-  return { ok: true, coins: o.coins, oz: o.oz, dairy: d.name };
+  return { ok: true, coins: o.coins + bonus, bonus, inPerson, oz: o.oz, dairy: d.name };
 }
 
 function gradeName(g) {

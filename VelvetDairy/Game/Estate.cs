@@ -95,7 +95,7 @@ public static class Estate
         }
         catch (Exception e)
         {
-            Plugin.Log.Warning(e, "Velvet Dairy couldn't read which houses you own");
+            Plugin.Log.Warning(e, "Eorzea Milkers couldn't read which houses you own");
         }
 
         return false;

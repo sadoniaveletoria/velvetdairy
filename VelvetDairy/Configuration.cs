@@ -52,6 +52,7 @@ public class FarmSave
     public CowState Cow { get; set; } = new();
     public int Coins { get; set; } = 60;
     public Dictionary<string, int> Pantry { get; set; } = new();      // feed item id -> count
+    public BakeJob? Bake { get; set; }                                // what you're baking right now (farmers), if anything
     public List<string>? HiddenFeed { get; set; }                     // feed you hid from the lists
     public bool CareShowEmpty { get; set; }                           // Pantry list also shows feed you're out of (Care never does)
     public Dictionary<string, int> Upgrades { get; set; } = new();    // upgrade id -> level owned
@@ -82,7 +83,7 @@ public class FarmSave
     public FarmStats Stats { get; set; } = new();
     public List<string>? Log { get; set; }
 
-    // ----- Velvet Dairy Network -----
+    // ----- Eorzea Milkers Network -----
     public string NetId { get; set; } = "";          // random id for this install (not your character)
     public string NetKey { get; set; } = "";         // secret that proves it's this install
     public bool NetEnabled { get; set; } = true;
@@ -94,11 +95,13 @@ public class FarmSave
     public string OwnerRole { get; set; } = "cow";    // older single role (kept for old saves)
     public List<string>? OwnerRoles { get; set; }      // what you play in your own dairy: any of cow, farmer, bull
     public bool ShowOwnerHud { get; set; } = true;
+    public bool ShowStallMarkers { get; set; } = true;   // a colored box on the ground around each stall (only you see it)
     public string VisitDay { get; set; } = "";
     public float DayAwakeMinutes { get; set; }
     public int DayStall { get; set; }                 // stall milkings today (daily goal for cows)
     public bool StockPaidOut { get; set; }
     public bool TutorialDone { get; set; }
+    public string SeenChanges { get; set; } = "";   // the version whose What's new you last saw
     public int FarmerXp { get; set; }                  // each role levels on its own (Xp is the cow's)
     public int BullXp { get; set; }             // the first-run walkthrough was shown            // old sellable milk was paid out when milk started paying at milking time        // minutes of milk-making today (tired after 12 h)        // bonus orders at other dairies, per day
     public List<string>? VisitOrdersDone { get; set; }
@@ -246,4 +249,13 @@ public class FarmStats
     public int DailiesDone { get; set; }
     public int TimesDumped { get; set; }
     public float OzDumped { get; set; }
+}
+
+/// <summary>A batch of baked goods in progress: Count to make, Done so far, Elapsed seconds into the current one.</summary>
+public sealed class BakeJob
+{
+    public string Recipe { get; set; } = "";
+    public int Count { get; set; }
+    public int Done { get; set; }
+    public float Elapsed { get; set; }
 }

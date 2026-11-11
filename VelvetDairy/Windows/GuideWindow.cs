@@ -6,8 +6,8 @@ using Dalamud.Interface.Windowing;
 namespace VelvetDairy.Windows;
 
 /// <summary>
-/// How to play: every part of Velvet Dairy explained, one topic at a time.
-/// Opened from the "?" in the main window, "/vdairy guide", or the end of the first-run walkthrough.
+/// How to play: every part of Eorzea Milkers explained, one topic at a time.
+/// Opened from the "?" in the main window, "/milkers guide", or the end of the first-run walkthrough.
 /// </summary>
 public sealed class GuideWindow : Window
 {
@@ -22,9 +22,9 @@ public sealed class GuideWindow : Window
     {
         new("Welcome", new[]
         {
-            "Velvet Dairy is a dairy life game for adults (18+). You play a cow, a farmer, a bull or a dairy owner, alone or with friends.",
+            "Eorzea Milkers is a dairy life game for adults (18+). You play a cow, a farmer, a bull or a dairy owner, alone or with friends.",
             "The loop: cows make milk over time. Getting milked (at a stall or by a farmer's hand) empties their bottles, and the dairy pays them for every ounce. The milk goes into the dairy's tank, and farmers and the owner deliver it to customers, other dairies and the Grand Creamery's weekly contract.",
-            "Everything happens in Velvet Dairy's own windows and your own chat log. Nothing is ever said in public chat, and nothing moves your character for you.",
+            "Everything happens in Eorzea Milkers's own windows and your own chat log. Nothing is ever said in public chat, and nothing moves your character for you.",
             "This game is a work in progress: numbers change, and new things arrive in updates. The HUD tells you when there's an update.",
         }),
         new("Roles", new[]
@@ -57,15 +57,19 @@ public sealed class GuideWindow : Window
         new("Getting milked", new[]
         {
             "Stalls: sit on one of your dairy's stalls (on the seat itself, not next to it) and the milking machine empties your bottles. Better stall tiers get more milk out.",
-            "Hand milking: a farmer of your dairy stands within 3 yalms, targets you and presses Milk on you (Roles > Farmer). Their plugin does a looping emote (/beesknees, or the one they picked) and tells yours they mean you; someone just doing an emote nearby never milks you. Milk then flows until you're empty, or until they stop, step away or change target. If they started with the Milk button, their emote ends by itself once you're empty (with a quick pat). Roles > Cow lets you allow any looping emote (the default) or only the ones you list. It gets more out than a basic stall and pays the farmer a share on top of your pay. You can turn off 'Farmers can start milking me without asking' on Roles > Cow and start it yourself instead.",
-            "Farmers: Roles > Farmer > Hand milk a cow lists your dairy's cows, how close they are, how full, and which emotes milk each of them.",
-            "Farmer chores (Roles > Farmer): Groom a cow you're standing next to for 20 farmer xp; it adds 30 minutes to their Happy bar (once every 15 minutes per cow). Clean a stall nobody is sitting on for 25 farmer xp; cows milked there get +10% speed and xp for an hour, and it can be freshened again once half an hour is left. Stalls never get worse than their tier.",
+            "Hand milking: a farmer of your dairy stands within 3 yalms, targets you and presses Milk on you (HUD > Herd Care). Their plugin does a looping emote (/beesknees, or the one they picked) and tells yours they mean you; someone just doing an emote nearby never milks you. Milk then flows until you're empty, or until they stop, step away or change target. If they started with the Milk button, their emote ends by itself once you're empty (with a quick pat). Roles > Cow lets you allow any looping emote (the default) or only the ones you list. It gets more out than a basic stall and pays the farmer a share on top of your pay. You can turn off 'Farmers can start milking me without asking' on Roles > Cow: then a farmer pressing Milk on you pops up a request, and milking (and their emote) only starts if you press Allow.",
+            "Farmers: the Herd Care button on the HUD (or Roles > Farmer) opens a window with your dairy's cows, how close they are, how full, and which emotes milk each of them.",
+            "The Kitchen (HUD > Kitchen, or Roles > Farmer): farmers fill their jugs from the dairy tank at the top, and bake with milk from their jugs, making ingredients for their pantry. For now that's butter (16 oz of milk makes 1). Ingredients are only used to make other things, and more recipes are coming.",
+            "Farmer chores: Groom a cow (in the Herd Care window) you're standing next to for 20 farmer xp; it adds 30 minutes to their Happy bar (once every 15 minutes per cow). Clean a stall nobody is sitting on for 25 farmer xp; cows milked there get +10% speed and xp for an hour, and it can be freshened again once half an hour is left. Stalls never get worse than their tier.",
+            "Feed from the shelf (Herd Care window): give a cow or bull something your dairy baked, straight from the dairy shelf. It's free for the farmer (nobody is paid for it) and earns 10 farmer xp; cows get the treat's Happy and milk boost, bulls get bull xp. Once every 15 minutes per cow or bull, and never to yourself.",
             "You're paid the moment you're milked: per ounce, by your grade, plus 2% for each dairy level and your looks bonus (Creamery > Your pay).",
         }),
         new("Grades and pay", new[]
         {
             "Everyone starts at Grade C. Milk quality builds as you get milked, fill goals and eat quality treats: B at 150, A at 800, S at 2,600 and S+ at 6,000.",
-            "Pay per ounce: C 7, B 10, A 15, S 21, S+ 30 coins. Better grades also give more XP.",
+            "Pay per ounce: C 7, B 10, A 15, S 21, S+ 30 coins, for up to 1,500 oz a day (milk past that still gives XP). Better grades also give more XP.",
+            "Your grade also makes milking faster and gives more milk each time: B +10%, A +20%, S +35%, S+ +50%.",
+            "Milk itself has no grade: once it's in the dairy tank, any milk fills any order, contract or recipe.",
             "Your grade is your milk quality, and it stays there as long as you're milked. Go 3 days without being milked and it slips one grade (one more every 3 days after). One milking brings it right back. A Dry-off tonic stops it slipping while you're away.",
             "Hand milking by a farmer makes up one grade lost to slipping or off taste.",
         }),
@@ -78,7 +82,7 @@ public sealed class GuideWindow : Window
         }),
         new("Staying awake", new[]
         {
-            "Milk is for people who are actually playing. Moving or turning, targeting, emotes, sending a chat message and clicking in Velvet Dairy's windows keep you awake. Moving the mouse alone doesn't.",
+            "Milk is for people who are actually playing. Moving or turning, targeting, emotes, sending a chat message and clicking in Eorzea Milkers's windows keep you awake. Moving the mouse alone doesn't.",
             "After 15 minutes with none of that you start dozing: milk at half speed, and stalls don't start a new milking.",
             "Resting on furniture in your dairy holds it off: you start dozing at 30 minutes and fall asleep at 45. Need bars and treat boosts wait while you're dozing, asleep or logged out.",
             "After 30 minutes you're asleep: milking stops and you make no milk or XP until you do anything at all.",
@@ -91,7 +95,7 @@ public sealed class GuideWindow : Window
             "3. Stand in the middle and press Start marking here. A box is drawn on the ground: pink sides, blue front. Use Width, Length and Turn (and Face my way) until it covers your dairy. Height is how far up or down still counts.",
             "4. Press Register my dairy. Boxes can't overlap another dairy in the same zone and world.",
             "5. Stalls: sit on a seat inside the box (or your private place) and press Add on Dairy > Stalls. The first stall is free; after that there's no limit by level, but each new one costs more from the dairy fund (250, 1,000, 2,250, 4,000...).",
-            "6. Invite people: right-click a player > Velvet Dairy > Invite as cow, bull or farmer, or target them and use the Members panel. For people already in your dairy, the same menu (or Manage members) gives them more roles.",
+            "6. Invite people: right-click a player > Eorzea Milkers > Invite as cow, bull or farmer, or target them and use the Members panel. For people already in your dairy, the same menu (or Manage members) gives them more roles.",
             "You can move or resize the box any time, even to a different zone: Dairy > Listing > Move or resize. To move a stall, sit on its new seat and press Move here on Dairy > Stalls; it keeps its name and tier. Stalls left outside a moved box stop working until you move them.",
             "You can also give the dairy a private place just for members, like your home or apartment (Dairy > Listing > Private place): use the whole house, or draw borders around part of it. Members are in the dairy there, so milking, stalls, resting and chores all work; visitors, the directory and deliveries only ever see the public area.",
         }),
@@ -105,10 +109,10 @@ public sealed class GuideWindow : Window
         }),
         new("Jugs and deliveries", new[]
         {
-            "Farmers and the owner fill jugs from the dairy tank (Creamery > Jugs), inside the dairy, up to what their farmer tank holds: a 32 oz milk pail at first, up to a 256 oz tanker cart (Shop > Farmer tank, unlocked by farmer level).",
-            "Customer orders (Creamery tab): the creamery's customers want milk of a grade. Deliver from your jugs for coins and XP.",
-            "Deliveries: other public dairies' buy orders and two creamery visitor orders a day per dairy. Go there in person and deliver from your jugs. Milk from buy orders goes into the buying dairy's tank.",
-            "Owners of public dairies can post buy orders (Creamery > Deliveries): the coins are held until a delivery fills it or you cancel.",
+            "Farmers and the owner fill jugs from the dairy tank (top of the Kitchen window: HUD > Kitchen), inside the dairy, up to what their farmer tank holds: a 32 oz milk pail at first, up to a 256 oz tanker cart (Shop > Farmer tank, unlocked by farmer level).",
+            "Customer orders (Creamery tab): the creamery's customers want milk. Deliver from your jugs for coins and XP; better-paying customers come as your farmer level grows.",
+            "Deliveries: other dairies' buy orders (public or private) are listed on the Creamery tab. Fill them from inside your own dairy with milk in your jugs; it goes straight into the buying dairy's tank. Delivering in person at a public dairy pays 10% more. The creamery's two visitor orders a day per public dairy are still in person.",
+            "Any owner, public or private, can post buy orders (Creamery > Deliveries): the coins are held until a delivery fills it or you cancel.",
         }),
         new("Weekly contract", new[]
         {
@@ -124,13 +128,13 @@ public sealed class GuideWindow : Window
         }),
         new("Commands and settings", new[]
         {
-            "/vdairy opens the main window. /vdairy hud shows or hides the HUD. /vdairy guide opens this guide. /vdairy tutorial runs the walkthrough again.",
+            "/milkers opens the main window. /milkers hud shows or hides the HUD. /milkers guide opens this guide. /milkers tutorial runs the walkthrough again.",
             "Settings: HUD, chat echo, sounds and volume, the network, the owner HUD.",
             "Your save is protected; editing the plugin's files resets progress.",
         }),
     };
 
-    public GuideWindow(Plugin plugin, Fonts fonts) : base("How to play Velvet Dairy##VelvetDairyGuide", ImGuiWindowFlags.NoCollapse)
+    public GuideWindow(Plugin plugin, Fonts fonts) : base("How to play Eorzea Milkers##VelvetDairyGuide", ImGuiWindowFlags.NoCollapse)
     {
         this.plugin = plugin;
         this.fonts = fonts;

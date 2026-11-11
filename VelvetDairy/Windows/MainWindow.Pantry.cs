@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
 using VelvetDairy.Game;
@@ -9,11 +10,49 @@ namespace VelvetDairy.Windows;
 // Pantry tab: the feed and treats you own. Eat them (inside your dairy), sell back what you don't need, or hide it.
 public sealed partial class MainWindow
 {
+    private const string PantryFood = "Food & treats", PantryIngredients = "Ingredients", PantryShelf = "Dairy shelf";
+
+    /// <summary>Pantry tabs: what you eat, what you bake with, and your dairy's shelf (each its own short list).</summary>
     private void DrawPantry(Vector2 min, Vector2 max)
     {
+        var labels = new List<string> { PantryFood };
+        if (G.CanCarry || Catalog.Ingredients.Any(i => G.Count(i.Id) > 0)) labels.Add(PantryIngredients);
+        if (G.Networked && F.NetMember != null) labels.Add(PantryShelf);
+        var top = SubTabs("pantry", labels.ToArray(), min, max.X - min.X);
+        var which = labels[Math.Clamp(Sub("pantry"), 0, labels.Count - 1)];
         var mid = min.X + (max.X - min.X) * 0.58f;
-        Panel("##pantry", min, new Vector2(mid - 7, max.Y), "Your pantry", DrawPantryList);
-        Panel("##pantryinfo", new Vector2(mid + 7, min.Y), max, "Milk quality", DrawPantryInfo, true);
+        switch (which)
+        {
+            case PantryIngredients:
+                Panel("##pantryingr", top, new Vector2(mid - 7, max.Y), "Ingredients", DrawIngredients);
+                Panel("##pantryingrinfo", new Vector2(mid + 7, top.Y), max, "Baking", w =>
+                    Ui.Wrapped("Ingredients are only used to make other things in the Kitchen (HUD > Kitchen). Butter is churned from milk in your jugs.", Theme.InkSoft, w), true);
+                break;
+            case PantryShelf:
+                Panel("##pantryshelf", top, new Vector2(mid - 7, max.Y), "Dairy shelf", DrawShelf);
+                Panel("##pantryshelfinfo", new Vector2(mid + 7, top.Y), max, "How the shelf works", w =>
+                    Ui.Wrapped("Your dairy's farmers bake treats for the shelf. Buy them inside the dairy; the baker gets 80% of the price and the dairy fund 20%. " +
+                               "The owner sets the prices. What you buy goes to Food & treats.", Theme.InkSoft, w), true);
+                break;
+            default:
+                Panel("##pantry", top, new Vector2(mid - 7, max.Y), "Your pantry", DrawPantryList);
+                Panel("##pantryinfo", new Vector2(mid + 7, top.Y), max, "Milk quality", DrawPantryInfo, true);
+                break;
+        }
+    }
+
+    private void DrawIngredients(float width)
+    {
+        var have = Catalog.Ingredients.Where(i => G.Count(i.Id) > 0).ToList();
+        if (have.Count == 0)
+        {
+            Ui.Wrapped("No ingredients yet. Farmers make them in the Kitchen (HUD > Kitchen).", Theme.InkSoft, width);
+            return;
+        }
+
+        foreach (var i in have)
+            ListRow(Ico(i.Icon), i.Name, Theme.Ink,
+                new[] { new Line($"You have {G.Count(i.Id)}", Theme.Ink), new Line(i.Desc, Theme.InkSoft) }, Array.Empty<Btn>(), width);
     }
 
     private void DrawPantryList(float width)
@@ -42,7 +81,7 @@ public sealed partial class MainWindow
             var back = DairyGame.SellBackPrice(item);
             var lines = new[]
             {
-                new Line($"You have {have}" + (have > 0 ? $" · sells back for {back} each" : ""), have > 0 ? Theme.Ink : Theme.InkSoft),
+                new Line($"You have {have}" + (have > 0 && !item.Baked ? $" · sells back for {back} each" : item.Baked ? " · from the dairy shelf" : ""), have > 0 ? Theme.Ink : Theme.InkSoft),
                 new Line(Effects(item), Theme.SageDeep),
                 new Line(item.Quality > 0 ? waiting ? $"Quality treat · next one in {DairyGame.Wait(wait)}" : "Quality treat · ready now" : "",
                     waiting ? Theme.HoneyDeep : Theme.InkSoft),
@@ -53,8 +92,8 @@ public sealed partial class MainWindow
                 new($"##eat{item.Id}", "Eat", "honey", problem == null && have > 0 && !waiting,
                     problem ?? (have <= 0 ? "You're out. Buy more in the Shop." : waiting ? $"Quality treats share a {Grades.QualityTreatHours:0}-hour cooldown." : item.Desc)),
             };
-            if (have > 0) buttons.Add(new Btn($"##psell1{item.Id}", $"Sell 1 - {back}", "cream", true, $"Sell one back for {back} coins (half price)."));
-            if (have > 1) buttons.Add(new Btn($"##psellall{item.Id}", $"Sell all - {back * have}", "cream", true, $"Sell all {have} back for {back * have} coins."));
+            if (have > 0 && !item.Baked) buttons.Add(new Btn($"##psell1{item.Id}", $"Sell 1 - {back}", "cream", true, $"Sell one back for {back} coins (half price)."));
+            if (have > 1 && !item.Baked) buttons.Add(new Btn($"##psellall{item.Id}", $"Sell all - {back * have}", "cream", true, $"Sell all {have} back for {back * have} coins."));
             buttons.Add(new Btn($"##phide{item.Id}", hidden ? "Show" : "Hide", "cream", true,
                 hidden ? "Put it back in your lists." : "Hide it from your Shop, Pantry and Care lists. Find it again under Show hidden."));
 
@@ -85,6 +124,46 @@ public sealed partial class MainWindow
 
         Gap(4);
         if (ImGui.SmallButton("Go to the Shop##pantryshop")) tab = TabShop;
+    }
+
+    /// <summary>The dairy shelf: treats the farmers baked, for any member to buy (the owner sets the price).</summary>
+    private void DrawShelf(float width)
+    {
+        if (!G.Networked || F.NetMember == null) return;
+        G.Net.RefreshShelf();
+        var items = G.Net.Shelf;
+        if (items.Count == 0)
+        {
+            Ui.Wrapped("Loading the shelf...", Theme.InkSoft, width);
+            return;
+        }
+
+        if (items.All(s => s.Qty <= 0)) Ui.Wrapped("The shelf is empty right now. Your dairy's farmers bake treats for it in the Kitchen.", Theme.InkSoft, width);
+        foreach (var s in items)
+        {
+            var feed = Catalog.FeedById(s.Item);
+            var why = G.BuyShelfProblem(s);
+            var lines = new List<Line>
+            {
+                new(s.Qty > 0 ? $"{s.Qty} on the shelf · {s.Price} coins each" : $"Sold out · {s.Price} coins each", s.Qty > 0 ? Theme.Ink : Theme.InkSoft),
+                new(feed != null ? Effects(feed) : "", Theme.SageDeep),
+            };
+            var buttons = new List<Btn> { new($"##shelfbuy{s.Item}", $"Buy - {s.Price}", "honey", why == null, why ?? "Baked by your dairy's farmers. They get 80%, the fund 20%.") };
+            if (F.NetMember.IsOwner)
+            {
+                buttons.Add(new Btn($"##shelfless{s.Item}", "-5", "cream", s.Price - 5 >= s.Min, $"Lower the price (at least {s.Min})"));
+                buttons.Add(new Btn($"##shelfmore{s.Item}", "+5", "cream", s.Price + 5 <= s.Max, $"Raise the price (at most {s.Max})"));
+            }
+
+            var clicked = ListRow(Ico(feed?.Icon ?? "biscuit"), s.Name, Theme.Ink, lines.ToArray(), buttons, width);
+            if (clicked < 0) continue;
+            var id = buttons[clicked].Id;
+            if (id.StartsWith("##shelfbuy")) G.BuyFromShelf(s);
+            else if (id.StartsWith("##shelfless")) G.SetShelfPrice(s, s.Price - 5);
+            else if (id.StartsWith("##shelfmore")) G.SetShelfPrice(s, s.Price + 5);
+        }
+
+        Gap(6);
     }
 
     private void DrawPantryInfo(float width)

@@ -1,4 +1,4 @@
-"""Plugin icon for Velvet Dairy (512x512): rose tile with soft cow spots, cream seal, milk bottle."""
+"""Plugin icon for Eorzea Milkers (512x512): rose tile with soft cow spots, cream seal, milk bottle."""
 import math, os, sys
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter

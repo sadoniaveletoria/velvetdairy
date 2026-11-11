@@ -51,8 +51,7 @@ public sealed partial class MainWindow : Window
     private Ui.Flow FlowNow()
     {
         if (G.Active != null) return Ui.Flow.Draining;
-        if (G.Paused || G.Overfull || G.Spoiled || G.Blocked() != null) return Ui.Flow.Still;
-        return Ui.Flow.Filling;
+        return G.MilkComing ? Ui.Flow.Filling : Ui.Flow.Still;
     }
 
     private const float Pad = 18f;
@@ -70,7 +69,7 @@ public sealed partial class MainWindow : Window
     public static readonly Vector4 SourMilk = new(0.93f, 0.88f, 0.60f, 1f);
 
     public MainWindow(Plugin plugin, Art art, Fonts fonts)
-        : base("Velvet Dairy##VelvetDairyMain", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
+        : base("Eorzea Milkers##VelvetDairyMain", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
     {
         this.plugin = plugin;
         this.art = art;
@@ -162,7 +161,7 @@ public sealed partial class MainWindow : Window
 
     public override void Draw()
     {
-        // Clicking in Velvet Dairy's own windows counts as being awake (mouse movement alone doesn't)
+        // Clicking in Eorzea Milkers's own windows counts as being awake (mouse movement alone doesn't)
         if (ImGui.IsWindowHovered(ImGuiHoveredFlags.ChildWindows) && ImGui.IsMouseClicked(ImGuiMouseButton.Left)) G.Touch();
 
         var dl = ImGui.GetWindowDrawList();
@@ -215,11 +214,11 @@ public sealed partial class MainWindow : Window
 
         Ui.Avatar(dl, "you", o + new Vector2(Pad + 30, 44), 30);
         var tx = o.X + Pad + 74;
-        Ui.Text(dl, fonts.Label, "VELVET", new Vector2(tx, o.Y + 14), Theme.RoseDeep);
-        Ui.Text(dl, fonts.Title, "DAIRY", new Vector2(tx - 1, o.Y + 34), Theme.Ink);
+        Ui.Text(dl, fonts.Label, "EORZEA", new Vector2(tx, o.Y + 14), Theme.RoseDeep);
+        var brandW = Ui.Text(dl, fonts.Title, "MILKERS", new Vector2(tx - 1, o.Y + 34), Theme.Ink).X;
 
         // Your dairy and you in it: name, your roles, the dairy's level and this week's contract
-        var mx = tx + 150;
+        var mx = tx + Math.Max(150, brandW + 24);
         var member = F.NetMember;
         var dairyTitle = G.Networked ? member?.Dairy ?? "No dairy yet" : F.Dairy?.Name ?? "No dairy yet";
         Ui.Text(dl, fonts.Heading, dairyTitle, new Vector2(mx, o.Y + 14), Theme.Ink);
@@ -280,7 +279,7 @@ public sealed partial class MainWindow : Window
         ImGui.SetCursorScreenPos(qc - new Vector2(13, 13));
         if (ImGui.InvisibleButton("##guidebtn", new Vector2(26, 26))) plugin.Guide.Open();
         var qh = ImGui.IsItemHovered();
-        if (qh) ImGui.SetTooltip("How to play (/vdairy guide)");
+        if (qh) ImGui.SetTooltip("How to play (/milkers guide)");
         dl.AddCircleFilled(qc, 12f, Ui.U(qh ? Theme.Rose : Theme.Paper));
         dl.AddCircle(qc, 12f, Ui.U(Theme.RoseDeep, 0.6f), 0, 1.5f);
         Ui.Text(dl, fonts.Small, "?", qc, Theme.RoseDeep, 0.5f, 0.5f);
@@ -541,7 +540,7 @@ public sealed partial class MainWindow : Window
         var pmin = c - new Vector2(w / 2, h / 2);
         Panel("##gate", pmin, pmin + new Vector2(w, h), "Adults only", width =>
         {
-            Ui.Wrapped("Velvet Dairy is an adult roleplay game. You play the cow: keep yourself fed and comfortable inside your dairy, " +
+            Ui.Wrapped("Eorzea Milkers is an adult roleplay game. You play the cow: keep yourself fed and comfortable inside your dairy, " +
                        "get milked in your dairy's stalls or by a farmer you trust, and get paid for every ounce.", Theme.Ink, width);
             Gap(10);
             Ui.Wrapped("Everything happens in this window and your own chat log. Nothing is ever said in public chat, and nothing moves your character for you.", Theme.InkSoft, width);
@@ -570,7 +569,7 @@ public sealed partial class MainWindow : Window
         }
 
         var blocked = G.Blocked();
-        var milkH = 200f;
+        var milkH = G.Active != null || !G.AutoStall ? 200f : 112f;
         var topMax = new Vector2(max.X, max.Y - milkH - 14);
         var leftW = 270f;
         var rightW = 330f;
@@ -592,9 +591,9 @@ public sealed partial class MainWindow : Window
     private void DrawFarmBarn(Vector2 min, Vector2 max)
     {
         var mid = (min.X + max.X) / 2;
-        Panel("##farmherd", min, new Vector2(mid - 7, max.Y), "Your herd", w =>
+        Panel("##farmherd", min, new Vector2(mid - 7, max.Y), "Farm work", w =>
         {
-            DrawHandMilkCows(w);
+            DrawFarmerButtons(w);
             DrawCleanStalls(w);
         }, true);
         Panel("##farmwork", new Vector2(mid + 7, min.Y), max, G.IsFarmer ? $"Farmer level {G.FarmerLevel}" : "Your work", w =>
@@ -657,7 +656,7 @@ public sealed partial class MainWindow : Window
         var sealC = new Vector2(bmin.X + bw + 6, bmin.Y + bh * 0.3f);
         Ui.Seal(dl, sealC, 28, Grades.Name(grade), Theme.GradeColor(grade));
         if (ImGui.IsMouseHoveringRect(sealC - new Vector2(28, 28), sealC + new Vector2(28, 28)))
-            ImGui.SetTooltip($"Grade {Grades.Name(grade)} ({Grades.All[grade].Blurb}) if you're milked now.\nYour grade comes from your milk quality, and stays up as long as you're milked every few days." +
+            ImGui.SetTooltip($"Grade {Grades.Name(grade)} ({Grades.All[grade].Blurb}) if you're milked now.\nHigher grades pay more, milk faster and give more milk.\nYour grade comes from your milk quality, and stays up as long as you're milked every few days." +
                 (G.GradeSlip > 0 ? $"\nSlipped {G.GradeSlip} grade{(G.GradeSlip > 1 ? "s" : "")}: it's been a while since you were milked. Get milked to bring it back." : "") +
                 (cow.Taint > 0 ? "\nOff taste from dumped milk: one grade lower until it wears off." : "") +
                 "\nHand milking makes up one lost grade." + GradeCapNote());
@@ -884,56 +883,30 @@ public sealed partial class MainWindow : Window
                     ? $"The test farmhand milks you every few seconds. {s.Strokes} strokes so far."
                     : $"{s.Hand.Name} is milking you while they keep their Milk emote going (within {G.HandRange:0.#} y{(G.HandNeedsTarget ? ", targeting you" : "")}).";
             if (ListRow(Ico(s.Kind == SessionKind.Stall ? "bucket" : "ribbon"), who, Theme.Ink,
-                    new[] { new Line($"{s.Extracted * s.Yield:0.#} oz collected · Grade {Grades.Name(s.Grade)}", Theme.GradeColor(s.Grade)), new Line(hint, Theme.InkSoft) },
+                    new[] { new Line($"{s.Extracted * s.Yield:0.#} oz collected · Grade {Grades.Name(s.Grade)} cow", Theme.GradeColor(s.Grade)), new Line(hint, Theme.InkSoft) },
                     new[] { new Btn("##stop", "Stop", "cream") }, width, s.Progress, Theme.BlueDeep) == 0)
                 G.Stop();
             return;
         }
 
-        // Two columns: stalls on the left, hand milking on the right
-        var col = (width - 20) / 2;
-        var h = ImGui.GetContentRegionAvail().Y;
-        if (ImGui.BeginChild("##mcolStall", new Vector2(col, h), false)) DrawStallColumn(ImGui.GetContentRegionAvail().X);
-        ImGui.EndChild();
-        ImGui.SameLine(0, 20);
-        if (ImGui.BeginChild("##mcolHand", new Vector2(col, h), false)) DrawHandColumn(ImGui.GetContentRegionAvail().X);
-        ImGui.EndChild();
-    }
-
-    private void DrawStallColumn(float width)
-    {
-        var problem = G.StallProblem();
-        var status = G.Stalls.Count == 0 ? (G.Networked && !G.IsOwner ? "Your dairy's owner hasn't set up stalls yet." : "No stalls yet. Set one up on the Dairy tab.") : problem ?? $"You're in {G.Where.AtStall!.Name}.";
-        var how = G.AutoStall ? "Sitting in a stall starts it by itself." : "Sit in a stall, then press Start.";
-        if (ListRow(Ico("bucket"), "Stalls", Theme.Ink,
-                new[] { new Line(status, problem == null ? Theme.SageDeep : Theme.InkSoft), new Line(how, Theme.InkSoft) },
-                new[] { new Btn("##stall", "Start", "blue", problem == null, problem) }, width) == 0)
-            G.StartStall();
-    }
-
-    private void DrawHandColumn(float width)
-    {
-        var hands = G.Farmhands.Where(f => G.Dev || !f.IsTest).ToList();
-        if (hands.Count == 0)
+        // Not being milked: one short line, plus Start buttons only when you've turned off starting by itself
+        var how = !G.Where.InDairy ? "Not being milked. Go to your dairy to get milked."
+            : G.Stalls.Count == 0 ? "Not being milked. Your dairy has no stalls yet; a farmer can still hand milk you."
+            : "Not being milked. Sit on a stall, or have a farmer stand close and press Milk on you.";
+        ImGui.TextColored(Theme.InkSoft, how);
+        var buttons = new List<Btn>();
+        var starts = new List<Action>();
+        if (!G.AutoStall)
         {
-            ListRow(Ico("ribbon"), "Hand milking", Theme.Ink,
-                new[]
-                {
-                    new Line(G.Networked ? "Only a farmer of your dairy can do this." : "Only a registered farmhand of your dairy can do this.", Theme.InkSoft),
-                    new Line(G.Networked ? "Your dairy's owner invites farmers." : "Right-click a player > Velvet Dairy > Register as farmhand.", Theme.InkSoft),
-                }, Array.Empty<Btn>(), width);
-            return;
+            var problem = G.StallProblem();
+            buttons.Add(new Btn("##stall", "Start stall", "blue", problem == null, problem ?? "Starts the stall you're sitting on."));
+            starts.Add(() => G.StartStall());
         }
 
-        var buttons = hands.Select(fh =>
-        {
-            var hp = G.HandProblem(fh);
-            return new Btn($"##hand{fh.Name}{fh.WorldId}", fh.IsTest ? "Test" : fh.Name.Split(' ')[0], "sage", hp == null, hp ?? $"Let {fh.Display} milk you.");
-        }).ToList();
-
-        ListRow(Ico("ribbon"), "Hand milking", Theme.Ink, new[] { new Line("Better grade and more xp. Pick who milks you:", Theme.InkSoft) }, Array.Empty<Btn>(), width);
+        if (buttons.Count == 0) return;
+        Gap(4);
         var clicked = Buttons(buttons, width);
-        if (clicked >= 0) G.StartHand(hands[clicked]);
+        if (clicked >= 0) starts[clicked]();
     }
 
     // =====================================================================
@@ -942,14 +915,13 @@ public sealed partial class MainWindow : Window
 
     private void DrawCreamery(Vector2 min, Vector2 max)
     {
-        var labels = G.CanCarry ? new[] { "Your pay", "Jugs", "Customer orders", "Deliveries" } : new[] { "Your pay" };
+        var labels = G.CanCarry ? new[] { "Your pay", "Customer orders", "Deliveries" } : new[] { "Your pay" };
         var top = SubTabs("creamery", labels, min, max.X - min.X);
         var (cmin, cmax) = Column(top, max, 760);
         switch (G.CanCarry ? Sub("creamery") : 0)
         {
             case 0: Panel("##pay", cmin, cmax, "Your pay", DrawPay); return;
-            case 1: Panel("##jugs", cmin, cmax, "Jugs from the dairy tank", DrawJugs, true); return;
-            case 2: Panel("##orders", cmin, cmax, "Creamery orders", DrawOrders, true); return;
+            case 1: Panel("##orders", cmin, cmax, "Creamery orders", DrawOrders, true); return;
             default: Panel("##netorders", cmin, cmax, "Deliveries to other dairies", DrawNetOrders, true); return;
         }
     }
@@ -966,57 +938,42 @@ public sealed partial class MainWindow : Window
             var grade = g;
             ListRow(c => Ui.Seal(ImGui.GetWindowDrawList(), c, 22, Grades.Name(grade), Theme.GradeColor(grade)),
                 $"Grade {Grades.Name(g)} · {Grades.All[g].Blurb}" + (g == cur ? "  ·  yours now" : ""), g == cur ? Theme.RoseDeep : Theme.Ink,
-                new[] { new Line($"{G.PayRate(g):0.#} coins per oz", Theme.HoneyDeep) }, Array.Empty<Btn>(), width);
+                new[] { new Line($"{G.PayRate(g):0.#} coins per oz" + (g > 0 ? $" · milks {Catalog.GradeBoost[g] * 100:0}% faster, {Catalog.GradeBoost[g] * 100:0}% more milk" : ""), Theme.HoneyDeep) }, Array.Empty<Btn>(), width);
         }
 
         Gap(4);
         var bonus = (G.DairyPayBonus - 1) * 100;
         ImGui.TextColored(Theme.InkSoft, $"Dairy level bonus: +{bonus:0}% · your looks bonus: +{(G.PriceBonus - 1) * 100:0}%");
         if (G.Networked) ImGui.TextColored(Theme.InkSoft, "Each dairy level raises pay by 2%. Hand milking also pays your farmer a share (not taken from you).");
-        ImGui.TextColored(Theme.InkSoft, $"Milk given today: {F.DayOz:0.#} oz");
+        ImGui.TextColored(F.DayOz >= Catalog.DailyPaidOz ? Theme.HoneyDeep : Theme.InkSoft,
+            F.DayOz >= Catalog.DailyPaidOz ? $"Milk given today: {F.DayOz:0.#} oz · paid for {Catalog.DailyPaidOz:N0} oz (the most a day); more still gives xp"
+                : $"Milk given today: {F.DayOz:0.#} oz · paid up to {Catalog.DailyPaidOz:N0} oz a day");
     }
 
-    /// <summary>Farmers and owners fill jugs from the dairy's tank to deliver to customers and other dairies.</summary>
-    private void DrawJugs(float width)
+    /// <summary>One line on what you carry, with a button to the Kitchen where jugs are filled.</summary>
+    internal void JugsNote(float width)
     {
-        var tank = G.Net.Progress?.Tank;
-        Ui.Wrapped($"Fill jugs from your dairy's tank, then deliver them on Customer orders or to other dairies for your own coins. You can carry up to {G.MaxCarry} oz.",
-            Theme.InkSoft, width);
-        Gap(6);
-        ImGui.TextColored(Theme.Ink, $"Carrying {G.Carried:0.#} / {G.MaxCarry} oz");
-        if (G.Carried > 0)
-            ImGui.TextColored(Theme.InkSoft, string.Join(" · ", F.Tank!.Select((oz, g) => (oz, g)).Where(x => x.oz > 0.01f).Select(x => $"{Grades.Name(x.g)} {x.oz:0.#} oz")));
-        Gap(6);
-        SubHeading($"Dairy tank · {tank?.Total ?? 0:N1} oz", width);
-        for (var g = Grades.Count - 1; g >= 0; g--)
-        {
-            var grade = g;
-            var have = tank?.ByGrade is { } t && g < t.Count ? t[g] : 0;
-            var p8 = G.TakeJugProblem(g, 8);
-            var p32 = G.TakeJugProblem(g, 32);
-            var clicked = ListRow(c => Ui.Seal(ImGui.GetWindowDrawList(), c, 22, Grades.Name(grade), Theme.GradeColor(grade)),
-                $"Grade {Grades.Name(g)}", have > 0 ? Theme.Ink : Theme.InkSoft,
-                new[] { new Line($"{have:0.#} oz in the tank · you carry {F.Tank![g]:0.#} oz", Theme.InkSoft) },
-                new[] { new Btn($"##jug8{g}", "Fill 8 oz", "cream", p8 == null, p8), new Btn($"##jug32{g}", "Fill 32 oz", "blue", p32 == null, p32) }, width);
-            if (clicked == 0) G.TakeJug(g, 8);
-            else if (clicked == 1) G.TakeJug(g, 32);
-        }
+        ImGui.TextColored(Theme.Ink, $"Your jugs: {G.Carried:0.#} / {G.MaxCarry} oz");
+        ImGui.SameLine();
+        if (ImGui.SmallButton("Fill jugs##jugsnote")) plugin.Kitchen.IsOpen = true;
+        if (ImGui.IsItemHovered()) ImGui.SetTooltip("Jugs are filled from the dairy tank at the top of the Kitchen window.");
+        Gap(4);
     }
 
     private void DrawOrders(float width)
     {
         var orders = F.Orders!;
+        JugsNote(width);
         if (orders.Count == 0) Ui.Wrapped("No orders right now.", Theme.InkSoft, width);
 
         foreach (var o in orders.ToList())
         {
-            var have = G.OzAtOrAbove(o.MinGrade);
+            var have = G.Carried;
             var can = G.CanFill(o);
-            var gradeText = o.MinGrade == 0 ? "any grade" : $"Grade {Grades.Name(o.MinGrade)} or better";
             var clicked = ListRow(Ico("bottle"), o.Customer, Theme.Ink,
                 new[]
                 {
-                    new Line($"{o.Oz} oz, {gradeText}", Theme.InkSoft),
+                    new Line($"{o.Oz} oz of milk", Theme.InkSoft),
                     new Line($"Pays {o.Coins} coins · {o.Xp} xp", Theme.HoneyDeep),
                     new Line($"You have {Math.Min(have, o.Oz):0} of {o.Oz} oz", can ? Theme.SageDeep : Theme.InkSoft),
                 },
@@ -1092,7 +1049,7 @@ public sealed partial class MainWindow : Window
         var cur = ImGui.GetCursorScreenPos();
         Ui.Bar(ImGui.GetWindowDrawList(), cur + new Vector2(0, 6), cur + new Vector2(Math.Min(width, 360), 14), G.MaxCarry > 0 ? Math.Clamp(G.Carried / G.MaxCarry, 0, 1) : 0, Theme.BlueDeep);
         ImGui.Dummy(new Vector2(width, 20));
-        Ui.Wrapped("Fill it at your dairy (Creamery > Jugs). Farmer xp comes from hand milking pay, filling jugs, deliveries and contracts.", Theme.InkSoft, width);
+        Ui.Wrapped("Fill it at your dairy (HUD > Kitchen). Farmer xp comes from hand milking, grooming, cleaning stalls, baking, filling jugs, deliveries and contracts.", Theme.InkSoft, width);
     }
 
     private void DrawBottleShop(float width)
@@ -1129,7 +1086,7 @@ public sealed partial class MainWindow : Window
         var hiddenCount = 0;
         foreach (var item in Catalog.Feed)
         {
-            if ((item.Quality > 0) != treats) continue;
+            if (item.Baked || (item.Quality > 0) != treats) continue;   // baked treats come off the dairy shelf
             var hidden = F.HiddenFeed!.Contains(item.Id);
             if (hidden) hiddenCount++;
             if (hidden && !showHiddenFeed) continue;
@@ -1350,7 +1307,7 @@ public sealed partial class MainWindow : Window
 
     private void DrawFarmhands(float width)
     {
-        Ui.Wrapped("Only a farmer of your dairy can hand milk you: they stand close, target you and press Milk (Roles > Farmer). " +
+        Ui.Wrapped("Only a farmer of your dairy can hand milk you: they stand close, target you and press Milk (HUD > Herd Care). " +
                    "Just doing an emote near you never counts. It flows until you're empty.", Theme.InkSoft, width);
         Gap(6);
         var reg = G.RegisterProblem();
@@ -1580,17 +1537,30 @@ public sealed partial class MainWindow : Window
     {
         var changed = false;
         var b = F.ShowHud;
-        if (ImGui.Checkbox("Show the milk bottle HUD (/vdairy hud)", ref b)) { F.ShowHud = b; changed = true; }
+        if (ImGui.Checkbox("Show the milk bottle HUD (/milkers hud)", ref b)) { F.ShowHud = b; changed = true; }
         b = F.LockHud;
         if (ImGui.Checkbox("Lock the HUD in place", ref b)) { F.LockHud = b; changed = true; }
         b = F.ChatEcho;
         if (ImGui.Checkbox("Echo events to my chat log (only you see it)", ref b)) { F.ChatEcho = b; changed = true; }
         b = F.NetEnabled;
-        if (ImGui.Checkbox("Join the Velvet Dairy Network (dairies, invites, deliveries, online count)", ref b)) { F.NetEnabled = b; changed = true; }
+        if (ImGui.Checkbox("Join the Eorzea Milkers Network (dairies, invites, deliveries, online count)", ref b)) { F.NetEnabled = b; changed = true; }
         if (ImGui.IsItemHovered())
             ImGui.SetTooltip("Shares only what the network needs: a random id for this install, your dairy's listing, and your character name with the dairy you join.");
         b = F.ShowOwnerHud;
         if (ImGui.Checkbox("Show the owner HUD when I own a dairy", ref b)) { F.ShowOwnerHud = b; changed = true; }
+
+        b = F.ShowStallMarkers;
+        if (ImGui.Checkbox("Show stall markers (only you see them)", ref b)) { F.ShowStallMarkers = b; changed = true; }
+        if (ImGui.IsItemHovered()) ImGui.SetTooltip("A small green dot above each of your dairy's stalls while you're in the dairy, so you can see which seats milk you.");
+        if (F.ShowStallMarkers)
+        {
+            var here = G.StallsHere().Count();
+            ImGui.Indent();
+            ImGui.TextColored(Theme.InkSoft, !G.Where.InDairy ? "Markers show once you're in your dairy."
+                : here > 0 ? $"Marking {here} stall{(here == 1 ? "" : "s")} here{(G.InPrivatePlace ? " (private place)" : "")}."
+                : G.Stalls.Count == 0 ? "Your dairy has no stalls yet." : $"None of your {G.Stalls.Count} stall(s) are in this part of the dairy.");
+            ImGui.Unindent();
+        }
 
         b = F.SoundOn;
         if (ImGui.Checkbox("Milking sounds (only you hear them)", ref b)) { F.SoundOn = b; changed = true; }
@@ -1638,7 +1608,7 @@ public sealed partial class MainWindow : Window
     private void DrawDevTools(float width)
     {
         var changed = false;
-        var why = Plugin.PluginInterface.IsDev ? "Dev build (loaded from Dev Plugin Locations)." : "Unlocked with your developer phrase. \"/vdairy dev off\" turns it off.";
+        var why = Plugin.PluginInterface.IsDev ? "Dev build (loaded from Dev Plugin Locations)." : "Unlocked with your developer phrase. \"/milkers dev off\" turns it off.";
         Ui.Wrapped("Developer mode. " + why + " Players never see this panel.", Theme.BlueDeep, width);
 
         SubHeading("Shortcuts", width);
@@ -1729,11 +1699,11 @@ public sealed partial class MainWindow : Window
         if (me != null) ImGui.TextColored(Theme.Ink, $"Position: {me.Position.X:0.0}, {me.Position.Y:0.0}, {me.Position.Z:0.0}");
 
         SubHeading("How to play", width);
-        Ui.Wrapped("1. Dairy tab: go inside a house and press Register here.\n" +
-                   "2. Sit on a chair or bed there and press Add the seat I'm on. That's your stall.\n" +
-                   "3. Your milk fills up over time, faster while you rest in the dairy. Keep your needs up with the Care list.\n" +
-                   "4. Sit in your stall to be milked, or have a registered farmhand milk you by hand for a better grade.\n" +
-                   "5. Creamery tab: deliver orders or sell cups. Spend coins in the Shop on feed, bigger and extra bottles, and stall upgrades.", Theme.Ink, width);
+        Ui.Wrapped("1. Join a dairy (Dairies tab, ask the owner for an invite) or start your own on the Dairy tab.\n" +
+                   "2. Cows: milk fills up over time, faster with Fed, Watered, Comfy and Happy (Barn > Care).\n" +
+                   "3. Get milked on one of your dairy's stalls, or by a farmer pressing Milk on you. You're paid by your grade.\n" +
+                   "4. Farmers: Herd Care and Kitchen are on the HUD. Fill jugs in the Kitchen, then deliver on the Creamery tab.\n" +
+                   "5. Spend coins in the Shop. The full guide is the ? at the top, or /milkers guide.", Theme.Ink, width);
 
         SubHeading("Credits", width);
         Ui.Wrapped("Milking machine sound: \"Milk Pump Step02\" by Erdie, freesound.org/s/49877 (cut into start, loop and stop).", Theme.InkSoft, width);

@@ -1,6 +1,6 @@
 name: Network server
 
-# Tests the Velvet Dairy Network worker, then deploys it to Cloudflare when server/ changes on main.
+# Tests the Eorzea Milkers Network worker, then deploys it to Cloudflare when server/ changes on main.
 # Needs two repository secrets: CLOUDFLARE_API_TOKEN (Workers + D1 edit) and CLOUDFLARE_ACCOUNT_ID.
 # Without them it only runs the tests. After deploying it writes the server's address into network.json,
 # which is how the plugin finds the server (so the server can move without a plugin update).

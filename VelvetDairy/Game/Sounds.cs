@@ -97,7 +97,7 @@ public sealed class Sounds : IDisposable
         }
         catch (Exception e)
         {
-            Plugin.Log.Warning(e, "Velvet Dairy couldn't open the sounds folder");
+            Plugin.Log.Warning(e, "Eorzea Milkers couldn't open the sounds folder");
         }
     }
 
@@ -123,7 +123,7 @@ public sealed class Sounds : IDisposable
         }
         catch (Exception e)
         {
-            Plugin.Log.Warning(e, $"Velvet Dairy couldn't play {file}");
+            Plugin.Log.Warning(e, $"Eorzea Milkers couldn't play {file}");
             return 0;
         }
     }
@@ -142,7 +142,7 @@ public sealed class Sounds : IDisposable
         }
         catch (Exception e)
         {
-            Plugin.Log.Warning(e, $"Velvet Dairy couldn't loop {file}");
+            Plugin.Log.Warning(e, $"Eorzea Milkers couldn't loop {file}");
             StopLoop();
         }
     }

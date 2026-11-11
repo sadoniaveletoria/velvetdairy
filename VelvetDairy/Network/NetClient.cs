@@ -12,7 +12,7 @@ using VelvetDairy.Game;
 namespace VelvetDairy.Network;
 
 /// <summary>
-/// Talks to the Velvet Dairy Network server: presence, the dairy directory, your dairy's members and stalls,
+/// Talks to the Eorzea Milkers Network server: presence, the dairy directory, your dairy's members and stalls,
 /// invites, buy orders, deliveries and the inbox. Requests run in the background; their results are applied
 /// on the game's thread in <see cref="Update"/>.
 ///
@@ -89,7 +89,7 @@ public sealed class NetClient : IDisposable
             }
             catch (Exception e)
             {
-                Plugin.Log.Warning(e, "Velvet Dairy network callback failed");
+                Plugin.Log.Warning(e, "Eorzea Milkers network callback failed");
             }
         }
 
@@ -145,7 +145,7 @@ public sealed class NetClient : IDisposable
             }
             catch
             {
-                mainThread.Enqueue(() => Status = "The Velvet Dairy network isn't set up yet. Playing locally.");
+                mainThread.Enqueue(() => Status = "The Eorzea Milkers network isn't set up yet. Playing locally.");
             }
         });
     }
@@ -202,7 +202,7 @@ public sealed class NetClient : IDisposable
         var api = Api;
         if (api == null)
         {
-            failed?.Invoke("The Velvet Dairy network isn't available.");
+            failed?.Invoke("The Eorzea Milkers network isn't available.");
             return;
         }
 
@@ -249,12 +249,12 @@ public sealed class NetClient : IDisposable
             }
             catch (Exception e)
             {
-                Plugin.Log.Debug($"Velvet Dairy network: {e.Message}");
+                Plugin.Log.Debug($"Eorzea Milkers network: {e.Message}");
                 mainThread.Enqueue(() =>
                 {
                     Connected = false;
-                    Status = "Can't reach the Velvet Dairy network right now.";
-                    failed?.Invoke("Can't reach the Velvet Dairy network right now.");
+                    Status = "Can't reach the Eorzea Milkers network right now.";
+                    failed?.Invoke("Can't reach the Eorzea Milkers network right now.");
                 });
             }
         });
@@ -288,6 +288,8 @@ public sealed class NetClient : IDisposable
                 HandBy = g.Active is { Kind: VelvetDairy.Game.SessionKind.Hand, Hand: { IsTest: false } h } ? h.Name : "",
                 AnyEmote = F.AnyLoopEmote,
                 Milking = g.MilkingCowName ?? "",
+                Ask = g.IsCow && !F.AutoHand,
+                Refused = g.RefusedFarmer,
             },
         };
         Call<HeartbeatReply>("POST", "/v1/heartbeat", body, r =>
@@ -303,7 +305,7 @@ public sealed class NetClient : IDisposable
             {
                 var text = $"You're invited to join {inv.Dairy} as a {inv.Role}. Answer on the Dairy tab.";
                 Toast(text, 1);
-                Plugin.ChatGui.Print(text, "Velvet Dairy");
+                Plugin.ChatGui.Print(text, "Eorzea Milkers");
             }
 
             if (r.Inbox > 0) Claim();
@@ -319,6 +321,12 @@ public sealed class NetClient : IDisposable
             claiming = false;
             plugin.Game.ApplyInbox(r.Items);
         }, _ => claiming = false);
+    }
+
+    /// <summary>Makes the next dairy refresh happen within this many seconds (stall markers keep others' states fresh this way).</summary>
+    public void MineWithin(double seconds)
+    {
+        if (nextMine > Now + seconds) nextMine = Now + seconds;
     }
 
     public void RefreshMine()
@@ -387,6 +395,17 @@ public sealed class NetClient : IDisposable
     public void RefreshOrders(string dairyId) =>
         Call<OrdersReply>("GET", $"/v1/dairies/{dairyId}/orders", null, r => OrdersByDairy[dairyId] = r.Orders,
             e => OrdersByDairy[dairyId] = new List<BuyOrder>());
+
+    /// <summary>Open buy orders from every other dairy (farmers fill them from their own dairy).</summary>
+    public List<BuyOrder> Board { get; private set; } = new();
+    private DateTime nextBoard = DateTime.MinValue;
+
+    public void RefreshBoard(bool now = false)
+    {
+        if (!now && DateTime.UtcNow < nextBoard) return;
+        nextBoard = DateTime.UtcNow.AddSeconds(60);
+        Call<OrdersReply>("GET", "/v1/orders/board", null, r => Board = r.Orders);
+    }
 
     public void RefreshMyOrders() => Call<OrdersReply>("GET", "/v1/orders/mine", null, r => MyOrders = r.Orders);
 
@@ -492,6 +511,45 @@ public sealed class NetClient : IDisposable
         {
             RefreshMine();
             ok(r.Until);
+        }, failed);
+
+    // ----- The dairy shelf -----
+    public List<ShelfItem> Shelf { get; private set; } = new();
+    private DateTime nextShelf = DateTime.MinValue;
+
+    public void RefreshShelf(bool now = false)
+    {
+        if (!now && DateTime.UtcNow < nextShelf) return;
+        nextShelf = DateTime.UtcNow.AddSeconds(30);
+        Call<ShelfReply>("GET", "/v1/shelf", null, r => Shelf = r.Items);
+    }
+
+    public void StockShelf(string item, int qty, Action ok, Action<string> failed) =>
+        Call<object>("POST", "/v1/shelf/stock", new { item, qty }, _ =>
+        {
+            RefreshShelf(true);
+            ok();
+        }, failed);
+
+    public void BuyShelf(string item, Action<ShelfBuyReply> ok, Action<string> failed) =>
+        Call<ShelfBuyReply>("POST", "/v1/shelf/buy", new { item }, r =>
+        {
+            RefreshShelf(true);
+            ok(r);
+        }, failed);
+
+    public void SetShelfPrice(string item, int price, Action ok, Action<string> failed) =>
+        Call<object>("PUT", "/v1/shelf/price", new { item, price }, _ =>
+        {
+            RefreshShelf(true);
+            ok();
+        }, failed);
+
+    public void FeedShelf(string item, string to, Action ok, Action<string> failed) =>
+        Call<object>("POST", "/v1/shelf/feed", new { item, to }, _ =>
+        {
+            RefreshShelf(true);
+            ok();
         }, failed);
 
     public void Groom(string cowId, Action ok, Action<string> failed) =>

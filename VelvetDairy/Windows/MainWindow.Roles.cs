@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
@@ -80,7 +81,7 @@ public sealed partial class MainWindow
         {
             ImGui.TextColored(g == cur ? Theme.RoseDeep : Theme.Ink, $"Grade {Grades.Name(g)}");
             ImGui.SameLine(90);
-            ImGui.TextColored(Theme.InkSoft, $"{G.PayRate(g):0.#} coins per oz" + (g == cur ? "  ·  yours now" : ""));
+            ImGui.TextColored(Theme.InkSoft, $"{G.PayRate(g):0.#} coins per oz" + (g > 0 ? $" · +{Catalog.GradeBoost[g] * 100:0}% speed and milk" : "") + (g == cur ? "  ·  yours now" : ""));
         }
 
         Gap(6);
@@ -92,7 +93,7 @@ public sealed partial class MainWindow
     private void DrawCowEmotes(float width)
     {
         SubHeading("Being hand milked", width);
-        Ui.Wrapped("A farmer of your dairy milks you by pressing Milk on you (Roles > Farmer): they stand close, target you and their plugin does a looping emote. Someone just doing an emote near you never milks you. Milk flows until you're empty or they stop.", Theme.InkSoft, width);
+        Ui.Wrapped("A farmer of your dairy milks you by pressing Milk on you (HUD > Herd Care): they stand close, target you and their plugin does a looping emote. Someone just doing an emote near you never milks you. Milk flows until you're empty or they stop.", Theme.InkSoft, width);
         var any = F.AnyLoopEmote;
         if (ImGui.Checkbox("Any looping emote counts##anyloop", ref any))
         {
@@ -109,7 +110,7 @@ public sealed partial class MainWindow
         }
 
         if (ImGui.IsItemHovered())
-            ImGui.SetTooltip("On: a farmer holding a milking emote on you starts it. Off: you start it yourself (right-click them > Velvet Dairy > Let them milk me, or Barn > Milking).");
+            ImGui.SetTooltip("On: a farmer pressing Milk on you starts it right away. Off: you get a pop-up asking if they can (Allow or Not now).");
         DrawEmotes(width);
     }
 
@@ -119,8 +120,7 @@ public sealed partial class MainWindow
     {
         RoleNote("farmer", width);
         LevelHeader(F.FarmerXp, $"Farmer level {G.FarmerLevel}", Theme.SageDeep, width);
-        DrawHandMilkCows(width);
-        DrawMilkMod(width);
+        DrawFarmerButtons(width);
         DrawCleanStalls(width);
 
         SubHeading("Coming up", width);
@@ -138,162 +138,33 @@ public sealed partial class MainWindow
         if (shown == 0) ImGui.TextColored(Theme.InkSoft, "Every farmer tank is unlocked.");
 
         SubHeading("What farmers do", width);
-        Ui.Wrapped("Hand milk your dairy's cows: stand close, target them and press Milk below; it does the emote and stops when they're empty. You get 25% of what the cow is paid, on top.", Theme.Ink, width);
-        Ui.Wrapped("Fill your farmer tank from the dairy tank (Creamery > Jugs) and deliver it: customer orders, other dairies' buy and visitor orders, and the weekly contract at the Grand Creamery.", Theme.Ink, width);
+        Ui.Wrapped("Hand milk your dairy's cows (Herd Care button): stand close, target them and press Milk; it does the emote and stops when they're empty. You get 25% of what the cow is paid, on top.", Theme.Ink, width);
+        Ui.Wrapped("Fill your farmer tank from the dairy tank (top of the Kitchen) and deliver it: customer orders, other dairies' buy and visitor orders, and the weekly contract at the Grand Creamery.", Theme.Ink, width);
         Ui.Wrapped("Invite people and give them roles, the farmer role included.", Theme.Ink, width);
 
         SubHeading("How to earn farmer xp", width);
         Ui.Wrapped($"Grooming cows ({Catalog.GroomXp} each, every 15 min per cow), cleaning stalls ({Catalog.CleanXp} each), hand milking pay, filling jugs, customer orders, deliveries and contract shipments.", Theme.InkSoft, width);
     }
 
-    private System.Collections.Generic.List<(string Dir, string Name)>? modList;
-    private System.Collections.Generic.List<(string Group, string[] Options, bool Single)>? modGroups;
-    private string modGroupsFor = "";
-
-    /// <summary>The picked mod's options (like which animation it uses), chosen just for milking.</summary>
-    private void DrawMilkModOptions()
+    /// <summary>Hand milking and the Kitchen each open their own window (also on the HUD).</summary>
+    private void DrawFarmerButtons(float width)
     {
-        if (F.MilkModDir.Length == 0) return;
-        if (modGroups == null || modGroupsFor != F.MilkModDir)
+        var buttons = new System.Collections.Generic.List<Btn>();
+        if (G.IsFarmer) buttons.Add(new Btn("##farmhandmilk", "Herd Care", "rose", true, "Your dairy's cows and bulls: milk, groom and feed them."));
+        if (G.CanCarry) buttons.Add(new Btn("##farmkitchen", "Kitchen", "honey", true, "Fill your jugs from the dairy tank and bake."));
+        if (buttons.Count == 0) return;
+        Gap(4);
+        var clicked = Buttons(buttons, width);
+        if (clicked >= 0)
         {
-            modGroups = PenumbraLink.Groups(F.MilkModDir) ?? new();
-            modGroupsFor = F.MilkModDir;
+            if (buttons[clicked].Id == "##farmhandmilk") plugin.Milking.IsOpen = true;
+            else plugin.Kitchen.IsOpen = true;
         }
 
-        if (modGroups.Count == 0) return;
-        ImGui.TextColored(Theme.InkSoft, "Options while milking (anything left as set in Penumbra keeps your Penumbra choice):");
-        var changed = false;
-        foreach (var (group, options, single) in modGroups)
-        {
-            if (options.Length == 0) continue;
-            F.MilkModOptions.TryGetValue(group, out var picked);
-            if (single)
-            {
-                var label = picked is { Count: > 0 } ? picked[0] : "As set in Penumbra";
-                ImGui.SetNextItemWidth(260);
-                if (ImGui.BeginCombo($"{group}##mmg{group}", label))
-                {
-                    if (ImGui.Selectable($"As set in Penumbra##mmgdef{group}", picked == null))
-                    {
-                        F.MilkModOptions.Remove(group);
-                        changed = true;
-                    }
-
-                    foreach (var o in options)
-                        if (ImGui.Selectable($"{o}##mmo{group}{o}", picked is { Count: > 0 } && picked[0] == o))
-                        {
-                            F.MilkModOptions[group] = new System.Collections.Generic.List<string> { o };
-                            changed = true;
-                        }
-
-                    ImGui.EndCombo();
-                }
-            }
-            else
-            {
-                ImGui.TextColored(Theme.Ink, group);
-                var custom = picked != null;
-                if (ImGui.Checkbox($"Choose for milking##mmgc{group}", ref custom))
-                {
-                    if (custom) F.MilkModOptions[group] = new System.Collections.Generic.List<string>();
-                    else F.MilkModOptions.Remove(group);
-                    changed = true;
-                }
-
-                if (F.MilkModOptions.TryGetValue(group, out var on))
-                {
-                    ImGui.Indent();
-                    foreach (var o in options)
-                    {
-                        var b = on.Contains(o);
-                        if (ImGui.Checkbox($"{o}##mmc{group}{o}", ref b))
-                        {
-                            if (b) on.Add(o);
-                            else on.Remove(o);
-                            changed = true;
-                        }
-                    }
-
-                    ImGui.Unindent();
-                }
-            }
-        }
-
-        if (changed)
-        {
-            G.EndMilkMod();
-            plugin.SaveConfig();
-        }
-    }
-
-    /// <summary>For farmers: a Penumbra mod switched on only while the Milk button's emote plays (say, one that turns it into a massage).</summary>
-    private void DrawMilkMod(float width)
-    {
-        if (!G.IsFarmer) return;
-        SubHeading("Milking animation (Penumbra)", width);
-        if (!PenumbraLink.Available)
-        {
-            Ui.Wrapped("Install Penumbra to use an animation mod (like one that turns /beesknees into a massage) only while you milk.", Theme.InkSoft, width);
-            return;
-        }
-
-        Ui.Wrapped("Pick a mod that changes your milking emote. The Milk button switches it on for your character just before the emote and back off when the cow is empty. Your Penumbra settings aren't changed. Others see it only if they sync your mods (like with Mare).",
-            Theme.InkSoft, width);
-        modList ??= PenumbraLink.Sorted();
-        var current = F.MilkModDir.Length == 0 ? "None" : modList.FirstOrDefault(m => m.Dir == F.MilkModDir).Name ?? F.MilkModDir;
-        ImGui.SetNextItemWidth(Math.Min(320, width - 120));
-        if (ImGui.BeginCombo("##milkmod", current))
-        {
-            if (ImGui.Selectable("None##milkmodnone", F.MilkModDir.Length == 0))
-            {
-                G.EndMilkMod();
-                F.MilkModDir = "";
-                F.MilkModOptions.Clear();
-                modGroups = null;
-                plugin.SaveConfig();
-            }
-
-            foreach (var (dir, name) in modList)
-                if (ImGui.Selectable($"{name}##mm{dir}", dir == F.MilkModDir))
-                {
-                    G.EndMilkMod();
-                    if (dir != F.MilkModDir) F.MilkModOptions.Clear();
-                    F.MilkModDir = dir;
-                    modGroups = null;
-                    plugin.SaveConfig();
-                }
-
-            ImGui.EndCombo();
-        }
-
-        ImGui.SameLine();
-        if (ImGui.SmallButton("Refresh##milkmodrefresh"))
-        {
-            modList = PenumbraLink.Sorted();
-            modGroups = null;
-        }
-
-        DrawMilkModOptions();
-
-        ImGui.SetNextItemWidth(160);
-        var em = F.MilkButtonEmote;
-        if (ImGui.InputTextWithHint("Milk button emote##milkbtnemote", DairyGame.MilkEmote, ref em, 30))
-        {
-            F.MilkButtonEmote = em.Trim();
-            plugin.SaveConfig();
-        }
-
-        if (ImGui.IsItemHovered()) ImGui.SetTooltip("The emote the Milk button does: use the one your animation mod changes. It has to be a looping one. Empty = /beesknees.\nIf a cow only accepts their own list of emotes and yours isn't on it, the button uses theirs.");
-        var typed = F.MilkButtonEmote.Length == 0 ? "" : F.MilkButtonEmote.StartsWith('/') ? F.MilkButtonEmote : "/" + F.MilkButtonEmote;
-        if (typed.Length > 0 && Emotes.Find(typed) == 0) ImGui.TextColored(Theme.Warn, $"{typed} isn't an emote the game knows, so the Milk button uses /beesknees.");
-        var redraw = F.MilkModRedraw;
-        if (ImGui.Checkbox("Redraw me first (if the animation doesn't change)##milkmodredraw", ref redraw))
-        {
-            F.MilkModRedraw = redraw;
-            plugin.SaveConfig();
-        }
-
-        if (ImGui.IsItemHovered()) ImGui.SetTooltip("Some animation mods only show after your character reloads. This blinks you for a moment before the emote starts.");
+        if (G.Baking is { } b)
+            ImGui.TextColored(Theme.InkSoft, $"Baking {b.Recipe.Name} · {F.Bake!.Done + 1} of {F.Bake.Count} · {(G.Where.InDairy ? $"{DairyGame.Wait(b.Left)} left" : "paused")}");
+        ImGui.TextColored(Theme.InkSoft, $"Jugs: {G.Carried:0.#} / {G.MaxCarry} oz");
+        Gap(4);
     }
 
     /// <summary>For farmers and the owner: clean the dairy's stalls for a bonus to cows milked there.</summary>
@@ -328,9 +199,9 @@ public sealed partial class MainWindow
     }
 
     /// <summary>For farmers: the dairy's cows, whether they're close, and which emotes milk each of them.</summary>
-    private void DrawHandMilkCows(float width)
+    internal void DrawHandMilkCows(float width, bool heading = true)
     {
-        SubHeading("Hand milk a cow", width);
+        if (heading) SubHeading("Hand milk a cow", width);
         if (!G.IsFarmer)
         {
             Ui.Wrapped("Only farmers hand milk. A farmer or the owner can give you the farmer role.", Theme.InkSoft, width);
@@ -374,6 +245,8 @@ public sealed partial class MainWindow
                         st.Spoiled ? Theme.Warn : Theme.InkSoft));
                     if (st.HandBy.Length > 0)
                         lines.Add(new Line(st.HandBy.Equals(myName, StringComparison.OrdinalIgnoreCase) ? "You're milking them" : $"Being milked by {st.HandBy}", Theme.RoseDeep));
+                    else if (G.AwaitingAllow(c.Name)) lines.Add(new Line("Asked: waiting for them to press Allow...", Theme.HoneyDeep));
+                    else if (st.Ask) lines.Add(new Line("Asks first: they get a pop-up to Allow", Theme.InkSoft));
                 }
             }
 
@@ -390,11 +263,22 @@ public sealed partial class MainWindow
                 else
                 {
                     var close = near <= G.HandRange;
-                    first = new Btn($"##milk{c.Id}", "Milk", "rose", close, close ? $"Does {milkEmote} for you (as if you typed it). Hold still; it stops on its own when they're empty." : $"Get within {G.HandRange:0} yalms of them first.");
+                    var waiting = G.AwaitingAllow(c.Name);
+                    first = new Btn($"##milk{c.Id}", waiting ? "Waiting" : "Milk", "rose", close && !waiting,
+                        waiting ? "Waiting for them to press Allow." :
+                        !close ? $"Get within {G.HandRange:0} yalms of them first." :
+                        st?.Ask == true ? $"They get a pop-up first. Once they Allow, you do {milkEmote}; it stops on its own when they're empty." :
+                        $"Does {milkEmote} for you (as if you typed it). Hold still; it stops on its own when they're empty.");
                 }
 
                 var groomWhy = G.GroomProblem(c.Name, c.Id, near);
-                buttons = new[] { first, new Btn($"##groom{c.Id}", "Groom", "sage", groomWhy == null, groomWhy ?? $"Brush them down: their Happy bar gets 30 more minutes, you get {Catalog.GroomXp} farmer xp. Once every 15 minutes per cow.") };
+                var feedWhy = G.FeedProblem(c.Name, c.Id, near);
+                buttons = new[]
+                {
+                    first,
+                    new Btn($"##groom{c.Id}", "Groom", "sage", groomWhy == null, groomWhy ?? $"Brush them down: their Happy bar gets 30 more minutes, you get {Catalog.GroomXp} farmer xp. Once every 15 minutes per cow."),
+                    new Btn($"##feed{c.Id}", "Feed", "honey", feedWhy == null, feedWhy ?? G.FeedTip),
+                };
             }
 
             var clicked = ListRow(Ico("milk"), c.Name, c.Online ? Theme.Ink : Theme.InkSoft, lines, buttons, width,
@@ -409,10 +293,37 @@ public sealed partial class MainWindow
                     }
             }
             else if (clicked == 1) G.Groom(c.Name, c.Id, near);
-            else if (clicked == 0 && !G.MilkCow(c.Name, milkEmote, st?.Milk ?? 0)) G.Notify($"{milkEmote} isn't an emote the game knows. Ask them to fix their milking emotes (Roles > Cow).", 2);
+            else if (clicked == 2) G.FeedFromShelf(c.Name, c.Id, near);
+            else if (clicked == 0 && !G.MilkCow(c.Name, milkEmote, st?.Milk ?? 0, st?.Ask == true)) G.Notify($"{milkEmote} isn't an emote the game knows. Ask them to fix their milking emotes (Roles > Cow).", 2);
         }
 
         Ui.Wrapped("You get 25% of what the cow is paid, on top of their pay, plus farmer xp.", Theme.InkSoft, width);
+        DrawFeedBulls(width, myName, me);
+    }
+
+    /// <summary>Bulls (who aren't cows too) can be fed from the dairy shelf as well.</summary>
+    private void DrawFeedBulls(float width, string myName, Dalamud.Game.ClientState.Objects.SubKinds.IPlayerCharacter? me)
+    {
+        var bulls = G.Net.Mine?.Members.Where(m => m.Has("bull") && !m.Has("cow") && !m.Name.Equals(myName, StringComparison.OrdinalIgnoreCase)).ToList() ?? new();
+        if (bulls.Count == 0) return;
+        SubHeading("Bulls", width);
+        foreach (var b in bulls.OrderByDescending(b => b.Online).ThenBy(b => b.Name))
+        {
+            var near = -1f;
+            if (me != null)
+                foreach (var o in Plugin.ObjectTable)
+                    if (o is Dalamud.Game.ClientState.Objects.SubKinds.IPlayerCharacter pc && pc.Name.TextValue.Equals(b.Name, StringComparison.OrdinalIgnoreCase))
+                    {
+                        near = Vector3.Distance(me.Position, pc.Position);
+                        break;
+                    }
+
+            var line = !b.Online ? "Offline" : near < 0 ? "Not near you" : near <= G.HandRange ? $"Right here ({near:0.#} y)" : $"{near:0} y away";
+            var why = b.Online ? G.FeedProblem(b.Name, b.Id, near) : "They're offline.";
+            if (ListRow(Ico("biscuit"), b.Name, b.Online ? Theme.Ink : Theme.InkSoft, new[] { new Line(line, Theme.InkSoft) },
+                    new[] { new Btn($"##feedb{b.Id}", "Feed", "honey", why == null, why ?? G.FeedTip) }, width) == 0)
+                G.FeedFromShelf(b.Name, b.Id, near);
+        }
     }
 
     // ----- Bull -----

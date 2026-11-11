@@ -8,13 +8,12 @@ using VelvetDairy.Network;
 
 namespace VelvetDairy.Windows;
 
-// The Velvet Dairy Network screens: the Dairies directory, your dairy's roles and members, and buy orders.
+// The Eorzea Milkers Network screens: the Dairies directory, your dairy's roles and members, and buy orders.
 public sealed partial class MainWindow
 {
     private string listDescription = "";
     private bool listLoaded;
     private int orderOz = 16;
-    private int orderGrade;
     private int orderCoins = -1;
     private string dirFilter = "";
     private bool dirPublicOnly;
@@ -54,14 +53,14 @@ public sealed partial class MainWindow
 
         if (net.Api == null)
         {
-            Ui.Wrapped("The network isn't available right now, so Velvet Dairy is running on its own. Everything local still works.", Theme.InkSoft, width);
+            Ui.Wrapped("The network isn't available right now, so Eorzea Milkers is running on its own. Everything local still works.", Theme.InkSoft, width);
             ImGui.TextColored(Theme.InkSoft, net.Status);
             return;
         }
 
         var online = net.Last?.Online ?? net.Directory?.Online ?? 0;
         using (fonts.For(fonts.Heading, $"{online}")!.Push()) ImGui.TextColored(Theme.SageDeep, $"{online:N0} online");
-        ImGui.TextColored(Theme.InkSoft, "Players with Velvet Dairy running in the last few minutes.");
+        ImGui.TextColored(Theme.InkSoft, "Players with Eorzea Milkers running in the last few minutes.");
         ImGui.TextColored(net.Connected ? Theme.SageDeep : Theme.Warn, net.Status);
 
         SubHeading("You", width);
@@ -104,7 +103,7 @@ public sealed partial class MainWindow
         SubHeading("How it works", width);
         Ui.Wrapped("Owners register their own estate as a dairy and invite farmers, cows and bulls. Farmers can invite cows and bulls. " +
                    "Public dairies show their address here so anyone can visit; private ones only show their name. " +
-                   "Cows deliver milk in person: go to a public dairy and fill its owner's buy orders or the creamery's visitor orders. " +
+                   "Farmers fill other dairies' buy orders from inside their own dairy (or in person at a public one for +10%), and the creamery's visitor orders in person at public dairies. " +
                    "Dairies level up from what their members do inside them; higher levels get more stalls and better stall tiers and list first.", Theme.InkSoft, width);
         if (!Lifestream.Installed)
         {
@@ -125,7 +124,7 @@ public sealed partial class MainWindow
         var net = G.Net;
         if (net.Api == null || !F.NetEnabled)
         {
-            Ui.Wrapped("The directory needs the Velvet Dairy Network.", Theme.InkSoft, width);
+            Ui.Wrapped("The directory needs the Eorzea Milkers Network.", Theme.InkSoft, width);
             return;
         }
 
@@ -261,7 +260,7 @@ public sealed partial class MainWindow
                 Panel("##stallside", new Vector2(mid + 7, top.Y), max, G.IsOwner ? "Stall upgrades" : "Hand milking", w =>
                 {
                     if (G.IsOwner) DrawStallUpgrades(w);
-                    else Ui.Wrapped("Cows: your milking emotes are on Roles > Cow. Farmers: the dairy's cows and the emotes that milk them are on Roles > Farmer.", Theme.InkSoft, w);
+                    else Ui.Wrapped("Cows: your milking emotes are on Roles > Cow. Farmers: the dairy's cows and the emotes that milk them are in Herd Care (HUD).", Theme.InkSoft, w);
                 }, true);
                 break;
             default:
@@ -344,7 +343,7 @@ public sealed partial class MainWindow
         var barW = Math.Min(width, 420);
         Ui.Bar(ImGui.GetWindowDrawList(), cur + new Vector2(0, 4), cur + new Vector2(barW, 14), c.Progress, c.Completed ? Theme.SageDeep : Theme.BlueDeep);
         ImGui.Dummy(new Vector2(barW, 20));
-        ImGui.TextColored(Theme.InkSoft, c.MinGrade == 0 ? "Any grade" : $"Grade {Grades.Name(c.MinGrade)} or better");
+        ImGui.TextColored(Theme.InkSoft, "Any milk counts");
         ImGui.TextColored(Theme.HoneyDeep, $"Reward: {c.RewardXp:N0} dairy xp + {c.RewardFund:N0} coins for the fund");
         var left = NextMonday() - DateTime.UtcNow;
         ImGui.TextColored(Theme.InkSoft, c.Completed ? $"A new contract comes in {(int)left.TotalDays}d {left.Hours}h." : $"Ends in {(int)left.TotalDays}d {left.Hours}h (Monday 00:00 UTC).");
@@ -355,7 +354,7 @@ public sealed partial class MainWindow
         }
 
         Gap(6);
-        Ui.Wrapped("Contracts grow 40 oz with each dairy level. Higher levels ask for better grades: B from level 5, A from 10, S from 15.", Theme.InkSoft, width);
+        Ui.Wrapped("Contracts grow 40 oz with each dairy level. Any milk counts.", Theme.InkSoft, width);
     }
 
     private Dalamud.Game.Text.SeStringHandling.Payloads.MapLinkPayload? creameryLink;
@@ -413,21 +412,16 @@ public sealed partial class MainWindow
         }
 
         ImGui.TextColored(Theme.Ink, $"Your jugs: {G.Carried:0.#} oz");
-        if (G.Carried <= 0) Ui.Wrapped("Fill jugs at your dairy first (Creamery > Jugs).", Theme.InkSoft, width);
+        if (G.Carried <= 0) Ui.Wrapped("Fill jugs at your dairy first (HUD > Kitchen).", Theme.InkSoft, width);
         var leftOz = (int)Math.Ceiling(c.Left);
-        for (var g = Grades.Count - 1; g >= 0; g--)
+        if (G.Carried >= 0.05f)
         {
-            var have = F.Tank![g];
-            if (have < 0.05f) continue;
-            var grade = g;
-            var all = (int)Math.Min(Math.Floor(have + 0.01f), leftOz);
-            var pAll = G.ShipProblem(g, all);
-            var ok = g >= c.MinGrade;
-            var clicked = ListRow(cc => Ui.Seal(ImGui.GetWindowDrawList(), cc, 22, Grades.Name(grade), Theme.GradeColor(grade)),
-                $"Grade {Grades.Name(g)}", ok ? Theme.Ink : Theme.InkSoft,
-                new[] { new Line(ok ? $"You carry {have:0.#} oz" : "Below this contract's grade", Theme.InkSoft) },
-                ok ? new[] { new Btn($"##shipall{g}", $"Ship {all}", "blue", pAll == null && all > 0, pAll) } : Array.Empty<Btn>(), width);
-            if (clicked == 0) G.Ship(g, all);
+            var all = (int)Math.Min(Math.Floor(G.Carried + 0.01f), leftOz);
+            var pAll = G.ShipProblem(all);
+            var clicked = ListRow(Ico("bottle"), "Your milk", Theme.Ink,
+                new[] { new Line($"You carry {G.Carried:0.#} oz", Theme.InkSoft) },
+                new[] { new Btn("##shipall", $"Ship {all}", "blue", pAll == null && all > 0, pAll) }, width);
+            if (clicked == 0) G.Ship(all);
         }
     }
 
@@ -451,12 +445,9 @@ public sealed partial class MainWindow
             Gap(4);
             ImGui.TextColored(Theme.BlueDeep, $"Dairy milk tank: {p.Tank.Total:N1} oz");
             if (ImGui.IsItemHovered())
-                ImGui.SetTooltip("Milk from milkings in this dairy (stalls and hand) is stored here too (you keep yours).\n" +
-                                 string.Join("\n", p.Tank.ByGrade.Select((oz, g) => $"Grade {Grades.Name(g)}: {oz:N1} oz")));
+                ImGui.SetTooltip("Every milking in this dairy (stalls and hand) fills this tank. Farmers fill their jugs from it.");
             if (p.Tank.Total > 0)
             {
-                var parts = p.Tank.ByGrade.Select((oz, g) => (oz, g)).Where(x => x.oz > 0).Select(x => $"{Grades.Name(x.g)} {x.oz:N1}");
-                ImGui.TextColored(Theme.InkSoft, string.Join(" · ", parts));
                 if (p.Tank.Pumpers.Count > 0)
                     Ui.Wrapped("Top pumpers: " + string.Join(", ", p.Tank.Pumpers.Take(5).Select(x => $"{x.Name.Split(' ')[0]} {x.Oz:N0} oz")), Theme.InkSoft, width);
             }
@@ -663,7 +654,7 @@ public sealed partial class MainWindow
             var t = Plugin.TargetManager.Target as Dalamud.Game.ClientState.Objects.SubKinds.IPlayerCharacter;
             var me = Plugin.ObjectTable.LocalPlayer;
             var ok = t != null && me != null && t.GameObjectId != me.GameObjectId;
-            var tip = ok ? null : "Target a player first (or right-click them > Velvet Dairy).";
+            var tip = ok ? null : "Target a player first (or right-click them > Eorzea Milkers).";
             var label = ok ? $"Invite {t!.Name.TextValue}:" : "Invite your target:";
             ImGui.TextColored(Theme.Ink, label);
             var clicked = Buttons(roles.Select(r => new Btn($"##inv{r}", $"as {r}", r == "farmer" ? "sage" : r == "bull" ? "honey" : "rose", ok, tip)).ToList(), width);
@@ -706,26 +697,37 @@ public sealed partial class MainWindow
         if (!G.Networked) return;
         var net = G.Net;
 
-        // Visiting someone else's public dairy: their buy orders and the creamery's visitor orders
+        // Buy orders from every other dairy: delivered from inside your own dairy, no travel needed
+        if (G.CanCarry)
+        {
+            SubHeading("Buy orders from other dairies", width);
+            JugsNote(width);
+            net.RefreshBoard();
+            Ui.Wrapped("Deliver from inside your own dairy with milk in your jugs; it goes straight into their tank. " +
+                       "Public dairies pay 10% more if you deliver in person at their dairy.", Theme.InkSoft, width);
+            if (net.Board.Count == 0) ImGui.TextColored(Theme.InkSoft, "No open buy orders right now.");
+            foreach (var o in net.Board.ToList())
+            {
+                var p = G.DeliverProblem(o);
+                var have = G.Carried;
+                var here = G.VisitingDairy?.Id == o.DairyId;
+                var clicked = ListRow(Ico("coin"), $"{o.DairyName} · {o.Oz} oz", Theme.Ink,
+                    new[]
+                    {
+                        new Line(here ? $"Pays {o.Coins} + {(int)Math.Round(o.Coins * 0.1)} for coming in person" : $"Pays {o.Coins} coins{(o.DairyPublic ? " (+10% in person)" : "")}", Theme.HoneyDeep),
+                    },
+                    new[] { new Btn($"##bfill{o.Id}", "Deliver", "sage", p == null, p) }, width, Math.Min(1f, have / o.Oz), p == null ? Theme.SageDeep : Theme.BlueDeep);
+                if (clicked == 0) G.Deliver(o);
+            }
+
+            Gap(8);
+        }
+
+        // Visiting someone else's public dairy: the creamery's visitor orders (buy orders are in the list above)
         var visiting = G.VisitingDairy;
         if (visiting != null)
         {
-            SubHeading($"Deliveries at {visiting.Name}", width);
-            if (!net.OrdersByDairy.ContainsKey(visiting.Id)) net.RefreshOrders(visiting.Id);
-            var theirs = net.OrdersByDairy.TryGetValue(visiting.Id, out var l) ? l : new List<BuyOrder>();
-            foreach (var o in theirs.ToList())
-            {
-                var p = G.DeliverProblem(o);
-                var have = G.OzAtOrAbove(o.MinGrade);
-                var clicked = ListRow(Ico("coin"), $"Buy order · {o.Oz} oz", Theme.Ink,
-                    new[]
-                    {
-                        new Line(o.MinGrade == 0 ? "Any grade" : $"Grade {Grades.Name(o.MinGrade)} or better", Theme.InkSoft),
-                        new Line($"The owner pays {o.Coins} coins", Theme.HoneyDeep),
-                    },
-                    new[] { new Btn($"##nfill{o.Id}", "Deliver", "sage", p == null, p) }, width, Math.Min(1f, have / o.Oz), p == null ? Theme.SageDeep : Theme.BlueDeep);
-                if (clicked == 0) G.Deliver(o);
-            }
+            SubHeading($"Visitor orders at {visiting.Name}", width);
 
             foreach (var o in G.VisitorOrders(visiting.Id))
             {
@@ -733,46 +735,38 @@ public sealed partial class MainWindow
                 var clicked = ListRow(Ico("bottle"), $"{o.Customer} (visitor order)", Theme.Ink,
                     new[]
                     {
-                        new Line($"{o.Oz} oz, {(o.MinGrade == 0 ? "any grade" : $"Grade {Grades.Name(o.MinGrade)} or better")}", Theme.InkSoft),
+                        new Line($"{o.Oz} oz of milk", Theme.InkSoft),
                         new Line($"Pays {o.Coins} coins · {o.Xp} xp (the creamery pays)", Theme.HoneyDeep),
                     },
-                    new[] { new Btn($"##vfill{visiting.Id}{o.Id}", "Deliver", "sage", can, can ? null : G.CanCarry ? "Fill jugs of that grade from your dairy tank first." : "Only farmers and owners deliver milk.") }, width);
+                    new[] { new Btn($"##vfill{visiting.Id}{o.Id}", "Deliver", "sage", can, can ? null : G.CanCarry ? "Fill your jugs from your dairy tank first." : "Only farmers and owners deliver milk.") }, width);
                 if (clicked == 0) G.FillVisitorOrder(visiting.Id, o);
             }
 
-            if (theirs.Count == 0 && G.VisitorOrders(visiting.Id).Count == 0) ImGui.TextColored(Theme.InkSoft, "Nothing to deliver here today.");
+            if (G.VisitorOrders(visiting.Id).Count == 0) ImGui.TextColored(Theme.InkSoft, "No visitor orders left here today.");
         }
 
         // Owners: buy milk from other players' cows
         if (F.NetMember?.IsOwner != true) return;
         SubHeading("Your buy orders", width);
-        if (net.Mine?.Dairy?.IsPublic != true)
-        {
-            Ui.Wrapped("Make your dairy public (Dairy tab) and cows can come deliver milk to your buy orders.", Theme.InkSoft, width);
-            return;
-        }
+        Ui.Wrapped("Farmers from other dairies fill these from their own dairy, so it works even if yours is private.", Theme.InkSoft, width);
 
         foreach (var o in net.MyOrders.ToList())
         {
             var left = DateTimeOffset.FromUnixTimeSeconds(o.Expires) - DateTimeOffset.UtcNow;
-            if (Row($"##cancelord{o.Id}", "coin", $"{o.Oz} oz, {(o.MinGrade == 0 ? "any grade" : $"Grade {Grades.Name(o.MinGrade)}+")}",
+            if (Row($"##cancelord{o.Id}", "coin", $"{o.Oz} oz of milk",
                     $"{o.Coins} coins held · ends in {(left.TotalDays >= 1 ? $"{(int)left.TotalDays}d {left.Hours}h" : Mins(left))}", "Cancel", "cream", true, "Cancel and get the coins back.", width))
                 G.CancelBuyOrder(o);
         }
 
         ImGui.SetNextItemWidth(120);
         if (ImGui.SliderInt("oz##ordoz", ref orderOz, 1, DairyGame.MaxOrderOz)) orderCoins = -1;
-        ImGui.SameLine();
-        ImGui.SetNextItemWidth(120);
-        var names = Enumerable.Range(0, Grades.Count).Select(g => g == 0 ? "Any grade" : $"Grade {Grades.Name(g)}+").ToArray();
-        if (ImGui.Combo("##ordgrade", ref orderGrade, names, names.Length)) orderCoins = -1;
-        if (orderCoins < 0) orderCoins = DairyGame.SuggestedOrderCoins(orderOz, orderGrade);
+        if (orderCoins < 0) orderCoins = DairyGame.SuggestedOrderCoins(orderOz, 1);
         ImGui.SameLine();
         ImGui.SetNextItemWidth(110);
         ImGui.InputInt("coins##ordcoins", ref orderCoins, 5, 25);
         orderCoins = Math.Clamp(orderCoins, 1, orderOz * 40);
-        var problem = G.PostOrderProblem(orderOz, orderGrade, orderCoins);
+        var problem = G.PostOrderProblem(orderOz, 0, orderCoins);
         if (Ui.Button("##postorder", "Post buy order", new Vector2(170, 32), "honey", problem == null, problem ?? "The coins are held until a cow delivers or you cancel."))
-            G.PostBuyOrder(orderOz, orderGrade, orderCoins);
+            G.PostBuyOrder(orderOz, 0, orderCoins);
     }
 }
