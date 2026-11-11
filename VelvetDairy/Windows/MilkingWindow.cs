@@ -23,6 +23,9 @@ public sealed class MilkingWindow : Window
         SizeConstraints = new WindowSizeConstraints { MinimumSize = new Vector2(380, 260), MaximumSize = new Vector2(1200, 1400) };
     }
 
+    /// <summary>Opening it brings your dairy's info up to date (it's checked less often while nothing shows it).</summary>
+    public override void OnOpen() => plugin.Net.MineWithin(1);
+
     public override void PreDraw() => PaperStyle.Push();
 
     public override void PostDraw() => PaperStyle.Pop();

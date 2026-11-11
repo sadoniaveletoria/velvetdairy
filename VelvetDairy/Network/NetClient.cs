@@ -392,9 +392,18 @@ public sealed class NetClient : IDisposable
         if (nextMine > Now + seconds) nextMine = Now + seconds;
     }
 
+    /// <summary>
+    /// Your dairy's members, stalls and status only change what you see while you're in the dairy, have one of the
+    /// windows open, or watch the owner HUD. Otherwise it's checked every 5 minutes instead of every minute
+    /// (every request counts against the server's daily allowance).
+    /// </summary>
+    private bool WatchingDairy =>
+        plugin.Game.Where.InDairy || plugin.MainWindow.IsOpen || plugin.Members.IsOpen || plugin.Kitchen.IsOpen ||
+        plugin.Milking.IsOpen || (F.ShowHud && F.ShowOwnerHud && F.NetMember?.IsOwner == true);
+
     public void RefreshMine()
     {
-        nextMine = Now + 60;
+        nextMine = Now + (WatchingDairy ? 60 : 300);
         Call<MyDairyReply>("GET", "/v1/dairy/mine", null, r =>
         {
             Mine = r.Dairy == null ? null : r;

@@ -104,6 +104,9 @@ public sealed partial class MainWindow : Window
         dairyName = plugin.Config.Farm.Dairy?.Name ?? "My Dairy";
     }
 
+    /// <summary>Opening it brings your dairy's info up to date (it's checked less often while nothing shows it).</summary>
+    public override void OnOpen() => plugin.Net.MineWithin(1);
+
     /// <summary>Another character logged in: listen to their game and forget what was typed or loaded for the last one.</summary>
     public void OnCharacterChanged()
     {

@@ -415,9 +415,12 @@ public sealed class Plugin : IDalamudPlugin
         if (Config.ActiveKey == null || Waiting) return;
         if (Game.Draft is { } d && ClientState.TerritoryType == d.Territory) Windows.AreaOverlay.Draw(d);
         if (Config.Farm.ShowStallMarkers && Game.Where.InDairy && Game.Blocked() == null)
-            // While you're in the dairy with markers on, fetch everyone's stall states every 10 seconds
-            if (Game.Networked) Game.Net.MineWithin(10);
+        {
+            // While you're in the dairy with markers on, fetch everyone's stall states every 30 seconds
+            // (members only report them once a minute, so faster doesn't show much more)
+            if (Game.Networked) Game.Net.MineWithin(30);
             foreach (var s in Game.StallsHere()) Windows.AreaOverlay.DrawStall(s);
+        }
     }
 
     private IChatGui.OnHandleableChatMessageDelegate? chatHandler;
