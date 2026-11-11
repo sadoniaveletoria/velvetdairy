@@ -156,9 +156,18 @@ public sealed class KitchenWindow : Window
         ImGui.TextColored(Theme.RoseDeep, "NEEDS");
         if (r.MilkOz > 0) Need($"{r.MilkOz * n} oz milk", $"{G.Carried:0.#} oz in your jugs", G.Carried >= r.MilkOz * n);
         foreach (var (id, per) in r.Needs())
+        {
             Need($"{per * n} {Catalog.MadeName(id).ToLowerInvariant()}",
-                Catalog.IngredientById(id) != null ? $"{G.IngredientCount(id)} in the dairy pantry" : $"you have {G.Count(id)} (Shop)",
+                Catalog.IngredientById(id) != null ? $"{G.IngredientCount(id)} in the dairy pantry" : $"you have {G.Count(id)}",
                 G.IngredientCount(id) >= per * n);
+            // Things the Shop sells (like wheat grain) get a button that opens the Shop on them
+            if (Catalog.FeedById(id) is { Price: > 0 } shopItem)
+            {
+                ImGui.SameLine();
+                if (ImGui.SmallButton($"Buy##kbuy{id}")) plugin.MainWindow.OpenShopFor(id);
+                if (ImGui.IsItemHovered()) ImGui.SetTooltip($"Open the Shop on {shopItem.Name} ({shopItem.Price} coins each).");
+            }
+        }
         if (r.FarmerLevel > 1) Need($"Farmer level {r.FarmerLevel}", $"you're {G.FarmerLevel}", G.FarmerLevel >= r.FarmerLevel);
         ImGui.Spacing();
 

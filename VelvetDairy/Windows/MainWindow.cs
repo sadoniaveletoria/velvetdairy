@@ -65,6 +65,23 @@ public sealed partial class MainWindow : Window
         IsOpen = true;
     }
 
+    /// <summary>Opens the Shop on Feed & treats with this item highlighted and scrolled into view (from the Kitchen's Buy buttons).</summary>
+    public void OpenShopFor(string itemId)
+    {
+        tab = TabShop;
+        subTabs["shop"] = 0;
+        focusFeed = itemId;
+        focusFeedUntil = ImGui.GetTime() + 4;
+        focusScrolled = false;
+        if (F.HiddenFeed!.Contains(itemId)) showHiddenFeed = true;
+        IsOpen = true;
+        BringToFront();
+    }
+
+    private string focusFeed = "";
+    private double focusFeedUntil;
+    private bool focusScrolled;
+
     /// <summary>Spoiled milk is tinted a sour yellow.</summary>
     public static readonly Vector4 SourMilk = new(0.93f, 0.88f, 0.60f, 1f);
 
@@ -1157,8 +1174,22 @@ public sealed partial class MainWindow : Window
                 buttons.Add(new Btn($"##buy5{item.Id}", $"5 for {item.Price * 5}", "cream", p5 == null, p5));
             }
 
+            var rowTop = ImGui.GetCursorScreenPos();
+            var focused = item.Id == focusFeed && ImGui.GetTime() < focusFeedUntil;
+            if (focused && !focusScrolled)
+            {
+                ImGui.SetScrollHereY(0.2f);
+                focusScrolled = true;
+            }
+
             var clicked = ListRow(Ico(item.Icon, locked || hidden ? 0.5f : 1f), item.Name + (hidden ? "  ·  hidden" : ""), locked || hidden ? Theme.InkSoft : Theme.Ink,
                 lines, buttons, width);
+            if (focused)
+            {
+                // The item you came to buy: a soft honey glow that fades out
+                var a = (float)Math.Clamp((focusFeedUntil - ImGui.GetTime()) / 4, 0, 1);
+                ImGui.GetWindowDrawList().AddRect(rowTop - new Vector2(4, 2), new Vector2(rowTop.X + width + 4, ImGui.GetCursorScreenPos().Y), Ui.U(Theme.HoneyDeep, 0.9f * a), 8, ImDrawFlags.None, 2.5f);
+            }
             if (clicked < 0) continue;
             var id = buttons[clicked].Id;
             if (id.StartsWith("##buy1")) G.BuyFeed(item, 1);

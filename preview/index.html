@@ -390,7 +390,7 @@ function herd(s) {
 
 // ---------------------------------------------------------------- Kitchen (KitchenWindow.cs)
 const RECIPES = {
-  flour: { name: "Mill flour", makes: "Flour", icon: "grain", group: "Ingredients", level: 6, milk: 0, uses: "2 wheat grain", usesNote: "you have 6 (Shop)", secs: 20, xp: 6, amount: 1,
+  flour: { name: "Mill flour", makes: "Flour", icon: "grain", group: "Ingredients", level: 6, milk: 0, uses: "2 wheat grain", usesNote: "you have 6", shop: true, secs: 20, xp: 6, amount: 1,
     effects: ["An ingredient for other recipes.", "+6 farmer xp for each one."] },
   butter: { name: "Churn butter", makes: "Butter", icon: "milk", group: "Ingredients", milk: 16, uses: "", secs: 30, xp: 12, amount: 1,
     effects: ["An ingredient: used to make butter cookies. It can't be eaten on its own.", "+12 farmer xp for each one."] },
@@ -418,7 +418,7 @@ function kitchen(s) {
       <div style="display:grid;gap:6px;align-content:start">
         <div style="font-size:21px">${r.name}</div>
         <div class="sect">Makes</div><div style="font-size:15px">${r.amount} ${r.makes.toLowerCase()} · ${r.secs} s each</div>
-        <div class="sect">Needs</div><div style="font-size:15px">${r.milk ? `${r.milk} oz milk <span class="soft">· 40 oz in your jugs</span>` : ""}${r.uses ? `${r.milk ? "<br>" : ""}${r.uses} <span class="soft">· ${r.usesNote}</span>` : ""}${r.uses2 ? `<br>${r.uses2} <span class="soft">· 5 in the dairy pantry</span>` : ""}${(r.level || 1) > 1 ? `<br>Farmer level ${r.level} <span class="soft">· you're 12</span>` : ""}</div>
+        <div class="sect">Needs</div><div style="font-size:15px">${r.milk ? `${r.milk} oz milk <span class="soft">· 40 oz in your jugs</span>` : ""}${r.uses ? `${r.milk ? "<br>" : ""}${r.uses} <span class="soft">· ${r.usesNote}</span>${r.shop ? ` <span class="mini">Buy</span>` : ""}` : ""}${r.uses2 ? `<br>${r.uses2} <span class="soft">· 5 in the dairy pantry</span>` : ""}${(r.level || 1) > 1 ? `<br>Farmer level ${r.level} <span class="soft">· you're 12</span>` : ""}</div>
         <div class="sect">What it does</div><div style="font-size:15px;display:grid;gap:3px">${r.effects.map(e => `<div>${esc(e)}</div>`).join("")}</div>
         <div style="display:flex;gap:6px;align-items:center;margin-top:4px">${ibtn("−", "cream", 34, 28)}<span class="num" style="min-width:24px;text-align:center">1</span>${ibtn("+", "cream", 34, 28)}${ibtn("Max", "cream", 54, 28)}${ibtn(r.group === "Treats" ? "Bake" : "Make", "honey", 90, 30)}</div>
       </div></div>

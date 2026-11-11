@@ -1,9 +1,9 @@
 // Made by preview/build.py from the plugin's source. Don't edit by hand.
 window.PREVIEW = {
- "version": "0.9.22",
+ "version": "0.9.23",
  "changes": [
   {
-   "version": "0.9.22",
+   "version": "0.9.23",
    "title": "Pay, levels and the kitchen",
    "notes": [
     "# Pay",
@@ -12,8 +12,11 @@ window.PREVIEW = {
     "# Kitchen",
     "Ingredients are shared: butter (and anything else a farmer makes to bake with) goes into the dairy pantry, and every farmer of the dairy can bake with it. Butter you already had moves there too.",
     "Meadow hay is now Wheat grain. Farmers can buy it in the Shop and mill 2 into flour in the Kitchen.",
-    "New treat: Cream buns (1 flour, 1 butter and 12 oz of milk make 2) for the dairy shelf. Filling, very happy, and a 30 minute milk boost.",
+    "New treat: Cream buns (1 flour, 1 butter and 12 oz of milk make 2) for the dairy shelf: Fed +5%, Happy +7% and a 20 minute milk boost.",
+    "Butter cookies are now Happy +6% with a 15 minute milk boost, so baked treats sit in the middle of what the Shop sells.",
+    "Treats from farmers count as your treat: one every 15 minutes, whoever gives it, the same as eating one yourself.",
     "Recipes unlock with your farmer level: butter at 1, butter cookies at 3, flour at 6, cream buns at 10. Locked ones show their level in the Kitchen.",
+    "Need something the Shop sells for a recipe (like wheat grain)? The Kitchen has a Buy button next to it that opens the Shop right on that item.",
     "# Levels",
     "The role tags at the top of the main window now show your level (COW 23, FARMER 12), and fill up as you get closer to the next one. Hover one for the exact xp.",
     "The tags are a little slimmer, and where you are is one word: HERE, RESTING, PRIVATE or AWAY (hover it for more)."

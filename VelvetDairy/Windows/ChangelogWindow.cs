@@ -22,7 +22,7 @@ public sealed class ChangelogWindow : Window
     /// <summary>Newest first. Write these for players: what changed for them, not how.</summary>
     private static readonly Entry[] Entries =
     {
-        new("0.9.22", "Pay, levels and the kitchen", new[]
+        new("0.9.23", "Pay, levels and the kitchen", new[]
         {
             "# Pay",
             "New pay per ounce: C 6, B 8, A 10, S 12, S+ 14 coins. Higher grades still milk faster and give more milk.",
@@ -34,6 +34,7 @@ public sealed class ChangelogWindow : Window
             "Butter cookies are now Happy +6% with a 15 minute milk boost, so baked treats sit in the middle of what the Shop sells.",
             "Treats from farmers count as your treat: one every 15 minutes, whoever gives it, the same as eating one yourself.",
             "Recipes unlock with your farmer level: butter at 1, butter cookies at 3, flour at 6, cream buns at 10. Locked ones show their level in the Kitchen.",
+            "Need something the Shop sells for a recipe (like wheat grain)? The Kitchen has a Buy button next to it that opens the Shop right on that item.",
             "# Levels",
             "The role tags at the top of the main window now show your level (COW 23, FARMER 12), and fill up as you get closer to the next one. Hover one for the exact xp.",
             "The tags are a little slimmer, and where you are is one word: HERE, RESTING, PRIVATE or AWAY (hover it for more).",
