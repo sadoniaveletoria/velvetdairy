@@ -569,7 +569,7 @@ public sealed partial class MainWindow : Window
         }
 
         var blocked = G.Blocked();
-        var milkH = G.Active != null || !G.AutoStall || !F.AutoHand ? 200f : 112f;
+        var milkH = G.Active != null || !G.AutoStall ? 200f : 112f;
         var topMax = new Vector2(max.X, max.Y - milkH - 14);
         var leftW = 270f;
         var rightW = 330f;
@@ -902,14 +902,6 @@ public sealed partial class MainWindow : Window
             buttons.Add(new Btn("##stall", "Start stall", "blue", problem == null, problem ?? "Starts the stall you're sitting on."));
             starts.Add(() => G.StartStall());
         }
-
-        if (!F.AutoHand)
-            foreach (var fh in G.Farmhands.Where(f => (G.Dev || !f.IsTest) && G.HandProblem(f) == null))
-            {
-                var hand = fh;
-                buttons.Add(new Btn($"##hand{fh.Name}{fh.WorldId}", $"Let {(fh.IsTest ? "Test" : fh.Name.Split(' ')[0])} milk me", "sage", true, $"{fh.Display} is ready to milk you."));
-                starts.Add(() => G.StartHand(hand));
-            }
 
         if (buttons.Count == 0) return;
         Gap(4);

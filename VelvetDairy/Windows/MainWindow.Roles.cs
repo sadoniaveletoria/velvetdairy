@@ -110,7 +110,7 @@ public sealed partial class MainWindow
         }
 
         if (ImGui.IsItemHovered())
-            ImGui.SetTooltip("On: a farmer holding a milking emote on you starts it. Off: you start it yourself (right-click them > Velvet Dairy > Let them milk me, or Barn > Milking).");
+            ImGui.SetTooltip("On: a farmer pressing Milk on you starts it right away. Off: you get a pop-up asking if they can (Allow or Not now).");
         DrawEmotes(width);
     }
 

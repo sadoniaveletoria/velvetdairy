@@ -22,7 +22,7 @@ public sealed class ChangelogWindow : Window
     /// <summary>Newest first. Write these for players: what changed for them, not how.</summary>
     private static readonly Entry[] Entries =
     {
-        new("0.9.11", "Your grade, baking and farmer tools", new[]
+        new("0.9.12", "Your grade, baking and farmer tools", new[]
         {
             "# Your grade",
             "Milk no longer has a grade. Your cow grade still sets your pay, and now it also milks you faster and gets more milk out: B +10%, A +20%, S +35%, S+ +50%.",
@@ -42,6 +42,7 @@ public sealed class ChangelogWindow : Window
             "# Also new",
             "A small green dot above each stall shows which seats milk you (Settings).",
             "The Milking box on the Barn is smaller when you're not being milked, so the rest of the Barn gets more room.",
+            "Turned off \"Farmers can start milking me without asking\"? A farmer pressing Milk on you now pops up a request: Allow or Not now.",
             "This What's new window. Open it any time with /vdairy changes.",
             "# Fixes",
             "The HUD's status line always fits inside the card, and the bottle stops dripping while you're asleep or not making milk.",

@@ -1523,6 +1523,23 @@ public sealed class DairyGame
 
     private bool handFlowing;
     private double nextHandHint, nextSquirt;
+    private readonly Dictionary<string, double> declinedUntil = new();
+
+    /// <summary>A farmer pressing Milk on you while you ask first ("Farmers can start milking me without asking" off).</summary>
+    public Farmhand? MilkAsk { get; private set; }
+
+    public void AnswerMilkAsk(bool allow)
+    {
+        if (MilkAsk is not { } f) return;
+        MilkAsk = null;
+        Touch();
+        if (allow) StartHand(f);
+        else
+        {
+            declinedUntil[Key(f)] = now + 120;   // they can ask again in 2 minutes
+            Say($"You told {f.Name} not now.", 0);
+        }
+    }
 
     /// <summary>Is this farmer milking you right now: a looping emote (yours, or any if allowed), close, and targeting you?</summary>
     private bool Milking(FarmhandSight s) =>
@@ -1596,6 +1613,18 @@ public sealed class DairyGame
         // A farmer close by and targeting you may be grooming or milking you: check in with the server sooner
         if (Networked && Farmhands.Any(f => !f.IsTest && Sight(f) is { Present: true, TargetingYou: true } s && s.Distance <= HandRange))
             Net.BeatWithin(10);
+
+        // "Farmers can start milking me without asking" is off: a farmer pressing Milk on you asks first (a pop-up)
+        if (MilkAsk is { } asking && (Active != null || !MilkingMe(asking, Sight(asking)) || HandProblem(asking) != null)) MilkAsk = null;
+        if (Active == null && !F.AutoHand && Networked && ProducesMilk && MilkAsk == null)
+            foreach (var f in Farmhands.Where(f => !f.IsTest))
+            {
+                if (declinedUntil.TryGetValue(Key(f), out var until) && now < until) continue;
+                if (!MilkingMe(f, Sight(f)) || HandProblem(f) != null) continue;
+                MilkAsk = f;
+                Say($"{f.Name} wants to milk you.", 1);
+                break;
+            }
 
         // A farmer of your dairy can start milking you just by targeting you and using one of your milking emotes
         if (Active == null && F.AutoHand && Networked && ProducesMilk)
