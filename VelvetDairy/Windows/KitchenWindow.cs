@@ -84,7 +84,7 @@ public sealed class KitchenWindow : Window
     {
         if (G.Baking is not { } b)
         {
-            ImGui.TextColored(Theme.InkSoft, "Nothing baking. Pick a recipe.");
+            ImGui.TextColored(Theme.InkSoft, "Nothing in the works. Pick a recipe.");
             return;
         }
 
@@ -184,7 +184,7 @@ public sealed class KitchenWindow : Window
         if (Ui.Button($"##kmax{r.Id}", "Max", new Vector2(50, 28), "cream", max > 1 && n != max, $"As many as you can: {Math.Max(1, max)}")) amount[r.Id] = Math.Max(1, max);
         ImGui.SameLine();
         var why = G.MakeProblem(r, n);
-        if (Ui.Button($"##kbake{r.Id}", "Bake", new Vector2(110, 28), "honey", why == null, why)) G.StartBake(r, n);
+        if (Ui.Button($"##kbake{r.Id}", Catalog.Verb(r), new Vector2(110, 28), "honey", why == null, why)) G.StartBake(r, n);
         if (why != null)
         {
             ImGui.Spacing();

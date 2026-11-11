@@ -407,7 +407,7 @@ function kitchen(s) {
   const r = RECIPES[recipe];
   const groups = ["Ingredients", "Treats"].map(g => `<div class="grp">${g}</div>` + Object.entries(RECIPES).filter(([, x]) => x.group === g)
     .map(([id, x]) => `<div class="it ${id === recipe ? "sel" : ""}" data-recipe="${id}" role="button" tabindex="0" style="${(x.level || 1) > 12 ? "opacity:.55" : ""}"><img src="assets/icons/${x.icon}.png" alt="">${x.name}${(x.level || 1) > 12 ? `<span class="soft" style="font-size:12px;margin-left:4px">(Lv ${x.level})</span>` : ""}</div>`).join("")).join("");
-  const baking = s.baking ? `<div class="soft" style="font-size:15px">Baking Butter cookies · 2 of 5 · 1m 10s left</div><div class="prog"><i style="width:45%"></i></div>${ibtn("Stop", "rose", 80, 26)}` : "";
+  const baking = s.baking ? `<div class="soft" style="font-size:15px">Bake butter cookies · 2 of 5 · 1m 10s left</div><div class="prog"><i style="width:45%"></i></div>${ibtn("Stop", "rose", 80, 26)}` : "";
   return `<div class="iw" style="width:600px"><div class="iw-title"><span>Kitchen</span><span>✕</span></div>
     <div class="iw-body">
       <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center"><span style="font-size:16px">Your jugs: 40 / 96 oz</span><span class="soft" style="font-size:15px">· dairy tank 312.5 oz</span></div>
@@ -420,7 +420,7 @@ function kitchen(s) {
         <div class="sect">Makes</div><div style="font-size:15px">${r.amount} ${r.makes.toLowerCase()} · ${r.secs} s each</div>
         <div class="sect">Needs</div><div style="font-size:15px">${r.milk ? `${r.milk} oz milk <span class="soft">· 40 oz in your jugs</span>` : ""}${r.uses ? `${r.milk ? "<br>" : ""}${r.uses} <span class="soft">· ${r.usesNote}</span>` : ""}${r.uses2 ? `<br>${r.uses2} <span class="soft">· 5 in the dairy pantry</span>` : ""}${(r.level || 1) > 1 ? `<br>Farmer level ${r.level} <span class="soft">· you're 12</span>` : ""}</div>
         <div class="sect">What it does</div><div style="font-size:15px;display:grid;gap:3px">${r.effects.map(e => `<div>${esc(e)}</div>`).join("")}</div>
-        <div style="display:flex;gap:6px;align-items:center;margin-top:4px">${ibtn("−", "cream", 34, 28)}<span class="num" style="min-width:24px;text-align:center">1</span>${ibtn("+", "cream", 34, 28)}${ibtn("Max", "cream", 54, 28)}${ibtn("Bake", "honey", 90, 30)}</div>
+        <div style="display:flex;gap:6px;align-items:center;margin-top:4px">${ibtn("−", "cream", 34, 28)}<span class="num" style="min-width:24px;text-align:center">1</span>${ibtn("+", "cream", 34, 28)}${ibtn("Max", "cream", 54, 28)}${ibtn(r.group === "Treats" ? "Bake" : "Make", "honey", 90, 30)}</div>
       </div></div>
     </div></div>`;
 }

@@ -153,6 +153,11 @@ public static class Catalog
     public static string MadeIcon(string id) => IngredientById(id)?.Icon ?? FeedById(id)?.Icon ?? "bottle";
     public static Recipe? RecipeById(string id) => Recipes.FirstOrDefault(r => r.Id == id);
 
+    /// <summary>Treats are baked; ingredients (butter, flour) are made.</summary>
+    public static bool IsBaked(Recipe r) => FeedById(r.Makes)?.Baked == true;
+    public static string Verb(Recipe r) => IsBaked(r) ? "Bake" : "Make";
+    public static string Doing(Recipe r) => IsBaked(r) ? "Baking" : "Making";
+
     public static readonly IReadOnlyList<FeedItem> Feed = new[]
     {
         new FeedItem("hay", "Wheat grain", "grain", 4, 1, "Plain and filling. Farmers can also mill it into flour in the Kitchen.", Fed: 0.04f),

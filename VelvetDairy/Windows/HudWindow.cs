@@ -227,8 +227,8 @@ public sealed class HudWindow : Window
 
             if (ShowKitchen)
             {
-                var tip = G.Baking is { } bk ? $"Baking {bk.Recipe.Name} ({F.Bake!.Done + 1} of {F.Bake.Count})." : "Fill your jugs from the dairy tank and bake.";
-                if (Ui.Button("##hudkitchen", G.Baking != null ? "Kitchen (baking)" : "Kitchen", new Vector2(bw2, 30), "honey", true, tip, new Vector2(bx, by)))
+                var tip = G.Baking is { } bk ? $"{Catalog.Doing(bk.Recipe)} {Catalog.MadeName(bk.Recipe.Makes).ToLowerInvariant()} ({F.Bake!.Done + 1} of {F.Bake.Count})." : "Fill your jugs from the dairy tank and bake.";
+                if (Ui.Button("##hudkitchen", G.Baking is { } kb ? $"Kitchen ({Catalog.Doing(kb.Recipe).ToLowerInvariant()})" : "Kitchen", new Vector2(bw2, 30), "honey", true, tip, new Vector2(bx, by)))
                     plugin.Kitchen.Toggle();
             }
         }
