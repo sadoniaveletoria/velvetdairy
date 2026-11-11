@@ -28,6 +28,9 @@ public sealed class ChangelogWindow : Window
             "Your progress moves to the character you last played it on, by itself. Only if Eorzea Milkers can't tell (say you logged in on a different character first) does it ask whether this is the one: yes moves your progress here, no starts this character fresh and your progress waits for the next one you log in with.",
             "Your save follows your character through name changes and world transfers, and your dairy sees your new name.",
             "A new character starts as a new player and joins a dairy on their own. Your settings (sound, HUD, the 18+ check) carry over from the last character you played.",
+            "# Fixes",
+            "The Dairies list shows each dairy's own data center, not the one its owner was visiting when they saved it. Dairies already listed are corrected the next time their owner saves the dairy.",
+            "Stall markers only show while you're in your dairy.",
         }),
         new("0.9.23", "Pay, the kitchen, levels and Discord", new[]
         {
