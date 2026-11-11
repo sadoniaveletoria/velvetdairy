@@ -284,6 +284,16 @@ public sealed partial class MainWindow : Window
         dl.AddCircle(qc, 12f, Ui.U(Theme.RoseDeep, 0.6f), 0, 1.5f);
         Ui.Text(dl, fonts.Small, "?", qc, Theme.RoseDeep, 0.5f, 0.5f);
 
+        // Links under the coins: Discord (and Donate later)
+        var lx = right;
+        foreach (var (id, label, color, tip, open) in HeaderLinks)
+        {
+            var bw = Ui.Measure(fonts.Label, label.ToUpperInvariant()).X + 36;
+            lx -= bw;
+            if (Ui.Button(id, label, new Vector2(bw, 26), color, true, tip, new Vector2(lx, o.Y + 56))) open();
+            lx -= 8;
+        }
+
         return h;
     }
 
@@ -307,24 +317,13 @@ public sealed partial class MainWindow : Window
             x += bw + 4;
         }
 
-        // Links on the right end of the tab row (a Donate button can go here later). Hidden if the window is too narrow.
-        var right = o.X + width - Pad;
-        foreach (var (id, label, color, tip, open) in TabLinks)
-        {
-            var bw = Ui.Measure(fonts.Label, label.ToUpperInvariant()).X + 36;
-            if (right - bw < x + 8) break;
-            right -= bw;
-            if (Ui.Button(id, label, new Vector2(bw, 30), color, true, tip, new Vector2(right, o.Y + 6))) open();
-            right -= 8;
-        }
-
         return h;
     }
 
-    /// <summary>Buttons at the right end of the tab row, from the right edge inwards.</summary>
-    private static readonly (string Id, string Label, string Color, string Tip, Action Open)[] TabLinks =
+    /// <summary>Link buttons in the header's bottom-right corner, from the right edge inwards (a Donate button can go here later).</summary>
+    private static readonly (string Id, string Label, string Color, string Tip, Action Open)[] HeaderLinks =
     {
-        ("##tabdiscord", "Join community", "blue", "The Eorzea Milkers Discord (18+): questions, finding a dairy, update news and testing builds. Opens in your browser.", Plugin.OpenDiscord),
+        ("##headdiscord", "Discord", "blue", "The Eorzea Milkers Discord (18+): questions, finding a dairy, update news and testing builds. Opens in your browser.", Plugin.OpenDiscord),
     };
 
     // ----- Sub-tabs: a row of small pills under the main tabs -----

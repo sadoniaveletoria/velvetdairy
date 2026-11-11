@@ -155,7 +155,6 @@ hr.s { border: 0; border-top: 1px solid var(--Linen); margin: 2px 0; width: 100%
       <select id="needs" aria-label="Needs"><option value="full">Needs full</option><option value="mix" selected>Needs mixed</option><option value="low">Needs empty</option></select>
     </div></div>
     <div class="ctl"><span>Kitchen</span><div class="row"><label class="chk"><input type="checkbox" id="baking"> Baking now</label><label class="chk"><input type="checkbox" id="asks"> Cow asks first</label></div></div>
-    <div class="ctl"><span>Join community button</span><select id="linkPos"><option value="tabs">End of the tab row (0.9.18)</option><option value="header">Top-right of the header</option></select></div>
     <div class="ctl"><span>Main window width <b id="mwV" class="num"></b></span><input type="range" id="mw" min="980" max="1600" step="10" value="1060"></div>
     <div class="ctl"><span>Show</span><div class="row" id="shows"></div></div>
   </div>
@@ -193,7 +192,7 @@ function state() {
   const tier = +$("tier").value, count = +$("count").value, cap = BOTTLE_OZ[tier] * count;
   const milk = Math.round(cap * $("milk").value / 100 * 10) / 10;
   return { cow: $("rCow").checked, farmer: $("rFarmer").checked, owner: $("rOwner").checked, st: $("st").value, tier, count, cap, milk,
-    grade: +$("grade").value, linkPos: $("linkPos").value, needs: $("needs").value, baking: $("baking").checked, asks: $("asks").checked, mw: +$("mw").value };
+    grade: +$("grade").value, needs: $("needs").value, baking: $("baking").checked, asks: $("asks").checked, mw: +$("mw").value };
 }
 
 // ---------------------------------------------------------------- HUD (HudWindow.cs)
@@ -263,7 +262,7 @@ function hud(s) {
 
 // ---------------------------------------------------------------- main window (MainWindow.cs)
 const TABS = ["Barn", "Roles", "Pantry", "Shop", "Creamery", "Dairy", "Dairies", "Progress", "Settings"];
-const TAB_LINKS = [["Join community", "blue"]];   // right end of the tab row; a Donate button can be added here
+const HEADER_LINKS = [["Discord", "blue"]];   // header, under the coins (MainWindow.HeaderLinks); a Donate button can be added here
 function mainWin(s) {
   const W = s.mw, Pad = 16;
   // Header
@@ -275,25 +274,22 @@ function mainWin(s) {
     <img class="abs" src="assets/avatars/you.png" alt="Your portrait" style="left:${Pad}px;top:14px;width:60px;height:60px">
     <div class="abs trump23" style="left:${Pad + 74}px;top:14px;color:var(--RoseDeep)">EORZEA</div>
     <div class="abs trump34" style="left:${Pad + 73}px;top:34px;color:var(--Ink)">MILKERS</div>
-    <div class="abs" style="left:${Pad + 74 + Math.max(150, brandW + 24)}px;top:12px;right:${Pad}px">
+    <div class="abs" style="left:${Pad + 74 + Math.max(150, brandW + 24)}px;top:12px;right:${Pad + 260}px">
       <div class="jup23" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Moonlit Meadow</div>
       <div style="margin-top:8px;white-space:nowrap">${pills}</div>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:6px"><div class="bar" style="position:relative;width:240px;height:6px"><i style="width:62%;background:var(--BlueDeep)"></i></div><span class="soft num" style="font-size:12.5px">Contract 1,240 / 2,000 oz · 4d 6h left</span></div>
     </div></div>`;
   // Tabs, then the links at the right end (hidden when they'd touch the tabs)
   let x = Pad, tabsHtml = "";
   TABS.forEach((t, i) => { const bw = measure(t.toUpperCase(), "21px 'Pathway Gothic One'") + 28;
     tabsHtml += `<div class="tab ${tab === i ? "sel" : ""}" data-tab="${i}" role="tab" tabindex="0" style="left:${x}px;width:${bw}px">${t}</div>`; x += bw + 4; });
-  let right = W - Pad;
-  let headLinks = "";
-  if (s.linkPos === "header") {
-    let hr = W - Pad;
-    for (const [label, color] of TAB_LINKS) { const bw = measure(label.toUpperCase(), "21px 'Pathway Gothic One'") + 36; hr -= bw; headLinks += btn(label, color, hr, 14, bw, 30); hr -= 8; }
-  }
-  for (const [label, color] of s.linkPos === "header" ? [] : TAB_LINKS) {
-    const bw = measure(label.toUpperCase(), "21px 'Pathway Gothic One'") + 36;
-    if (right - bw < x + 8) { tabsHtml += `<div class="abs" style="right:${Pad}px;top:-84px;font:12px var(--axis);color:var(--Warn);background:rgba(251,247,238,.9);padding:2px 6px;border-radius:4px">${esc(label)} hidden: too narrow</div>`; break; }
-    right -= bw; tabsHtml += btn(label, color, right, 6, bw, 30); right -= 8;
-  }
+  // Header right side: coins, people online, the ? button, then the link buttons under them
+  const Rx = W - Pad, coins = "12,480", cw = measure(coins, "21px 'Noto Sans'"), online = "37 online", ow = measure(online, "15px 'Marcellus SC'");
+  let headLinks = `<div class="abs jup23 num" style="right:${Pad}px;top:22px">${coins}</div><img class="abs" src="assets/icons/coin.png" alt="" style="left:${Rx - cw - 30}px;top:28px;width:16px;height:16px">
+    <div class="abs jup16" style="left:${Rx - cw - 40 - ow}px;top:26px;color:var(--SageDeep)"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--SageDeep);margin:0 5px 1px -14px"></span>${online}</div>
+    <div class="abs jup16" style="left:${Rx - cw - 40 - ow - 34 - 13}px;top:23px;width:24px;height:24px;border-radius:50%;border:1.5px solid rgba(168,97,112,.6);display:grid;place-items:center;color:var(--RoseDeep)">?</div>`;
+  let lx = Rx;
+  for (const [label, color] of HEADER_LINKS) { const bw = measure(label.toUpperCase(), "21px 'Pathway Gothic One'") + 36; lx -= bw; headLinks += btn(label, color, lx, 56, bw, 26); lx -= 8; }
   const body = tab === 0 ? barn(s, W) : tab === 8 ? settings(s, W) : `<div class="panel" style="left:${Pad}px;top:146px;right:${Pad}px;bottom:${Pad}px"><div class="ph">The ${TABS[tab]} tab isn't mocked up yet.<br>Ask Claude to add it when you're changing it.</div></div>`;
   return `<div class="pl mw" style="--mw:${W}px">${head}${headLinks}<div class="tabs" role="tablist">${tabsHtml}</div>${body}</div>`;
 }

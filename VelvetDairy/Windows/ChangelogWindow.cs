@@ -25,7 +25,7 @@ public sealed class ChangelogWindow : Window
         new("0.9.18", "Join the Discord", new[]
         {
             "Eorzea Milkers has a Discord (18+): ask questions, find a dairy or players, and get update news and testing builds first.",
-            "Open it with Join community at the right end of the main window's tabs, the Join the Discord button here, in the guide (the ? button), or in Settings > Help.",
+            "Open it with the Discord button at the top right of the main window, the Join the Discord button here, in the guide (the ? button), or in Settings > Help.",
         }),
         new("0.9.16", "Eorzea Milkers: your grade, baking and farmer tools", new[]
         {
