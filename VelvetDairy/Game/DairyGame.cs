@@ -228,8 +228,9 @@ public sealed class DairyGame
             switch (i.Kind)
             {
                 case "payout":
-                    // Payouts come from farmer work: hand milking shares and deliveries
-                    Earn(i.Coins);
+                    // Payouts come from farmer work: hand milking shares (game-made, grade 1: they taper) and coins from other players
+                    if (i.Grade == 1) Earn(i.Coins);
+                    else Receive(i.Coins);
                     AddFarmerXp(Math.Max(5, i.Coins / 8));
                     break;
                 case "refund":
@@ -457,7 +458,7 @@ public sealed class DairyGame
         var coins = 0;
         for (var g = 0; g < Grades.Count; g++) coins += (int)Math.Round(F.Tank[g] * Grades.All[g].Price * PriceBonus);
         Array.Clear(F.Tank);
-        Earn(coins);
+        Receive(coins);
         Say($"Milk now pays when you're milked. The {oz:0.#} oz you had stored was paid out: +{coins} coins.", 1);
         plugin.SaveConfig();
     }
@@ -811,6 +812,16 @@ public sealed class DairyGame
     /// <summary>A treat a farmer fed you: its Happy bonus (a bigger one already going is kept) and its milk boost.</summary>
     private void ApplyTreat(FeedItem item)
     {
+        // Counts as your treat for the next 15 minutes, the same as eating one yourself
+        var cd = DateTime.UtcNow.AddMinutes(Catalog.NeedCooldownMinutes);
+        if (item.Happy > 0) Cow.HappyReadyUtc = cd;
+        if (item.Fed > 0) Cow.FedReadyUtc = cd;
+        if (item.Fed > 0)
+        {
+            Cow.FedBonus = Cow.Hunger <= 0 ? item.Fed : Math.Max(Cow.FedBonus, item.Fed);
+            Cow.Hunger = Fill(Cow.Hunger);
+        }
+
         if (item.Happy > 0)
         {
             Cow.HappyBonus = Cow.Mood <= 0 ? item.Happy : Math.Max(Cow.HappyBonus, item.Happy);
@@ -1158,10 +1169,11 @@ public sealed class DairyGame
         var collected = s.Extracted * s.Yield;
         EaseTaint(Catalog.TaintPerMilking);
         AddQuality(collected * (s.Kind == SessionKind.Hand ? Grades.QualityPerOzHand : Grades.QualityPerOz));
-        // The dairy pays for the milk right away (up to the day's paid amount); the milk itself goes into the dairy's tank
+        // The dairy pays for the milk right away (up to the day's paid amount; tapering with the day's earnings);
+        // the milk itself goes into the dairy's tank
         var paidOz = Math.Clamp(Catalog.DailyPaidOz - F.DayOz, 0, collected);
-        var pay = (int)Math.Round(paidOz * PayRate(s.Grade));
-        Earn(pay);
+        var rateBefore = Catalog.TaperRate(F.DayEarned);
+        var pay = Earn((int)Math.Round(paidOz * PayRate(s.Grade)));
         F.Stats.TotalOz += collected;
         F.DayOz += collected;
         F.Stats.BestGrade = Math.Max(F.Stats.BestGrade, s.Grade);
@@ -1194,7 +1206,8 @@ public sealed class DairyGame
         AddXp(xp);
         var by = s.Kind == SessionKind.Hand ? $" by {(s.Hand!.IsTest ? "the test farmhand" : s.Hand.Name)}" : "";
         Say($"Milked{by}: {collected:0.#} oz as a Grade {Grades.Name(s.Grade)} cow. +{pay} coins, +{xp} xp" +
-            (paidOz < collected - 0.05f ? $" (you've been paid for {Catalog.DailyPaidOz:N0} oz today; more milk still gives xp)" : "") +
+            (paidOz < collected - 0.05f ? $" (you've been paid for {Catalog.DailyPaidOz:N0} oz today; more milk still gives xp)"
+                : Catalog.TaperRate(F.DayEarned) < rateBefore || rateBefore < 1f ? $" (you've earned a lot today, so pay is at {(Catalog.TaperRate(F.DayEarned) >= 0.25f ? "a quarter" : "a tenth")}; xp is the same)" : "") +
             (reason != null ? $" ({reason})" : ""), 1);
         plugin.SaveConfig();
     }
@@ -1594,7 +1607,7 @@ public sealed class DairyGame
     private ShelfItem? FeedStock => Net.Shelf.FirstOrDefault(x => x.Qty > 0 && Catalog.FeedById(x.Item) != null);
 
     public string FeedTip => FeedStock is { } st
-        ? $"Give them {Catalog.MadeName(st.Item).ToLowerInvariant()} from the dairy shelf ({st.Qty} left). Free; +{Catalog.FeedXp} farmer xp. Once every 15 minutes each."
+        ? $"Give them {Catalog.MadeName(st.Item).ToLowerInvariant()} from the dairy shelf ({st.Qty} left). Free; +{Catalog.FeedXp} farmer xp. One treat per cow or bull every 15 minutes, whoever gives it."
         : "The dairy shelf is empty. Bake some in the Kitchen.";
 
     public string? FeedProblem(string name, string id, float distance)
@@ -1606,7 +1619,10 @@ public sealed class DairyGame
         Net.RefreshShelf();
         if (FeedStock == null) return "The dairy shelf is empty. Bake some in the Kitchen.";
         if (distance < 0 || distance > HandRange) return $"Get within {HandRange:0} yalms of {name} first.";
-        if (feedReady.TryGetValue(id, out var t) && t > now) return $"You can feed {name} again in {Wait(TimeSpan.FromSeconds(t - now))}.";
+        if (feedReady.TryGetValue(id, out var t) && t > now) return $"{name} can have another treat in {Wait(TimeSpan.FromSeconds(t - now))}.";
+        var treatAt = Net.Mine?.Members.FirstOrDefault(m => m.Id == id)?.Status?.TreatAt ?? 0;
+        var nowUnix = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        if (treatAt > nowUnix) return $"{name} can have another treat in {Wait(TimeSpan.FromSeconds(treatAt - nowUnix))}.";
         return null;
     }
 
@@ -2349,12 +2365,15 @@ public sealed class DairyGame
         if (!CanCarry) return "Only farmers bake.";
         if (F.Bake != null) return "You're already baking something. Wait for it or cancel it.";
         if (!Where.InDairy) return "Go to your dairy to use its kitchen.";
-        if (IsFarmer && FarmerLevel < r.FarmerLevel) return $"Unlocks at farmer level {r.FarmerLevel}.";
+        if (FarmerLevel < r.FarmerLevel) return $"Unlocks at farmer level {r.FarmerLevel} (you're {FarmerLevel}).";
         if (count < 1) return "Pick how many to make.";
         if (r.ToShelf && (!Networked || F.NetMember == null)) return "Baking for the shelf needs your dairy on the network.";
-        if (r.UsesCount > 0 && Count(r.Uses) < r.UsesCount * count)
-            return $"You need {r.UsesCount * count} {Catalog.MadeName(r.Uses).ToLowerInvariant()} (you have {Count(r.Uses)}).";
-        if (OzAtOrAbove(r.MinGrade) < r.MilkOz * count)
+        foreach (var (id, per) in r.Needs())
+            if (IngredientCount(id) < per * count)
+                return Catalog.IngredientById(id) != null
+                    ? $"You need {per * count} {Catalog.MadeName(id).ToLowerInvariant()} (the dairy pantry has {IngredientCount(id)})."
+                    : $"You need {per * count} {Catalog.MadeName(id).ToLowerInvariant()} (you have {Count(id)}). Buy more in the Shop.";
+        if (r.MilkOz > 0 && OzAtOrAbove(r.MinGrade) < r.MilkOz * count)
             return $"You need {r.MilkOz * count} oz of milk in your jugs. Fill them from the dairy tank at the top of the Kitchen.";
         return null;
     }
@@ -2406,17 +2425,111 @@ public sealed class DairyGame
 
     /// <summary>How many of this you could make with the milk in your jugs.</summary>
     public int MaxMake(Catalog.Recipe r) =>
-        Math.Min((int)(OzAtOrAbove(r.MinGrade) / r.MilkOz), r.UsesCount > 0 ? Count(r.Uses) / r.UsesCount : int.MaxValue);
+        r.Needs().Aggregate(r.MilkOz > 0 ? (int)(OzAtOrAbove(r.MinGrade) / r.MilkOz) : 999, (m, n) => Math.Min(m, IngredientCount(n.Id) / n.Count));
+
+    /// <summary>Ingredients you can bake with: any of your own (from before they were shared) plus the dairy pantry.</summary>
+    public int IngredientCount(string id) => Count(id) + (Networked && F.NetMember != null ? Net.DairyPantry.GetValueOrDefault(id) : 0);
+
+    private bool takingIngredients;
 
     public bool StartBake(Catalog.Recipe r, int count)
     {
         var p = MakeProblem(r, count);
         if (p != null) return Fail(p);
-        F.Bake = new BakeJob { Recipe = r.Id, Count = count };
+        if (takingIngredients) return false;
+
+        // Ingredients come from your own stock first, then the dairy pantry (taken now, so nobody else uses them meanwhile)
+        var borrow = r.Needs().Select(n => (n.Id, Qty: Math.Max(0, n.Count * count - Count(n.Id)))).Where(b => b.Qty > 0).ToList();
+        if (borrow.Count > 0)
+        {
+            takingIngredients = true;
+            var got = new Dictionary<string, int>();
+            void Next(int i)
+            {
+                if (i >= borrow.Count)
+                {
+                    takingIngredients = false;
+                    BeginBake(r, count, got);
+                    return;
+                }
+
+                var (id, qty) = borrow[i];
+                Net.PantryTake(id, qty, () =>
+                {
+                    F.Pantry[id] = Count(id) + qty;
+                    got[id] = qty;
+                    Next(i + 1);
+                }, e =>
+                {
+                    takingIngredients = false;
+                    // Put back anything already taken for this bake
+                    foreach (var (bid, bq) in got)
+                    {
+                        F.Pantry[bid] = Count(bid) - bq;
+                        Net.PantryAdd(bid, bq, () => { }, _ => F.Pantry[bid] = Count(bid) + bq);
+                    }
+
+                    Fail(e);
+                });
+            }
+
+            Next(0);
+            return true;
+        }
+
+        BeginBake(r, count, new Dictionary<string, int>());
+        return true;
+    }
+
+    private void BeginBake(Catalog.Recipe r, int count, Dictionary<string, int> borrowed)
+    {
+        F.Bake = new BakeJob { Recipe = r.Id, Count = count, BorrowedBy = borrowed };
         Touch();
         Say($"{r.Name}: {count} batch{(count == 1 ? "" : "es")}, about {Wait(TimeSpan.FromSeconds(Catalog.TotalSeconds(r, count)))}. Stay in the dairy while it works.", 0);
         plugin.SaveConfig();
-        return true;
+    }
+
+    /// <summary>When a bake ends early, ingredients borrowed from the dairy pantry that weren't used go back to it.</summary>
+    private void ReturnBorrowed(BakeJob j)
+    {
+        var r = Catalog.RecipeById(j.Recipe);
+        if (r == null) return;
+        var borrowed = new Dictionary<string, int>(j.BorrowedBy ?? new());
+        if (j.Borrowed > 0 && r.UsesCount > 0 && !borrowed.ContainsKey(r.Uses)) borrowed[r.Uses] = j.Borrowed;   // a bake started on an older build
+        foreach (var (id, per) in r.Needs())
+        {
+            if (!borrowed.TryGetValue(id, out var took) || took <= 0) continue;
+            var left = Math.Min(Count(id), Math.Max(0, took - j.Done * per));
+            if (left <= 0) continue;
+            F.Pantry[id] = Count(id) - left;
+            var item = id;
+            Net.PantryAdd(item, left, () => { }, _ =>
+            {
+                F.Pantry[item] = Count(item) + left;   // couldn't put them back: keep them so nothing's lost
+                plugin.SaveConfig();
+            });
+        }
+    }
+
+    /// <summary>Ingredients made before they were shared go to the dairy pantry (once, when you're a farmer of a dairy).</summary>
+    private bool sharedOldIngredients;
+
+    private void ShareOldIngredients()
+    {
+        if (sharedOldIngredients || !Networked || F.NetMember == null || !CanCarry || F.Bake != null) return;
+        sharedOldIngredients = true;
+        foreach (var ing in Catalog.Ingredients)
+        {
+            var n = Math.Min(50, Count(ing.Id));
+            if (n <= 0) continue;
+            var id = ing.Id;
+            F.Pantry[id] = Count(id) - n;
+            Net.PantryAdd(id, n, () => Say($"Your {n} {ing.Name.ToLowerInvariant()} went into the dairy pantry for every farmer to use.", 0), _ =>
+            {
+                F.Pantry[id] = Count(id) + n;
+                plugin.SaveConfig();
+            });
+        }
     }
 
     public void CancelBake()
@@ -2424,6 +2537,7 @@ public sealed class DairyGame
         var j = F.Bake;
         if (j == null) return;
         F.Bake = null;
+        ReturnBorrowed(j);
         Say(j.Done > 0 ? $"Stopped baking. You kept the {j.Done} you finished." : "Stopped baking.", 0);
         plugin.SaveConfig();
     }
@@ -2443,6 +2557,12 @@ public sealed class DairyGame
     /// <summary>Baking only moves along while you're in the dairy (it waits while you're away or logged out).</summary>
     private void TickBake(float dt)
     {
+        if (CanCarry && Networked && F.NetMember != null)
+        {
+            ShareOldIngredients();
+            if (Where.InDairy) Net.RefreshPantry();
+        }
+
         if (F.Bake is not { } j) return;
         var r = Catalog.RecipeById(j.Recipe);
         if (r == null || j.Done >= j.Count)
@@ -2456,15 +2576,17 @@ public sealed class DairyGame
         if (j.Elapsed < Catalog.BatchSeconds(r, j.Done)) return;
 
         // One finished: the milk comes out of your jugs now (lowest grade that qualifies first), and any ingredient
-        if (OzAtOrAbove(r.MinGrade) < r.MilkOz || (r.UsesCount > 0 && Count(r.Uses) < r.UsesCount))
+        var short_ = r.Needs().FirstOrDefault(n => Count(n.Id) < n.Count).Id;
+        if (OzAtOrAbove(r.MinGrade) < r.MilkOz || short_ != null)
         {
             F.Bake = null;
-            Fail($"Ran out of {(OzAtOrAbove(r.MinGrade) < r.MilkOz ? "milk" : Catalog.MadeName(r.Uses).ToLowerInvariant())}: you made {j.Done} of {j.Count}.");
+            ReturnBorrowed(j);
+            Fail($"Ran out of {(OzAtOrAbove(r.MinGrade) < r.MilkOz ? "milk" : Catalog.MadeName(short_!).ToLowerInvariant())}: you made {j.Done} of {j.Count}.");
             plugin.SaveConfig();
             return;
         }
 
-        if (r.UsesCount > 0) F.Pantry[r.Uses] = Count(r.Uses) - r.UsesCount;
+        foreach (var (id, per) in r.Needs()) F.Pantry[id] = Count(id) - per;
 
         var left = (float)r.MilkOz;
         for (var g = 0; g < Grades.Count && left > 0; g++)
@@ -2474,7 +2596,7 @@ public sealed class DairyGame
             left -= take;
         }
 
-        if (Networked) Net.UseCarried(r.MilkOz);
+        if (Networked && r.MilkOz > 0) Net.UseCarried(r.MilkOz);
         if (r.ToShelf)
         {
             // Onto the dairy shelf; if the server says no, they come to your pantry instead so nothing's lost
@@ -2487,6 +2609,17 @@ public sealed class DairyGame
                 plugin.SaveConfig();
             });
         }
+        else if (Networked && F.NetMember != null && Catalog.Ingredients.Any(i => i.Id == r.Makes))
+        {
+            // Ingredients go to the dairy pantry, shared by every farmer; if the server says no, they stay with you
+            var made = r.Makes;
+            var amount = r.Amount;
+            Net.PantryAdd(made, amount, () => { }, e =>
+            {
+                F.Pantry[made] = Count(made) + amount;
+                plugin.SaveConfig();
+            });
+        }
         else F.Pantry[r.Makes] = Count(r.Makes) + r.Amount;
         AddFarmerXp(r.Xp);
         j.Done++;
@@ -2495,7 +2628,7 @@ public sealed class DairyGame
         if (j.Done >= j.Count)
         {
             F.Bake = null;
-            Say($"Done: {j.Count * r.Amount} {name} {(r.ToShelf ? "on the dairy shelf" : "in your pantry")}. +{j.Count * r.Xp} farmer xp", 1);
+            Say($"Done: {j.Count * r.Amount} {name} {(r.ToShelf ? "on the dairy shelf" : Networked && F.NetMember != null ? "in the dairy pantry" : "in your pantry")}. +{j.Count * r.Xp} farmer xp", 1);
         }
 
         plugin.SaveConfig();
@@ -2559,7 +2692,7 @@ public sealed class DairyGame
 
         F.Orders!.Remove(o);
         if (Networked) Net.UseCarried(o.Oz);
-        Earn(o.Coins);
+        var paid = Earn(o.Coins);
         if (CanCarry) AddFarmerXp(o.Xp);   // delivering is farmer work
         else AddXp(o.Xp);
         F.Stats.OrdersFilled++;
@@ -2568,7 +2701,7 @@ public sealed class DairyGame
         EaseTaint(Catalog.TaintPerOrder);
         AddQuality(Grades.QualityPerOrder);
         if (F.Orders.Count < 3 && DateTime.UtcNow >= F.NextOrderUtc) F.NextOrderUtc = DateTime.UtcNow.AddMinutes(20);
-        Say($"{o.Customer} paid {o.Coins} coins. +{o.Xp} xp", 1);
+        Say($"{o.Customer} paid {paid} coins{(paid < o.Coins ? $" (of {o.Coins}: you've earned a lot today)" : "")}. +{o.Xp} xp", 1);
         plugin.SaveConfig();
         return true;
     }
@@ -2922,15 +3055,15 @@ public sealed class DairyGame
     {
         if (Claimed(g) || g.Have < g.Need) return false;
         F.DayClaimed |= 1 << g.Bit;
-        Earn(GoalCoins);
+        var goalPaid = Earn(GoalCoins);
         if (g.Farmer) AddFarmerXp(GoalXp);
         else AddXp(GoalXp);
         F.Stats.DailiesDone++;
         // Each set has its own bonus for finishing all four
         var all = Goals().Where(x => x.Farmer == g.Farmer).All(Claimed);
-        if (all) Earn(AllGoalsCoins);
+        if (all) goalPaid += Earn(AllGoalsCoins);
         var set = g.Farmer ? "farmer" : "cow";
-        Say(all ? $"All {set} goals done! +{GoalCoins + AllGoalsCoins} coins" : $"Daily goal done. +{GoalCoins} coins, +{GoalXp} {set} xp", 1);
+        Say(all ? $"All {set} goals done! +{goalPaid} coins" : $"Daily goal done. +{goalPaid} coins, +{GoalXp} {set} xp", 1);
         plugin.SaveConfig();
         return true;
     }
@@ -2943,6 +3076,7 @@ public sealed class DairyGame
         if (F.DayKey == key) return;
         F.DayKey = key;
         F.DayOz = 0;
+        F.DayEarned = 0;
         F.DayOrders = 0;
         F.DayCare = 0;
         F.DayHand = 0;
@@ -2959,7 +3093,19 @@ public sealed class DairyGame
     // XP, coins, awards, messages
     // =================================================================
 
-    private void Earn(int coins)
+    /// <summary>Coins the game pays you. They taper with what you've earned today (see Catalog.Tapered); returns what you got.</summary>
+    private int Earn(int coins)
+    {
+        if (coins <= 0) return 0;
+        var got = Catalog.Tapered(F.DayEarned, coins);
+        F.DayEarned += coins;
+        F.Coins += got;
+        F.Stats.CoinsEarned += got;
+        return got;
+    }
+
+    /// <summary>Coins from another player (shelf sales, buy orders) or paid back: never tapered.</summary>
+    private void Receive(int coins)
     {
         F.Coins += coins;
         F.Stats.CoinsEarned += coins;
@@ -3034,8 +3180,8 @@ public sealed class DairyGame
         {
             if (F.Awards.Contains(a.Id) || !a.Earned(F)) continue;
             F.Awards.Add(a.Id);
-            Earn(25);
-            Say($"Award: {a.Name}. +25 coins", 1);
+            var awardPaid = Earn(25);
+            Say($"Award: {a.Name}. +{awardPaid} coins", 1);
         }
     }
 
@@ -3098,7 +3244,7 @@ public sealed class DairyGame
     public void DevCoins()
     {
         if (!Dev) return;
-        Earn(500);
+        Receive(500);
     }
 
     public void DevResetNeeds()

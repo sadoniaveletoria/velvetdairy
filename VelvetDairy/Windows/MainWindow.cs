@@ -65,6 +65,23 @@ public sealed partial class MainWindow : Window
         IsOpen = true;
     }
 
+    /// <summary>Opens the Shop on Feed & treats with this item highlighted and scrolled into view (from the Kitchen's Buy buttons).</summary>
+    public void OpenShopFor(string itemId)
+    {
+        tab = TabShop;
+        subTabs["shop"] = 0;
+        focusFeed = itemId;
+        focusFeedUntil = ImGui.GetTime() + 4;
+        focusScrolled = false;
+        if (F.HiddenFeed!.Contains(itemId)) showHiddenFeed = true;
+        IsOpen = true;
+        BringToFront();
+    }
+
+    private string focusFeed = "";
+    private double focusFeedUntil;
+    private bool focusScrolled;
+
     /// <summary>Spoiled milk is tinted a sour yellow.</summary>
     public static readonly Vector4 SourMilk = new(0.93f, 0.88f, 0.60f, 1f);
 
@@ -223,25 +240,43 @@ public sealed partial class MainWindow : Window
         var dairyTitle = G.Networked ? member?.Dairy ?? "No dairy yet" : F.Dairy?.Name ?? "No dairy yet";
         Ui.Text(dl, fonts.Heading, dairyTitle, new Vector2(mx, o.Y + 14), Theme.Ink);
         var px = mx;
-        void Pill(string text, Vector4 color, string? tip = null)
+        void Pill(string text, Vector4 color, string? tip = null, float progress = -1)
         {
             var size = Ui.Measure(fonts.Small, text);
             var a0 = new Vector2(px, o.Y + 42);
-            var a1 = a0 + new Vector2(size.X + 16, size.Y + 2);
+            var a1 = a0 + new Vector2(size.X + 10, size.Y + 2);
             dl.AddRectFilled(a0, a1, Ui.U(color, 0.14f), 99);
+            // A role's level: how far to the next one, as a fill inside the pill
+            if (progress >= 0) dl.AddRectFilled(a0, new Vector2(a0.X + (a1.X - a0.X) * Math.Clamp(progress, 0f, 1f), a1.Y), Ui.U(color, 0.22f), 99);
             dl.AddRect(a0, a1, Ui.U(color, 0.55f), 99, ImDrawFlags.None, 1f);
-            Ui.Text(dl, fonts.Small, text, a0 + new Vector2(8, 1), color);
+            Ui.Text(dl, fonts.Small, text, a0 + new Vector2(5, 1), color);
             if (tip != null && ImGui.IsMouseHoveringRect(a0, a1)) ImGui.SetTooltip(tip);
-            px = a1.X + 6;
+            px = a1.X + 4;
         }
 
-        foreach (var r in G.MyRoles) Pill(r.ToUpperInvariant(), r == "farmer" ? Theme.SageDeep : r == "bull" ? Theme.HoneyDeep : Theme.RoseDeep);
+        foreach (var r in G.MyRoles)
+        {
+            var color = r == "farmer" ? Theme.SageDeep : r == "bull" ? Theme.HoneyDeep : Theme.RoseDeep;
+            var xp = r switch { "cow" => F.Xp, "farmer" => F.FarmerXp, "bull" => F.BullXp, _ => -1 };
+            if (xp < 0)
+            {
+                Pill(r.ToUpperInvariant(), color);
+                continue;
+            }
+
+            var (lvl, into, need) = Leveling.FromXp(xp);
+            var name = char.ToUpperInvariant(r[0]) + r[1..];
+            var tip = lvl >= Leveling.MaxLevel ? $"{name} level {lvl} (the top level)"
+                : $"{name} level {lvl}\n{into:N0} / {need:N0} xp to level {lvl + 1} ({(int)(100f * into / Math.Max(1, need))}%)";
+            Pill($"{r.ToUpperInvariant()} {lvl}", color, tip, lvl >= Leveling.MaxLevel ? 1f : into / (float)Math.Max(1, need));
+        }
         if (G.Networked && member != null) Pill($"DAIRY LV {G.DairyLevel}", Theme.BlueDeep);
         // Where you are: in the dairy (or its private place) or away from it
         if (member != null || F.Dairy != null)
         {
             if (G.Where.InDairy)
-                Pill(G.InPrivatePlace ? "IN THE DAIRY · PRIVATE" : G.Where.Seated ? "IN THE DAIRY · RESTING" : "IN THE DAIRY", Theme.SageDeep, G.Where.Why);
+                Pill(G.InPrivatePlace ? "PRIVATE" : G.Where.Seated ? "RESTING" : "HERE", Theme.SageDeep,
+                    (G.InPrivatePlace ? "In your dairy's private place. " : G.Where.Seated ? "Resting in your dairy. " : "In your dairy. ") + G.Where.Why);
             else Pill("AWAY", Theme.InkSoft, G.Where.Why + " Milking, care and chores only work inside the dairy.");
         }
 
@@ -284,6 +319,16 @@ public sealed partial class MainWindow : Window
         dl.AddCircle(qc, 12f, Ui.U(Theme.RoseDeep, 0.6f), 0, 1.5f);
         Ui.Text(dl, fonts.Small, "?", qc, Theme.RoseDeep, 0.5f, 0.5f);
 
+        // Links under the coins: Discord (and Donate later)
+        var lx = right;
+        foreach (var (id, label, color, tip, open) in HeaderLinks)
+        {
+            var bw = Ui.Measure(fonts.Label, label.ToUpperInvariant()).X + 36;
+            lx -= bw;
+            if (Ui.Button(id, label, new Vector2(bw, 26), color, true, tip, new Vector2(lx, o.Y + 56))) open();
+            lx -= 8;
+        }
+
         return h;
     }
 
@@ -309,6 +354,12 @@ public sealed partial class MainWindow : Window
 
         return h;
     }
+
+    /// <summary>Link buttons in the header's bottom-right corner, from the right edge inwards (a Donate button can go here later).</summary>
+    private static readonly (string Id, string Label, string Color, string Tip, Action Open)[] HeaderLinks =
+    {
+        ("##headdiscord", "Discord", "blue", "The Eorzea Milkers Discord (18+): questions, finding a dairy, update news and testing builds. Opens in your browser.", Plugin.OpenDiscord),
+    };
 
     // ----- Sub-tabs: a row of small pills under the main tabs -----
 
@@ -739,7 +790,7 @@ public sealed partial class MainWindow : Window
         var y = p.Y;
         var rows = new (string Icon, string Label, float Value, float Bonus, Vector4 Color, string Tip)[]
         {
-            ("hay", "Fed", cow.Hunger, cow.FedBonus, Theme.HoneyDeep, "Eat feed from your pantry. Better food gives a bigger bonus (hay +4% up to Golden mash +15%)."),
+            ("hay", "Fed", cow.Hunger, cow.FedBonus, Theme.HoneyDeep, "Eat feed from your pantry. Better food gives a bigger bonus (wheat grain +4% up to Golden mash +15%)."),
             ("water", "Watered", cow.Thirst, cow.WaterBonus, Theme.BlueDeep, "Drink at the trough (free, +4%) or have a Mineral block (+8%)."),
             ("cushion", "Comfy", cow.Comfort, cow.ComfortBonus, Theme.RoseDeep, "Sit on furniture in your dairy and press Rest, then stay seated 15 minutes: get up sooner and that rest doesn't count. Bedding upgrades make it bigger and last longer."),
             ("clover", "Happy", cow.Mood, cow.HappyBonus, Theme.SageDeep, "Have a treat: clover, salt lick, cream clover or a quality treat."),
@@ -945,9 +996,16 @@ public sealed partial class MainWindow : Window
         var bonus = (G.DairyPayBonus - 1) * 100;
         ImGui.TextColored(Theme.InkSoft, $"Dairy level bonus: +{bonus:0}% · your looks bonus: +{(G.PriceBonus - 1) * 100:0}%");
         if (G.Networked) ImGui.TextColored(Theme.InkSoft, "Each dairy level raises pay by 2%. Hand milking also pays your farmer a share (not taken from you).");
-        ImGui.TextColored(F.DayOz >= Catalog.DailyPaidOz ? Theme.HoneyDeep : Theme.InkSoft,
-            F.DayOz >= Catalog.DailyPaidOz ? $"Milk given today: {F.DayOz:0.#} oz · paid for {Catalog.DailyPaidOz:N0} oz (the most a day); more still gives xp"
-                : $"Milk given today: {F.DayOz:0.#} oz · paid up to {Catalog.DailyPaidOz:N0} oz a day");
+        ImGui.TextColored(Theme.InkSoft, $"Milk given today: {F.DayOz:0.#} oz" + (F.DayOz >= Catalog.DailyPaidOz ? $" · paid for {Catalog.DailyPaidOz:N0} oz (the most a day); more still gives xp" : ""));
+        var rate = Catalog.TaperRate(F.DayEarned);
+        ImGui.TextColored(rate < 1f ? Theme.HoneyDeep : Theme.InkSoft,
+            rate >= 1f ? $"Earned today: {F.DayEarned:N0} · full pay until {Catalog.FullEarnings:N0}"
+                : rate >= 0.25f ? $"Earned today: {F.DayEarned:N0} · pay is at a quarter until {Catalog.QuarterEarnings:N0}, then a tenth"
+                : $"Earned today: {F.DayEarned:N0} · pay is at a tenth until the daily reset");
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip($"Everything the game pays you in a day (milking, hand milking shares, orders, goals, awards) counts together.\n" +
+                             $"The first {Catalog.FullEarnings:N0} coins are paid in full, then a quarter up to {Catalog.QuarterEarnings:N0}, then a tenth.\n" +
+                             "XP is never reduced, and coins from other players (shelf sales, buy orders) aren't counted. Resets with the daily reset.");
     }
 
     /// <summary>One line on what you carry, with a button to the Kitchen where jugs are filled.</summary>
@@ -1116,8 +1174,22 @@ public sealed partial class MainWindow : Window
                 buttons.Add(new Btn($"##buy5{item.Id}", $"5 for {item.Price * 5}", "cream", p5 == null, p5));
             }
 
+            var rowTop = ImGui.GetCursorScreenPos();
+            var focused = item.Id == focusFeed && ImGui.GetTime() < focusFeedUntil;
+            if (focused && !focusScrolled)
+            {
+                ImGui.SetScrollHereY(0.2f);
+                focusScrolled = true;
+            }
+
             var clicked = ListRow(Ico(item.Icon, locked || hidden ? 0.5f : 1f), item.Name + (hidden ? "  ·  hidden" : ""), locked || hidden ? Theme.InkSoft : Theme.Ink,
                 lines, buttons, width);
+            if (focused)
+            {
+                // The item you came to buy: a soft honey glow that fades out
+                var a = (float)Math.Clamp((focusFeedUntil - ImGui.GetTime()) / 4, 0, 1);
+                ImGui.GetWindowDrawList().AddRect(rowTop - new Vector2(4, 2), new Vector2(rowTop.X + width + 4, ImGui.GetCursorScreenPos().Y), Ui.U(Theme.HoneyDeep, 0.9f * a), 8, ImDrawFlags.None, 2.5f);
+            }
             if (clicked < 0) continue;
             var id = buttons[clicked].Id;
             if (id.StartsWith("##buy1")) G.BuyFeed(item, 1);
@@ -1704,6 +1776,11 @@ public sealed partial class MainWindow : Window
                    "3. Get milked on one of your dairy's stalls, or by a farmer pressing Milk on you. You're paid by your grade.\n" +
                    "4. Farmers: Herd Care and Kitchen are on the HUD. Fill jugs in the Kitchen, then deliver on the Creamery tab.\n" +
                    "5. Spend coins in the Shop. The full guide is the ? at the top, or /milkers guide.", Theme.Ink, width);
+
+        SubHeading("Community", width);
+        Ui.Wrapped("Questions, finding a dairy, update news and testing builds: join the Eorzea Milkers Discord (18+).", Theme.Ink, width);
+        if (ImGui.Button("Join the Discord##helpdiscord")) Plugin.OpenDiscord();
+        if (ImGui.IsItemHovered()) ImGui.SetTooltip(Plugin.DiscordUrl);
 
         SubHeading("Credits", width);
         Ui.Wrapped("Milking machine sound: \"Milk Pump Step02\" by Erdie, freesound.org/s/49877 (cut into start, loop and stop).", Theme.InkSoft, width);

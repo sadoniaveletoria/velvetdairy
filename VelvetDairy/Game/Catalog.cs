@@ -10,11 +10,11 @@ public static class Grades
 {
     public static readonly IReadOnlyList<Grade> All = new[]
     {
-        new Grade("C", 7.0f, "Thin"),
-        new Grade("B", 10.0f, "Good"),
-        new Grade("A", 15.0f, "Rich"),
-        new Grade("S", 21.0f, "Cream"),
-        new Grade("S+", 30.0f, "Velvet"),
+        new Grade("C", 6.0f, "Thin"),
+        new Grade("B", 8.0f, "Good"),
+        new Grade("A", 10.0f, "Rich"),
+        new Grade("S", 12.0f, "Cream"),
+        new Grade("S+", 14.0f, "Velvet"),
     };
 
     public static int Count => All.Count;
@@ -107,7 +107,15 @@ public static class Catalog
     /// <summary>Turn milk from your jugs into something. MilkOz of any grade from MinGrade up, at FarmerLevel or higher.</summary>
     /// <summary>Uses/UsesCount: an ingredient from your pantry each one needs. ToShelf: what's made goes on the dairy shelf, not your pantry.</summary>
     public sealed record Recipe(string Id, string Name, string Makes, int Amount, int MilkOz, int MinGrade, int FarmerLevel, int Xp, int Seconds, string Desc,
-        string Uses = "", int UsesCount = 0, bool ToShelf = false);
+        string Uses = "", int UsesCount = 0, bool ToShelf = false, string Uses2 = "", int UsesCount2 = 0)
+    {
+        /// <summary>Every ingredient this takes per batch (one or two kinds).</summary>
+        public IEnumerable<(string Id, int Count)> Needs()
+        {
+            if (UsesCount > 0) yield return (Uses, UsesCount);
+            if (UsesCount2 > 0) yield return (Uses2, UsesCount2);
+        }
+    }
 
     /// <summary>Each one in a batch takes a quarter longer than the one before, so big batches take much longer.</summary>
     public static float BatchSeconds(Recipe r, int index) => r.Seconds * (1f + 0.25f * index);
@@ -121,15 +129,21 @@ public static class Catalog
 
     public static readonly IReadOnlyList<Ingredient> Ingredients = new[]
     {
-        new Ingredient("butter", "Butter", "biscuit", "Churned from milk. An ingredient: it's used to make things (more recipes are coming)."),
+        new Ingredient("butter", "Butter", "biscuit", "Churned from milk. An ingredient for butter cookies and cream buns."),
+        new Ingredient("flour", "Flour", "grain", "Milled from wheat grain. An ingredient for cream buns."),
     };
 
     public static readonly IReadOnlyList<Recipe> Recipes = new[]
     {
         new Recipe("butter", "Churn butter", "butter", 1, 16, 0, 1, 12, 30, "Churn 16 oz of milk from your jugs into a pat of butter."),
-        new Recipe("cookies", "Bake butter cookies", "cookies", 3, 8, 0, 1, 15, 45,
+        new Recipe("flour", "Mill flour", "flour", 1, 0, 0, 6, 6, 20, "Mill 2 wheat grain (from the Shop) into flour for the dairy pantry.",
+            Uses: "hay", UsesCount: 2),
+        new Recipe("cookies", "Bake butter cookies", "cookies", 3, 8, 0, 3, 15, 45,
             "1 butter and 8 oz of milk make 3 butter cookies for the dairy shelf. Members buy them; you get 80% of the price.",
             Uses: "butter", UsesCount: 1, ToShelf: true),
+        new Recipe("buns", "Bake cream buns", "buns", 2, 12, 0, 10, 25, 75,
+            "1 flour, 1 butter and 12 oz of milk make 2 cream buns for the dairy shelf: a bigger treat than cookies. Members buy them; you get 80% of the price.",
+            Uses: "flour", UsesCount: 1, ToShelf: true, Uses2: "butter", UsesCount2: 1),
     };
 
     public static Ingredient? IngredientById(string id) => Ingredients.FirstOrDefault(i => i.Id == id);
@@ -139,9 +153,14 @@ public static class Catalog
     public static string MadeIcon(string id) => IngredientById(id)?.Icon ?? FeedById(id)?.Icon ?? "bottle";
     public static Recipe? RecipeById(string id) => Recipes.FirstOrDefault(r => r.Id == id);
 
+    /// <summary>Treats are baked; ingredients (butter, flour) are made.</summary>
+    public static bool IsBaked(Recipe r) => FeedById(r.Makes)?.Baked == true;
+    public static string Verb(Recipe r) => IsBaked(r) ? "Bake" : "Make";
+    public static string Doing(Recipe r) => IsBaked(r) ? "Baking" : "Making";
+
     public static readonly IReadOnlyList<FeedItem> Feed = new[]
     {
-        new FeedItem("hay", "Meadow hay", "hay", 4, 1, "Plain and filling.", Fed: 0.04f),
+        new FeedItem("hay", "Wheat grain", "grain", 4, 1, "Plain and filling. Farmers can also mill it into flour in the Kitchen.", Fed: 0.04f),
         new FeedItem("grain", "Sweet grain", "grain", 12, 2, "A better meal.", Fed: 0.07f),
         new FeedItem("clover", "Fresh clover", "clover", 15, 3, "A treat. Makes you happy and speeds up your milk for a while.", Happy: 0.05f, BoostMinutes: 15),
         new FeedItem("salt", "Salt lick", "salt", 20, 4, "A salty treat. Happy, and a short milk boost.", Happy: 0.04f, BoostMinutes: 10),
@@ -155,7 +174,8 @@ public static class Catalog
         new FeedItem("alfalfa", "Golden alfalfa", "alfalfa", 80, 1, "Prized hay. Builds your milk quality a lot and speeds up your milk for 30 minutes.", Fed: 0.06f, Quality: 50, BoostMinutes: 30),
         new FeedItem("starclover", "Star clover", "starclover", 200, 1, "Rare and sweet. A big step up in milk quality, and faster milk for 30 minutes.", Happy: 0.10f, Quality: 100, BoostMinutes: 30),
         // Baked by your dairy's farmers and bought off the dairy shelf (not sold in the Shop)
-        new FeedItem("cookies", "Butter cookies", "biscuit", 0, 1, "Baked by your dairy's farmers. Happy, and a milk boost for 20 minutes.", Happy: 0.08f, BoostMinutes: 20, Baked: true),
+        new FeedItem("cookies", "Butter cookies", "biscuit", 0, 1, "Baked by your dairy's farmers. Happy, and a milk boost for 15 minutes.", Happy: 0.06f, BoostMinutes: 15, Baked: true),
+        new FeedItem("buns", "Cream buns", "biscuit", 0, 1, "Baked by your dairy's farmers. Filling, happy, and a milk boost for 20 minutes.", Fed: 0.05f, Happy: 0.07f, BoostMinutes: 20, Baked: true),
         // Going away: keeps your grade from slipping
         new FeedItem("tonic", "Dry-off tonic", "water", 150, 1, "Going away? Your grade won't slip for 7 days, however long since you were milked. Use another to add 7 more.", HoldDays: 7),
     };
@@ -200,8 +220,34 @@ public static class Catalog
 
     public const float HandYield = 1.25f;
     /// <summary>What can go on the dairy shelf, in the server's order (a "fed" inbox item says which by its place here).</summary>
-    public static readonly string[] ShelfOrder = { "cookies" };
+    public static readonly string[] ShelfOrder = { "cookies", "buns" };
     public const int DailyPaidOz = 1500;   // milk you're paid for each day; past it you still get xp (matches the server's daily tank limit)
+
+    // Everything you earn from the game in a day (milking, hand milking shares, orders, goals, awards) tapers off together:
+    // the first FullEarnings coins are paid in full, then a quarter up to QuarterEarnings, then a tenth. Coins from other
+    // players (shelf sales, buy orders) aren't touched. No cap, but more play pays less and less.
+    public const int FullEarnings = 1500;
+    public const int QuarterEarnings = 4000;
+
+    /// <summary>What `gross` coins are actually worth when `earnedToday` (gross) were already earned today.</summary>
+    public static int Tapered(float earnedToday, int gross)
+    {
+        double pay = 0, at = earnedToday, left = gross;
+        foreach (var (upTo, rate) in new (double, double)[] { (FullEarnings, 1.0), (QuarterEarnings, 0.25), (double.MaxValue, 0.10) })
+        {
+            if (left <= 0) break;
+            var room = Math.Max(0, upTo - at);
+            var part = Math.Min(room, left);
+            pay += part * rate;
+            at += part;
+            left -= part;
+        }
+
+        return (int)Math.Round(pay);
+    }
+
+    /// <summary>The share of each new coin you get right now (1, 0.25 or 0.1).</summary>
+    public static float TaperRate(float earnedToday) => earnedToday < FullEarnings ? 1f : earnedToday < QuarterEarnings ? 0.25f : 0.10f;
     public const int FeedXp = 10;          // farmer xp for feeding a cow or bull from the shelf
     public const int FedBullXp = 20;       // bull xp for being fed
     /// <summary>Your cow grade (C, B, A, S, S+) milks you this much faster and gives this much more milk.</summary>

@@ -1,0 +1,468 @@
+<title>Eorzea Milkers Preview</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Marcellus+SC&family=Pathway+Gothic+One&family=Noto+Sans:wght@400;600&display=swap">
+<style>
+/* Layout: a control strip on top (who you are, what's happening), then the plugin's windows laid out on a game-dark stage,
+   each at its real pixel size. The page chrome follows the viewer's theme; the windows are always the plugin's own look. */
+:root {
+  --page: #f3eef0; --panel: #ffffff; --line: #e2d8dc; --ink: #3a2a2e; --soft: #7a6a6e; --accent: #a8616f; --stage: #1d1a22; --stage-line: #34303c;
+  --ui: "Noto Sans", system-ui, sans-serif;
+  /* the plugin's own look (from Ui.cs Theme; data.js overrides these with the exact values) */
+  --Paper: #fbf7ee; --Cream: #f3ecdf; --Linen: #e9e0d2; --Ink: #5c3b42; --InkSoft: #8c7073; --Rose: #ddabb0; --RoseDeep: #a86170;
+  --Blue: #b3c7da; --BlueDeep: #6180a2; --Sage: #b8ccb4; --SageDeep: #6a8a6e; --Honey: #e4cc9c; --HoneyDeep: #b08a4e; --Warn: #bd524d;
+  --jupiter: "Marcellus SC", "Cinzel", Georgia, serif;        /* the game's Jupiter (headings, small serif) */
+  --trump: "Pathway Gothic One", "Arial Narrow", sans-serif;            /* the game's TrumpGothic (labels, buttons, big title) */
+  --axis: "Noto Sans", system-ui, sans-serif;               /* the game's Axis (numbers) */
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --page: #18151b; --panel: #221e26; --line: #3a3340; --ink: #efe6ea; --soft: #ad9fa6; --accent: #e09aa8; color-scheme: dark } }
+:root[data-theme="dark"] { --page: #18151b; --panel: #221e26; --line: #3a3340; --ink: #efe6ea; --soft: #ad9fa6; --accent: #e09aa8; color-scheme: dark }
+
+* { box-sizing: border-box }
+body { background: var(--page); color: var(--ink); font-family: var(--ui); font-size: 14px; line-height: 1.45; margin: 0;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 16px 40px }
+.wrap { max-width: 1500px; margin: 0 auto; display: grid; gap: 14px }
+.top { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: baseline; justify-content: space-between }
+h1 { margin: 0; font-size: 20px; font-weight: 600; text-wrap: balance }
+.ver { font-size: 12.5px; color: var(--soft) }
+.ver b { color: var(--accent) }
+
+/* controls */
+.controls { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; display: grid; gap: 10px 18px;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)) }
+.ctl { display: grid; gap: 4px; min-width: 0 }
+.ctl > span { font-size: 11.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--soft) }
+.ctl .row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center }
+select, input[type=range] { font: inherit; color: var(--ink); background: var(--page); border: 1px solid var(--line); border-radius: 6px; padding: 4px 6px; min-width: 0; max-width: 100% }
+input[type=range] { padding: 0; accent-color: var(--accent); width: 100% }
+label.chk { display: inline-flex; gap: 5px; align-items: center; font-size: 13px; padding: 3px 8px; border: 1px solid var(--line); border-radius: 99px; cursor: pointer; user-select: none }
+label.chk:has(input:checked) { border-color: var(--accent); color: var(--accent) }
+label.chk input { accent-color: var(--accent); margin: 0 }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px }
+.note { font-size: 12.5px; color: var(--soft); margin: 0 }
+
+/* stage: the game screen */
+.stage { background: var(--stage); border: 1px solid var(--stage-line); border-radius: 10px; padding: 18px; overflow-x: auto }
+.stage-inner { display: flex; flex-wrap: wrap; gap: 22px; align-items: flex-start; min-width: min-content }
+.win { position: relative; flex: none }
+.win-label { font: 600 11px var(--ui); letter-spacing: .08em; text-transform: uppercase; color: #9b91a6; margin: 0 0 6px 2px }
+
+/* ---- plugin look ---- */
+.pl { font-family: var(--jupiter); color: var(--Ink); position: relative }
+.card { border: 34px solid transparent; border-image: url(assets/ui/card.png) 48 fill / 34px stretch; }
+.abs { position: absolute }
+.jup16 { font: 15px/1.15 var(--jupiter) }
+.jup20 { font: 18px/1.15 var(--jupiter) }
+.jup23 { font: 21px/1.15 var(--jupiter) }
+.trump23 { font: 400 21px/1 var(--trump); letter-spacing: .02em; text-transform: uppercase }
+.trump34 { font: 400 42px/1 var(--trump); letter-spacing: .01em }
+.num { font-family: var(--axis) }
+.soft { color: var(--InkSoft) }
+.btn { position: absolute; display: grid; place-items: center; cursor: pointer; isolation: isolate;
+  font: 400 18px/1 var(--trump); letter-spacing: .04em; text-transform: uppercase; color: #fff; text-shadow: 0 1px 0 rgba(0,0,0,.12); padding: 0 6px; white-space: nowrap }
+.btn.inline { position: relative; display: inline-grid }
+.btn::before { content: ""; position: absolute; inset: 0; z-index: -1; border-style: solid; border-color: transparent; border-width: var(--b); border-image: var(--bi) }
+.btn:hover { filter: brightness(1.06) }
+.btn.cream, .btn.honey { color: var(--Ink); text-shadow: none }
+.btn.off { opacity: .65; cursor: default; filter: grayscale(.4) }
+.bar { position: absolute; background: var(--Linen); border-radius: 99px; overflow: hidden }
+.bar > i { display: block; height: 100%; border-radius: 99px }
+
+/* bottle */
+.bottle { position: absolute }
+.bottle img { position: absolute; inset: 0; width: 100%; height: 100%; display: block }
+.bottle .milk { transition: clip-path .6s ease }
+.drop { position: absolute; width: 5px; height: 7px; border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%; background: #fff; opacity: 0;
+  animation: drip 1.6s ease-in infinite; box-shadow: 0 0 1px rgba(0,0,0,.25) }
+@keyframes drip { 0% { transform: translateY(0); opacity: 0 } 10% { opacity: .95 } 80% { opacity: .95 } 100% { transform: translateY(var(--fall)); opacity: 0 } }
+@media (prefers-reduced-motion: reduce) { .drop { animation: none; display: none } }
+
+/* main window */
+.mw { width: var(--mw, 1060px); height: 760px; overflow: hidden; border-radius: 8px; box-shadow: 0 8px 30px rgba(0,0,0,.35);
+  background: url(assets/bg.png) center / cover }
+.mw-head { position: absolute; left: 0; right: 0; top: 0; height: 92px; background: rgba(251,247,238,.92);
+  border-bottom: 2px solid rgba(168,97,112,.55); box-shadow: 0 3px 0 -2px rgba(168,97,112,.3) }
+.pill { display: inline-block; font: 13px/1 var(--jupiter); padding: 3px 5px 2px; border-radius: 99px; border: 1px solid; margin-right: 4px }
+.tabs { position: absolute; left: 0; right: 0; top: 92px; height: 44px }
+.tab { position: absolute; top: 8px; height: 34px; display: grid; place-items: center; font: 400 21px/1 var(--trump); text-transform: uppercase; color: var(--InkSoft); cursor: pointer; letter-spacing: .02em }
+.tab:hover { color: var(--RoseDeep) }
+.tab.sel { color: var(--Ink); background: rgba(251,247,238,.85); border-radius: 8px 8px 0 0 }
+.tab.sel::after { content: ""; position: absolute; left: 10px; right: 10px; bottom: 2px; height: 2px; background: var(--RoseDeep) }
+.panel { position: absolute; background: rgba(251,247,238,.93); border-radius: 12px; border: 1.5px solid rgba(168,97,112,.4); padding: 14px 16px; overflow: hidden }
+.panel h3 { margin: 0 0 8px; font: 400 18px/1 var(--trump); letter-spacing: .12em; text-transform: uppercase; color: var(--BlueDeep); display: flex; gap: 10px; align-items: center }
+.panel h3::after { content: ""; flex: 1; height: 1px; background: rgba(97,128,162,.35) }
+.lrow { display: flex; gap: 10px; align-items: center; padding: 6px 0; border-bottom: 1px solid rgba(168,97,112,.12) }
+.lrow img { width: 34px; height: 34px; flex: none }
+.lrow .t { flex: 1; min-width: 0 }
+.lrow .t b { display: block; font: 18px/1.1 var(--jupiter); font-weight: 400 }
+.lrow .t span { display: block; font: 14px/1.25 var(--jupiter); color: var(--InkSoft) }
+.lrow .bs { display: flex; gap: 6px; flex: none }
+.ph { display: grid; place-items: center; height: 100%; font: 18px var(--jupiter); color: var(--InkSoft); text-align: center; padding: 20px }
+
+/* small windows (ImGui windows with the paper style) */
+.iw { background: var(--Paper); border-radius: 6px; box-shadow: 0 8px 30px rgba(0,0,0,.35); overflow: hidden; font-family: var(--jupiter) }
+.iw-title { background: #e7d3d6; color: #7a4a50; font: 14px/1 var(--axis); padding: 7px 10px; display: flex; justify-content: space-between }
+.iw-body { padding: 12px 14px; display: grid; gap: 8px }
+.iw-body p { margin: 0 }
+.mini { font: 12px var(--axis); background: var(--Cream); border: 1px solid var(--Linen); border-radius: 4px; padding: 2px 7px; color: var(--Ink); cursor: pointer }
+hr.s { border: 0; border-top: 1px solid var(--Linen); margin: 2px 0; width: 100% }
+.kgrid { display: grid; grid-template-columns: 200px 1fr; gap: 12px; min-height: 0 }
+.klist { border: 1px solid var(--Linen); border-radius: 6px; padding: 6px; display: grid; gap: 2px; align-content: start }
+.klist .grp { font: 400 16px var(--trump); letter-spacing: .1em; text-transform: uppercase; color: var(--BlueDeep); margin: 4px 2px 2px }
+.klist .it { display: flex; gap: 6px; align-items: center; padding: 4px; border-radius: 4px; cursor: pointer; font-size: 15px }
+.klist .it.sel { background: var(--Cream) }
+.klist .it img { width: 22px; height: 22px }
+.need { display: flex; justify-content: space-between; gap: 10px; font-size: 15px }
+.need.bad { color: var(--Warn) }
+.need.ok span:last-child { color: var(--SageDeep) }
+.sect { font: 400 17px var(--trump); letter-spacing: .1em; text-transform: uppercase; color: var(--RoseDeep) }
+.prog { height: 8px; background: var(--Linen); border-radius: 99px; overflow: hidden }
+.prog > i { display: block; height: 100%; background: var(--HoneyDeep) }
+.chg h4 { margin: 0; font: 21px var(--jupiter); color: var(--RoseDeep) }
+.chg .vv { font-size: 14px; color: var(--InkSoft) }
+.chg .hd { font: 400 17px var(--trump); letter-spacing: .1em; color: var(--BlueDeep); margin-top: 6px }
+.chg ul { margin: 2px 0 0; padding-left: 18px; display: grid; gap: 3px; font-size: 15px }
+.chg li::marker { color: var(--HoneyDeep) }
+.scroll { overflow: auto }
+</style>
+
+<div class="wrap">
+  <div class="top">
+    <h1>Eorzea Milkers Preview</h1>
+    <div class="ver">Mock-up of plugin <b id="ver">-</b> · built from the repo's code, before it ships · not connected to any server</div>
+  </div>
+
+  <div class="controls" role="group" aria-label="Preview settings">
+    <div class="ctl"><span>Your roles</span><div class="row">
+      <label class="chk"><input type="checkbox" id="rCow" checked> Cow</label>
+      <label class="chk"><input type="checkbox" id="rFarmer" checked> Farmer</label>
+      <label class="chk"><input type="checkbox" id="rOwner"> Owner</label>
+    </div></div>
+    <div class="ctl"><span>What's happening</span>
+      <select id="st">
+        <option value="in">In the dairy</option><option value="seated">Resting in the dairy</option><option value="private">In the private place</option><option value="away">Away from the dairy</option>
+        <option value="milking">Being milked</option><option value="dozing">Dozing</option><option value="asleep">Asleep</option>
+        <option value="tired">Tired</option><option value="full">Full</option><option value="spoiled">Spoiled</option>
+        <option value="update">Update available</option><option value="toast">A long message</option>
+      </select></div>
+    <div class="ctl"><span>Milk <b id="milkV" class="num"></b></span><input type="range" id="milk" min="0" max="100" value="55"></div>
+    <div class="ctl"><span>Bottles</span><div class="row">
+      <select id="tier" aria-label="Bottle size"><option value="1">Quart (8 oz)</option><option value="2">Half gallon (16 oz)</option><option value="3">Gallon (24 oz)</option><option value="4">Big jug (32 oz)</option><option value="5">Milk churn (48 oz)</option></select>
+      <select id="count" aria-label="Number of bottles"><option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option></select>
+    </div></div>
+    <div class="ctl"><span>Grade and needs</span><div class="row">
+      <select id="grade" aria-label="Grade"><option value="0">C</option><option value="1" selected>B</option><option value="2">A</option><option value="3">S</option><option value="4">S+</option></select>
+      <select id="needs" aria-label="Needs"><option value="full">Needs full</option><option value="mix" selected>Needs mixed</option><option value="low">Needs empty</option></select>
+    </div></div>
+    <div class="ctl"><span>Kitchen</span><div class="row"><label class="chk"><input type="checkbox" id="baking"> Baking now</label><label class="chk"><input type="checkbox" id="asks"> Cow asks first</label></div></div>
+    <div class="ctl"><span>Main window width <b id="mwV" class="num"></b></span><input type="range" id="mw" min="980" max="1600" step="10" value="1060"></div>
+    <div class="ctl"><span>Show</span><div class="row" id="shows"></div></div>
+  </div>
+  <p class="note">Fonts are close stand-ins for the game's (Jupiter, TrumpGothic, Axis), so text widths can differ a little in game. Images, colors and sizes are the plugin's own.</p>
+
+  <div class="stage"><div class="stage-inner" id="stage"></div></div>
+</div>
+
+<script src="data.js"></script>
+<script>
+const P = window.PREVIEW || { version: "?", changes: [], colors: {}, discord: "" };
+for (const [k, v] of Object.entries(P.colors || {})) document.documentElement.style.setProperty("--" + k, v);
+document.getElementById("ver").textContent = P.version;
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+const GRADES = ["C", "B", "A", "S", "S+"], GRADE_BOOST = [0, .10, .20, .35, .50], PAY = [6, 8, 10, 12, 14];
+const GRADE_COL = ["var(--StoneDeep, #8a827d)", "var(--SageDeep)", "var(--BlueDeep)", "var(--RoseDeep)", "var(--HoneyDeep)"];
+const BOTTLE_OZ = { 1: 8, 2: 16, 3: 24, 4: 32, 5: 48 };
+// Where milk sits in each bottle image (Ui.cs BottleStyle): top, bottom, drop y, drop x
+const STYLE = { 1: [.20, .96, .12, .5], 2: [.27, .96, .19, .5], 3: [.21, .96, .12, .405], 4: [.17, .96, .13, .28], 5: [.444, .902, 0, .5] };
+const WINDOWS = [["pay", "Daily pay (calculator)"], ["hud", "HUD"], ["main", "Main window"], ["herd", "Herd Care"], ["kitchen", "Kitchen"], ["changes", "What's new"], ["ask", "Milking request"]];
+const shown = new Set(["pay", "hud", "main", "herd", "kitchen", "changes", "ask"]);
+let tab = 0, recipe = "cookies";
+
+function btn(label, color, x, y, w, h, extra = "") {
+  const b = Math.min(h * 0.45, w / 2, h / 2);
+  const pos = x == null ? "" : `left:${x}px;top:${y}px;`;
+  return `<div class="btn ${color} ${extra}" role="button" tabindex="0" style="${pos}width:${w}px;height:${h}px;--b:${b}px;--bi:url(assets/ui/button_${color === "off" ? "cream" : color}.png) 40 fill / ${b}px stretch">${esc(label)}</div>`;
+}
+const ibtn = (label, color, w = 90, h = 28, extra = "") => btn(label, color, null, null, w, h, "inline " + extra);
+const measure = (() => { const c = document.createElement("canvas").getContext("2d"); return (text, font) => { c.font = font; return c.measureText(text).width; }; })();
+
+function state() {
+  const tier = +$("tier").value, count = +$("count").value, cap = BOTTLE_OZ[tier] * count;
+  const milk = Math.round(cap * $("milk").value / 100 * 10) / 10;
+  return { cow: $("rCow").checked, farmer: $("rFarmer").checked, owner: $("rOwner").checked, st: $("st").value, tier, count, cap, milk,
+    grade: +$("grade").value, needs: $("needs").value, baking: $("baking").checked, asks: $("asks").checked, mw: +$("mw").value };
+}
+
+// ---------------------------------------------------------------- Daily pay (Catalog.Tapered, Creamery > Your pay)
+const FULL = 1500, QUARTER = 4000;
+function tapered(before, gross) {
+  let pay = 0, at = before, left = gross;
+  for (const [upTo, rate] of [[FULL, 1], [QUARTER, .25], [Infinity, .1]]) { if (left <= 0) break; const part = Math.min(Math.max(0, upTo - at), left); pay += part * rate; at += part; left -= part; }
+  return Math.round(pay);
+}
+const payIn = { oz: 200, bonus: 1.3, hand: 0, orders: 0, goals: 4 };
+function payWin(s) {
+  const perOz = PAY[s.grade] * payIn.bonus;
+  const parts = [
+    s.cow && ["Being milked", Math.round(payIn.oz * perOz), `${payIn.oz} oz × ${perOz.toFixed(1)}`],
+    s.farmer && ["Hand milking shares", Math.round(payIn.hand * 10 * 1.15 * .25), `${payIn.hand} oz of other cows (25% of their pay)`],
+    (s.farmer || s.owner) && ["Customer orders", Math.round(payIn.orders * 24 * 10 * 1.6 + payIn.orders * 10), `${payIn.orders} orders of about 24 oz`],
+    ["Daily goals", payIn.goals * 30 + (payIn.goals >= 4 ? 60 : 0) + (payIn.goals >= 8 ? 60 : 0), `${payIn.goals} goals`],
+  ].filter(Boolean);
+  const gross = parts.reduce((a, p) => a + p[1], 0), net = tapered(0, gross);
+  const rate = gross < FULL ? "full pay" : gross < QUARTER ? "a quarter" : "a tenth";
+  const rng = (id, label, min, max, step, val) => `<label style="display:grid;gap:2px;font:13px var(--axis)">${label} <b class="num">${val}</b><input type="range" data-pay="${id}" min="${min}" max="${max}" step="${step}" value="${val}"></label>`;
+  return `<div class="iw" style="width:420px"><div class="iw-title"><span>Daily pay</span><span></span></div><div class="iw-body">
+    <p class="soft" style="font-size:14px">Try a day: everything the game pays adds up, then tapers (first ${FULL.toLocaleString()} full, a quarter to ${QUARTER.toLocaleString()}, then a tenth). Grade and roles come from the controls above.</p>
+    ${s.cow ? rng("oz", "Milked today (oz)", 0, 1500, 10, payIn.oz) : ""}
+    ${rng("bonus", "Pay bonus (shop items × dairy level)", 1, 1.5, .01, payIn.bonus)}
+    ${s.farmer ? rng("hand", "Other cows you hand milked (oz)", 0, 800, 10, payIn.hand) : ""}
+    ${(s.farmer || s.owner) ? rng("orders", "Customer orders filled", 0, 30, 1, payIn.orders) : ""}
+    ${rng("goals", "Daily goals done", 0, 8, 1, payIn.goals)}
+    <hr class="s">
+    ${parts.map(p => `<div class="need"><span>${p[0]} <span class="soft" style="font-size:12px">${p[2]}</span></span><span class="num" style="font-size:13px">${p[1].toLocaleString()}</span></div>`).join("")}
+    <div class="need" style="border-top:1px solid var(--Linen);padding-top:4px"><span>Earned before tapering</span><span class="num">${gross.toLocaleString()}</span></div>
+    <div class="need" style="font-size:18px"><span>You actually get</span><span class="num" style="color:var(--SageDeep)">${net.toLocaleString()}</span></div>
+    <hr class="s"><div class="sect" style="color:var(--BlueDeep)">Creamery > Your pay shows</div>
+    <div class="soft" style="font-size:14px">Milk given today: ${payIn.oz} oz</div>
+    <div style="font-size:14px;color:${gross < FULL ? "var(--InkSoft)" : "var(--HoneyDeep)"}">Earned today: ${gross.toLocaleString()} · ${gross < FULL ? `full pay until ${FULL.toLocaleString()}` : gross < QUARTER ? `pay is at a quarter until ${QUARTER.toLocaleString()}, then a tenth` : "pay is at a tenth until the daily reset"}</div>
+  </div></div>`;
+}
+
+// ---------------------------------------------------------------- HUD (HudWindow.cs)
+function hud(s) {
+  const W = 330, H = 168, farmerRow = s.farmer || s.owner, total = H + (farmerRow ? 38 : 0);
+  const bh = H - 34, bw = bh / 2, bx = 20, by = 17;
+  const spoiled = s.st === "spoiled", full = s.st === "full" || s.st === "spoiled";
+  const milk = full ? s.cap : s.milk, size = BOTTLE_OZ[s.tier];
+  const fullN = Math.min(s.count, Math.floor(milk / size + 0.001));
+  const frac = fullN >= s.count ? 1 : Math.max(0, Math.min(1, (milk - fullN * size) / size));
+  const [top, bottom, dropY, dropX] = STYLE[s.tier];
+  const level = bottom - (bottom - top) * frac;
+  const milking = s.st === "milking", asleep = s.st === "asleep";
+  const filling = s.cow && !milking && !full && !asleep && s.st !== "away" || (s.cow && s.st === "away");
+  const drops = filling && STYLE[s.tier][2] > 0 && !asleep ? [0, .55, 1.1].map(d => `<i class="drop" style="left:${bw * dropX - 2}px;top:${bh * dropY}px;--fall:${bh * (level - dropY) - 4}px;animation-delay:${d}s"></i>`).join("") : "";
+  const x = bx + bw + 14, barW = W - x - 26, half = (barW - 10) / 2;
+  const nv = { full: [92, 88, 80, 95], mix: [70, 35, 8, 55], low: [5, 0, 0, 3] }[s.needs];
+  const needCol = (v, c) => v <= 10 ? "var(--Warn)" : c;
+  const needs = [["Fed", nv[0], "var(--HoneyDeep)"], ["Watered", nv[1], "var(--BlueDeep)"], ["Comfy", nv[2], "var(--RoseDeep)"], ["Happy", nv[3], "var(--SageDeep)"]]
+    .map((n, i) => { const nx = x + (i % 2) * (half + 10), ny = 52 + Math.floor(i / 2) * 28;
+      return `<div class="abs jup16 soft" style="left:${nx}px;top:${ny - 2}px">${n[0]}</div><div class="bar" style="left:${nx}px;top:${ny + 16}px;width:${half}px;height:5px"><i style="width:${n[1]}%;background:${needCol(n[1], n[2])}"></i></div>`; }).join("");
+
+  let status, col = "var(--Ink)";
+  const st = s.st;
+  if (milking) { status = `Milking · ${(milk * 0.4).toFixed(1)} oz`; col = "var(--BlueDeep)"; }
+  else if (spoiled) { status = "Spoiled!"; col = "var(--Warn)"; }
+  else if (full) { status = "Full! Spoils in 18h 20m"; col = "var(--Warn)"; }
+  else if (asleep) { status = "Asleep · move to wake up"; col = "var(--Warn)"; }
+  else if (st === "dozing") { status = "Dozing · half-speed milk"; col = "var(--HoneyDeep)"; }
+  else if (st === "tired") { status = "Tired · half speed today"; col = "var(--HoneyDeep)"; }
+  else if (st === "in" || st === "seated" || st === "update" || st === "toast") { status = st === "seated" ? "Resting in the dairy" : "In the dairy"; col = "var(--SageDeep)"; }
+  else { status = "Away from the dairy"; col = "var(--RoseDeep)"; }
+  if (!s.cow && !milking) { const role = s.farmer ? "Farmer" : s.owner ? "Owner" : "Visitor"; status = `${role} at Moonlit Meadow${st === "away" ? "" : " · here"}`; col = st === "away" ? "var(--InkSoft)" : "var(--SageDeep)"; }
+  if (st === "update") { status = "Update 0.9.19 is out · /xlplugins"; col = "var(--BlueDeep)"; }
+  if (st === "toast") { status = "Milked by Maple: 18.4 oz as a Grade B cow. +184 coins, +46 xp (you've been paid for 1,500 oz today)"; col = "var(--Ink)"; }
+  // Cut to fit like HudWindow.Fit
+  const textRight = W - 20 - (spoiled ? 112 : 0), room = textRight - x, font = "15px 'Marcellus SC'";
+  let fit = status;
+  if (measure(fit, font) > room) { while (fit.length > 4 && measure(fit + "...", font) > room) fit = fit.slice(0, -1); fit = fit.replace(/[ ·]+$/, "") + "..."; }
+
+  const capText = s.count > 1 ? `/ ${s.cap} oz · ${fullN} of ${s.count} full` : `/ ${s.cap} oz`;
+  const milkBar = milking ? `<div class="bar" style="left:${x}px;top:${H - 26}px;width:${barW}px;height:4px"><i style="width:40%;background:var(--BlueDeep)"></i></div>` : "";
+  const dump = spoiled ? btn("Dump milk", "rose", W - 124, H - 54, 104, 30) : "";
+  let fbtns = "";
+  if (farmerRow) {
+    const both = s.farmer, w2 = both ? (W - 50) / 2 : W - 40;
+    if (s.farmer) fbtns += btn("Herd Care", "rose", 20, H - 10, w2, 30);
+    fbtns += btn(s.baking ? "Kitchen (baking)" : "Kitchen", "honey", 20 + (s.farmer ? w2 + 10 : 0), H - 10, w2, 30);
+  }
+  const tint = spoiled ? "filter:sepia(.5) saturate(1.6) hue-rotate(20deg)" : "";
+  return `<div class="pl" style="width:${W}px;height:${total}px">
+    <div class="card abs" style="inset:0"></div>
+    <div class="bottle" style="left:${bx}px;top:${by}px;width:${bw}px;height:${bh}px">
+      <img src="assets/ui/bottle${s.tier}_back.png" alt="">
+      <img class="milk" src="assets/ui/bottle${s.tier}_milk.png" alt="" style="clip-path:inset(${level * 100}% 0 0 0);${tint}">
+      <img src="assets/ui/bottle${s.tier}_front.png" alt="">${drops}
+    </div>
+    <div class="abs jup23 num" style="left:${x}px;top:14px">${milk.toFixed(1).replace(/\.0$/, "")}</div>
+    <div class="abs jup16 soft num" style="left:${x + measure(milk.toFixed(1).replace(/\.0$/, ""), "21px 'Noto Sans'") + 6}px;top:21px;font-family:var(--axis);font-size:12.5px">${capText}</div>
+    <img class="abs" src="assets/ui/seal.png" alt="" style="left:${W - 58}px;top:18px;width:40px;height:40px">
+    <div class="abs jup23" style="left:${W - 58}px;top:18px;width:40px;height:40px;display:grid;place-items:center;color:${GRADE_COL[s.grade]}">${GRADES[s.grade]}</div>
+    ${s.cow ? needs : ""}
+    <div class="abs jup16" style="left:${x}px;top:${H - 48}px;width:${room}px;white-space:nowrap;overflow:hidden;color:${col}">${esc(fit)}</div>
+    ${milkBar}${dump}${fbtns}
+  </div>`;
+}
+
+// ---------------------------------------------------------------- main window (MainWindow.cs)
+const TABS = ["Barn", "Roles", "Pantry", "Shop", "Creamery", "Dairy", "Dairies", "Progress", "Settings"];
+const HEADER_LINKS = [["Discord", "blue"]];   // header, under the coins (MainWindow.HeaderLinks); a Donate button can be added here
+function mainWin(s) {
+  const W = s.mw, Pad = 16;
+  // Header
+  // Roles with their level; the fill shows how far to the next level (hover for the numbers)
+  const roles = [s.cow && ["COW 23", "var(--RoseDeep)", .6, "Cow level 23\n1,212 / 2,020 xp to level 24 (60%)"],
+    s.farmer && ["FARMER 12", "var(--SageDeep)", .25, "Farmer level 12\n171 / 684 xp to level 13 (25%)"],
+    s.owner && ["OWNER", "var(--RoseDeep)"]].filter(Boolean);
+  const where = s.st === "away" ? ["AWAY", "var(--InkSoft)", null, "Away from your dairy."] : s.st === "seated" ? ["RESTING", "var(--SageDeep)", null, "Resting in your dairy."] : s.st === "private" ? ["PRIVATE", "var(--SageDeep)", null, "In your dairy's private place."] : ["HERE", "var(--SageDeep)", null, "In your dairy."];
+  const pills = [...roles, ["DAIRY LV 7", "var(--BlueDeep)"], where].map(([t, c, p, tip]) => `<span class="pill" ${tip ? `title="${tip}"` : ""} style="color:${c};border-color:${c};background:${p != null
+      ? `linear-gradient(90deg, color-mix(in srgb, ${c} 36%, transparent) ${p * 100}%, color-mix(in srgb, ${c} 14%, transparent) ${p * 100}%)` : `color-mix(in srgb, ${c} 14%, transparent)`}">${t}</span>`).join("");
+  const brandW = measure("MILKERS", "42px 'Pathway Gothic One'");
+  const head = `<div class="mw-head">
+    <img class="abs" src="assets/avatars/you.png" alt="Your portrait" style="left:${Pad}px;top:14px;width:60px;height:60px">
+    <div class="abs trump23" style="left:${Pad + 74}px;top:14px;color:var(--RoseDeep)">EORZEA</div>
+    <div class="abs trump34" style="left:${Pad + 73}px;top:34px;color:var(--Ink)">MILKERS</div>
+    <div class="abs" style="left:${Pad + 74 + Math.max(150, brandW + 24)}px;top:12px">
+      <div class="jup23" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Moonlit Meadow</div>
+      <div style="margin-top:8px;white-space:nowrap">${pills}</div>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:6px"><div class="bar" style="position:relative;width:240px;height:6px"><i style="width:62%;background:var(--BlueDeep)"></i></div><span class="soft num" style="font-size:12.5px">Contract 1,240 / 2,000 oz · 4d 6h left</span></div>
+    </div></div>`;
+  // Tabs, then the links at the right end (hidden when they'd touch the tabs)
+  let x = Pad, tabsHtml = "";
+  TABS.forEach((t, i) => { const bw = measure(t.toUpperCase(), "21px 'Pathway Gothic One'") + 28;
+    tabsHtml += `<div class="tab ${tab === i ? "sel" : ""}" data-tab="${i}" role="tab" tabindex="0" style="left:${x}px;width:${bw}px">${t}</div>`; x += bw + 4; });
+  // Header right side: coins, people online, the ? button, then the link buttons under them
+  const Rx = W - Pad, coins = "12,480", cw = measure(coins, "21px 'Noto Sans'"), online = "37 online", ow = measure(online, "15px 'Marcellus SC'");
+  let headLinks = `<div class="abs jup23 num" style="right:${Pad}px;top:22px">${coins}</div><img class="abs" src="assets/icons/coin.png" alt="" style="left:${Rx - cw - 30}px;top:28px;width:16px;height:16px">
+    <div class="abs jup16" style="left:${Rx - cw - 40 - ow}px;top:26px;color:var(--SageDeep)"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--SageDeep);margin:0 5px 1px -14px"></span>${online}</div>
+    <div class="abs jup16" style="left:${Rx - cw - 40 - ow - 34 - 13}px;top:23px;width:24px;height:24px;border-radius:50%;border:1.5px solid rgba(168,97,112,.6);display:grid;place-items:center;color:var(--RoseDeep)">?</div>`;
+  let lx = Rx;
+  for (const [label, color] of HEADER_LINKS) { const bw = measure(label.toUpperCase(), "21px 'Pathway Gothic One'") + 36; lx -= bw; headLinks += btn(label, color, lx, 56, bw, 26); lx -= 8; }
+  const body = tab === 0 ? barn(s, W) : tab === 8 ? settings(s, W) : `<div class="panel" style="left:${Pad}px;top:146px;right:${Pad}px;bottom:${Pad}px"><div class="ph">The ${TABS[tab]} tab isn't mocked up yet.<br>Ask Claude to add it when you're changing it.</div></div>`;
+  return `<div class="pl mw" style="--mw:${W}px">${head}${headLinks}<div class="tabs" role="tablist">${tabsHtml}</div>${body}</div>`;
+}
+
+function barn(s, W) {
+  const Pad = 16, top = 146, bottom = 760 - Pad, mid = Pad + (W - 2 * Pad) / 2;
+  const nv = { full: [92, 88, 80, 95], mix: [70, 35, 8, 55], low: [5, 0, 0, 3] }[s.needs];
+  const idle = s.st !== "milking";
+  const milkH = idle ? 112 : 200;
+  const needsHtml = [["Fed", nv[0]], ["Watered", nv[1]], ["Comfy", nv[2]], ["Happy", nv[3]]]
+    .map(([n, v]) => `<div class="need ${v <= 10 ? "bad" : "ok"}"><span>${n}</span><span class="num" style="font-size:13px">${v > 0 ? `${Math.round(v * .6)} min left` : "Empty"}</span></div>`).join("");
+  const rate = (1 + GRADE_BOOST[s.grade]);
+  const doing = `<div class="panel" style="left:${Pad}px;top:${top}px;width:${mid - Pad - 7}px;bottom:${760 - (bottom - milkH - 14)}px">
+    <h3>How you're doing</h3>${needsHtml}
+    <p class="soft" style="margin:10px 0 0;font-size:14px">Grade ${GRADES[s.grade]} · ${PAY[s.grade]} coins per oz${s.grade ? ` · milks ${GRADE_BOOST[s.grade] * 100}% faster, ${GRADE_BOOST[s.grade] * 100}% more milk` : ""}</p></div>`;
+  const care = `<div class="panel" style="left:${mid + 7}px;top:${top}px;right:${Pad}px;bottom:${760 - (bottom - milkH - 14)}px">
+    <h3>Care</h3>
+    ${row("grain", "Wheat grain ×4", "Fed +4% for 30 min", [["Eat", "sage"]])}
+    ${row("water", "Spring water ×6", "Watered +8% for 30 min", [["Drink", "blue"]])}
+    ${row("biscuit", "Butter cookies ×3", "Happy +6%, +30% milk for 15 min", [["Eat", "rose"]])}</div>`;
+  const how = s.st === "away" ? "Not being milked. Go to your dairy to get milked." : "Not being milked. Sit on a stall, or have a farmer stand close and press Milk on you.";
+  const milking = idle
+    ? `<div class="panel" style="left:${Pad}px;right:${Pad}px;top:${bottom - milkH}px;height:${milkH}px"><h3>Milking</h3><div class="soft jup16" style="font-size:16px">${how}</div></div>`
+    : `<div class="panel" style="left:${Pad}px;right:${Pad}px;top:${bottom - milkH}px;height:${milkH}px"><h3>Milking</h3>
+        ${row("bucket", "Hand milking by Maple", `${(s.milk * .4 * rate).toFixed(1)} oz collected · Grade ${GRADES[s.grade]} cow`, [["Stop", "rose"]])}
+        <div class="prog" style="margin-top:8px"><i style="width:40%;background:var(--BlueDeep)"></i></div></div>`;
+  return doing + care + milking;
+}
+
+function settings(s, W) {
+  return `<div class="panel" style="left:16px;top:146px;right:16px;bottom:16px"><h3>Community</h3>
+    <p class="jup16" style="margin:0 0 8px;font-size:16px">Questions, finding a dairy, update news and testing builds: join the Eorzea Milkers Discord (18+).</p>
+    <span class="mini">Join the Discord</span> <span class="soft" style="font:12px var(--axis)">${esc(P.discord)}</span>
+    <h3 style="margin-top:16px">Credits</h3><p class="soft jup16" style="margin:0">Milking machine sound: "Milk Pump Step02" by Erdie.</p></div>`;
+}
+
+function row(icon, title, line, buttons) {
+  return `<div class="lrow"><img src="assets/icons/${icon}.png" alt=""><div class="t"><b>${esc(title)}</b><span>${esc(line)}</span></div>
+    <div class="bs">${buttons.map(([l, c, w]) => ibtn(l, c, w || 70, 28)).join("")}</div></div>`;
+}
+
+// ---------------------------------------------------------------- Herd Care (MilkingWindow.cs)
+function herd(s) {
+  const waiting = s.asks;
+  const cows = [
+    ["Maple Leaf", `Right here (2.1 y) · 31.5 / 48 oz · Grade A`, waiting ? "Asked: waiting for them to press Allow..." : s.asks ? "Asks first: they get a pop-up to Allow" : "", [[waiting ? "Waiting" : "Milk", waiting ? "off" : "rose"], ["Groom", "sage"], ["Feed", "honey"]]],
+    ["Clover Bell", "12 y away · 8 / 24 oz · Grade C", "", [["Milk", "off"], ["Groom", "off"], ["Feed", "off"]]],
+    ["Hazel Moon", "Offline · last seen 3 h ago", "", [["Milk", "off"], ["Groom", "off"], ["Feed", "off"]]],
+  ];
+  const list = cows.map(([n, l, l2, b]) => `<div class="lrow"><img src="assets/icons/bell.png" alt=""><div class="t"><b>${n}</b><span>${l}</span>${l2 ? `<span style="color:var(--HoneyDeep)">${l2}</span>` : ""}</div><div class="bs">${b.map(([t, c]) => ibtn(t, c, 64, 28)).join("")}</div></div>`).join("");
+  return `<div class="iw" style="width:520px"><div class="iw-title"><span>Herd Care</span><span>✕</span></div>
+    <div class="iw-body"><div class="soft" style="font-size:15px">Milk does /beesknees · no animation mod <span class="mini">Animation...</span></div><hr class="s">
+    ${list}<p class="soft" style="font-size:14px">You get 25% of what the cow is paid, on top of their pay, plus farmer xp.</p>
+    <div class="sect" style="color:var(--BlueDeep)">Bulls</div>
+    <div class="lrow"><img src="assets/icons/biscuit.png" alt=""><div class="t"><b>Oak Thorne</b><span>Right here (3.0 y)</span></div><div class="bs">${ibtn("Feed", "honey", 64, 28)}</div></div>
+    </div></div>`;
+}
+
+// ---------------------------------------------------------------- Kitchen (KitchenWindow.cs)
+const RECIPES = {
+  flour: { name: "Mill flour", makes: "Flour", icon: "grain", group: "Ingredients", level: 6, milk: 0, uses: "2 wheat grain", usesNote: "you have 6", shop: true, secs: 20, xp: 6, amount: 1,
+    effects: ["An ingredient for other recipes.", "+6 farmer xp for each one."] },
+  butter: { name: "Churn butter", makes: "Butter", icon: "milk", group: "Ingredients", milk: 16, uses: "", secs: 30, xp: 12, amount: 1,
+    effects: ["An ingredient: used to make butter cookies. It can't be eaten on its own.", "+12 farmer xp for each one."] },
+  buns: { name: "Bake cream buns", makes: "Cream buns", icon: "biscuit", group: "Treats", milk: 12, uses: "1 flour", usesNote: "3 in the dairy pantry", uses2: "1 butter", secs: 75, xp: 25, amount: 2, level: 10,
+    effects: ["For cows: Fed +5% milk speed, Happy +7% milk speed, filling half the bar (30 minutes).", "Milk boost: +30% milk for 20 minutes.",
+      "Goes on the dairy shelf at 70 coins each (the owner sets it). You get 56 for each one a member buys; the fund gets the rest.",
+      "Farmers can also feed them to cows and bulls for free (Herd Care > Feed). Bulls get bull xp.", "Each bake makes 2 and gives +25 farmer xp."] },
+  cookies: { name: "Bake butter cookies", makes: "Butter cookies", icon: "biscuit", group: "Treats", level: 3, milk: 8, uses: "1 butter", usesNote: "5 in the dairy pantry", secs: 45, xp: 15, amount: 3,
+    effects: ["For cows: Happy +6% milk speed, filling half the bar (30 minutes).", "Milk boost: +30% milk for 15 minutes.",
+      "Goes on the dairy shelf at 40 coins each (the owner sets it). You get 32 for each one a member buys; the fund gets the rest.",
+      "Farmers can also feed them to cows and bulls for free (Herd Care > Feed). Bulls get bull xp.", "Each bake makes 3 and gives +15 farmer xp."] },
+};
+function kitchen(s) {
+  const r = RECIPES[recipe];
+  const groups = ["Ingredients", "Treats"].map(g => `<div class="grp">${g}</div>` + Object.entries(RECIPES).filter(([, x]) => x.group === g)
+    .map(([id, x]) => `<div class="it ${id === recipe ? "sel" : ""}" data-recipe="${id}" role="button" tabindex="0" style="${(x.level || 1) > 12 ? "opacity:.55" : ""}"><img src="assets/icons/${x.icon}.png" alt="">${x.name}${(x.level || 1) > 12 ? `<span class="soft" style="font-size:12px;margin-left:4px">(Lv ${x.level})</span>` : ""}</div>`).join("")).join("");
+  const baking = s.baking ? `<div class="soft" style="font-size:15px">Bake butter cookies · 2 of 5 · 1m 10s left</div><div class="prog"><i style="width:45%"></i></div>${ibtn("Stop", "rose", 80, 26)}` : "";
+  return `<div class="iw" style="width:600px"><div class="iw-title"><span>Kitchen</span><span>✕</span></div>
+    <div class="iw-body">
+      <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center"><span style="font-size:16px">Your jugs: 40 / 96 oz</span><span class="soft" style="font-size:15px">· dairy tank 312.5 oz</span></div>
+      <div style="display:flex;gap:6px;align-items:center"><div class="prog" style="width:260px"><i style="width:42%;background:var(--BlueDeep)"></i></div>${ibtn("Fill 8 oz", "cream", 84, 24)}${ibtn("Fill 32 oz", "cream", 90, 24)}${ibtn("Fill up", "blue", 80, 24)}</div>
+      <hr class="s">${baking}
+      <div class="soft" style="font-size:14px">In the dairy pantry: butter 5 · flour 3</div>
+      <div class="kgrid"><div class="klist"><span class="mini" style="cursor:text">Search recipes...</span>${groups}</div>
+      <div style="display:grid;gap:6px;align-content:start">
+        <div style="font-size:21px">${r.name}</div>
+        <div class="sect">Makes</div><div style="font-size:15px">${r.amount} ${r.makes.toLowerCase()} · ${r.secs} s each</div>
+        <div class="sect">Needs</div><div style="font-size:15px">${r.milk ? `${r.milk} oz milk <span class="soft">· 40 oz in your jugs</span>` : ""}${r.uses ? `${r.milk ? "<br>" : ""}${r.uses} <span class="soft">· ${r.usesNote}</span>${r.shop ? ` <span class="mini">Buy</span>` : ""}` : ""}${r.uses2 ? `<br>${r.uses2} <span class="soft">· 5 in the dairy pantry</span>` : ""}${(r.level || 1) > 1 ? `<br>Farmer level ${r.level} <span class="soft">· you're 12</span>` : ""}</div>
+        <div class="sect">What it does</div><div style="font-size:15px;display:grid;gap:3px">${r.effects.map(e => `<div>${esc(e)}</div>`).join("")}</div>
+        <div style="display:flex;gap:6px;align-items:center;margin-top:4px">${ibtn("−", "cream", 34, 28)}<span class="num" style="min-width:24px;text-align:center">1</span>${ibtn("+", "cream", 34, 28)}${ibtn("Max", "cream", 54, 28)}${ibtn(r.group === "Treats" ? "Bake" : "Make", "honey", 90, 30)}</div>
+      </div></div>
+    </div></div>`;
+}
+
+// ---------------------------------------------------------------- What's new (ChangelogWindow.cs)
+function changes() {
+  const list = P.changes.slice(0, 1);
+  const body = list.map(e => `<div class="chg"><h4>${esc(e.title)}</h4><div class="vv">Version ${esc(e.version)}</div><ul>` +
+    e.notes.map(n => n.startsWith("# ") ? `</ul><div class="hd">${esc(n.slice(2).toUpperCase())}</div><ul>` : `<li>${esc(n)}</li>`).join("") + "</ul></div>").join("<hr class='s'>");
+  return `<div class="iw" style="width:560px;height:480px;display:grid;grid-template-rows:auto 1fr"><div class="iw-title"><span>What's new in Eorzea Milkers</span><span>✕</span></div>
+    <div class="iw-body" style="grid-template-rows:1fr auto;min-height:0"><div class="scroll">${body}</div>
+    <div style="display:flex;gap:8px">${ibtn("Show older changes", "cream", 180, 32)}${ibtn("Join the Discord", "blue", 160, 32)}${ibtn("Got it", "sage", 120, 32)}</div></div></div>`;
+}
+
+// ---------------------------------------------------------------- Milking request (MilkAskWindow.cs)
+function ask(s) {
+  return `<div class="iw"><div class="iw-title"><span>Milking request</span><span></span></div>
+    <div class="iw-body"><p style="font-size:16px">Maple Leaf wants to milk you.</p><p class="soft" style="font-size:14px">You have ${s.milk.toFixed(1)} oz. They're doing their Milk emote on you.</p>
+    <div style="display:flex;gap:8px">${ibtn("Allow", "rose", 130, 32)}${ibtn("Not now", "cream", 130, 32)}</div>
+    <p class="soft" style="font-size:13px">Roles > Cow: turn on "start without asking" to skip this.</p></div></div>`;
+}
+
+function render() {
+  const s = state();
+  $("milkV").textContent = `${s.milk} / ${s.cap} oz`;
+  $("mwV").textContent = `${s.mw}px`;
+  const parts = { pay: () => payWin(s), hud: () => hud(s), main: () => mainWin(s), herd: () => s.farmer ? herd(s) : null, kitchen: () => (s.farmer || s.owner) ? kitchen(s) : null,
+    changes: () => changes(), ask: () => s.cow ? ask(s) : null };
+  $("stage").innerHTML = WINDOWS.filter(([id]) => shown.has(id)).map(([id, label]) => {
+    const html = parts[id]();
+    return html ? `<div class="win"><div class="win-label">${label}</div>${html}</div>` : `<div class="win"><div class="win-label">${label}</div><div class="note" style="color:#9b91a6;max-width:220px">Not shown for these roles.</div></div>`;
+  }).join("");
+}
+
+$("shows").innerHTML = WINDOWS.map(([id, label]) => `<label class="chk"><input type="checkbox" data-show="${id}" checked> ${label}</label>`).join("");
+document.addEventListener("input", e => { if (e.target.dataset.pay) { payIn[e.target.dataset.pay] = +e.target.value; render(); const el = document.querySelector(`[data-pay="${e.target.dataset.pay}"]`); el && el.focus(); return; } if (e.target.dataset.show) e.target.checked ? shown.add(e.target.dataset.show) : shown.delete(e.target.dataset.show); render(); });
+document.addEventListener("change", render);
+document.addEventListener("click", e => {
+  const t = e.target.closest("[data-tab]"); if (t) { tab = +t.dataset.tab; render(); return; }
+  const r = e.target.closest("[data-recipe]"); if (r) { recipe = r.dataset.recipe; render(); }
+});
+document.addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && e.target.matches("[data-tab],[data-recipe]")) { e.preventDefault(); e.target.click(); } });
+document.fonts?.ready.then(render);
+render();
+</script>

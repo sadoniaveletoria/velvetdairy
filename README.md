@@ -4,6 +4,8 @@ A dairy life game for FFXIV, played with friends. Be a **cow** who makes milk, a
 
 > **Work in progress.** Expect changes and new features in updates. The **Bull** role is coming in a later update.
 
+**Join the community Discord (18+):** <https://discord.gg/yacq26rw4u>. Ask questions, find a dairy, and get update news and testing builds first.
+
 ---
 
 ## Getting started
@@ -57,7 +59,8 @@ Only the owner can take a role away from someone.
 **Getting milked** (only inside your dairy)
 - **At a stall:** sit on its seat and it starts by itself.
 - **By hand:** a farmer of your dairy stands close, targets you and presses **Milk**. Hand milking is faster, pays more and makes up a lost grade.
-- You're **paid the moment you're milked**, by grade: C 7, B 10, A 15, S 21, S+ 30 coins an ounce, plus a bonus for your dairy's level. Pay covers up to 1,500 oz a day; milk past that still gives XP.
+- You're **paid the moment you're milked**, by grade: C 6, B 8, A 10, S 12, S+ 14 coins an ounce, plus a bonus for your dairy's level.
+- **Daily earnings taper off:** everything the game pays you in a day (milking, farmer shares, orders, goals, awards) counts together. The first 1,500 coins are paid in full, then a quarter up to 4,000, then a tenth. XP is never reduced, coins from other players don't count, and it resets each day.
 - **Ask first (optional):** turn off "Farmers can start milking me without asking" on Roles → Cow and you get an Allow / Not now pop-up each time a farmer presses Milk on you.
 
 **Your grade**
@@ -81,7 +84,13 @@ Only the owner can take a role away from someone.
 - **Hand milking:** press **Herd Care** on the HUD (or Roles → Farmer), stand near a cow, press **Target**, then **Milk**. Your character does the milking emote (/beesknees by default, or one you choose) until the cow is empty, then stops by itself. You earn 25% of what the cow is paid, on top of their pay.
 - **Your own animation:** if you use Penumbra, pick an animation mod and its options with **Animation…** in the Herd Care window. It switches on only while you milk.
 - **Chores:** **Groom** a cow (they get 30 minutes of Happy), **Feed** a cow or bull a treat from the dairy shelf (free, but not to yourself), and **Clean** an empty stall (cows milked there get a bonus for an hour). All earn farmer XP.
-- **Baked goods:** bake with milk from your jugs in the **Kitchen** (the Kitchen button on the HUD). For now that's **butter** (16 oz of milk → 1 butter, 30 seconds of churning). Pick how many with − and +; each one in a batch takes a little longer than the last, so 5 take about 4 minutes and 10 about 10½. A progress bar shows how it's going; it pauses if you leave the dairy, and **Stop** keeps what's finished. Butter goes in your Pantry and is only used to make other things. **Butter cookies** (1 butter + 8 oz of milk → 3 cookies) go on the **dairy shelf**.
+- **The Kitchen** (the Kitchen button on the HUD): bake with milk from your jugs. Recipes unlock with your farmer level:
+  - **Butter** (level 1): 16 oz of milk → 1 butter.
+  - **Butter cookies** (level 3): 1 butter + 8 oz of milk → 3 cookies, for the dairy shelf.
+  - **Flour** (level 6): 2 wheat grain (from the Shop) → 1 flour.
+  - **Cream buns** (level 10): 1 flour + 1 butter + 12 oz of milk → 2 buns, for the dairy shelf.
+  
+  Pick how many with − and +; each one in a batch takes a little longer than the last. A progress bar shows how it's going; it pauses if you leave the dairy, and **Stop** keeps what's finished. **Ingredients are shared:** butter and flour go into the dairy pantry, and every farmer can bake with them. Treats go on the **dairy shelf**, where members buy them (you get 80%) or farmers feed them to cows and bulls.
 - **Jugs:** fill them from the dairy tank at the top of the **Kitchen** window. Bigger farmer tanks unlock as your farmer level grows.
 - **Deliveries:**
   - **Customer orders**, with a new one every 20 minutes.

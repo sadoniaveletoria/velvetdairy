@@ -290,6 +290,7 @@ public sealed class NetClient : IDisposable
                 Milking = g.MilkingCowName ?? "",
                 Ask = g.IsCow && !F.AutoHand,
                 Refused = g.RefusedFarmer,
+                TreatAt = g.IsCow && F.Cow.HappyReadyUtc > DateTime.UtcNow ? new DateTimeOffset(DateTime.SpecifyKind(F.Cow.HappyReadyUtc, DateTimeKind.Utc)).ToUnixTimeSeconds() : 0,
             },
         };
         Call<HeartbeatReply>("POST", "/v1/heartbeat", body, r =>
@@ -523,6 +524,31 @@ public sealed class NetClient : IDisposable
         nextShelf = DateTime.UtcNow.AddSeconds(30);
         Call<ShelfReply>("GET", "/v1/shelf", null, r => Shelf = r.Items);
     }
+
+    /// <summary>The dairy pantry: ingredients (butter) shared by all the dairy's farmers.</summary>
+    public Dictionary<string, int> DairyPantry { get; private set; } = new();
+    private DateTime nextPantry = DateTime.MinValue;
+
+    public void RefreshPantry(bool now = false)
+    {
+        if (!now && DateTime.UtcNow < nextPantry) return;
+        nextPantry = DateTime.UtcNow.AddSeconds(30);
+        Call<PantryReply>("GET", "/v1/pantry", null, r => DairyPantry = r.Items ?? new());
+    }
+
+    public void PantryAdd(string item, int qty, Action ok, Action<string> failed) =>
+        Call<object>("POST", "/v1/pantry/add", new { item, qty }, _ =>
+        {
+            RefreshPantry(true);
+            ok();
+        }, failed);
+
+    public void PantryTake(string item, int qty, Action ok, Action<string> failed) =>
+        Call<object>("POST", "/v1/pantry/take", new { item, qty }, _ =>
+        {
+            RefreshPantry(true);
+            ok();
+        }, failed);
 
     public void StockShelf(string item, int qty, Action ok, Action<string> failed) =>
         Call<object>("POST", "/v1/shelf/stock", new { item, qty }, _ =>

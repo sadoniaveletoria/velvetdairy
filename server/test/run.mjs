@@ -203,11 +203,12 @@ await test("dairy XP: only in the dairy, capped per member per day", async () =>
   // A cow's hand milking pays the farmer a share
   await beat(alice, { houseId: HOUSE, awake: true });
   const hp = await call(alice, "POST", "/v1/handpay", { farmer: "Bob Hand", world: "Gilgamesh", oz: 10, grade: 1 });
-  assert.equal(hp.data.coins, Math.round(10 * 10 * 1.02 * 0.25));
+  assert.equal(hp.data.coins, Math.round(10 * 8 * 1.02 * 0.25));
   assert.equal((await call(alice, "POST", "/v1/handpay", { farmer: "Nobody", world: "Gilgamesh", oz: 10, grade: 1 })).status, 400);
   assert.equal((await call(bob, "POST", "/v1/handpay", { farmer: "Bob Hand", world: "Gilgamesh", oz: 10, grade: 1 })).status, 400, "farmers don't report");
   const pay = (await call(bob, "POST", "/v1/inbox/claim")).data.items.find(i => i.kind === "payout");
   assert.equal(pay.coins, hp.data.coins);
+  assert.equal(pay.grade, 1, "hand milking shares are marked as game-made (they taper in the plugin)");
   await beat(alice);   // back out of the dairy
 
   // Weekly contract: sized by level; shipped from carried jugs (at the Grand Creamery once it's set); pays once
@@ -308,7 +309,14 @@ await test("dairy shelf: farmers stock it, members buy, baker and fund are paid,
   assert.equal((await call(alice, "GET", "/v1/dairy/mine")).data.progress.fund, before + 10, "fund gets 20%");
   assert.ok((await call(bob, "POST", "/v1/inbox/claim")).data.items.some(i => i.kind === "payout" && i.coins === 40), "the baker is paid");
   assert.equal((await call(carl, "GET", "/v1/shelf")).data.items.find(i => i.item === "cookies").qty, 2);
-  // Farmers feed cows and bulls from the shelf for free, but never themselves
+  // The dairy pantry: ingredients farmers make are shared
+  assert.equal((await call(carl, "POST", "/v1/pantry/add", { item: "butter", qty: 2 })).status, 403, "only farmers and the owner");
+  assert.equal((await call(bob, "POST", "/v1/pantry/add", { item: "cookies", qty: 1 })).status, 400, "only ingredients");
+  assert.equal((await call(bob, "POST", "/v1/pantry/add", { item: "butter", qty: 3 })).data.qty, 3);
+  assert.equal((await call(alice, "GET", "/v1/pantry")).data.items.butter, 3, "the owner sees the farmer's butter");
+  assert.equal((await call(bob, "POST", "/v1/pantry/take", { item: "butter", qty: 4 })).status, 409, "not more than there is");
+  assert.equal((await call(bob, "POST", "/v1/pantry/take", { item: "butter", qty: 2 })).data.qty, 1);
+    // Farmers feed cows and bulls from the shelf for free, but never themselves
   await call(carl, "POST", "/v1/inbox/claim");
   assert.equal((await call(bob, "POST", "/v1/shelf/feed", { item: "cookies", to: bob.id })).status, 400, "not yourself");
   assert.equal((await call(carl, "POST", "/v1/shelf/feed", { item: "cookies", to: alice.id })).status, 403, "only farmers");

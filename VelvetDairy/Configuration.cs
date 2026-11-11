@@ -67,6 +67,7 @@ public class FarmSave
     // ----- Daily goals -----
     public string DayKey { get; set; } = "";
     public float DayOz { get; set; }
+    public float DayEarned { get; set; }   // coins the game paid out today before tapering (resets each day)
     public int DayOrders { get; set; }
     public int DayCare { get; set; }
     public int DayHand { get; set; }
@@ -258,4 +259,6 @@ public sealed class BakeJob
     public int Count { get; set; }
     public int Done { get; set; }
     public float Elapsed { get; set; }
+    public int Borrowed { get; set; }   // (older builds) ingredients taken from the dairy pantry for this job
+    public Dictionary<string, int> BorrowedBy { get; set; } = new();   // ingredients taken from the dairy pantry, by kind (leftovers go back)
 }

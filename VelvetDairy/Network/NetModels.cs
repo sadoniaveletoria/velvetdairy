@@ -272,6 +272,7 @@ public sealed class MemberStatus
     public string Milking { get; set; } = "";           // a farmer: the cow they pressed Milk on right now
     public bool Ask { get; set; }                       // a cow who presses Allow before each hand milking
     public string Refused { get; set; } = "";           // a cow: the farmer they just told "Not now"
+    public long TreatAt { get; set; }                   // a cow: when she can have her next treat (unix seconds)
 }
 
 public sealed class StallInfo
@@ -382,4 +383,9 @@ public sealed class NetworkFile
 public sealed class ErrorReply
 {
     public string Error { get; set; } = "";
+}
+
+public sealed class PantryReply
+{
+    public Dictionary<string, int>? Items { get; set; }
 }

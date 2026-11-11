@@ -12,6 +12,11 @@ namespace VelvetDairy;
 
 public sealed class Plugin : IDalamudPlugin
 {
+    /// <summary>The Eorzea Milkers community Discord (18+).</summary>
+    public const string DiscordUrl = "https://discord.gg/yacq26rw4u";
+
+    public static void OpenDiscord() => Dalamud.Utility.Util.OpenLink(DiscordUrl);
+
     [PluginService] internal static IDalamudPluginInterface PluginInterface { get; private set; } = null!;
     [PluginService] internal static ICommandManager CommandManager { get; private set; } = null!;
     [PluginService] internal static IClientState ClientState { get; private set; } = null!;

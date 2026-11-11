@@ -162,7 +162,7 @@ public sealed partial class MainWindow
         }
 
         if (G.Baking is { } b)
-            ImGui.TextColored(Theme.InkSoft, $"Baking {b.Recipe.Name} · {F.Bake!.Done + 1} of {F.Bake.Count} · {(G.Where.InDairy ? $"{DairyGame.Wait(b.Left)} left" : "paused")}");
+            ImGui.TextColored(Theme.InkSoft, $"{Catalog.Doing(b.Recipe)} {Catalog.MadeName(b.Recipe.Makes).ToLowerInvariant()} · {F.Bake!.Done + 1} of {F.Bake.Count} · {(G.Where.InDairy ? $"{DairyGame.Wait(b.Left)} left" : "paused")}");
         ImGui.TextColored(Theme.InkSoft, $"Jugs: {G.Carried:0.#} / {G.MaxCarry} oz");
         Gap(4);
     }

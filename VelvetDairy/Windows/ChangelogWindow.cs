@@ -22,6 +22,26 @@ public sealed class ChangelogWindow : Window
     /// <summary>Newest first. Write these for players: what changed for them, not how.</summary>
     private static readonly Entry[] Entries =
     {
+        new("0.9.23", "Pay, the kitchen, levels and Discord", new[]
+        {
+            "# Pay",
+            "New pay per ounce: C 6, B 8, A 10, S 12, S+ 14 coins. Higher grades still milk faster and give more milk.",
+            "Everything the game pays you in a day now adds up together, across all your roles: the first 1,500 coins are paid in full, then a quarter up to 4,000, then a tenth. XP is never reduced, and coins from other players (shelf sales, buy orders) don't count. Creamery > Your pay shows where you are; it resets each day.",
+            "# Kitchen",
+            "Ingredients are shared: butter (and anything else a farmer makes to bake with) goes into the dairy pantry, and every farmer of the dairy can bake with it. Butter you already had moves there too.",
+            "Meadow hay is now Wheat grain. Farmers can buy it in the Shop and mill 2 into flour in the Kitchen.",
+            "New treat: Cream buns (1 flour, 1 butter and 12 oz of milk make 2) for the dairy shelf: Fed +5%, Happy +7% and a 20 minute milk boost.",
+            "Butter cookies are now Happy +6% with a 15 minute milk boost, so baked treats sit in the middle of what the Shop sells.",
+            "Treats from farmers count as your treat: one every 15 minutes, whoever gives it, the same as eating one yourself.",
+            "Recipes unlock with your farmer level: butter at 1, butter cookies at 3, flour at 6, cream buns at 10. Locked ones show their level in the Kitchen.",
+            "Need something the Shop sells for a recipe (like wheat grain)? The Kitchen has a Buy button next to it that opens the Shop right on that item.",
+            "# Levels",
+            "The role tags at the top of the main window now show your level (COW 23, FARMER 12), and fill up as you get closer to the next one. Hover one for the exact xp.",
+            "The tags are a little slimmer, and where you are is one word: HERE, RESTING, PRIVATE or AWAY (hover it for more).",
+            "# Discord",
+            "Eorzea Milkers has a Discord (18+): ask questions, find a dairy or players, and get update news and testing builds first.",
+            "Open it with the Discord button at the top right of the main window, the Join the Discord button here, in the guide (the ? button), or in Settings > Help.",
+        }),
         new("0.9.16", "Eorzea Milkers: your grade, baking and farmer tools", new[]
         {
             "# A new name",
@@ -170,6 +190,8 @@ public sealed class ChangelogWindow : Window
             ImGui.SameLine();
         }
 
+        if (Ui.Button("##changesdiscord", "Join the Discord", new Vector2(160, 32), "blue", true, "Update news, help and testing builds (18+). Opens in your browser.")) Plugin.OpenDiscord();
+        ImGui.SameLine();
         if (Ui.Button("##changesok", "Got it", new Vector2(120, 32), "sage", true, null)) IsOpen = false;
     }
 }
