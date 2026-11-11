@@ -1,12 +1,13 @@
 // Made by preview/build.py from the plugin's source. Don't edit by hand.
 window.PREVIEW = {
- "version": "0.9.19",
+ "version": "0.9.20",
  "changes": [
   {
-   "version": "0.9.19",
+   "version": "0.9.20",
    "title": "Your levels at a glance",
    "notes": [
-    "The role tags at the top of the main window now show your level (COW 23, FARMER 12), and fill up as you get closer to the next one. Hover one for the exact xp."
+    "The role tags at the top of the main window now show your level (COW 23, FARMER 12), and fill up as you get closer to the next one. Hover one for the exact xp.",
+    "The tags are a little slimmer, and where you are is one word: HERE, RESTING, PRIVATE or AWAY (hover it for more)."
    ]
   },
   {

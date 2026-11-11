@@ -82,7 +82,7 @@ label.chk input { accent-color: var(--accent); margin: 0 }
   background: url(assets/bg.png) center / cover }
 .mw-head { position: absolute; left: 0; right: 0; top: 0; height: 92px; background: rgba(251,247,238,.92);
   border-bottom: 2px solid rgba(168,97,112,.55); box-shadow: 0 3px 0 -2px rgba(168,97,112,.3) }
-.pill { display: inline-block; font: 13px/1 var(--jupiter); padding: 3px 8px 2px; border-radius: 99px; border: 1px solid; margin-right: 6px }
+.pill { display: inline-block; font: 13px/1 var(--jupiter); padding: 3px 5px 2px; border-radius: 99px; border: 1px solid; margin-right: 4px }
 .tabs { position: absolute; left: 0; right: 0; top: 92px; height: 44px }
 .tab { position: absolute; top: 8px; height: 34px; display: grid; place-items: center; font: 400 21px/1 var(--trump); text-transform: uppercase; color: var(--InkSoft); cursor: pointer; letter-spacing: .02em }
 .tab:hover { color: var(--RoseDeep) }
@@ -140,7 +140,7 @@ hr.s { border: 0; border-top: 1px solid var(--Linen); margin: 2px 0; width: 100%
     </div></div>
     <div class="ctl"><span>What's happening</span>
       <select id="st">
-        <option value="in">In the dairy</option><option value="seated">Resting in the dairy</option><option value="away">Away from the dairy</option>
+        <option value="in">In the dairy</option><option value="seated">Resting in the dairy</option><option value="private">In the private place</option><option value="away">Away from the dairy</option>
         <option value="milking">Being milked</option><option value="dozing">Dozing</option><option value="asleep">Asleep</option>
         <option value="tired">Tired</option><option value="full">Full</option><option value="spoiled">Spoiled</option>
         <option value="update">Update available</option><option value="toast">A long message</option>
@@ -270,7 +270,7 @@ function mainWin(s) {
   const roles = [s.cow && ["COW 23", "var(--RoseDeep)", .6, "Cow level 23\n1,212 / 2,020 xp to level 24 (60%)"],
     s.farmer && ["FARMER 12", "var(--SageDeep)", .25, "Farmer level 12\n171 / 684 xp to level 13 (25%)"],
     s.owner && ["OWNER", "var(--RoseDeep)"]].filter(Boolean);
-  const where = s.st === "away" ? ["AWAY", "var(--InkSoft)"] : s.st === "seated" ? ["IN THE DAIRY - RESTING", "var(--SageDeep)"] : ["IN THE DAIRY", "var(--SageDeep)"];
+  const where = s.st === "away" ? ["AWAY", "var(--InkSoft)", null, "Away from your dairy."] : s.st === "seated" ? ["RESTING", "var(--SageDeep)", null, "Resting in your dairy."] : s.st === "private" ? ["PRIVATE", "var(--SageDeep)", null, "In your dairy's private place."] : ["HERE", "var(--SageDeep)", null, "In your dairy."];
   const pills = [...roles, ["DAIRY LV 7", "var(--BlueDeep)"], where].map(([t, c, p, tip]) => `<span class="pill" ${tip ? `title="${tip}"` : ""} style="color:${c};border-color:${c};background:${p != null
       ? `linear-gradient(90deg, color-mix(in srgb, ${c} 36%, transparent) ${p * 100}%, color-mix(in srgb, ${c} 14%, transparent) ${p * 100}%)` : `color-mix(in srgb, ${c} 14%, transparent)`}">${t}</span>`).join("");
   const brandW = measure("MILKERS", "42px 'Pathway Gothic One'");

@@ -22,9 +22,10 @@ public sealed class ChangelogWindow : Window
     /// <summary>Newest first. Write these for players: what changed for them, not how.</summary>
     private static readonly Entry[] Entries =
     {
-        new("0.9.19", "Your levels at a glance", new[]
+        new("0.9.20", "Your levels at a glance", new[]
         {
             "The role tags at the top of the main window now show your level (COW 23, FARMER 12), and fill up as you get closer to the next one. Hover one for the exact xp.",
+            "The tags are a little slimmer, and where you are is one word: HERE, RESTING, PRIVATE or AWAY (hover it for more).",
         }),
         new("0.9.18", "Join the Discord", new[]
         {

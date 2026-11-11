@@ -227,14 +227,14 @@ public sealed partial class MainWindow : Window
         {
             var size = Ui.Measure(fonts.Small, text);
             var a0 = new Vector2(px, o.Y + 42);
-            var a1 = a0 + new Vector2(size.X + 16, size.Y + 2);
+            var a1 = a0 + new Vector2(size.X + 10, size.Y + 2);
             dl.AddRectFilled(a0, a1, Ui.U(color, 0.14f), 99);
             // A role's level: how far to the next one, as a fill inside the pill
             if (progress >= 0) dl.AddRectFilled(a0, new Vector2(a0.X + (a1.X - a0.X) * Math.Clamp(progress, 0f, 1f), a1.Y), Ui.U(color, 0.22f), 99);
             dl.AddRect(a0, a1, Ui.U(color, 0.55f), 99, ImDrawFlags.None, 1f);
-            Ui.Text(dl, fonts.Small, text, a0 + new Vector2(8, 1), color);
+            Ui.Text(dl, fonts.Small, text, a0 + new Vector2(5, 1), color);
             if (tip != null && ImGui.IsMouseHoveringRect(a0, a1)) ImGui.SetTooltip(tip);
-            px = a1.X + 6;
+            px = a1.X + 4;
         }
 
         foreach (var r in G.MyRoles)
@@ -258,7 +258,8 @@ public sealed partial class MainWindow : Window
         if (member != null || F.Dairy != null)
         {
             if (G.Where.InDairy)
-                Pill(G.InPrivatePlace ? "IN THE DAIRY · PRIVATE" : G.Where.Seated ? "IN THE DAIRY · RESTING" : "IN THE DAIRY", Theme.SageDeep, G.Where.Why);
+                Pill(G.InPrivatePlace ? "PRIVATE" : G.Where.Seated ? "RESTING" : "HERE", Theme.SageDeep,
+                    (G.InPrivatePlace ? "In your dairy's private place. " : G.Where.Seated ? "Resting in your dairy. " : "In your dairy. ") + G.Where.Why);
             else Pill("AWAY", Theme.InkSoft, G.Where.Why + " Milking, care and chores only work inside the dairy.");
         }
 
