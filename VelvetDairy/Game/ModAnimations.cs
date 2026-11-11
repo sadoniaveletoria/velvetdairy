@@ -136,11 +136,56 @@ public static class ModAnimations
         return list;
     }
 
+    // Animation mods name the emote each option replaces: "(Dom-Bdance/Sub-Hdance)" for a pair (the farmer is the Dom),
+    // "(Gsit0, 1)" or "[Bdance]" for one. The names are the game's emote commands (/bdance is Ball Dance) or a sit pose.
+    private static readonly Regex DomSlot = new(@"\bDom[\s:_-]+([A-Za-z]+)(\d*)", RegexOptions.IgnoreCase);
+    private static readonly Regex AnySlot = new(@"[\(\[]\s*([A-Za-z]+)(\d*)\s*[,\)\]/]", RegexOptions.IgnoreCase);
+
+    /// <summary>The emote an option's name says it replaces (for a Dom/Sub pair, the Dom one: that's you, the farmer).</summary>
+    public static Pick? FromName(string option)
+    {
+        var m = DomSlot.Match(option);
+        if (!m.Success) m = AnySlot.Match(option);
+        while (m.Success)
+        {
+            if (Slot(m.Groups[1].Value, m.Groups[2].Value) is { } p) return p;
+            m = m.NextMatch();
+        }
+
+        return null;
+    }
+
+    private static Pick? Slot(string word, string digits)
+    {
+        var n = digits.Length > 0 && int.TryParse(digits, out var d) ? d : 0;
+        switch (word.ToLowerInvariant())
+        {
+            case "gsit" or "groundsit" or "gpose" or "floor": return new Pick("/groundsit", "Sit on ground", n);
+            case "chair" or "sit" or "spose": return new Pick("/sit", "Sit", n);
+            case "bed" or "doze" or "lay" or "lie" or "sleep": return new Pick("/doze", "Doze", n);
+        }
+
+        foreach (var cmd in new[] { "/" + word + digits, "/" + word })
+        {
+            var id = Emotes.Find(cmd);
+            if (id != 0)
+            {
+                var main = Emotes.Command(id);
+                return new Pick(main.Length > 0 ? main : cmd, Emotes.Name(id), -1);
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>What an option animates: its name first (mods name the emote), then the files it replaces.</summary>
+    private static Pick? Of(string modDir, string group, string option) =>
+        FromName(option) ?? (Files(modDir).TryGetValue(group + "\u0001" + option, out var f) ? First(f) : null);
+
     private static Pick? First(IEnumerable<string> paths) => paths.Select(ForFile).FirstOrDefault(p => p != null);
 
     /// <summary>The emote one option of a mod animates (null if it doesn't change an emote).</summary>
-    public static Pick? ForOption(string modDir, string group, string option) =>
-        Files(modDir).TryGetValue(group + "\u0001" + option, out var f) ? First(f) : null;
+    public static Pick? ForOption(string modDir, string group, string option) => Of(modDir, group, option);
 
     /// <summary>
     /// The emote the mod animates with the options picked for milking: those options first, then the mod's
@@ -152,7 +197,7 @@ public static class ModAnimations
         var files = Files(modDir);
         foreach (var (group, options) in picked)
             foreach (var o in options)
-                if (files.TryGetValue(group + "\u0001" + o, out var f) && First(f) is { } p) return p;
+                if (Of(modDir, group, o) is { } p) return p;
 
         if (files.TryGetValue("", out var always) && First(always) is { } d) return d;
         var all = files.Where(kv => kv.Key.Length > 0).Select(kv => First(kv.Value)).Where(p => p != null).Select(p => p!).ToList();
