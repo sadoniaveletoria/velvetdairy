@@ -5,7 +5,7 @@ using Dalamud.Game.Gui.ContextMenu;
 
 namespace VelvetDairy.Game;
 
-/// <summary>Adds a "Velvet Dairy" submenu when you right-click a player in the world.</summary>
+/// <summary>Adds a "Eorzea Milkers" submenu when you right-click a player in the world.</summary>
 public sealed class ContextMenuHandler : IDisposable
 {
     private readonly Plugin plugin;
@@ -35,7 +35,7 @@ public sealed class ContextMenuHandler : IDisposable
 
         args.AddMenuItem(new MenuItem
         {
-            Name = "Velvet Dairy",
+            Name = "Eorzea Milkers",
             PrefixChar = 'V',
             IsSubmenu = true,
             OnClicked = clicked => clicked.OpenSubmenu(Build(name, worldId, worldName)),

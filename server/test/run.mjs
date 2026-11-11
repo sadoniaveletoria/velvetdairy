@@ -1,4 +1,4 @@
-// Local tests for the Velvet Dairy Network worker, using Node's built-in SQLite as a stand-in for D1.
+// Local tests for the Eorzea Milkers Network worker, using Node's built-in SQLite as a stand-in for D1.
 //   node --no-warnings server/test/run.mjs
 import { DatabaseSync } from "node:sqlite";
 import { readFileSync } from "node:fs";
@@ -308,6 +308,17 @@ await test("dairy shelf: farmers stock it, members buy, baker and fund are paid,
   assert.equal((await call(alice, "GET", "/v1/dairy/mine")).data.progress.fund, before + 10, "fund gets 20%");
   assert.ok((await call(bob, "POST", "/v1/inbox/claim")).data.items.some(i => i.kind === "payout" && i.coins === 40), "the baker is paid");
   assert.equal((await call(carl, "GET", "/v1/shelf")).data.items.find(i => i.item === "cookies").qty, 2);
+  // Farmers feed cows and bulls from the shelf for free, but never themselves
+  await call(carl, "POST", "/v1/inbox/claim");
+  assert.equal((await call(bob, "POST", "/v1/shelf/feed", { item: "cookies", to: bob.id })).status, 400, "not yourself");
+  assert.equal((await call(carl, "POST", "/v1/shelf/feed", { item: "cookies", to: alice.id })).status, 403, "only farmers");
+  const coinsBefore = (await call(bob, "POST", "/v1/inbox/claim")).data.items.length;
+  assert.equal((await call(bob, "POST", "/v1/shelf/feed", { item: "cookies", to: carl.id })).status, 200);
+  const fed = (await call(carl, "POST", "/v1/inbox/claim")).data.items.find(i => i.kind === "fed");
+  assert.ok(fed && fed.grade === 0, "the bull gets the cookie");
+  assert.equal((await call(bob, "POST", "/v1/inbox/claim")).data.items.length, coinsBefore, "nobody is paid for it");
+  assert.equal((await call(carl, "GET", "/v1/shelf")).data.items.find(i => i.item === "cookies").qty, 1);
+  assert.equal((await call(bob, "POST", "/v1/shelf/feed", { item: "cookies", to: carl.id })).status, 400, "once every 15 minutes each");
   await beat(carl, { houseId: ELSEWHERE, awake: true });
   assert.equal((await call(carl, "POST", "/v1/shelf/buy", { item: "cookies" })).status, 400, "only in the dairy");
   await beat(bob, { houseId: ELSEWHERE, awake: true });

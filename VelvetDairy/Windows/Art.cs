@@ -28,7 +28,7 @@ public sealed class Art
         {
             var path = Path.Combine(dir, relative);
             tex = File.Exists(path) ? Plugin.TextureProvider.GetFromFile(path) : null;
-            if (tex == null) Plugin.Log.Warning($"Velvet Dairy art missing: {path}");
+            if (tex == null) Plugin.Log.Warning($"Eorzea Milkers art missing: {path}");
             cache[relative] = tex;
         }
 

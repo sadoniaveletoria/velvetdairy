@@ -8,7 +8,7 @@ using VelvetDairy.Network;
 
 namespace VelvetDairy.Windows;
 
-// The Velvet Dairy Network screens: the Dairies directory, your dairy's roles and members, and buy orders.
+// The Eorzea Milkers Network screens: the Dairies directory, your dairy's roles and members, and buy orders.
 public sealed partial class MainWindow
 {
     private string listDescription = "";
@@ -53,14 +53,14 @@ public sealed partial class MainWindow
 
         if (net.Api == null)
         {
-            Ui.Wrapped("The network isn't available right now, so Velvet Dairy is running on its own. Everything local still works.", Theme.InkSoft, width);
+            Ui.Wrapped("The network isn't available right now, so Eorzea Milkers is running on its own. Everything local still works.", Theme.InkSoft, width);
             ImGui.TextColored(Theme.InkSoft, net.Status);
             return;
         }
 
         var online = net.Last?.Online ?? net.Directory?.Online ?? 0;
         using (fonts.For(fonts.Heading, $"{online}")!.Push()) ImGui.TextColored(Theme.SageDeep, $"{online:N0} online");
-        ImGui.TextColored(Theme.InkSoft, "Players with Velvet Dairy running in the last few minutes.");
+        ImGui.TextColored(Theme.InkSoft, "Players with Eorzea Milkers running in the last few minutes.");
         ImGui.TextColored(net.Connected ? Theme.SageDeep : Theme.Warn, net.Status);
 
         SubHeading("You", width);
@@ -124,7 +124,7 @@ public sealed partial class MainWindow
         var net = G.Net;
         if (net.Api == null || !F.NetEnabled)
         {
-            Ui.Wrapped("The directory needs the Velvet Dairy Network.", Theme.InkSoft, width);
+            Ui.Wrapped("The directory needs the Eorzea Milkers Network.", Theme.InkSoft, width);
             return;
         }
 
@@ -654,7 +654,7 @@ public sealed partial class MainWindow
             var t = Plugin.TargetManager.Target as Dalamud.Game.ClientState.Objects.SubKinds.IPlayerCharacter;
             var me = Plugin.ObjectTable.LocalPlayer;
             var ok = t != null && me != null && t.GameObjectId != me.GameObjectId;
-            var tip = ok ? null : "Target a player first (or right-click them > Velvet Dairy).";
+            var tip = ok ? null : "Target a player first (or right-click them > Eorzea Milkers).";
             var label = ok ? $"Invite {t!.Name.TextValue}:" : "Invite your target:";
             ImGui.TextColored(Theme.Ink, label);
             var clicked = Buttons(roles.Select(r => new Btn($"##inv{r}", $"as {r}", r == "farmer" ? "sage" : r == "bull" ? "honey" : "rose", ok, tip)).ToList(), width);

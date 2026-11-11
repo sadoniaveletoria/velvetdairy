@@ -69,7 +69,7 @@ public sealed partial class MainWindow : Window
     public static readonly Vector4 SourMilk = new(0.93f, 0.88f, 0.60f, 1f);
 
     public MainWindow(Plugin plugin, Art art, Fonts fonts)
-        : base("Velvet Dairy##VelvetDairyMain", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
+        : base("Eorzea Milkers##VelvetDairyMain", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
     {
         this.plugin = plugin;
         this.art = art;
@@ -161,7 +161,7 @@ public sealed partial class MainWindow : Window
 
     public override void Draw()
     {
-        // Clicking in Velvet Dairy's own windows counts as being awake (mouse movement alone doesn't)
+        // Clicking in Eorzea Milkers's own windows counts as being awake (mouse movement alone doesn't)
         if (ImGui.IsWindowHovered(ImGuiHoveredFlags.ChildWindows) && ImGui.IsMouseClicked(ImGuiMouseButton.Left)) G.Touch();
 
         var dl = ImGui.GetWindowDrawList();
@@ -214,11 +214,11 @@ public sealed partial class MainWindow : Window
 
         Ui.Avatar(dl, "you", o + new Vector2(Pad + 30, 44), 30);
         var tx = o.X + Pad + 74;
-        Ui.Text(dl, fonts.Label, "VELVET", new Vector2(tx, o.Y + 14), Theme.RoseDeep);
-        Ui.Text(dl, fonts.Title, "DAIRY", new Vector2(tx - 1, o.Y + 34), Theme.Ink);
+        Ui.Text(dl, fonts.Label, "EORZEA", new Vector2(tx, o.Y + 14), Theme.RoseDeep);
+        var brandW = Ui.Text(dl, fonts.Title, "MILKERS", new Vector2(tx - 1, o.Y + 34), Theme.Ink).X;
 
         // Your dairy and you in it: name, your roles, the dairy's level and this week's contract
-        var mx = tx + 150;
+        var mx = tx + Math.Max(150, brandW + 24);
         var member = F.NetMember;
         var dairyTitle = G.Networked ? member?.Dairy ?? "No dairy yet" : F.Dairy?.Name ?? "No dairy yet";
         Ui.Text(dl, fonts.Heading, dairyTitle, new Vector2(mx, o.Y + 14), Theme.Ink);
@@ -279,7 +279,7 @@ public sealed partial class MainWindow : Window
         ImGui.SetCursorScreenPos(qc - new Vector2(13, 13));
         if (ImGui.InvisibleButton("##guidebtn", new Vector2(26, 26))) plugin.Guide.Open();
         var qh = ImGui.IsItemHovered();
-        if (qh) ImGui.SetTooltip("How to play (/vdairy guide)");
+        if (qh) ImGui.SetTooltip("How to play (/milkers guide)");
         dl.AddCircleFilled(qc, 12f, Ui.U(qh ? Theme.Rose : Theme.Paper));
         dl.AddCircle(qc, 12f, Ui.U(Theme.RoseDeep, 0.6f), 0, 1.5f);
         Ui.Text(dl, fonts.Small, "?", qc, Theme.RoseDeep, 0.5f, 0.5f);
@@ -540,7 +540,7 @@ public sealed partial class MainWindow : Window
         var pmin = c - new Vector2(w / 2, h / 2);
         Panel("##gate", pmin, pmin + new Vector2(w, h), "Adults only", width =>
         {
-            Ui.Wrapped("Velvet Dairy is an adult roleplay game. You play the cow: keep yourself fed and comfortable inside your dairy, " +
+            Ui.Wrapped("Eorzea Milkers is an adult roleplay game. You play the cow: keep yourself fed and comfortable inside your dairy, " +
                        "get milked in your dairy's stalls or by a farmer you trust, and get paid for every ounce.", Theme.Ink, width);
             Gap(10);
             Ui.Wrapped("Everything happens in this window and your own chat log. Nothing is ever said in public chat, and nothing moves your character for you.", Theme.InkSoft, width);
@@ -945,7 +945,9 @@ public sealed partial class MainWindow : Window
         var bonus = (G.DairyPayBonus - 1) * 100;
         ImGui.TextColored(Theme.InkSoft, $"Dairy level bonus: +{bonus:0}% · your looks bonus: +{(G.PriceBonus - 1) * 100:0}%");
         if (G.Networked) ImGui.TextColored(Theme.InkSoft, "Each dairy level raises pay by 2%. Hand milking also pays your farmer a share (not taken from you).");
-        ImGui.TextColored(Theme.InkSoft, $"Milk given today: {F.DayOz:0.#} oz");
+        ImGui.TextColored(F.DayOz >= Catalog.DailyPaidOz ? Theme.HoneyDeep : Theme.InkSoft,
+            F.DayOz >= Catalog.DailyPaidOz ? $"Milk given today: {F.DayOz:0.#} oz · paid for {Catalog.DailyPaidOz:N0} oz (the most a day); more still gives xp"
+                : $"Milk given today: {F.DayOz:0.#} oz · paid up to {Catalog.DailyPaidOz:N0} oz a day");
     }
 
     /// <summary>One line on what you carry, with a button to the Kitchen where jugs are filled.</summary>
@@ -1535,13 +1537,13 @@ public sealed partial class MainWindow : Window
     {
         var changed = false;
         var b = F.ShowHud;
-        if (ImGui.Checkbox("Show the milk bottle HUD (/vdairy hud)", ref b)) { F.ShowHud = b; changed = true; }
+        if (ImGui.Checkbox("Show the milk bottle HUD (/milkers hud)", ref b)) { F.ShowHud = b; changed = true; }
         b = F.LockHud;
         if (ImGui.Checkbox("Lock the HUD in place", ref b)) { F.LockHud = b; changed = true; }
         b = F.ChatEcho;
         if (ImGui.Checkbox("Echo events to my chat log (only you see it)", ref b)) { F.ChatEcho = b; changed = true; }
         b = F.NetEnabled;
-        if (ImGui.Checkbox("Join the Velvet Dairy Network (dairies, invites, deliveries, online count)", ref b)) { F.NetEnabled = b; changed = true; }
+        if (ImGui.Checkbox("Join the Eorzea Milkers Network (dairies, invites, deliveries, online count)", ref b)) { F.NetEnabled = b; changed = true; }
         if (ImGui.IsItemHovered())
             ImGui.SetTooltip("Shares only what the network needs: a random id for this install, your dairy's listing, and your character name with the dairy you join.");
         b = F.ShowOwnerHud;
@@ -1606,7 +1608,7 @@ public sealed partial class MainWindow : Window
     private void DrawDevTools(float width)
     {
         var changed = false;
-        var why = Plugin.PluginInterface.IsDev ? "Dev build (loaded from Dev Plugin Locations)." : "Unlocked with your developer phrase. \"/vdairy dev off\" turns it off.";
+        var why = Plugin.PluginInterface.IsDev ? "Dev build (loaded from Dev Plugin Locations)." : "Unlocked with your developer phrase. \"/milkers dev off\" turns it off.";
         Ui.Wrapped("Developer mode. " + why + " Players never see this panel.", Theme.BlueDeep, width);
 
         SubHeading("Shortcuts", width);
@@ -1701,7 +1703,7 @@ public sealed partial class MainWindow : Window
                    "2. Cows: milk fills up over time, faster with Fed, Watered, Comfy and Happy (Barn > Care).\n" +
                    "3. Get milked on one of your dairy's stalls, or by a farmer pressing Milk on you. You're paid by your grade.\n" +
                    "4. Farmers: Hand milk and Kitchen are on the HUD. Fill jugs in the Kitchen, then deliver on the Creamery tab.\n" +
-                   "5. Spend coins in the Shop. The full guide is the ? at the top, or /vdairy guide.", Theme.Ink, width);
+                   "5. Spend coins in the Shop. The full guide is the ? at the top, or /milkers guide.", Theme.Ink, width);
 
         SubHeading("Credits", width);
         Ui.Wrapped("Milking machine sound: \"Milk Pump Step02\" by Erdie, freesound.org/s/49877 (cut into start, loop and stop).", Theme.InkSoft, width);

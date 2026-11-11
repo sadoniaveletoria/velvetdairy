@@ -221,6 +221,14 @@ CREATE TABLE IF NOT EXISTS stall_clean (
   by_name   TEXT NOT NULL DEFAULT ''
 );
 
+-- When a farmer last fed a cow or bull from the dairy shelf (once per farmer per member every 15 minutes).
+CREATE TABLE IF NOT EXISTS feeds (
+  farmer  TEXT NOT NULL,
+  member  TEXT NOT NULL,
+  at      INTEGER NOT NULL,
+  PRIMARY KEY (farmer, member)
+);
+
 -- When a farmer last groomed a cow (one groom per farmer per cow every 15 minutes).
 CREATE TABLE IF NOT EXISTS grooms (
   farmer  TEXT NOT NULL,

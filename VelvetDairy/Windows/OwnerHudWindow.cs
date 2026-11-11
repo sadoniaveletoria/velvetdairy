@@ -22,7 +22,7 @@ public sealed class OwnerHudWindow : Window
     private const float W = 300f;
 
     public OwnerHudWindow(Plugin plugin, Art art, Fonts fonts)
-        : base("Velvet Dairy Owner##VelvetDairyOwnerHud",
+        : base("Eorzea Milkers Owner##VelvetDairyOwnerHud",
             ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse |
             ImGuiWindowFlags.NoBackground | ImGuiWindowFlags.NoFocusOnAppearing | ImGuiWindowFlags.NoNav | ImGuiWindowFlags.NoCollapse |
             ImGuiWindowFlags.NoDocking)

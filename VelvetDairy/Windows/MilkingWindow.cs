@@ -29,7 +29,7 @@ public sealed class MilkingWindow : Window
 
     public override void Draw()
     {
-        // Clicking in Velvet Dairy's own windows counts as being awake
+        // Clicking in Eorzea Milkers's own windows counts as being awake
         if (ImGui.IsWindowHovered(ImGuiHoveredFlags.ChildWindows) && ImGui.IsMouseClicked(ImGuiMouseButton.Left)) G.Touch();
         var emote = F.MilkButtonEmote.Length > 0 ? (F.MilkButtonEmote.StartsWith('/') ? F.MilkButtonEmote : "/" + F.MilkButtonEmote) : DairyGame.MilkEmote;
         var mod = F.MilkModDir.Length == 0 ? "no animation mod" : PenumbraLink.NameOf(F.MilkModDir);

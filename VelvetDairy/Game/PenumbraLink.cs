@@ -12,7 +12,7 @@ public static class PenumbraLink
 {
     // Identifies our temporary settings (a negative key doesn't lock you out of editing them in Penumbra)
     private const int Key = -70220;
-    private const string Source = "Velvet Dairy (hand milking)";
+    private const string Source = "Eorzea Milkers (hand milking)";
 
     private static T? Try<T>(Func<T> f, T? fallback = default)
     {

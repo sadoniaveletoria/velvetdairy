@@ -84,7 +84,7 @@ public sealed class MembersWindow : Window
 
     public override void Draw()
     {
-        // Clicking in Velvet Dairy's own windows counts as being awake (mouse movement alone doesn't)
+        // Clicking in Eorzea Milkers's own windows counts as being awake (mouse movement alone doesn't)
         if (ImGui.IsWindowHovered(ImGuiHoveredFlags.ChildWindows) && ImGui.IsMouseClicked(ImGuiMouseButton.Left)) G.Touch();
 
         var mine = G.Net.Mine;
@@ -251,7 +251,7 @@ public sealed class MembersWindow : Window
             ImGui.EndTable();
         }
 
-        if (shown.Count == 0) ImGui.TextColored(Theme.InkSoft, members.Count <= 1 ? "Just you so far. Invite people with right-click > Velvet Dairy." : "Nobody matches.");
+        if (shown.Count == 0) ImGui.TextColored(Theme.InkSoft, members.Count <= 1 ? "Just you so far. Invite people with right-click > Eorzea Milkers." : "Nobody matches.");
 
         if (mine.Invites.Count > 0)
         {

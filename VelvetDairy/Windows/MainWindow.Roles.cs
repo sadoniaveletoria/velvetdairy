@@ -245,6 +245,8 @@ public sealed partial class MainWindow
                         st.Spoiled ? Theme.Warn : Theme.InkSoft));
                     if (st.HandBy.Length > 0)
                         lines.Add(new Line(st.HandBy.Equals(myName, StringComparison.OrdinalIgnoreCase) ? "You're milking them" : $"Being milked by {st.HandBy}", Theme.RoseDeep));
+                    else if (G.AwaitingAllow(c.Name)) lines.Add(new Line("Asked: waiting for them to press Allow...", Theme.HoneyDeep));
+                    else if (st.Ask) lines.Add(new Line("Asks first: they get a pop-up to Allow", Theme.InkSoft));
                 }
             }
 
@@ -261,11 +263,22 @@ public sealed partial class MainWindow
                 else
                 {
                     var close = near <= G.HandRange;
-                    first = new Btn($"##milk{c.Id}", "Milk", "rose", close, close ? $"Does {milkEmote} for you (as if you typed it). Hold still; it stops on its own when they're empty." : $"Get within {G.HandRange:0} yalms of them first.");
+                    var waiting = G.AwaitingAllow(c.Name);
+                    first = new Btn($"##milk{c.Id}", waiting ? "Waiting" : "Milk", "rose", close && !waiting,
+                        waiting ? "Waiting for them to press Allow." :
+                        !close ? $"Get within {G.HandRange:0} yalms of them first." :
+                        st?.Ask == true ? $"They get a pop-up first. Once they Allow, you do {milkEmote}; it stops on its own when they're empty." :
+                        $"Does {milkEmote} for you (as if you typed it). Hold still; it stops on its own when they're empty.");
                 }
 
                 var groomWhy = G.GroomProblem(c.Name, c.Id, near);
-                buttons = new[] { first, new Btn($"##groom{c.Id}", "Groom", "sage", groomWhy == null, groomWhy ?? $"Brush them down: their Happy bar gets 30 more minutes, you get {Catalog.GroomXp} farmer xp. Once every 15 minutes per cow.") };
+                var feedWhy = G.FeedProblem(c.Name, c.Id, near);
+                buttons = new[]
+                {
+                    first,
+                    new Btn($"##groom{c.Id}", "Groom", "sage", groomWhy == null, groomWhy ?? $"Brush them down: their Happy bar gets 30 more minutes, you get {Catalog.GroomXp} farmer xp. Once every 15 minutes per cow."),
+                    new Btn($"##feed{c.Id}", "Feed", "honey", feedWhy == null, feedWhy ?? G.FeedTip),
+                };
             }
 
             var clicked = ListRow(Ico("milk"), c.Name, c.Online ? Theme.Ink : Theme.InkSoft, lines, buttons, width,
@@ -280,10 +293,37 @@ public sealed partial class MainWindow
                     }
             }
             else if (clicked == 1) G.Groom(c.Name, c.Id, near);
-            else if (clicked == 0 && !G.MilkCow(c.Name, milkEmote, st?.Milk ?? 0)) G.Notify($"{milkEmote} isn't an emote the game knows. Ask them to fix their milking emotes (Roles > Cow).", 2);
+            else if (clicked == 2) G.FeedFromShelf(c.Name, c.Id, near);
+            else if (clicked == 0 && !G.MilkCow(c.Name, milkEmote, st?.Milk ?? 0, st?.Ask == true)) G.Notify($"{milkEmote} isn't an emote the game knows. Ask them to fix their milking emotes (Roles > Cow).", 2);
         }
 
         Ui.Wrapped("You get 25% of what the cow is paid, on top of their pay, plus farmer xp.", Theme.InkSoft, width);
+        DrawFeedBulls(width, myName, me);
+    }
+
+    /// <summary>Bulls (who aren't cows too) can be fed from the dairy shelf as well.</summary>
+    private void DrawFeedBulls(float width, string myName, Dalamud.Game.ClientState.Objects.SubKinds.IPlayerCharacter? me)
+    {
+        var bulls = G.Net.Mine?.Members.Where(m => m.Has("bull") && !m.Has("cow") && !m.Name.Equals(myName, StringComparison.OrdinalIgnoreCase)).ToList() ?? new();
+        if (bulls.Count == 0) return;
+        SubHeading("Bulls", width);
+        foreach (var b in bulls.OrderByDescending(b => b.Online).ThenBy(b => b.Name))
+        {
+            var near = -1f;
+            if (me != null)
+                foreach (var o in Plugin.ObjectTable)
+                    if (o is Dalamud.Game.ClientState.Objects.SubKinds.IPlayerCharacter pc && pc.Name.TextValue.Equals(b.Name, StringComparison.OrdinalIgnoreCase))
+                    {
+                        near = Vector3.Distance(me.Position, pc.Position);
+                        break;
+                    }
+
+            var line = !b.Online ? "Offline" : near < 0 ? "Not near you" : near <= G.HandRange ? $"Right here ({near:0.#} y)" : $"{near:0} y away";
+            var why = b.Online ? G.FeedProblem(b.Name, b.Id, near) : "They're offline.";
+            if (ListRow(Ico("biscuit"), b.Name, b.Online ? Theme.Ink : Theme.InkSoft, new[] { new Line(line, Theme.InkSoft) },
+                    new[] { new Btn($"##feedb{b.Id}", "Feed", "honey", why == null, why ?? G.FeedTip) }, width) == 0)
+                G.FeedFromShelf(b.Name, b.Id, near);
+        }
     }
 
     // ----- Bull -----

@@ -83,7 +83,7 @@ public class FarmSave
     public FarmStats Stats { get; set; } = new();
     public List<string>? Log { get; set; }
 
-    // ----- Velvet Dairy Network -----
+    // ----- Eorzea Milkers Network -----
     public string NetId { get; set; } = "";          // random id for this install (not your character)
     public string NetKey { get; set; } = "";         // secret that proves it's this install
     public bool NetEnabled { get; set; } = true;

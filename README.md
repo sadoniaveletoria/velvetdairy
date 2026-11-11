@@ -1,4 +1,4 @@
-# Velvet Dairy (18+)
+# Eorzea Milkers (18+)
 
 A dairy life game for FFXIV, played with friends. Be a **cow** who makes milk, a **farmer** who milks and delivers it, or the **owner** who runs the dairy, or any mix of these. Everyone levels up, earns coins and grows their dairy together.
 
@@ -11,11 +11,11 @@ A dairy life game for FFXIV, played with friends. Be a **cow** who makes milk, a
 **Install**
 1. Type `/xlsettings`, open **Experimental**, find **Custom Plugin Repositories**.
 2. Add `https://raw.githubusercontent.com/sadoniaveletoria/velvetdairy/main/repo.json`, tick it and **Save**.
-3. Type `/xlplugins`, search **Velvet Dairy** and **Install**. Updates arrive like any other plugin.
+3. Type `/xlplugins`, search **Eorzea Milkers** and **Install**. Updates arrive like any other plugin.
 
 **First time**
 - Confirm you're 18+ and a short walkthrough starts. Pick **Join a dairy** or **Start my own**.
-- The full guide is the **?** in the main window, or `/vdairy guide`. `/vdairy tutorial` runs the walkthrough again.
+- The full guide is the **?** in the main window, or `/milkers guide`. `/milkers tutorial` runs the walkthrough again.
 
 ---
 
@@ -57,7 +57,8 @@ Only the owner can take a role away from someone.
 **Getting milked** (only inside your dairy)
 - **At a stall:** sit on its seat and it starts by itself.
 - **By hand:** a farmer of your dairy stands close, targets you and presses **Milk**. Hand milking is faster, pays more and makes up a lost grade.
-- You're **paid the moment you're milked**, by grade: C 7, B 10, A 15, S 21, S+ 30 coins an ounce, plus a bonus for your dairy's level.
+- You're **paid the moment you're milked**, by grade: C 7, B 10, A 15, S 21, S+ 30 coins an ounce, plus a bonus for your dairy's level. Pay covers up to 1,500 oz a day; milk past that still gives XP.
+- **Ask first (optional):** turn off "Farmers can start milking me without asking" on Roles → Cow and you get an Allow / Not now pop-up each time a farmer presses Milk on you.
 
 **Your grade**
 - Your grade is about you, not your milk. Higher grades pay more, milk you faster and get more milk out: B +10%, A +20%, S +35%, S+ +50%. Milk itself is just milk: any of it fills any order.
@@ -79,7 +80,7 @@ Only the owner can take a role away from someone.
 
 - **Hand milking:** press **Hand milk** on the HUD (or Roles → Farmer), stand near a cow, press **Target**, then **Milk**. Your character does the milking emote (/beesknees by default, or one you choose) until the cow is empty, then stops by itself. You earn 25% of what the cow is paid, on top of their pay.
 - **Your own animation:** if you use Penumbra, pick an animation mod and its options with **Animation…** in the Hand milk window. It switches on only while you milk.
-- **Chores:** **Groom** a cow (they get 30 minutes of Happy) and **Clean** an empty stall (cows milked there get a bonus for an hour). Both earn farmer XP.
+- **Chores:** **Groom** a cow (they get 30 minutes of Happy), **Feed** a cow or bull a treat from the dairy shelf (free, but not to yourself), and **Clean** an empty stall (cows milked there get a bonus for an hour). All earn farmer XP.
 - **Baked goods:** bake with milk from your jugs in the **Kitchen** (the Kitchen button on the HUD). For now that's **butter** (16 oz of milk → 1 butter, 30 seconds of churning). Pick how many with − and +; each one in a batch takes a little longer than the last, so 5 take about 4 minutes and 10 about 10½. A progress bar shows how it's going; it pauses if you leave the dairy, and **Stop** keeps what's finished. Butter goes in your Pantry and is only used to make other things. **Butter cookies** (1 butter + 8 oz of milk → 3 cookies) go on the **dairy shelf**.
 - **Jugs:** fill them from the dairy tank at the top of the **Kitchen** window. Bigger farmer tanks unlock as your farmer level grows.
 - **Deliveries:**
@@ -91,7 +92,7 @@ Only the owner can take a role away from someone.
 
 ## Running a dairy (owners)
 
-- Invite people with **right-click → Velvet Dairy**, or on **Dairy → Overview**.
+- Invite people with **right-click → Eorzea Milkers**, or on **Dairy → Overview**.
 - **Manage members** shows everyone's levels, milk, quality, how much they've given and when they were last online.
 - The **owner HUD** shows who's online, who's in the dairy and how full each cow is.
 - Post **buy orders** to bring milk into your tank from other dairies. This works even if your dairy is private.
@@ -113,7 +114,7 @@ Only the owner can take a role away from someone.
 
 Milk is for people who are actually playing.
 
-- **15 minutes** with no activity (moving, emotes, targeting, chatting, or clicking in Velvet Dairy) and you start **dozing**: half-speed milk.
+- **15 minutes** with no activity (moving, emotes, targeting, chatting, or clicking in Eorzea Milkers) and you start **dozing**: half-speed milk.
 - **30 minutes** and you're **asleep**: no milk, no XP.
 - **Sitting on furniture in your dairy** holds this off longer: dozing at 30 minutes, asleep at 45.
 - After **12 hours** of making milk in a day you get **tired** and make milk at half speed until the next day.
@@ -133,11 +134,11 @@ Milk is for people who are actually playing.
 
 | Command | What it does |
 |---|---|
-| `/vdairy` | Open or close the main window |
-| `/vdairy hud` | Show or hide the HUD |
-| `/vdairy guide` | Open the how-to guide |
-| `/vdairy tutorial` | Run the first-time walkthrough again |
-| `/vdairy changes` | See what's new in recent updates |
+| `/milkers` | Open or close the main window |
+| `/milkers hud` | Show or hide the HUD |
+| `/milkers guide` | Open the how-to guide |
+| `/milkers tutorial` | Run the first-time walkthrough again |
+| `/milkers changes` | See what's new in recent updates |
 
 ---
 
@@ -145,7 +146,7 @@ Milk is for people who are actually playing.
 
 Want new features before everyone else?
 1. `/xlsettings` → **Experimental** → tick **Get plugin testing builds** → **Save**.
-2. `/xlplugins` → **Installed** → Velvet Dairy's menu → tick **Receive plugin testing versions**.
+2. `/xlplugins` → **Installed** → Eorzea Milkers's menu → tick **Receive plugin testing versions**.
 
 Untick either one to go back to the normal release.
 

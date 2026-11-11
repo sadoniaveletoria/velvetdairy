@@ -25,7 +25,7 @@ public sealed class Plugin : IDalamudPlugin
     [PluginService] internal static IPluginLog Log { get; private set; } = null!;
     [PluginService] internal static IGameGui GameGui { get; private set; } = null!;
 
-    private const string Command = "/vdairy";
+    private const string Command = "/milkers";
 
     public Configuration Config { get; }
     public DairyGame Game { get; }
@@ -61,7 +61,7 @@ public sealed class Plugin : IDalamudPlugin
         }
         catch (Exception e)
         {
-            Log.Warning(e, "Velvet Dairy: couldn't read the old save, starting fresh.");
+            Log.Warning(e, "Eorzea Milkers: couldn't read the old save, starting fresh.");
         }
 
         Config = cfg ?? new Configuration();
@@ -105,10 +105,10 @@ public sealed class Plugin : IDalamudPlugin
         switch (integrity)
         {
             case Integrity.Result.Restored:
-                ChatGui.Print("Your save was changed outside the game, so it was put back to your last saved progress.", "Velvet Dairy");
+                ChatGui.Print("Your save was changed outside the game, so it was put back to your last saved progress.", "Eorzea Milkers");
                 break;
             case Integrity.Result.Reset:
-                ChatGui.Print("Your save was changed outside the game and no good backup was found, so your progress started over. Your dairy, stalls and farmhands were kept.", "Velvet Dairy");
+                ChatGui.Print("Your save was changed outside the game and no good backup was found, so your progress started over. Your dairy, stalls and farmhands were kept.", "Eorzea Milkers");
                 break;
         }
 
@@ -116,7 +116,7 @@ public sealed class Plugin : IDalamudPlugin
 
         CommandManager.AddHandler(Command, new CommandInfo(OnCommand)
         {
-            HelpMessage = "Open Velvet Dairy. \"/vdairy hud\" shows or hides the HUD, \"/vdairy guide\" opens How to play, \"/vdairy tutorial\" runs the walkthrough, \"/vdairy changes\" shows what's new.",
+            HelpMessage = "Open Eorzea Milkers. \"/milkers hud\" shows or hides the HUD, \"/milkers guide\" opens How to play, \"/milkers tutorial\" runs the walkthrough, \"/milkers changes\" shows what's new.",
         });
 
         PluginInterface.UiBuilder.Draw += windowSystem.Draw;
@@ -174,7 +174,7 @@ public sealed class Plugin : IDalamudPlugin
     }
 
     // ----- Developer mode -----
-    // On automatically when loaded from Dev Plugin Locations. On a live install, "/vdairy dev <phrase>" turns it on.
+    // On automatically when loaded from Dev Plugin Locations. On a live install, "/milkers dev <phrase>" turns it on.
     // Only the SHA-256 of the phrase is in the code, so reading the source or the settings file doesn't reveal it.
     // To change the phrase: PowerShell
     //   $p="your-new-phrase"; [BitConverter]::ToString([Security.Cryptography.SHA256]::Create().ComputeHash([Text.Encoding]::UTF8.GetBytes($p))).Replace("-","")
@@ -211,14 +211,14 @@ public sealed class Plugin : IDalamudPlugin
                 Config.Farm.DevKey = "";
                 devCache = null;
                 SaveConfig();
-                ChatGui.Print(PluginInterface.IsDev ? "Developer key cleared (still on because this is a dev build)." : "Developer mode off.", "Velvet Dairy");
+                ChatGui.Print(PluginInterface.IsDev ? "Developer key cleared (still on because this is a dev build)." : "Developer mode off.", "Eorzea Milkers");
             }
             else if (KeyOk(phrase))
             {
                 Config.Farm.DevKey = phrase;
                 devCache = null;
                 SaveConfig();
-                ChatGui.Print("Developer mode on. See Settings → Developer.", "Velvet Dairy");
+                ChatGui.Print("Developer mode on. See Settings → Developer.", "Eorzea Milkers");
             }
             else
             {

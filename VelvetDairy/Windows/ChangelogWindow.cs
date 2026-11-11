@@ -8,7 +8,7 @@ namespace VelvetDairy.Windows;
 
 /// <summary>
 /// What's new: pops up once after an update with the changes since the version you last saw.
-/// "/vdairy changes" opens it any time with the full list.
+/// "/milkers changes" opens it any time with the full list.
 /// </summary>
 public sealed class ChangelogWindow : Window
 {
@@ -22,8 +22,10 @@ public sealed class ChangelogWindow : Window
     /// <summary>Newest first. Write these for players: what changed for them, not how.</summary>
     private static readonly Entry[] Entries =
     {
-        new("0.9.12", "Your grade, baking and farmer tools", new[]
+        new("0.9.13", "Eorzea Milkers: your grade, baking and farmer tools", new[]
         {
+            "# A new name",
+            "Velvet Dairy is now Eorzea Milkers. Your progress, dairy and settings are all kept. The command is now /milkers.",
             "# Your grade",
             "Milk no longer has a grade. Your cow grade still sets your pay, and now it also milks you faster and gets more milk out: B +10%, A +20%, S +35%, S+ +50%.",
             "Any milk fills any order, the weekly contract and every recipe. Jugs and the dairy tank just show ounces, and milk you already had was poured together.",
@@ -36,14 +38,16 @@ public sealed class ChangelogWindow : Window
             "Fill your jugs at the top of the Kitchen (Fill 8 oz, Fill 32 oz or Fill up). The Jugs tab on the Creamery is gone.",
             "Pick your milking emote and animation mod from the Hand milk window.",
             "Customer orders pay a little better as your farmer level grows.",
+            "Feed your dairy's cows and bulls from the dairy shelf (Feed in the Hand milk window). It's free for the farmer, but you can't feed yourself.",
             "# Deliveries",
             "Fill other dairies' buy orders from inside your own dairy. Delivering in person at a public dairy pays 10% more.",
             "Private dairies can post buy orders too.",
             "# Also new",
             "A small green dot above each stall shows which seats milk you (Settings).",
             "The Milking box on the Barn is smaller when you're not being milked, so the rest of the Barn gets more room.",
-            "Turned off \"Farmers can start milking me without asking\"? A farmer pressing Milk on you now pops up a request: Allow or Not now.",
-            "This What's new window. Open it any time with /vdairy changes.",
+            "Turned off \"Farmers can start milking me without asking\"? A farmer pressing Milk on you now pops up a request: Allow or Not now. The farmer's emote only starts once you Allow.",
+            "Cows are paid for up to 1,500 oz a day. Milk past that still gives xp.",
+            "This What's new window. Open it any time with /milkers changes.",
             "# Fixes",
             "The HUD's status line always fits inside the card, and the bottle stops dripping while you're asleep or not making milk.",
         }),
@@ -58,7 +62,7 @@ public sealed class ChangelogWindow : Window
         }),
     };
 
-    public ChangelogWindow(Plugin plugin, Fonts fonts) : base("What's new in Velvet Dairy##VelvetDairyChanges", ImGuiWindowFlags.NoCollapse)
+    public ChangelogWindow(Plugin plugin, Fonts fonts) : base("What's new in Eorzea Milkers##VelvetDairyChanges", ImGuiWindowFlags.NoCollapse)
     {
         this.plugin = plugin;
         this.fonts = fonts;

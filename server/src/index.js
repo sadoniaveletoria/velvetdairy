@@ -1,4 +1,4 @@
-// Velvet Dairy Network: online count, dairy directory, roles and invites, shared stalls, buy orders and deliveries.
+// Eorzea Milkers Network: online count, dairy directory, roles and invites, shared stalls, buy orders and deliveries.
 // Runs as a Cloudflare Worker with a D1 database (schema.sql). Every plugin install talks to it over HTTPS.
 //
 // Auth: each install makes a random id and secret key the first time. Requests send both
@@ -52,6 +52,7 @@ const SHELF_MAX_STOCK = 200;        // per item per dairy      // delivering a b
 const CLEAN_SECONDS = 3600;         // a cleaned stall stays fresh this long
 const CLEAN_AGAIN_SECONDS = 1800;   // and can be cleaned again once this much (or less) is left
 const GROOM_COOLDOWN = 900;         // one groom per farmer per cow every 15 minutes
+const FEED_COOLDOWN = 900;          // a farmer can feed each cow or bull from the shelf once every 15 minutes
 // Developer (same phrase hash as the plugin's dev mode)
 const DEV_KEY_HASH = "7d4e0a8c4a26de8d2843e2a563f667d74beda3b81ffa447c22bd40d93b5af76f";
 // Weekly contracts
@@ -243,6 +244,7 @@ async function route(request, env) {
     ["GET", /^\/v1\/shelf$/, () => shelfView(env, me)],
     ["POST", /^\/v1\/shelf\/stock$/, () => shelfStock(env, me, request)],
     ["POST", /^\/v1\/shelf\/buy$/, () => shelfBuy(env, me, request)],
+    ["POST", /^\/v1\/shelf\/feed$/, () => shelfFeed(env, me, request)],
     ["PUT", /^\/v1\/shelf\/price$/, () => shelfPrice(env, me, request)],
     ["PUT", /^\/v1\/dairy\/private$/, () => putPrivate(env, me, request)],
     ["DELETE", /^\/v1\/dairy\/private$/, () => deletePrivate(env, me)],
@@ -432,6 +434,8 @@ async function heartbeat(env, me, request) {
       stall: clean(st.stall, 40), wake: Math.max(0, Math.min(2, Math.floor(num(st.wake)))),
       drainLeft: Math.max(0, Math.min(1, num(st.drainLeft))), drainRate: Math.max(0, Math.min(1, num(st.drainRate))), drainAt: Math.floor(num(st.drainAt)),
       anyEmote: st.anyEmote === undefined ? true : !!st.anyEmote,   // older plugins don't say; any looping emote is their default
+      ask: !!st.ask,                     // a cow who wants to Allow each hand milking first (a pop-up)
+      refused: clean(st.refused, 40),    // a cow: the farmer they just told "Not now"
     });
     if (status !== mem.status) await env.DB.prepare("UPDATE members SET status = ? WHERE install = ?").bind(status, me.id).run();
   }
@@ -1050,6 +1054,38 @@ async function shelfBuy(env, me, request) {
     return { ok: true, price, baker: row.baker_name, bakerCut, fundCut };
   }
   fail(409, "Someone else just bought that. Try again.");
+}
+
+/** A farmer feeds something from the shelf to a cow or bull of the dairy: free, but never to themselves. */
+async function shelfFeed(env, me, request) {
+  const b = await body(request);
+  const item = shelfItem(b);
+  const mem = await membership(env, me.id);
+  if (!mem || !hasRole(mem, "farmer")) fail(403, "Only farmers feed from the shelf.");
+  if (!inOwnDairy(me, mem)) fail(400, "Go to your dairy to feed from its shelf.");
+  const toId = String(b.to || "");
+  if (toId === me.id) fail(400, "You can't feed yourself for free. Buy it from the shelf instead.");
+  const to = await env.DB.prepare("SELECT install, name, role FROM members WHERE install = ? AND dairy_id = ?").bind(toId, mem.dairy_id).first();
+  if (!to || !(hasRole(to, "cow") || hasRole(to, "bull"))) fail(400, "You can feed your dairy's cows and bulls.");
+  const t = now();
+  const last = await env.DB.prepare("SELECT at FROM feeds WHERE farmer = ? AND member = ?").bind(me.id, to.install).first();
+  if (last && t - last.at < FEED_COOLDOWN) fail(400, `You can feed ${to.name} again in ${Math.ceil((FEED_COOLDOWN - (t - last.at)) / 60)} min.`);
+  for (let tries = 0; tries < 3; tries++) {
+    const row = await env.DB.prepare("SELECT * FROM shelf WHERE dairy_id = ? AND item = ? AND qty > 0 ORDER BY created, id LIMIT 1")
+      .bind(mem.dairy_id, item).first();
+    if (!row) fail(409, `The shelf is out of ${SHELF_ITEMS[item].name.toLowerCase()}.`);
+    const took = await env.DB.prepare("UPDATE shelf SET qty = qty - 1 WHERE id = ? AND qty > 0 RETURNING qty").bind(row.id).first();
+    if (!took) continue;
+    await env.DB.batch([
+      env.DB.prepare("DELETE FROM shelf WHERE id = ? AND qty <= 0").bind(row.id),
+      env.DB.prepare(`INSERT INTO feeds (farmer, member, at) VALUES (?, ?, ?) ON CONFLICT(farmer, member) DO UPDATE SET at = excluded.at`).bind(me.id, to.install, t),
+      // grade carries which shelf item it was (its place in SHELF_ITEMS)
+      inboxStmt(env, to.install, "fed", 0, 0, Object.keys(SHELF_ITEMS).indexOf(item),
+        `${mem.name || "A farmer"} fed you ${SHELF_ITEMS[item].name.toLowerCase()} from the dairy shelf.`),
+    ]);
+    return { ok: true, next: t + FEED_COOLDOWN };
+  }
+  fail(409, "Someone else just took that. Try again.");
 }
 
 /** The owner sets a shelf item's price, within its range. */

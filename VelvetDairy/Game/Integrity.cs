@@ -93,7 +93,7 @@ public static partial class Integrity
         }
         catch (Exception e)
         {
-            Plugin.Log.Warning(e, "Velvet Dairy couldn't write the save backup");
+            Plugin.Log.Warning(e, "Eorzea Milkers couldn't write the save backup");
         }
     }
 
@@ -110,7 +110,7 @@ public static partial class Integrity
         // Signed by an early testing build: accept it and re-sign with this build's key
         if (!UsingTestingKey && Valid(f, TestingKeyHex)) return Result.NewSave;
 
-        Plugin.Log.Warning("Velvet Dairy: the save doesn't match its signature (edited outside the game).");
+        Plugin.Log.Warning("Eorzea Milkers: the save doesn't match its signature (edited outside the game).");
         try
         {
             if (File.Exists(BackupPath))
@@ -126,7 +126,7 @@ public static partial class Integrity
         }
         catch (Exception e)
         {
-            Plugin.Log.Warning(e, "Velvet Dairy couldn't read the save backup");
+            Plugin.Log.Warning(e, "Eorzea Milkers couldn't read the save backup");
         }
 
         // No good backup: start progress over, but keep the dairy, stalls, farmhands and preferences

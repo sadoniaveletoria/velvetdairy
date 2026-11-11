@@ -24,7 +24,7 @@ public sealed class HudWindow : Window
     private bool ShowKitchen => G.CanCarry;
 
     public HudWindow(Plugin plugin, Art art, Fonts fonts)
-        : base("Velvet Dairy HUD##VelvetDairyHud",
+        : base("Eorzea Milkers HUD##VelvetDairyHud",
             ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse |
             ImGuiWindowFlags.NoBackground | ImGuiWindowFlags.NoFocusOnAppearing | ImGuiWindowFlags.NoNav | ImGuiWindowFlags.NoCollapse |
             ImGuiWindowFlags.NoDocking)
@@ -63,7 +63,7 @@ public sealed class HudWindow : Window
 
     public override void Draw()
     {
-        // Clicking in Velvet Dairy's own windows counts as being awake (mouse movement alone doesn't)
+        // Clicking in Eorzea Milkers's own windows counts as being awake (mouse movement alone doesn't)
         if (ImGui.IsWindowHovered(ImGuiHoveredFlags.ChildWindows) && ImGui.IsMouseClicked(ImGuiMouseButton.Left)) G.Touch();
 
         var dl = ImGui.GetWindowDrawList();

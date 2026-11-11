@@ -199,6 +199,11 @@ public static class Catalog
     public static readonly int[] StallTierUnlock = { 0, 1, 5, 10, 18 };
 
     public const float HandYield = 1.25f;
+    /// <summary>What can go on the dairy shelf, in the server's order (a "fed" inbox item says which by its place here).</summary>
+    public static readonly string[] ShelfOrder = { "cookies" };
+    public const int DailyPaidOz = 1500;   // milk you're paid for each day; past it you still get xp (matches the server's daily tank limit)
+    public const int FeedXp = 10;          // farmer xp for feeding a cow or bull from the shelf
+    public const int FedBullXp = 20;       // bull xp for being fed
     /// <summary>Your cow grade (C, B, A, S, S+) milks you this much faster and gives this much more milk.</summary>
     public static readonly float[] GradeBoost = { 0f, 0.10f, 0.20f, 0.35f, 0.50f };
     public static float GradeMult(int grade) => 1f + GradeBoost[Math.Clamp(grade, 0, GradeBoost.Length - 1)];

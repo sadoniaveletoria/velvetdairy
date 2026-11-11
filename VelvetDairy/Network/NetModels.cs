@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace VelvetDairy.Network;
 
-// Shapes of what the Velvet Dairy Network server sends back (see server/src/index.js). JSON is camelCase.
+// Shapes of what the Eorzea Milkers Network server sends back (see server/src/index.js). JSON is camelCase.
 
 public sealed class HeartbeatReply
 {
@@ -270,6 +270,8 @@ public sealed class MemberStatus
     public string HandBy { get; set; } = "";            // the farmer milking her right now, if any
     public bool AnyEmote { get; set; } = true;          // any looping emote milks them (not only their list)
     public string Milking { get; set; } = "";           // a farmer: the cow they pressed Milk on right now
+    public bool Ask { get; set; }                       // a cow who presses Allow before each hand milking
+    public string Refused { get; set; } = "";           // a cow: the farmer they just told "Not now"
 }
 
 public sealed class StallInfo

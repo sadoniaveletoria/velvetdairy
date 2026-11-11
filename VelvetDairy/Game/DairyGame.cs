@@ -86,7 +86,7 @@ public sealed class DairyGame
     public bool HandNeedsTarget => !Dev || F.HandNeedsTarget;
 
     // =================================================================
-    // Network mode: when the Velvet Dairy Network is up, your dairy is the one you belong to on the server
+    // Network mode: when the Eorzea Milkers Network is up, your dairy is the one you belong to on the server
     // (as its owner, or invited as a farmer, cow or bull). Without the network everything runs locally as before.
     // =================================================================
 
@@ -247,6 +247,12 @@ public sealed class DairyGame
                     break;
                 case "milk":
                     F.Tank![0] += i.Oz;   // milk is just milk now
+                    break;
+                case "fed":
+                    // A farmer fed you something from the dairy shelf: cows get its treat, bulls some bull xp
+                    var fedId = i.Grade >= 0 && i.Grade < Catalog.ShelfOrder.Length ? Catalog.ShelfOrder[i.Grade] : "";
+                    if (IsCow && Catalog.FeedById(fedId) is { } treat) ApplyTreat(treat);
+                    if (Has("bull")) F.BullXp += Catalog.FedBullXp;
                     break;
             }
 
@@ -469,7 +475,7 @@ public sealed class DairyGame
     {
         if (!F.Confirmed18) return "Confirm you're 18+ in Settings to start.";
         if (Plugin.ObjectTable.LocalPlayer == null) return "Not logged in.";
-        if (IsLalafell()) return "Velvet Dairy isn't available for Lalafell characters.";
+        if (IsLalafell()) return "Eorzea Milkers isn't available for Lalafell characters.";
         return null;
     }
 
@@ -802,6 +808,24 @@ public sealed class DairyGame
         return true;
     }
 
+    /// <summary>A treat a farmer fed you: its Happy bonus (a bigger one already going is kept) and its milk boost.</summary>
+    private void ApplyTreat(FeedItem item)
+    {
+        if (item.Happy > 0)
+        {
+            Cow.HappyBonus = Cow.Mood <= 0 ? item.Happy : Math.Max(Cow.HappyBonus, item.Happy);
+            Cow.Mood = Fill(Cow.Mood);
+        }
+
+        if (item.BoostMinutes > 0)
+        {
+            var from = Cow.BoostUntilUtc > DateTime.UtcNow ? Cow.BoostUntilUtc : DateTime.UtcNow;
+            var until = from.AddMinutes(item.BoostMinutes);
+            var cap = DateTime.UtcNow.AddMinutes(60);
+            Cow.BoostUntilUtc = until > cap ? cap : until;
+        }
+    }
+
     /// <summary>Time left before you can eat another quality treat (zero when ready).</summary>
     public TimeSpan QualityTreatWait => Cow.QualityTreatReadyUtc > DateTime.UtcNow ? Cow.QualityTreatReadyUtc - DateTime.UtcNow : TimeSpan.Zero;
 
@@ -920,20 +944,20 @@ public sealed class DairyGame
             Cow.Spoiled = true;
             Stop("Your milk spoiled.");
             Say("Your milk has spoiled. Dump it from the HUD or the Barn tab before you can be milked again.", 2);
-            Plugin.ChatGui.Print("Your milk has spoiled. Dump it from the HUD or the Barn tab.", "Velvet Dairy");
+            Plugin.ChatGui.Print("Your milk has spoiled. Dump it from the HUD or the Barn tab.", "Eorzea Milkers");
             plugin.SaveConfig();
         }
         else if (left.TotalHours <= 2 && spoilWarned < 2)
         {
             spoilWarned = 2;
             Say($"Your full bottles spoil in {(int)left.TotalMinutes} minutes. Get milked!", 2);
-            Plugin.ChatGui.Print($"Your full bottles spoil in {(int)left.TotalMinutes} minutes. Get milked!", "Velvet Dairy");
+            Plugin.ChatGui.Print($"Your full bottles spoil in {(int)left.TotalMinutes} minutes. Get milked!", "Eorzea Milkers");
         }
         else if (left.TotalHours <= 24 && spoilWarned < 1)
         {
             spoilWarned = 1;
             Say($"Your bottles have been full a while. They spoil in {(int)left.TotalHours} hours.", 2);
-            Plugin.ChatGui.Print($"Your bottles have been full a while. They spoil in {(int)left.TotalHours} hours.", "Velvet Dairy");
+            Plugin.ChatGui.Print($"Your bottles have been full a while. They spoil in {(int)left.TotalHours} hours.", "Eorzea Milkers");
         }
     }
 
@@ -1088,9 +1112,9 @@ public sealed class DairyGame
                     Stroked?.Invoke();
                 }
             }
-            else if (now - s.LastActivity > 20)
+            else if (now - s.LastActivity > (s.Strokes == 0 ? 40 : 20))
             {
-                Finish("Your farmer stopped.");
+                Finish(s.Strokes == 0 ? "Your farmer didn't start." : "Your farmer stopped.");
                 return;
             }
         }
@@ -1134,8 +1158,9 @@ public sealed class DairyGame
         var collected = s.Extracted * s.Yield;
         EaseTaint(Catalog.TaintPerMilking);
         AddQuality(collected * (s.Kind == SessionKind.Hand ? Grades.QualityPerOzHand : Grades.QualityPerOz));
-        // The dairy pays for the milk right away; the milk itself goes into the dairy's tank
-        var pay = (int)Math.Round(collected * PayRate(s.Grade));
+        // The dairy pays for the milk right away (up to the day's paid amount); the milk itself goes into the dairy's tank
+        var paidOz = Math.Clamp(Catalog.DailyPaidOz - F.DayOz, 0, collected);
+        var pay = (int)Math.Round(paidOz * PayRate(s.Grade));
         Earn(pay);
         F.Stats.TotalOz += collected;
         F.DayOz += collected;
@@ -1168,7 +1193,9 @@ public sealed class DairyGame
 
         AddXp(xp);
         var by = s.Kind == SessionKind.Hand ? $" by {(s.Hand!.IsTest ? "the test farmhand" : s.Hand.Name)}" : "";
-        Say($"Milked{by}: {collected:0.#} oz as a Grade {Grades.Name(s.Grade)} cow. +{pay} coins, +{xp} xp" + (reason != null ? $" ({reason})" : ""), 1);
+        Say($"Milked{by}: {collected:0.#} oz as a Grade {Grades.Name(s.Grade)} cow. +{pay} coins, +{xp} xp" +
+            (paidOz < collected - 0.05f ? $" (you've been paid for {Catalog.DailyPaidOz:N0} oz today; more milk still gives xp)" : "") +
+            (reason != null ? $" ({reason})" : ""), 1);
         plugin.SaveConfig();
     }
 
@@ -1292,6 +1319,7 @@ public sealed class DairyGame
     {
         if (milkingCow != null && Networked) Net.Poke();
         milkingCow = null;
+        awaitingAllow = false;
         pendingEmote = null;
         EndMilkMod();
     }
@@ -1302,9 +1330,40 @@ public sealed class DairyGame
     /// Milk button: does the emote for you, then ends it on its own once the cow should be empty
     /// (from their milk and the hand milking speed, or sooner when their plugin says they're done).
     /// </summary>
-    public bool MilkCow(string cowName, string emote, float cowMilk)
+    public bool MilkCow(string cowName, string emote, float cowMilk, bool asksFirst = false)
     {
         if (Emotes.Find(emote.Split(' ')[0]) == 0) return false;
+        milkingCow = cowName;
+        milkingEmote = 0;
+        sawMilking = false;
+        nextMilkingCheck = now + 3;
+        milkingSince = now;
+        askMilk = cowMilk;
+        // Tell the server right away: the cow's plugin only counts (or asks about) a farmer who pressed Milk on them
+        if (Networked) Net.Poke();
+        if (asksFirst)
+        {
+            // They want to say yes first: no emote until their plugin reports the milking started
+            awaitingAllow = true;
+            askEmote = emote;
+            Say($"Asked {cowName}. Your emote starts when they press Allow.", 0);
+            return true;
+        }
+
+        awaitingAllow = false;
+        StartMilkEmote(emote, cowMilk);
+        return true;
+    }
+
+    private bool awaitingAllow;
+    private string askEmote = "";
+    private float askMilk;
+
+    /// <summary>Waiting for this cow to press Allow on their pop-up.</summary>
+    public bool AwaitingAllow(string cowName) => awaitingAllow && milkingCow != null && milkingCow.Equals(cowName, StringComparison.OrdinalIgnoreCase);
+
+    private void StartMilkEmote(string emote, float cowMilk)
+    {
         // Your milking animation mod goes on first, then the emote a moment later so the new animation loads
         var delay = 0.0;
         if (F.MilkModDir.Length > 0 && !milkModOn)
@@ -1325,17 +1384,12 @@ public sealed class DairyGame
 
         pendingEmote = emote;
         pendingEmoteAt = now + delay;
-        milkingCow = cowName;
-        // Tell the server right away: the cow's plugin only counts a farmer who pressed Milk on them
-        if (Networked) Net.Poke();
         milkingEmote = 0;   // read back from your character once the loop starts (the game's id can differ from the command's)
         milkingSince = now + delay;
         // Only a safety net: the real end comes from the cow's plugin. Their milk keeps growing and the figure here
         // can be a minute old, so leave plenty of room (Udder balm only makes it faster)
         milkingEndsAt = now + delay + Math.Clamp(cowMilk / Catalog.HandSpeed * 1.5 + 60, 120, 3600);
-        sawMilking = false;
         nextMilkingCheck = now + 5;
-        return true;
     }
 
     public bool MilkingSomeone => milkingCow != null;
@@ -1349,6 +1403,37 @@ public sealed class DairyGame
         if (me == null)
         {
             StopWatchingMilking();
+            return;
+        }
+
+        // A cow who asks first: wait for their answer before doing anything
+        if (awaitingAllow)
+        {
+            if (now < nextMilkingCheck) return;
+            nextMilkingCheck = now + 3;
+            Net.RefreshMine();
+            var cst = Net.Mine?.Members.FirstOrDefault(m => m.Name.Equals(milkingCow, StringComparison.OrdinalIgnoreCase))?.Status;
+            var mine = me.Name.TextValue;
+            if (cst != null && cst.HandBy.Equals(mine, StringComparison.OrdinalIgnoreCase))
+            {
+                awaitingAllow = false;
+                sawMilking = true;
+                Say($"{milkingCow} said yes.", 1);
+                StartMilkEmote(askEmote, Math.Max(askMilk, cst.Milk));
+            }
+            else if (cst != null && cst.Refused.Equals(mine, StringComparison.OrdinalIgnoreCase))
+            {
+                var who = milkingCow;
+                StopWatchingMilking();
+                Say($"{who} said not now.", 2);
+            }
+            else if (now - milkingSince > 60)
+            {
+                var who = milkingCow;
+                StopWatchingMilking();
+                Say($"{who} didn't answer.", 2);
+            }
+
             return;
         }
 
@@ -1500,6 +1585,59 @@ public sealed class DairyGame
 
     private bool grooming;
 
+    // ----- Feeding cows and bulls from the dairy shelf (free for the farmer, never for yourself) -----
+
+    private readonly Dictionary<string, double> feedReady = new();
+    private bool feeding;
+
+    /// <summary>The first shelf item there's any of (cookies for now).</summary>
+    private ShelfItem? FeedStock => Net.Shelf.FirstOrDefault(x => x.Qty > 0 && Catalog.FeedById(x.Item) != null);
+
+    public string FeedTip => FeedStock is { } st
+        ? $"Give them {Catalog.MadeName(st.Item).ToLowerInvariant()} from the dairy shelf ({st.Qty} left). Free; +{Catalog.FeedXp} farmer xp. Once every 15 minutes each."
+        : "The dairy shelf is empty. Bake some in the Kitchen.";
+
+    public string? FeedProblem(string name, string id, float distance)
+    {
+        var b = Blocked();
+        if (b != null) return b;
+        if (!IsFarmer) return "Only farmers feed from the shelf.";
+        if (!Where.InDairy) return "Go to your dairy first.";
+        Net.RefreshShelf();
+        if (FeedStock == null) return "The dairy shelf is empty. Bake some in the Kitchen.";
+        if (distance < 0 || distance > HandRange) return $"Get within {HandRange:0} yalms of {name} first.";
+        if (feedReady.TryGetValue(id, out var t) && t > now) return $"You can feed {name} again in {Wait(TimeSpan.FromSeconds(t - now))}.";
+        return null;
+    }
+
+    public void FeedFromShelf(string name, string id, float distance)
+    {
+        var p = FeedProblem(name, id, distance);
+        if (p != null)
+        {
+            Fail(p);
+            return;
+        }
+
+        if (feeding) return;
+        feeding = true;
+        Touch();
+        var item = FeedStock!.Item;
+        Net.FeedShelf(item, id, () =>
+        {
+            feeding = false;
+            feedReady[id] = now + 15 * 60;
+            AddFarmerXp(Catalog.FeedXp);
+            EarnDairyXp(2);
+            Say($"You feed {name} {Catalog.MadeName(item).ToLowerInvariant()} from the shelf. +{Catalog.FeedXp} farmer xp", 1);
+        }, e =>
+        {
+            feeding = false;
+            feedReady[id] = now + 60;
+            Fail(e);
+        });
+    }
+
     public void Groom(string cowName, string cowId, float distance)
     {
         var p = GroomProblem(cowName, cowId, distance);
@@ -1537,6 +1675,12 @@ public sealed class DairyGame
     /// <summary>A farmer pressing Milk on you while you ask first ("Farmers can start milking me without asking" off).</summary>
     public Farmhand? MilkAsk { get; private set; }
 
+    private string refusedName = "";
+    private double refusedUntil;
+
+    /// <summary>The farmer you just told "Not now" (for two minutes), so their plugin stops waiting.</summary>
+    public string RefusedFarmer => now < refusedUntil ? refusedName : "";
+
     public void AnswerMilkAsk(bool allow)
     {
         if (MilkAsk is not { } f) return;
@@ -1546,6 +1690,9 @@ public sealed class DairyGame
         else
         {
             declinedUntil[Key(f)] = now + 120;   // they can ask again in 2 minutes
+            refusedName = f.Name;
+            refusedUntil = now + 120;
+            if (Networked) Net.Poke();             // so their plugin hears it right away
             Say($"You told {f.Name} not now.", 0);
         }
     }
@@ -1579,6 +1726,9 @@ public sealed class DairyGame
 
     /// <summary>A farmer milking you: holding the loop close by, and they pressed Milk on you.</summary>
     private bool MilkingMe(Farmhand f, FarmhandSight s) => Milking(s) && PressedMilkOnMe(f);
+
+    /// <summary>A farmer close by, targeting you, who pressed Milk on you (they wait for your Allow before the emote).</summary>
+    private bool AskingMe(Farmhand f) => Sight(f) is { Present: true, TargetingYou: true } s && s.Distance <= HandRange && PressedMilkOnMe(f);
 
     /// <summary>Adds whatever emote this farmhand is doing right now to the milking emotes.</summary>
     public bool RecordEmote(Farmhand fh)
@@ -1624,12 +1774,12 @@ public sealed class DairyGame
             Net.BeatWithin(10);
 
         // "Farmers can start milking me without asking" is off: a farmer pressing Milk on you asks first (a pop-up)
-        if (MilkAsk is { } asking && (Active != null || !MilkingMe(asking, Sight(asking)) || HandProblem(asking) != null)) MilkAsk = null;
+        if (MilkAsk is { } asking && (Active != null || !AskingMe(asking) || HandProblem(asking) != null)) MilkAsk = null;
         if (Active == null && !F.AutoHand && Networked && ProducesMilk && MilkAsk == null)
             foreach (var f in Farmhands.Where(f => !f.IsTest))
             {
                 if (declinedUntil.TryGetValue(Key(f), out var until) && now < until) continue;
-                if (!MilkingMe(f, Sight(f)) || HandProblem(f) != null) continue;
+                if (!AskingMe(f) || HandProblem(f) != null) continue;
                 MilkAsk = f;
                 Say($"{f.Name} wants to milk you.", 1);
                 break;
@@ -2901,7 +3051,7 @@ public sealed class DairyGame
         var log = F.Log!;
         log.Insert(0, $"{DateTime.Now:HH:mm}  {text}");
         if (log.Count > 60) log.RemoveRange(60, log.Count - 60);
-        if (F.ChatEcho && kind != 2) Plugin.ChatGui.Print(text, "Velvet Dairy");
+        if (F.ChatEcho && kind != 2) Plugin.ChatGui.Print(text, "Eorzea Milkers");
     }
 
     // ----- Dev helpers -----
