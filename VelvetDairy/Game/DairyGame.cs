@@ -2028,7 +2028,13 @@ public sealed class DairyGame
     {
         if (Plugin.ClientState.TerritoryType != a.Territory || me.CurrentWorld.RowId != a.World) return false;
         var house = Estate.Current();
-        if (a.House.Length > 0)
+        // Islands: any island counts (you can be on a friend's), so the box's house is ignored; the server only
+        // counts you for your own dairy there
+        if (Estate.Island(a.Territory))
+        {
+            if (house != null) return false;
+        }
+        else if (a.House.Length > 0)
         {
             if (house != null)
             {

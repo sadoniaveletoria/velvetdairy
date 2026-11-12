@@ -99,7 +99,7 @@ public sealed class DairyListing
 
     private static string AreaAddress(VelvetDairy.Game.DairyArea a)
     {
-        if (a.House.Length == 0 || VelvetDairy.Game.Estate.SoloPlace(a.Territory) || !ulong.TryParse(a.House, out var id)) return a.Zone;
+        if (a.House.Length == 0 || VelvetDairy.Game.Estate.SoloPlace(a.Territory) || VelvetDairy.Game.Estate.Island(a.Territory) || !ulong.TryParse(a.House, out var id)) return a.Zone;
         var addr = VelvetDairy.Game.Estate.FromId(id);
         return addr.Ward > 0 ? addr.Describe : a.Zone;
     }

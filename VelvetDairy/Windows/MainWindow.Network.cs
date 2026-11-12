@@ -189,10 +189,16 @@ public sealed partial class MainWindow
 
     private void Visit(DairyListing d)
     {
-        // On someone's Island Sanctuary or in their inn room: only they can go there
+        // In someone's inn room: only they can go there. On their Island Sanctuary: they have to bring you.
         if (d.Area is { } solo && Estate.SoloPlace(solo.Territory))
         {
-            G.Notify($"{d.Name} is on its owner's {solo.Zone}: only they can go there.", 0);
+            G.Notify($"{d.Name} is in its owner's inn room: only they can go there.", 0);
+            return;
+        }
+
+        if (d.Area is { } isle && Estate.Island(isle.Territory))
+        {
+            G.Notify($"{d.Name} is on its owner's Island Sanctuary: ask them to take you to their island.", 0);
             return;
         }
 

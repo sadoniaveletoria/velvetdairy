@@ -38,19 +38,25 @@ public static class Estate
         return 0;
     }
 
+    private static uint IntendedUse(uint territory) =>
+        Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.TerritoryType>().GetRowOrDefault(territory)?.TerritoryIntendedUse.RowId ?? 0;
+
     /// <summary>
-    /// Zones where every player gets their own copy at the same positions: the Island Sanctuary and inn rooms.
-    /// Nobody else can come in, so the copy is told apart by whose it is.
+    /// Inn rooms: every player gets their own copy at the same positions and nobody else can come in, so a box there
+    /// is told apart by whose it is.
     /// </summary>
-    public static bool SoloPlace(uint territory)
-    {
-        var use = Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.TerritoryType>().GetRowOrDefault(territory)?.TerritoryIntendedUse.RowId;
-        return use is 49 or 2;   // Island Sanctuary, inn room
-    }
+    public static bool SoloPlace(uint territory) => IntendedUse(territory) == 2;
+
+    /// <summary>
+    /// The Island Sanctuary: everyone's island is the same zone at the same positions, but friends can visit, so
+    /// there's no telling whose island you're on. Boxes there may overlap other players' (they're on other islands),
+    /// and you count as in a box on an island only for your own dairy.
+    /// </summary>
+    public static bool Island(uint territory) => IntendedUse(territory) == 49;
 
     /// <summary>
     /// Which copy of the zone you're in, for dairy boxes: the house's id inside a house or apartment, your own
-    /// character's id on your island or in an inn room, and "" anywhere else (everyone shares the open world).
+    /// character's id in an inn room, and "" anywhere else (the open world, and islands).
     /// </summary>
     public static string PlaceKey()
     {
