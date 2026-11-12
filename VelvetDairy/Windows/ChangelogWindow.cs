@@ -22,6 +22,12 @@ public sealed class ChangelogWindow : Window
     /// <summary>Newest first. Write these for players: what changed for them, not how.</summary>
     private static readonly Entry[] Entries =
     {
+        new("0.9.34", "Island Sanctuary dairies with friends", new[]
+        {
+            "Friends who visit your Island Sanctuary count as in your dairy again when they're members, in its area or private place.",
+            "Island dairies never clash with other players' island dairies at the same spot.",
+            "Visit on an island dairy tells you to ask the owner to take you to their island.",
+        }),
         new("0.9.33", "Better pay, support info and fixes", new[]
         {
             "Daily pay goes much further: the first 3,000 coins of the day are paid in full (was 1,500), then half up to 8,000 (was a quarter up to 4,000), then a tenth. A few hours of milking now buys the top Shop items in days, not weeks.",
