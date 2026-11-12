@@ -25,7 +25,13 @@ public sealed class NetClient : IDisposable
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
     private readonly Plugin plugin;
-    private readonly HttpClient http = new() { Timeout = TimeSpan.FromSeconds(12) };
+    // Connections the server (or something on the way) has quietly closed are dropped after a short idle time
+    // instead of being reused and failing with "forcibly closed by the remote host"
+    private readonly HttpClient http = new(new SocketsHttpHandler
+    {
+        PooledConnectionIdleTimeout = TimeSpan.FromSeconds(30),
+        PooledConnectionLifetime = TimeSpan.FromMinutes(5),
+    }) { Timeout = TimeSpan.FromSeconds(12) };
     private readonly ConcurrentQueue<Action> mainThread = new();
     private readonly System.Diagnostics.Stopwatch clock = System.Diagnostics.Stopwatch.StartNew();
 
@@ -273,12 +279,31 @@ public sealed class NetClient : IDisposable
         {
             try
             {
-                using var req = new HttpRequestMessage(new HttpMethod(method), api + path);
-                req.Headers.Add("X-VD-Id", id);
-                req.Headers.Add("X-VD-Key", key);
-                if (devPhrase.Length > 0) req.Headers.Add("X-VD-Dev", devPhrase);
-                if (body != null) req.Content = new StringContent(JsonSerializer.Serialize(body, Json), Encoding.UTF8, "application/json");
-                using var res = await http.SendAsync(req);
+                HttpRequestMessage Make()
+                {
+                    var r = new HttpRequestMessage(new HttpMethod(method), api + path);
+                    r.Headers.Add("X-VD-Id", id);
+                    r.Headers.Add("X-VD-Key", key);
+                    if (devPhrase.Length > 0) r.Headers.Add("X-VD-Dev", devPhrase);
+                    if (body != null) r.Content = new StringContent(JsonSerializer.Serialize(body, Json), Encoding.UTF8, "application/json");
+                    return r;
+                }
+
+                HttpResponseMessage res;
+                try
+                {
+                    using var req = Make();
+                    res = await http.SendAsync(req);
+                }
+                catch (HttpRequestException e) when (method == "GET" || path == "/v1/heartbeat")
+                {
+                    // A dropped connection: try once more on a fresh one (only for calls that are safe to repeat)
+                    Diag.Info("net", $"{method} {path}: connection dropped ({Why(e)}), trying again");
+                    using var again = Make();
+                    res = await http.SendAsync(again);
+                }
+
+                using var _ = res;
                 var text = await res.Content.ReadAsStringAsync();
                 if (res.IsSuccessStatusCode)
                 {
@@ -311,7 +336,7 @@ public sealed class NetClient : IDisposable
             }
             catch (Exception e)
             {
-                Diag.Warn("net", $"{method} {path} failed", e);
+                Diag.Warn("net", $"{method} {path} failed: {Why(e)}");
                 mainThread.Enqueue(() =>
                 {
                     Connected = false;
@@ -323,6 +348,13 @@ public sealed class NetClient : IDisposable
     }
 
     private void Toast(string text, int kind) => plugin.Game.Notify(text, kind);
+
+    /// <summary>The innermost reason a request failed, in one line (no stack trace, so support info stays readable).</summary>
+    private static string Why(Exception e)
+    {
+        while (e.InnerException != null) e = e.InnerException;
+        return e is TaskCanceledException ? "timed out" : e.Message.TrimEnd('.');
+    }
 
     private void Heartbeat()
     {
