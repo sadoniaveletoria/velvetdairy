@@ -60,7 +60,7 @@ Only the owner can take a role away from someone.
 - **At a stall:** sit on its seat and it starts by itself.
 - **By hand:** a farmer of your dairy stands close, targets you and presses **Milk**. Hand milking is faster, pays more and makes up a lost grade.
 - You're **paid the moment you're milked**, by grade: C 6, B 8, A 10, S 12, S+ 14 coins an ounce, plus a bonus for your dairy's level.
-- **Daily earnings taper off:** everything the game pays you in a day (milking, farmer shares, orders, goals, awards) counts together. The first 1,500 coins are paid in full, then a quarter up to 4,000, then a tenth. XP is never reduced, coins from other players don't count, and it resets each day.
+- **Daily earnings taper off:** everything the game pays you in a day (milking, farmer shares, orders, goals, awards) counts together. The first 3,000 coins are paid in full, then half up to 8,000, then a tenth. XP is never reduced, coins from other players don't count, and it resets each day.
 - **Ask first (optional):** turn off "Farmers can start milking me without asking" on Roles → Cow and you get an Allow / Not now pop-up each time a farmer presses Milk on you.
 
 **Your grade**

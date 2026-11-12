@@ -1,7 +1,48 @@
 // Made by preview/build.py from the plugin's source. Don't edit by hand.
 window.PREVIEW = {
- "version": "0.9.23",
+ "version": "0.9.30",
  "changes": [
+  {
+   "version": "0.9.31",
+   "title": "Better pay",
+   "notes": [
+    "Daily pay goes much further: the first 3,000 coins of the day are paid in full (was 1,500), then half up to 8,000 (was a quarter up to 4,000), then a tenth. A few hours of milking now buys the top Shop items in days, not weeks."
+   ]
+  },
+  {
+   "version": "0.9.30",
+   "title": "Dairy count",
+   "notes": [
+    "The Dairies list shows how many dairies there are (and how many are public) at the top, and how many your search leaves."
+   ]
+  },
+  {
+   "version": "0.9.29",
+   "title": "Milking animations and island dairies",
+   "notes": [
+    "# Milking animations",
+    "Pick an animation mod in Herd Care > Animation..., then the animation you want from its options. Each option shows the emote it uses, read from its name: \"(Dom-Bdance/Sub-Hdance)\" means you (the farmer) do Ball Dance, \"(Gsit0, 1)\" means sit on the ground. The Milk button switches the mod on, does that emote and switches it off when the cow is empty.",
+    "An animation that works with several emotes (like \"(Blush/Confirm/Wave/Yes)\") lists them all, and you choose which one you do. Your choice is remembered.",
+    "No animation mod? Pick the Milk button's emote from a list of every emote (search it, or one click for Bee's Knees, Sit, Sit on ground or Doze).",
+    "Sit poses count as milking. Once seated, /cpose to the pose you want; when the cow is empty you're left seated, so get up when you like.",
+    "The Milk button always does your emote. If a cow only counts certain emotes and yours isn't one of them, their row in Herd Care tells you which ones they count. Cows who allow any emote (the default) accept sit poses too.",
+    "# Island Sanctuary and inn room dairies",
+    "A dairy on your Island Sanctuary or in an inn room is yours alone and no longer clashes with other players' dairies at the same spot on their own island. Dairies already there are fixed the next time their owner visits."
+   ]
+  },
+  {
+   "version": "0.9.24",
+   "title": "A save for each character",
+   "notes": [
+    "Each character now has their own Eorzea Milkers progress: their own levels, coins, roles, pantry and dairy. Before, every character on your PC shared one save.",
+    "Your progress moves to the character you last played it on, by itself. Only if Eorzea Milkers can't tell (say you logged in on a different character first) does it ask whether this is the one: yes moves your progress here, no starts this character fresh and your progress waits for the next one you log in with.",
+    "Your save follows your character through name changes and world transfers, and your dairy sees your new name.",
+    "A new character starts as a new player and joins a dairy on their own. Your settings (sound, HUD, the 18+ check) carry over from the last character you played.",
+    "# Fixes",
+    "The Dairies list shows each dairy's own data center, not the one its owner was visiting when they saved it. Dairies already listed are corrected the next time their owner saves the dairy.",
+    "Stall markers only show while you're in your dairy."
+   ]
+  },
   {
    "version": "0.9.23",
    "title": "Pay, the kitchen, levels and Discord",

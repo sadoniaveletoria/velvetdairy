@@ -224,16 +224,16 @@ public static class Catalog
     public const int DailyPaidOz = 1500;   // milk you're paid for each day; past it you still get xp (matches the server's daily tank limit)
 
     // Everything you earn from the game in a day (milking, hand milking shares, orders, goals, awards) tapers off together:
-    // the first FullEarnings coins are paid in full, then a quarter up to QuarterEarnings, then a tenth. Coins from other
+    // the first FullEarnings coins are paid in full, then half up to HalfEarnings, then a tenth. Coins from other
     // players (shelf sales, buy orders) aren't touched. No cap, but more play pays less and less.
-    public const int FullEarnings = 1500;
-    public const int QuarterEarnings = 4000;
+    public const int FullEarnings = 3000;
+    public const int HalfEarnings = 8000;
 
     /// <summary>What `gross` coins are actually worth when `earnedToday` (gross) were already earned today.</summary>
     public static int Tapered(float earnedToday, int gross)
     {
         double pay = 0, at = earnedToday, left = gross;
-        foreach (var (upTo, rate) in new (double, double)[] { (FullEarnings, 1.0), (QuarterEarnings, 0.25), (double.MaxValue, 0.10) })
+        foreach (var (upTo, rate) in new (double, double)[] { (FullEarnings, 1.0), (HalfEarnings, 0.5), (double.MaxValue, 0.10) })
         {
             if (left <= 0) break;
             var room = Math.Max(0, upTo - at);
@@ -246,8 +246,8 @@ public static class Catalog
         return (int)Math.Round(pay);
     }
 
-    /// <summary>The share of each new coin you get right now (1, 0.25 or 0.1).</summary>
-    public static float TaperRate(float earnedToday) => earnedToday < FullEarnings ? 1f : earnedToday < QuarterEarnings ? 0.25f : 0.10f;
+    /// <summary>The share of each new coin you get right now (1, 0.5 or 0.1).</summary>
+    public static float TaperRate(float earnedToday) => earnedToday < FullEarnings ? 1f : earnedToday < HalfEarnings ? 0.5f : 0.10f;
     public const int FeedXp = 10;          // farmer xp for feeding a cow or bull from the shelf
     public const int FedBullXp = 20;       // bull xp for being fed
     /// <summary>Your cow grade (C, B, A, S, S+) milks you this much faster and gives this much more milk.</summary>

@@ -22,6 +22,18 @@ public sealed class ChangelogWindow : Window
     /// <summary>Newest first. Write these for players: what changed for them, not how.</summary>
     private static readonly Entry[] Entries =
     {
+        new("0.9.33", "Better pay, support info and fixes", new[]
+        {
+            "Daily pay goes much further: the first 3,000 coins of the day are paid in full (was 1,500), then half up to 8,000 (was a quarter up to 4,000), then a tenth. A few hours of milking now buys the top Shop items in days, not weeks.",
+            "# Help",
+            "Having trouble? Settings > Help > Copy support info (or /milkers support) copies your setup and what the plugin did recently, ready to paste in #bug-reports on the Discord. No passwords or keys are included.",
+            "# Fixes",
+            "Dairies on an Island Sanctuary made before the last update work again.",
+            "The Dairies list shows the ward and plot of dairies inside a house or apartment (it used to show only the area).",
+            "Visiting a dairy on someone's Island Sanctuary or in their inn room tells you only the owner can go there.",
+            "Fewer network hiccups: a dropped connection is retried once, and old connections aren't reused after they've gone quiet.",
+            "The Kitchen shows the dairy pantry without the ingredients set aside for your bake (they're listed on their own), and the pantry refreshes every 10 seconds while the Kitchen is open, so you see what other farmers just used.",
+        }),
         new("0.9.30", "Dairy count", new[]
         {
             "The Dairies list shows how many dairies there are (and how many are public) at the top, and how many your search leaves.",

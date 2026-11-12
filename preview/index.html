@@ -196,10 +196,10 @@ function state() {
 }
 
 // ---------------------------------------------------------------- Daily pay (Catalog.Tapered, Creamery > Your pay)
-const FULL = 1500, QUARTER = 4000;
+const FULL = 3000, HALF = 8000;
 function tapered(before, gross) {
   let pay = 0, at = before, left = gross;
-  for (const [upTo, rate] of [[FULL, 1], [QUARTER, .25], [Infinity, .1]]) { if (left <= 0) break; const part = Math.min(Math.max(0, upTo - at), left); pay += part * rate; at += part; left -= part; }
+  for (const [upTo, rate] of [[FULL, 1], [HALF, .5], [Infinity, .1]]) { if (left <= 0) break; const part = Math.min(Math.max(0, upTo - at), left); pay += part * rate; at += part; left -= part; }
   return Math.round(pay);
 }
 const payIn = { oz: 200, bonus: 1.3, hand: 0, orders: 0, goals: 4 };
@@ -212,10 +212,10 @@ function payWin(s) {
     ["Daily goals", payIn.goals * 30 + (payIn.goals >= 4 ? 60 : 0) + (payIn.goals >= 8 ? 60 : 0), `${payIn.goals} goals`],
   ].filter(Boolean);
   const gross = parts.reduce((a, p) => a + p[1], 0), net = tapered(0, gross);
-  const rate = gross < FULL ? "full pay" : gross < QUARTER ? "a quarter" : "a tenth";
+  const rate = gross < FULL ? "full pay" : gross < HALF ? "half" : "a tenth";
   const rng = (id, label, min, max, step, val) => `<label style="display:grid;gap:2px;font:13px var(--axis)">${label} <b class="num">${val}</b><input type="range" data-pay="${id}" min="${min}" max="${max}" step="${step}" value="${val}"></label>`;
   return `<div class="iw" style="width:420px"><div class="iw-title"><span>Daily pay</span><span></span></div><div class="iw-body">
-    <p class="soft" style="font-size:14px">Try a day: everything the game pays adds up, then tapers (first ${FULL.toLocaleString()} full, a quarter to ${QUARTER.toLocaleString()}, then a tenth). Grade and roles come from the controls above.</p>
+    <p class="soft" style="font-size:14px">Try a day: everything the game pays adds up, then tapers (first ${FULL.toLocaleString()} full, half to ${HALF.toLocaleString()}, then a tenth). Grade and roles come from the controls above.</p>
     ${s.cow ? rng("oz", "Milked today (oz)", 0, 1500, 10, payIn.oz) : ""}
     ${rng("bonus", "Pay bonus (shop items × dairy level)", 1, 1.5, .01, payIn.bonus)}
     ${s.farmer ? rng("hand", "Other cows you hand milked (oz)", 0, 800, 10, payIn.hand) : ""}
@@ -227,7 +227,7 @@ function payWin(s) {
     <div class="need" style="font-size:18px"><span>You actually get</span><span class="num" style="color:var(--SageDeep)">${net.toLocaleString()}</span></div>
     <hr class="s"><div class="sect" style="color:var(--BlueDeep)">Creamery > Your pay shows</div>
     <div class="soft" style="font-size:14px">Milk given today: ${payIn.oz} oz</div>
-    <div style="font-size:14px;color:${gross < FULL ? "var(--InkSoft)" : "var(--HoneyDeep)"}">Earned today: ${gross.toLocaleString()} · ${gross < FULL ? `full pay until ${FULL.toLocaleString()}` : gross < QUARTER ? `pay is at a quarter until ${QUARTER.toLocaleString()}, then a tenth` : "pay is at a tenth until the daily reset"}</div>
+    <div style="font-size:14px;color:${gross < FULL ? "var(--InkSoft)" : "var(--HoneyDeep)"}">Earned today: ${gross.toLocaleString()} · ${gross < FULL ? `full pay until ${FULL.toLocaleString()}` : gross < HALF ? `pay is at half until ${HALF.toLocaleString()}, then a tenth` : "pay is at a tenth until the daily reset"}</div>
   </div></div>`;
 }
 

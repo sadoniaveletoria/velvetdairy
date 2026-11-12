@@ -45,9 +45,12 @@ public sealed class KitchenWindow : Window
         ImGui.Separator();
         ImGui.Spacing();
         DrawBaking();
-        G.Net.RefreshPantry();
-        var stock = string.Join(" · ", Catalog.Ingredients.Where(i => G.IngredientCount(i.Id) > 0).Select(i => $"{i.Name.ToLowerInvariant()} {G.IngredientCount(i.Id)}"));
+        // Kept fresh while the Kitchen is open, so you see what other farmers just used
+        G.Net.RefreshPantry(false, 10);
+        var stock = string.Join(" · ", Catalog.Ingredients.Where(i => G.IngredientCount(i.Id) - G.Reserved(i.Id) > 0).Select(i => $"{i.Name.ToLowerInvariant()} {G.IngredientCount(i.Id) - G.Reserved(i.Id)}"));
         ImGui.TextColored(Theme.InkSoft, stock.Length > 0 ? $"In the dairy pantry: {stock}" : "The dairy pantry is empty. Ingredients any farmer makes go there for everyone.");
+        var held = string.Join(" · ", Catalog.Ingredients.Where(i => G.Reserved(i.Id) > 0).Select(i => $"{i.Name.ToLowerInvariant()} {G.Reserved(i.Id)}"));
+        if (held.Length > 0) ImGui.TextColored(Theme.InkSoft, $"Set aside for your baking: {held}");
         ImGui.Spacing();
 
         var avail = ImGui.GetContentRegionAvail();

@@ -1208,7 +1208,7 @@ public sealed class DairyGame
         var by = s.Kind == SessionKind.Hand ? $" by {(s.Hand!.IsTest ? "the test farmhand" : s.Hand.Name)}" : "";
         Say($"Milked{by}: {collected:0.#} oz as a Grade {Grades.Name(s.Grade)} cow. +{pay} coins, +{xp} xp" +
             (paidOz < collected - 0.05f ? $" (you've been paid for {Catalog.DailyPaidOz:N0} oz today; more milk still gives xp)"
-                : Catalog.TaperRate(F.DayEarned) < rateBefore || rateBefore < 1f ? $" (you've earned a lot today, so pay is at {(Catalog.TaperRate(F.DayEarned) >= 0.25f ? "a quarter" : "a tenth")}; xp is the same)" : "") +
+                : Catalog.TaperRate(F.DayEarned) < rateBefore || rateBefore < 1f ? $" (you've earned a lot today, so pay is at {(Catalog.TaperRate(F.DayEarned) >= 0.5f ? "half" : "a tenth")}; xp is the same)" : "") +
             (reason != null ? $" ({reason})" : ""), 1);
         plugin.SaveConfig();
     }
@@ -1365,6 +1365,7 @@ public sealed class DairyGame
     {
         if (!milkModOn) return;
         milkModOn = false;
+        Diag.Info("milk", "Animation mod off");
         PenumbraLink.Disable(F.MilkModDir);
     }
 
@@ -1385,7 +1386,13 @@ public sealed class DairyGame
     /// </summary>
     public bool MilkCow(string cowName, string emote, float cowMilk, bool asksFirst = false)
     {
-        if (Emotes.Find(emote.Split(' ')[0]) == 0) return false;
+        Diag.Info("milk", $"Milk on {cowName}: {emote}, {cowMilk:0.#} oz, asks first {asksFirst}, mod {(F.MilkModDir.Length > 0 ? PenumbraLink.NameOf(F.MilkModDir) : "none")}");
+        if (Emotes.Find(emote.Split(' ')[0]) == 0)
+        {
+            Diag.Warn("milk", $"{emote} isn't an emote the game knows");
+            return false;
+        }
+
         milkingCow = cowName;
         milkingEmote = 0;
         sawMilking = false;
@@ -1425,6 +1432,7 @@ public sealed class DairyGame
             if (why != null) Fail($"Milking animation: {why}");
             else
             {
+                Diag.Info("milk", $"Animation mod on: {PenumbraLink.NameOf(F.MilkModDir)} ({string.Join("; ", F.MilkModOptions.Select(kv => kv.Key + "=" + string.Join("|", kv.Value)))})");
                 milkModOn = true;
                 delay = 0.4;
                 if (F.MilkModRedraw)
@@ -1497,6 +1505,7 @@ public sealed class DairyGame
             pendingEmote = null;
             if (!Emotes.Perform(e))
             {
+                Diag.Warn("milk", $"The game didn't take {e}");
                 StopWatchingMilking();
                 return;
             }
@@ -1506,14 +1515,23 @@ public sealed class DairyGame
         if (milkingEmote == 0)
         {
             // Remember whichever loop you're actually in once it starts
-            if (loop != 0) milkingEmote = loop;
-            else if (now - milkingSince > 5) StopWatchingMilking();   // it never started
+            if (loop != 0)
+            {
+                milkingEmote = loop;
+                Diag.Info("milk", $"Your emote started ({Emotes.Name(loop)}{(Emotes.Seated(me) ? ", seated" : "")})");
+            }
+            else if (now - milkingSince > 5)
+            {
+                Diag.Warn("milk", $"Your emote never started (mode {Emotes.Mode(me)}, emote {Emotes.Name(Emotes.Current(me))})");
+                StopWatchingMilking();   // it never started
+            }
             return;
         }
 
         // Stopping or switching emotes yourself ends it here too
         if (loop != milkingEmote)
         {
+            Diag.Info("milk", $"You stopped or changed your emote (now {Emotes.Name(loop)}), so milking {milkingCow} ended");
             StopWatchingMilking();
             return;
         }
@@ -1980,6 +1998,18 @@ public sealed class DairyGame
         a == null ? b == null : b != null && a.Territory == b.Territory && a.World == b.World && a.House == b.House &&
                                  a.X == b.X && a.Y == b.Y && a.Z == b.Z && a.Width == b.Width && a.Length == b.Length && a.Rot == b.Rot && a.Height == b.Height && a.WholeHouse == b.WholeHouse;
 
+    /// <summary>
+    /// Which copy of the zone to tell the server you're in. On your island or in an inn room, a dairy box made before
+    /// those were told apart has no owner on it, so it's matched the old way ("") until it's saved again as yours.
+    /// </summary>
+    private string PositionKey()
+    {
+        var key = Estate.PlaceKey();
+        if (Estate.Current() != null || !Estate.SoloPlace(Plugin.ClientState.TerritoryType)) return key;
+        var boxes = new[] { F.NetMember?.Area, F.NetMember?.PrivateArea };
+        return boxes.Any(b => b != null && b.Territory == Plugin.ClientState.TerritoryType && b.House == key) ? key : "";
+    }
+
     /// <summary>Where you are, for the server to tell which dairy (if any) you're standing in.</summary>
     public object? Position()
     {
@@ -1989,7 +2019,7 @@ public sealed class DairyGame
         {
             territory = Plugin.ClientState.TerritoryType,
             world = me.CurrentWorld.RowId,
-            house = Estate.PlaceKey(),
+            house = PositionKey(),
             x = me.Position.X, y = me.Position.Y, z = me.Position.Z,
         };
     }
@@ -2007,7 +2037,8 @@ public sealed class DairyGame
             // Your island or inn room: the box is yours only
             else if (a.House != Estate.PlaceKey()) return false;
         }
-        else if (house != null || Estate.SoloPlace(a.Territory)) return false;
+        // A box with no house: outdoors, or an island / inn room box from before they were told apart (still works)
+        else if (house != null) return false;
 
         return a.Contains(me.Position);
     }
@@ -2498,6 +2529,17 @@ public sealed class DairyGame
     public int MaxMake(Catalog.Recipe r) =>
         r.Needs().Aggregate(r.MilkOz > 0 ? (int)(OzAtOrAbove(r.MinGrade) / r.MilkOz) : 999, (m, n) => Math.Min(m, IngredientCount(n.Id) / n.Count));
 
+    /// <summary>
+    /// Ingredients set aside for the bake you're running: taken from the dairy pantry when it started (so no other
+    /// farmer can use them) and used up batch by batch.
+    /// </summary>
+    public int Reserved(string id)
+    {
+        if (F.Bake is not { } j || Catalog.RecipeById(j.Recipe) is not { } r) return 0;
+        var per = r.Needs().Where(n => n.Id == id).Sum(n => n.Count);
+        return Math.Min(Count(id), per * Math.Max(0, j.Count - j.Done));
+    }
+
     /// <summary>Ingredients you can bake with: any of your own (from before they were shared) plus the dairy pantry.</summary>
     public int IngredientCount(string id) => Count(id) + (Networked && F.NetMember != null ? Net.DairyPantry.GetValueOrDefault(id) : 0);
 
@@ -2533,6 +2575,9 @@ public sealed class DairyGame
                 }, e =>
                 {
                     takingIngredients = false;
+                    // Usually another farmer took them a moment ago: show the pantry as it is now
+                    Net.RefreshPantry(true);
+                    if (e.StartsWith("The dairy pantry doesn't have")) e += " Another farmer may have just used them.";
                     // Put back anything already taken for this bake
                     foreach (var (bid, bq) in got)
                     {
@@ -3258,12 +3303,14 @@ public sealed class DairyGame
 
     private bool Fail(string text)
     {
+        Diag.Info("game", "Problem: " + text);
         Toast?.Invoke(text, 2);
         return false;
     }
 
     private void Say(string text, int kind)
     {
+        Diag.Info("game", text);
         Toast?.Invoke(text, kind);
         var log = F.Log!;
         log.Insert(0, $"{DateTime.Now:HH:mm}  {text}");

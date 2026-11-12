@@ -189,6 +189,13 @@ public sealed partial class MainWindow
 
     private void Visit(DairyListing d)
     {
+        // On someone's Island Sanctuary or in their inn room: only they can go there
+        if (d.Area is { } solo && Estate.SoloPlace(solo.Territory))
+        {
+            G.Notify($"{d.Name} is on its owner's {solo.Zone}: only they can go there.", 0);
+            return;
+        }
+
         if (d.Area is { } ar && ar.House.Length == 0)
         {
             // Outdoors: flag it on the map and copy where it is
