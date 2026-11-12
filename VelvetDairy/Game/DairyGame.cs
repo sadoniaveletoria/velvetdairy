@@ -2529,6 +2529,17 @@ public sealed class DairyGame
     public int MaxMake(Catalog.Recipe r) =>
         r.Needs().Aggregate(r.MilkOz > 0 ? (int)(OzAtOrAbove(r.MinGrade) / r.MilkOz) : 999, (m, n) => Math.Min(m, IngredientCount(n.Id) / n.Count));
 
+    /// <summary>
+    /// Ingredients set aside for the bake you're running: taken from the dairy pantry when it started (so no other
+    /// farmer can use them) and used up batch by batch.
+    /// </summary>
+    public int Reserved(string id)
+    {
+        if (F.Bake is not { } j || Catalog.RecipeById(j.Recipe) is not { } r) return 0;
+        var per = r.Needs().Where(n => n.Id == id).Sum(n => n.Count);
+        return Math.Min(Count(id), per * Math.Max(0, j.Count - j.Done));
+    }
+
     /// <summary>Ingredients you can bake with: any of your own (from before they were shared) plus the dairy pantry.</summary>
     public int IngredientCount(string id) => Count(id) + (Networked && F.NetMember != null ? Net.DairyPantry.GetValueOrDefault(id) : 0);
 
@@ -2564,6 +2575,9 @@ public sealed class DairyGame
                 }, e =>
                 {
                     takingIngredients = false;
+                    // Usually another farmer took them a moment ago: show the pantry as it is now
+                    Net.RefreshPantry(true);
+                    if (e.StartsWith("The dairy pantry doesn't have")) e += " Another farmer may have just used them.";
                     // Put back anything already taken for this bake
                     foreach (var (bid, bq) in got)
                     {

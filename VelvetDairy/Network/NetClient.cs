@@ -633,12 +633,13 @@ public sealed class NetClient : IDisposable
 
     /// <summary>The dairy pantry: ingredients (butter) shared by all the dairy's farmers.</summary>
     public Dictionary<string, int> DairyPantry { get; private set; } = new();
-    private DateTime nextPantry = DateTime.MinValue;
+    private DateTime lastPantry = DateTime.MinValue;
 
-    public void RefreshPantry(bool now = false)
+    /// <summary>The dairy pantry: every 30 seconds, or more often (every) while the Kitchen is open.</summary>
+    public void RefreshPantry(bool now = false, int every = 30)
     {
-        if (!now && DateTime.UtcNow < nextPantry) return;
-        nextPantry = DateTime.UtcNow.AddSeconds(30);
+        if (!now && DateTime.UtcNow - lastPantry < TimeSpan.FromSeconds(every)) return;
+        lastPantry = DateTime.UtcNow;
         Call<PantryReply>("GET", "/v1/pantry", null, r => DairyPantry = r.Items ?? new());
     }
 
