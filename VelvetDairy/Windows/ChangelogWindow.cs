@@ -23,7 +23,7 @@ public sealed class ChangelogWindow : Window
     /// <summary>Newest first. Write these for players: what changed for them, not how.</summary>
     private static readonly Entry[] Entries =
     {
-        new("0.9.37", "Levels 31 to 100, cheese and two new bakes", new[]
+        new("0.9.38", "Levels 31 to 100, cheese and two new bakes", new[]
         {
             "# Cow levels 31 to 100",
             "New Shop upgrades: Extra bottle 5 at 33 (6 bottles, the most you can have), Bigger bottle 5 at 40 (the golden Velvet churn, 64 oz), Silk cushion at 45 (Comfy drains 15% slower), Heirloom bell at 55 (+3% pay), Night owl at 62 (tired 2 hours later), Royal halter at 70 (+3% pay), Endless spring at 85 (Watered drains 20% slower), Sweet tooth at 92 (treat boosts last 15% longer) and the Velvet crown at 100.",

@@ -1,7 +1,7 @@
 <Project Sdk="Dalamud.NET.Sdk/15.0.0">
 
   <PropertyGroup>
-    <Version>0.9.37</Version>
+    <Version>0.9.38</Version>
     <Description>Eorzea Milkers: an 18+ dairy life game for FFXIV. Be the cow, the farmer or the owner.</Description>
     <PackageProjectUrl>https://github.com/sadoniaveletoria/velvetdairy</PackageProjectUrl>
     <IsPackable>false</IsPackable>
