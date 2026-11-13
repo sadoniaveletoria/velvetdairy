@@ -23,7 +23,7 @@ public sealed class ChangelogWindow : Window
     /// <summary>Newest first. Write these for players: what changed for them, not how.</summary>
     private static readonly Entry[] Entries =
     {
-        new("0.9.39", "Bulls: seed, the seed tank and breeding", new[]
+        new("0.9.40", "Bulls: seed, the seed tank and breeding", new[]
         {
             "# Bulls make seed",
             "Bulls now work like cows, with seed instead of milk. The same four needs (Fed, Watered, Comfy, Happy) speed it up, and care, treats, resting, levels, dozing and tiredness all work the same. If you're a cow and a bull, one set of needs feeds both.",
@@ -36,6 +36,7 @@ public sealed class ChangelogWindow : Window
             "# Breeding (with Corruption)",
             "Eorzea Milkers now works with the Corruption plugin (RaylaPetal/corruption). It only reads from Corruption (scenes, climaxes and pregnancy) and never changes anything there. Without Corruption everything else works as before.",
             "When a bull of your own dairy finishes in a Corruption scene with you, you're bred: +5% milk for 30 minutes. It can count once every 20 minutes.",
+            "During a Corruption scene the HUD shows who you're with and your arousal, with a bar, and the Barn says when finishing will count as a breeding.",
             "A bull gets up to 40 bull xp for each breeding. Bulls can breed as often as they like, but after 20 breedings a day their breeding output drops 20% each time (to 20% at the lowest), which makes the cow's bonus and his xp smaller. It's back to full at midnight UTC.",
             "# Pregnancy",
             "If Corruption gets you pregnant, it shows as a status on the HUD, the Roles tab (stage, a progress bar, due date and father) and your dairy's member list.",
