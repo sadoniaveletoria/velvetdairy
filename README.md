@@ -57,7 +57,7 @@ Only the owner can take a role away from someone.
 - No milk is made while you're logged out.
 
 **Getting milked** (only inside your dairy)
-- **At a stall:** sit on its seat and it starts by itself.
+- **At a stall:** sit on its seat and it starts by itself. You don't need to get up between milkings: stay seated and it starts again once half a bottle has refilled, and sitting there counts as resting, so you keep the resting bonus. (After 30 minutes without doing anything you start dozing and it won't start a new milking until you move, emote or click something.)
 - **By hand:** a farmer of your dairy stands close, targets you and presses **Milk**. Hand milking is faster, pays more and makes up a lost grade.
 - You're **paid the moment you're milked**, by grade: C 6, B 8, A 10, S 12, S+ 14 coins an ounce, plus a bonus for your dairy's level.
 - **Daily earnings taper off:** everything the game pays you in a day (milking, farmer shares, orders, goals, awards) counts together. The first 3,000 coins are paid in full, then half up to 8,000, then a tenth. XP is never reduced, coins from other players don't count, and it resets each day.
