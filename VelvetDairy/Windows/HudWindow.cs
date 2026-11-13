@@ -196,6 +196,13 @@ public sealed class HudWindow : Window
             col = G.Where.InDairy ? Theme.SageDeep : Theme.InkSoft;
         }
 
+        // At a Grand Creamery: say so the whole time you're there
+        if (s == null && !G.Paused && G.CreameryHere is { } here)
+        {
+            status = $"At {here.Name}";
+            col = Theme.BlueDeep;
+        }
+
         // A newer version is out
         if (G.Net.UpdateVersion is { } nv && s == null && !G.Spoiled && cow.Milk < cap - 0.1f)
         {

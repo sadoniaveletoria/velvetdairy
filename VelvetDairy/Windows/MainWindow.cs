@@ -295,6 +295,8 @@ public sealed partial class MainWindow : Window
             if (G.Where.InDairy)
                 Pill(G.InPrivatePlace ? "PRIVATE" : G.Where.Seated ? "RESTING" : "HERE", Theme.SageDeep,
                     (G.InPrivatePlace ? "In your dairy's private place. " : G.Where.Seated ? "Resting in your dairy. " : "In your dairy. ") + G.Where.Why);
+            else if (G.CreameryHere is { } cr)
+                Pill("CREAMERY", Theme.BlueDeep, $"At {cr.Name}: ship your contract milk on Dairy > Contract. Milking, care and chores only work inside your dairy.");
             else Pill("AWAY", Theme.InkSoft, G.Where.Why + " Milking, care and chores only work inside the dairy.");
         }
 
@@ -1740,17 +1742,18 @@ public sealed partial class MainWindow : Window
         if (ImGui.SliderFloat("Stall seat range (players: 0.9 y)", ref stall, 0.5f, 4f, "%.1f")) { F.StallRange = stall; changed = true; }
         // The Grand Creamery: where weekly contracts are delivered, for everyone
         ImGui.Spacing();
-        ImGui.TextColored(Theme.Ink, "Grand Creameries (weekly contract delivery points, up to 3: one per Grand Company)");
-        ImGui.SetNextItemWidth(220);
-        ImGui.InputTextWithHint("##creameryname", "Name (The Grand Creamery)", ref creameryName, 40);
-        ImGui.SameLine();
-        ImGui.SetNextItemWidth(120);
-        ImGui.SliderFloat("radius##creameryradius", ref creameryRadius, 3f, 30f, "%.0f y");
+        Ui.Wrapped("Grand Creameries: weekly contract delivery points, up to 3 (one per Grand Company).", Theme.Ink, width);
+        ImGui.TextColored(Theme.InkSoft, "Name");
+        ImGui.SetNextItemWidth(Math.Min(260, width));
+        ImGui.InputTextWithHint("##creameryname", "The Grand Creamery", ref creameryName, 40);
+        ImGui.TextColored(Theme.InkSoft, "Radius");
+        ImGui.SetNextItemWidth(Math.Min(260, width));
+        ImGui.SliderFloat("##creameryradius", ref creameryRadius, 3f, 30f, "%.0f yalms");
         for (var slot = 0; slot < 3; slot++)
         {
             var cr = G.Creameries.FirstOrDefault(c => c.Slot == slot);
-            ImGui.TextColored(cr != null ? Theme.Ink : Theme.InkSoft, cr != null ? $"{slot + 1}. {cr.Name} · {cr.Zone} · radius {cr.Radius:0} y" : $"{slot + 1}. (empty)");
-            ImGui.SameLine();
+            ImGui.Spacing();
+            Ui.Wrapped(cr != null ? $"{slot + 1}. {cr.Name} · {cr.Zone} · radius {cr.Radius:0} y" : $"{slot + 1}. (empty)", cr != null ? Theme.Ink : Theme.InkSoft, width);
             if (ImGui.SmallButton($"Set here##creamset{slot}") && G.Networked) G.SetCreameryHere(slot, creameryName, creameryRadius);
             if (ImGui.IsItemHovered()) ImGui.SetTooltip("Puts this Grand Creamery where you're standing, with the name and radius above, for every player. Takes effect within a minute.");
             if (cr != null)
