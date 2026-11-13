@@ -74,6 +74,25 @@ const MEMBER_DAILY_SEED = 300;
 const SEED_PRICE_MULT = 10;
 const SEED_DAILY_HAND_OZ = 160;
 const SEED_TANK_GRADE = -1;         // the dairy's seed tank is its own dairy_tank row
+
+// Each public world's data center, so a listing shows the right one even if an older plugin saved the wrong one
+const DC_WORLDS = {
+  Aether: "Adamantoise Cactuar Faerie Gilgamesh Jenova Midgardsormr Sargatanas Siren",
+  Crystal: "Balmung Brynhildr Coeurl Diabolos Goblin Malboro Mateus Zalera",
+  Primal: "Behemoth Excalibur Exodus Famfrit Hyperion Lamia Leviathan Ultros",
+  Dynamis: "Cuchulainn Golem Halicarnassus Kraken Maduin Marilith Rafflesia Seraph",
+  Chaos: "Cerberus Louisoix Moogle Omega Phantom Ragnarok Sagittarius Spriggan",
+  Light: "Alpha Lich Odin Phoenix Raiden Shiva Twintania Zodiark",
+  Shadow: "Innocence Pixie Titania Tycoon",
+  Materia: "Bismarck Ravana Sephirot Sophia Zurvan",
+  Elemental: "Aegis Atomos Carbuncle Garuda Gungnir Kujata Tonberry Typhon",
+  Gaia: "Alexander Bahamut Durandal Fenrir Ifrit Ridill Tiamat Ultima",
+  Mana: "Anima Asura Chocobo Hades Ixion Masamune Pandaemonium Titan",
+  Meteor: "Belias Mandragora Ramuh Shinryu Unicorn Valefor Yojimbo Zeromus",
+};
+const DC_OF = Object.fromEntries(Object.entries(DC_WORLDS).flatMap(([dc, ws]) => ws.split(" ").map(w => [w.toLowerCase(), dc])));
+const dcFor = (worldName, saved) => DC_OF[String(worldName || "").toLowerCase()] || saved || "";
+
 const INVITE_ROLES = ["farmer", "cow", "bull"];
 const ROLE_ORDER = ["cow", "farmer", "bull"];
 
@@ -737,7 +756,7 @@ function listing(row, me) {
     mine,
     owner: row.show_owner ? row.owner_name : "",
     worldName: row.world_name,
-    dcName: row.dc_name,
+    dcName: dcFor(row.world_name, row.dc_name),
     // The address only goes to other players when the owner made the dairy public
     houseId: open && /^[0-9]+$/.test(row.house_id) ? row.house_id : null,
     area: open && row.a_territory ? {
@@ -901,6 +920,7 @@ async function putDairy(env, me, request) {
     worldName = existing.world_name;
     dcName = existing.dc_name;
   }
+  dcName = dcFor(worldName, dcName);
 
   const id = existing ? existing.id : randomId();
   await env.DB.prepare(`

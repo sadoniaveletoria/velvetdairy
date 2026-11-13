@@ -85,6 +85,11 @@ await test("a dairy's data center comes from its own world, not where the owner 
   assert.equal((await listed()).dcName, "Primal");
   await call(alice, "PUT", "/v1/dairy", dairyBody({ namesFor: 40 }));
   assert.equal((await listed()).dcName, "Aether");
+  // A known world's data center always comes from the world list, whatever was sent or saved
+  await call(alice, "PUT", "/v1/dairy", dairyBody({ worldName: "Lich", dcName: "Chaos", namesFor: 40 }));
+  assert.equal((await listed()).dcName, "Light");
+  await call(alice, "PUT", "/v1/dairy", dairyBody({ namesFor: 40 }));
+  assert.equal((await listed()).dcName, "Aether");
 });
 
 await test("an address can only be registered once", async () => {
