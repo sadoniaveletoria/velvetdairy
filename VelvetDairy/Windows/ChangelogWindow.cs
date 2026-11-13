@@ -23,8 +23,11 @@ public sealed class ChangelogWindow : Window
     /// <summary>Newest first. Write these for players: what changed for them, not how.</summary>
     private static readonly Entry[] Entries =
     {
-        new("0.9.44", "Bulls: seed, the seed tank and breeding", new[]
+        new("0.9.45", "Bulls: seed, the seed tank and breeding", new[]
         {
+            "# A new look",
+            "The tabs are now down the left side of the main window, each with an icon. Under them is the list of helper plugins (Penumbra, Corruption, Cummy and Lifestream) with a green dot for each one you have: hover one to see what it's for, or click a missing one to copy its repository link.",
+            "The Barn is laid out fresh: your bottle and how you're doing on top, Care as one slim row of cards under it, and milking along the bottom.",
             "# Bulls make seed",
             "Bulls now work like cows, with seed instead of milk. The same four needs (Fed, Watered, Comfy, Happy) speed it up, and care, treats, resting, levels, dozing and tiredness all work the same. If you're a cow and a bull, one set of needs feeds both.",
             "Seed fills vials a tenth the size of your bottles (the bottle upgrades you buy apply to both). It comes in at 10% of milk speed at Grade C, rising to 20% at S+.",
@@ -38,7 +41,7 @@ public sealed class ChangelogWindow : Window
             "When a bull of your own dairy finishes in a Corruption scene with you, you're bred: +5% milk for 30 minutes. It counts once per scene (finishing again in the same scene doesn't breed again), and at most once every 20 minutes.",
             "During a Corruption scene the HUD shows who you're with and your arousal, with a bar, and the Barn says when finishing will count as a breeding. A cow with a bull of her dairy also sees her chance of conceiving from Corruption (only she sees it).",
             "A bull gets up to 40 bull xp for each breeding. Bulls can breed as often as they like, but after 20 breedings a day their breeding output drops 20% each time (to 20% at the lowest), which makes the cow's bonus and his xp smaller. It's back to full at midnight UTC.",
-            "The right end of the main window's tab row lists the helper plugins (Penumbra, Corruption, Cummy and Lifestream) with a green dot for each one you have. Hover one to see what it's for; click a missing one to copy its repository link. If Corruption or Cummy is missing, you're told once, with the link to add it.",
+            "If Corruption or Cummy is missing, you're told once, with the link to add it.",
             "# Pregnancy",
             "If Corruption gets you pregnant, it shows as a status on the HUD, the Roles tab (stage, a progress bar, due date and father) and your dairy's member list.",
             "Pregnant cows give more milk: +5% in the first trimester, +10% in the second and +15% in the third. The bonus ends with the birth.",
