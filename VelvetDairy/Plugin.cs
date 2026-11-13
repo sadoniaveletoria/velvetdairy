@@ -38,6 +38,7 @@ public sealed class Plugin : IDalamudPlugin
     public HudWindow Hud { get; }
     public Sounds Sounds { get; }
     public CorruptionLink Corruption { get; }
+    public Companions Companions { get; }
     public NetClient Net { get; private set; }
     public OwnerHudWindow OwnerHud { get; }
     public MembersWindow Members { get; }
@@ -96,6 +97,7 @@ public sealed class Plugin : IDalamudPlugin
         Sounds = new Sounds(this);
         // Breeding and pregnancy come from the Corruption plugin; its events go to whichever character is playing
         Corruption = new CorruptionLink();
+        Companions = new Companions(this);
         Corruption.PartnerClimax += (name, world) => Game.OnPartnerClimax(name, world);
         Corruption.Climax += () => Game.OnClimax();
         Corruption.Changed += () => Game.ReadPregnancySoon();

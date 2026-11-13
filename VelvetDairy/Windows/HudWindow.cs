@@ -61,6 +61,28 @@ public sealed class HudWindow : Window
         return text.TrimEnd(' ', '·') + "...";
     }
 
+    /// <summary>
+    /// A small dot per plugin Eorzea Milkers works with, top right: green when it's installed and loaded, hollow when not.
+    /// Hovering lists them and what each one is for.
+    /// </summary>
+    private void DrawCompanionDots(ImDrawListPtr dl, Vector2 right)
+    {
+        var all = plugin.Companions.All(G.Now);
+        const float step = 9f, r = 3f;
+        var left = right - new Vector2(step * (all.Count - 1) + r + 2, r + 3);
+        for (var i = 0; i < all.Count; i++)
+        {
+            var c = new Vector2(right.X - step * (all.Count - 1 - i), right.Y);
+            if (all[i].On) dl.AddCircleFilled(c, r, Ui.U(Theme.SageDeep));
+            else dl.AddCircle(c, r, Ui.U(Theme.InkSoft), 0, 1.2f);
+        }
+
+        if (!ImGui.IsMouseHoveringRect(left, right + new Vector2(r + 3, r + 3))) return;
+        var lines = new System.Collections.Generic.List<string> { "Plugins Eorzea Milkers works with (none are needed to play):" };
+        foreach (var c in all) lines.Add($"{c.Name}: {(c.On ? "on" : "not installed")} · {c.For}");
+        ImGui.SetTooltip(string.Join("\n", lines));
+    }
+
     public override void Draw()
     {
         // Clicking in Eorzea Milkers's own windows counts as being awake (mouse movement alone doesn't)
@@ -82,6 +104,7 @@ public sealed class HudWindow : Window
             Ui.Text(dl, fonts.Small, title, new Vector2(tx + cw, o.Y + 2), Theme.HoneyDeep);
         }
         var size = HudSize;   // the bottle, needs and status keep their place; buttons go below
+        DrawCompanionDots(dl, new Vector2(o.X + size.X - 14, o.Y + 9));
 
         var cow = F.Cow;
         // A bull who isn't a cow shows his seed vials here instead of milk bottles; a cow who's also a bull gets a small vial beside the bottle
