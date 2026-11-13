@@ -478,7 +478,15 @@ public sealed class NetClient : IDisposable
             ok(r);
         }, failed);
 
-    /// <summary>Developer: puts the Grand Creamery where you're standing (for everyone).</summary>
+    /// <summary>Developer: removes one of the Grand Creameries.</summary>
+    public void RemoveCreamery(int slot, Action ok, Action<string> failed) =>
+        Call<object>("DELETE", $"/v1/dev/creamery/{slot}", null, _ =>
+        {
+            Poke();
+            ok();
+        }, failed, dev: true);
+
+    /// <summary>Developer: puts a Grand Creamery where you're standing (for everyone).</summary>
     public void SetCreamery(object body, Action ok, Action<string> failed) =>
         Call<IdReply>("PUT", "/v1/dev/creamery", body, _ =>
         {

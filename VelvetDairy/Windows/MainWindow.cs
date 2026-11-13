@@ -1740,16 +1740,27 @@ public sealed partial class MainWindow : Window
         if (ImGui.SliderFloat("Stall seat range (players: 0.9 y)", ref stall, 0.5f, 4f, "%.1f")) { F.StallRange = stall; changed = true; }
         // The Grand Creamery: where weekly contracts are delivered, for everyone
         ImGui.Spacing();
-        ImGui.TextColored(Theme.Ink, "Grand Creamery (weekly contract delivery point)");
-        var cr = G.Creamery;
-        ImGui.TextColored(Theme.InkSoft, cr != null ? $"Now: {cr.Name} · {cr.Zone} · radius {cr.Radius:0} y" : "Not set (contracts ship from each dairy).");
+        ImGui.TextColored(Theme.Ink, "Grand Creameries (weekly contract delivery points, up to 3: one per Grand Company)");
         ImGui.SetNextItemWidth(220);
         ImGui.InputTextWithHint("##creameryname", "Name (The Grand Creamery)", ref creameryName, 40);
         ImGui.SameLine();
         ImGui.SetNextItemWidth(120);
         ImGui.SliderFloat("radius##creameryradius", ref creameryRadius, 3f, 30f, "%.0f y");
-        if (ImGui.Button("Set the Grand Creamery where I'm standing") && G.Networked) G.SetCreameryHere(creameryName, creameryRadius);
-        if (ImGui.IsItemHovered()) ImGui.SetTooltip("Saves your zone and position on the network for every player. Takes effect within a minute.");
+        for (var slot = 0; slot < 3; slot++)
+        {
+            var cr = G.Creameries.FirstOrDefault(c => c.Slot == slot);
+            ImGui.TextColored(cr != null ? Theme.Ink : Theme.InkSoft, cr != null ? $"{slot + 1}. {cr.Name} · {cr.Zone} · radius {cr.Radius:0} y" : $"{slot + 1}. (empty)");
+            ImGui.SameLine();
+            if (ImGui.SmallButton($"Set here##creamset{slot}") && G.Networked) G.SetCreameryHere(slot, creameryName, creameryRadius);
+            if (ImGui.IsItemHovered()) ImGui.SetTooltip("Puts this Grand Creamery where you're standing, with the name and radius above, for every player. Takes effect within a minute.");
+            if (cr != null)
+            {
+                ImGui.SameLine();
+                if (ImGui.SmallButton($"Remove##creamdel{slot}") && G.Networked) G.RemoveCreamery(slot);
+            }
+        }
+
+        if (G.Creameries.Count == 0) ImGui.TextColored(Theme.InkSoft, "None set: contracts ship from each dairy.");
         ImGui.Spacing();
 
         var sleepy = F.DevCanSleep;

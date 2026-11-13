@@ -415,24 +415,23 @@ public sealed partial class MainWindow
         Ui.Wrapped("Contracts grow 40 oz with each dairy level. Any milk counts.", Theme.InkSoft, width);
     }
 
-    private Dalamud.Game.Text.SeStringHandling.Payloads.MapLinkPayload? creameryLink;
-    private CreameryInfo? creameryLinkFor;
+    private readonly Dictionary<CreameryInfo, Dalamud.Game.Text.SeStringHandling.Payloads.MapLinkPayload?> creameryLinks = new();
 
-    /// <summary>A map link to the Grand Creamery (made once per location).</summary>
+    /// <summary>A map link to a Grand Creamery (made once per location).</summary>
     private Dalamud.Game.Text.SeStringHandling.Payloads.MapLinkPayload? CreameryLink(CreameryInfo c)
     {
-        if (creameryLinkFor == c) return creameryLink;
-        creameryLinkFor = c;
+        if (creameryLinks.TryGetValue(c, out var link)) return link;
+        if (creameryLinks.Count > 12) creameryLinks.Clear();
         try
         {
-            creameryLink = c.MapId > 0 ? new Dalamud.Game.Text.SeStringHandling.Payloads.MapLinkPayload(c.Territory, c.MapId, (int)(c.X * 1000), (int)(c.Z * 1000)) : null;
+            link = c.MapId > 0 ? new Dalamud.Game.Text.SeStringHandling.Payloads.MapLinkPayload(c.Territory, c.MapId, (int)(c.X * 1000), (int)(c.Z * 1000)) : null;
         }
         catch
         {
-            creameryLink = null;
+            link = null;
         }
 
-        return creameryLink;
+        return creameryLinks[c] = link;
     }
 
     private void DrawContractShip(float width)
@@ -440,17 +439,24 @@ public sealed partial class MainWindow
         var c = G.Net.Progress?.Contract;
         if (c == null) return;
 
-        // Where to deliver
-        var cr = G.Creamery;
-        if (cr != null)
+        // Where to deliver: any Grand Creamery
+        var crs = G.Creameries;
+        if (crs.Count > 0)
         {
-            var link = CreameryLink(cr);
-            ImGui.TextColored(Theme.Ink, cr.Name);
-            ImGui.TextColored(Theme.InkSoft, link != null ? $"{cr.Zone} ( {link.XCoord:0.0} , {link.YCoord:0.0} )" : cr.Zone);
-            ImGui.TextColored(G.AtCreamery ? Theme.SageDeep : Theme.RoseDeep, G.AtCreamery ? "You're here." : "Bring your jugs here to ship them.");
-            if (link != null)
+            var here = G.CreameryHere;
+            ImGui.TextColored(here != null ? Theme.SageDeep : Theme.RoseDeep,
+                here != null ? $"You're at {here.Name}." : crs.Count == 1 ? "Bring your jugs here to ship them." : "Bring your jugs to any of these to ship them.");
+            foreach (var cr in crs)
             {
-                if (ImGui.SmallButton("Show on map##creamerymap")) Plugin.GameGui.OpenMapWithMapLink(link);
+                var link = CreameryLink(cr);
+                ImGui.TextColored(Theme.Ink, cr.Name);
+                ImGui.SameLine();
+                ImGui.TextColored(Theme.InkSoft, link != null ? $"{cr.Zone} ( {link.XCoord:0.0} , {link.YCoord:0.0} )" : cr.Zone);
+                if (link != null)
+                {
+                    ImGui.SameLine();
+                    if (ImGui.SmallButton($"Map##creamerymap{cr.Slot}")) Plugin.GameGui.OpenMapWithMapLink(link);
+                }
             }
 
             Gap(6);

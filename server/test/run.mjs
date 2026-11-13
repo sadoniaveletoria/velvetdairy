@@ -241,6 +241,14 @@ await test("dairy XP: only in the dairy, capped per member per day", async () =>
   assert.equal((await call(alice, "PUT", "/v1/dev/creamery", { territory: 129, x: 1, y: 2, z: 3 })).status, 403, "developer only");
   sqlite.exec(`INSERT INTO settings (key, value) VALUES ('creamery', '{"name":"Test Creamery","territory":129,"x":0,"y":0,"z":0,"radius":8}')`);
   assert.equal((await beat(bob, { houseId: HOUSE })).data.creamery.name, "Test Creamery");
+  assert.equal((await beat(bob, { houseId: HOUSE })).data.creameries.length, 1, "the old single creamery counts as the first");
+  // Several Grand Creameries (one per Grand Company): all listed, the first also as "creamery" for older plugins
+  sqlite.exec(`INSERT INTO settings (key, value) VALUES ('creameries', '[{"name":"Limsa Creamery","territory":128,"x":0,"y":0,"z":0,"radius":8},null,{"name":"Uldah Creamery","territory":130,"x":0,"y":0,"z":0,"radius":8}]')`);
+  const many = (await beat(bob, { houseId: HOUSE })).data;
+  assert.deepEqual(many.creameries.map(c => [c.name, c.slot]), [["Limsa Creamery", 0], ["Uldah Creamery", 2]]);
+  assert.equal(many.creamery.name, "Limsa Creamery");
+  assert.match((await call(bob, "POST", "/v1/dairy/contract/ship", { grade: 1, oz: 10 })).data.error, /a Grand Creamery \(Limsa Creamery, Uldah Creamery\)/);
+  assert.equal((await call(alice, "DELETE", "/v1/dev/creamery/1")).status, 403, "developer only");
   assert.equal((await call(bob, "POST", "/v1/dairy/contract/ship", { grade: 1, oz: 10 })).status, 400, "not at the creamery");
   await beat(bob, { atCreamery: true });
   const fundBefore = (await call(alice, "GET", "/v1/dairy/mine")).data.progress.fund;

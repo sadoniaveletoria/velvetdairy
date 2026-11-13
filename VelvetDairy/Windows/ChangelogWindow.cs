@@ -22,7 +22,7 @@ public sealed class ChangelogWindow : Window
     /// <summary>Newest first. Write these for players: what changed for them, not how.</summary>
     private static readonly Entry[] Entries =
     {
-        new("0.9.36", "Levels 31 to 100, cheese and two new bakes", new[]
+        new("0.9.37", "Levels 31 to 100, cheese and two new bakes", new[]
         {
             "# Cow levels 31 to 100",
             "New Shop upgrades: Extra bottle 5 at 33 (6 bottles, the most you can have), Bigger bottle 5 at 40 (the golden Velvet churn, 64 oz), Silk cushion at 45 (Comfy drains 15% slower), Heirloom bell at 55 (+3% pay), Night owl at 62 (tired 2 hours later), Royal halter at 70 (+3% pay), Endless spring at 85 (Watered drains 20% slower), Sweet tooth at 92 (treat boosts last 15% longer) and the Velvet crown at 100.",
@@ -34,6 +34,8 @@ public sealed class ChangelogWindow : Window
             "At 45 your hand milking share goes from 25% to 30%. At 85 everything bakes 20% faster. At 100: Master Farmer, and a crown.",
             "# Bulls",
             "Bull titles at 25, 50, 75 and 100.",
+            "# Grand Creameries",
+            "There can now be a Grand Creamery at each Grand Company. Ship your weekly contract milk at whichever is closest: Dairy > Contract lists them all, each with a map link.",
             "# Cheese",
             "New treat: Cheese. Farmers make it in the Kitchen from milk alone (16 oz makes 2) from farmer level 1, so it's the first treat you can make. It goes on the dairy shelf (25 coins by default) and gives cows Happy +4% and a 10 minute milk boost: a little less than butter cookies and cream buns.",
         }),

@@ -15,6 +15,7 @@ public sealed class HeartbeatReply
     public int Inbox { get; set; }
     public int DairyXp { get; set; }
     public CreameryInfo? Creamery { get; set; }
+    public List<CreameryInfo>? Creameries { get; set; }   // up to 3 (one per Grand Company); Creamery is the first
     public float Carried { get; set; }
 }
 
@@ -29,6 +30,7 @@ public sealed class CreameryInfo
     public float Y { get; set; }
     public float Z { get; set; }
     public float Radius { get; set; } = 8;
+    public int Slot { get; set; }
 }
 
 public sealed class HereInfo

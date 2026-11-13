@@ -278,6 +278,7 @@ async function route(request, env) {
     ["POST", /^\/v1\/dairy\/contract\/ship$/, () => shipToContract(env, me, request)],
     ["POST", /^\/v1\/carry\/use$/, () => useCarried(env, me, request)],
     ["PUT", /^\/v1\/dev\/creamery$/, () => setCreamery(env, request)],
+    ["DELETE", /^\/v1\/dev\/creamery\/(\d)$/, m => removeCreamery(env, request, Number(m[1]))],
     ["GET", /^\/v1\/leaderboard$/, () => leaderboard(env, me)],
     ["GET", /^\/v1\/inbox$/, () => inbox(env, me)],
     ["POST", /^\/v1\/inbox\/claim$/, () => claim(env, me)],
@@ -547,7 +548,8 @@ async function heartbeat(env, me, request) {
     membership: mem ? { dairyId: mem.dairy_id, dairy: mem.dairy_name, role: primaryRole(mem.role), roles: roleList(mem.role), isOwner: !!mem.is_owner, level: (await progressOf(env, mem.dairy_id)).level } : null,
     dairyXp,
     pumped,
-    creamery: await creameryOf(env),
+    creamery: await creameryOf(env),          // the first one, for plugins before there were several
+    creameries: await creameriesOf(env),
     carried: await carriedOf(env, me.id),
     invites: invites.map(i => ({ id: i.id, role: i.role, dairy: i.dairy, world: i.world })),
     applications: mem && (await canAnswer(env, mem)) ? (await env.DB.prepare(
@@ -1451,10 +1453,11 @@ async function shipToContract(env, me, request) {
   const mem = await membership(env, me.id);
   if (!mem) fail(400, "Join a dairy first.");
   if (!mem.is_owner && !hasRole(mem, "farmer")) fail(403, "Only farmers and the owner ship milk to the contract.");
-  const creamery = await creameryOf(env);
-  if (creamery) {
+  const creameries = await creameriesOf(env);
+  if (creameries.length) {
     const seen = await env.DB.prepare("SELECT at FROM creamery_presence WHERE install = ?").bind(me.id).first();
-    if (!seen || seen.at < now() - ONLINE_WINDOW) fail(400, `Bring your jugs to ${creamery.name} to ship them.`);
+    if (!seen || seen.at < now() - ONLINE_WINDOW)
+      fail(400, creameries.length === 1 ? `Bring your jugs to ${creameries[0].name} to ship them.` : `Bring your jugs to a Grand Creamery (${creameries.map(c => c.name).join(", ")}) to ship them.`);
   } else if (!inOwnDairy(me, mem)) fail(400, "Go to your dairy to ship milk.");
   const grade = int(b.grade, 0, GRADES - 1, "grade");
   const p = await progressOf(env, mem.dairy_id);
@@ -1519,16 +1522,51 @@ async function useCarried(env, me, request) {
   return { ok: true, carried: await carriedOf(env, me.id) };
 }
 
-async function creameryOf(env) {
-  const r = await env.DB.prepare("SELECT value FROM settings WHERE key = 'creamery'").first();
-  return r ? safeParse(r.value) : null;
+// Up to 3 Grand Creameries (one at each Grand Company), set by the developer. Contract milk can be shipped at any of them.
+const MAX_CREAMERIES = 3;
+
+/** The creameries in their slots (0-2), skipping empty ones; each has its slot. */
+async function creameriesOf(env) {
+  const r = await env.DB.prepare("SELECT value FROM settings WHERE key = 'creameries'").first();
+  if (r) return (safeParse(r.value) || []).map((c, slot) => c && { ...c, slot }).filter(Boolean);
+  const one = await env.DB.prepare("SELECT value FROM settings WHERE key = 'creamery'").first();   // from before there were several
+  const c = one ? safeParse(one.value) : null;
+  return c ? [{ ...c, slot: 0 }] : [];
 }
 
-/** Developer only: puts the Grand Creamery where the developer is standing. */
-async function setCreamery(env, request) {
+async function creameryOf(env) {
+  return (await creameriesOf(env))[0] || null;
+}
+
+async function saveCreameries(env, list) {
+  const slots = Array.from({ length: MAX_CREAMERIES }, (_, i) => { const c = list.find(x => x.slot === i); if (!c) return null; const { slot, ...rest } = c; return rest; });
+  const first = slots.find(Boolean);
+  await env.DB.batch([
+    env.DB.prepare(`INSERT INTO settings (key, value) VALUES ('creameries', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`).bind(JSON.stringify(slots)),
+    first
+      ? env.DB.prepare(`INSERT INTO settings (key, value) VALUES ('creamery', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`).bind(JSON.stringify(first))
+      : env.DB.prepare("DELETE FROM settings WHERE key = 'creamery'"),
+  ]);
+}
+
+async function devOnly(request) {
   const phrase = request.headers.get("X-VD-Dev") || "";
   if (!phrase || (await sha256(phrase)) !== DEV_KEY_HASH) fail(403, "Developer only.");
+}
+
+/** Developer only: removes one Grand Creamery. */
+async function removeCreamery(env, request, slot) {
+  await devOnly(request);
+  if (slot < 0 || slot >= MAX_CREAMERIES) fail(400, "Bad slot.");
+  await saveCreameries(env, (await creameriesOf(env)).filter(c => c.slot !== slot));
+  return { ok: true };
+}
+
+/** Developer only: puts a Grand Creamery (slot 0-2) where the developer is standing. */
+async function setCreamery(env, request) {
+  await devOnly(request);
   const b = await body(request);
+  const slot = b.slot === undefined ? 0 : int(b.slot, 0, MAX_CREAMERIES - 1, "slot");
   const value = {
     name: clean(b.name, 40) || "The Grand Creamery",
     territory: int(b.territory, 1, 100000, "territory"),
@@ -1537,8 +1575,9 @@ async function setCreamery(env, request) {
     x: Number(b.x) || 0, y: Number(b.y) || 0, z: Number(b.z) || 0,
     radius: Math.max(2, Math.min(50, Number(b.radius) || 8)),
   };
-  await env.DB.prepare(`INSERT INTO settings (key, value) VALUES ('creamery', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`)
-    .bind(JSON.stringify(value)).run();
+  const list = (await creameriesOf(env)).filter(c => c.slot !== slot);
+  list.push({ ...value, slot });
+  await saveCreameries(env, list);
   return { ok: true, creamery: value };
 }
 

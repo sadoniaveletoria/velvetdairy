@@ -360,20 +360,25 @@ public sealed class DairyGame
     /// <summary>How much "Fill up" takes: whatever fits in your farmer tank, as much as the dairy tank has.</summary>
     public int FillUpOz => (int)Math.Floor(Math.Min(MaxCarry - Carried, TankOz) + 0.001f);
 
-    /// <summary>The Grand Creamery (set by the developer), where contract milk is delivered.</summary>
-    public CreameryInfo? Creamery => Net.Last?.Creamery;
+    /// <summary>The Grand Creameries (up to 3, set by the developer), where contract milk is delivered: any of them will do.</summary>
+    public List<CreameryInfo> Creameries => Net.Last?.Creameries ?? (Net.Last?.Creamery is { } one ? new List<CreameryInfo> { one } : new List<CreameryInfo>());
 
-    /// <summary>Standing at the Grand Creamery right now.</summary>
-    public bool AtCreamery
+    /// <summary>The first Grand Creamery, if any.</summary>
+    public CreameryInfo? Creamery => Creameries.FirstOrDefault();
+
+    /// <summary>The Grand Creamery you're standing at right now, if any.</summary>
+    public CreameryInfo? CreameryHere
     {
         get
         {
-            var c = Creamery;
             var me = Plugin.ObjectTable.LocalPlayer;
-            if (c == null || me == null || Plugin.ClientState.TerritoryType != c.Territory) return false;
-            return Vector3.Distance(me.Position, new Vector3(c.X, c.Y, c.Z)) <= c.Radius;
+            if (me == null) return null;
+            return Creameries.FirstOrDefault(c => Plugin.ClientState.TerritoryType == c.Territory && Vector3.Distance(me.Position, new Vector3(c.X, c.Y, c.Z)) <= c.Radius);
         }
     }
+
+    /// <summary>Standing at a Grand Creamery right now.</summary>
+    public bool AtCreamery => CreameryHere != null;
 
     private bool wasAtCreamery;
 
@@ -383,7 +388,7 @@ public sealed class DairyGame
         if (at && !wasAtCreamery)
         {
             Net.Poke();   // let the server know right away
-            if (CanCarry) Say($"You're at {Creamery!.Name}. Ship your jugs on Dairy > Contract.", 0);
+            if (CanCarry) Say($"You're at {CreameryHere!.Name}. Ship your jugs on Dairy > Contract.", 0);
         }
 
         wasAtCreamery = at;
@@ -396,15 +401,26 @@ public sealed class DairyGame
         if (c == null) return "Loading the contract...";
         if (c.Completed) return "This week's contract is done.";
         if (!CanCarry) return "Farmers and the owner ship milk to the contract.";
-        if (Creamery is { } cr) { if (!AtCreamery) return $"Bring your jugs to {cr.Name} ({cr.Zone}) to ship them."; }
+        if (Creameries is { Count: > 0 } crs)
+        {
+            if (!AtCreamery)
+                return crs.Count == 1 ? $"Bring your jugs to {crs[0].Name} ({crs[0].Zone}) to ship them." : "Bring your jugs to a Grand Creamery to ship them: " + string.Join(", ", crs.Select(c => $"{c.Name} ({c.Zone})")) + ".";
+        }
         else if (!Where.InDairy) return "Go to your dairy to ship milk.";
         if (oz < 1) return "Nothing left to ship.";
         if (Carried < oz - 0.01f) return $"You carry {Carried:0.#} oz. Fill jugs at your dairy (HUD > Kitchen).";
         return null;
     }
 
-    /// <summary>Developer: sets the Grand Creamery where you stand.</summary>
-    public void SetCreameryHere(string name, float radius)
+    /// <summary>Developer: removes a Grand Creamery.</summary>
+    public void RemoveCreamery(int slot)
+    {
+        if (!Dev) return;
+        Net.RemoveCreamery(slot, () => Say($"Grand Creamery {slot + 1} removed.", 1), e => Fail(e));
+    }
+
+    /// <summary>Developer: sets a Grand Creamery (slot 0-2) where you stand.</summary>
+    public void SetCreameryHere(int slot, string name, float radius)
     {
         var me = Plugin.ObjectTable.LocalPlayer;
         if (!Dev || me == null) return;
@@ -412,13 +428,14 @@ public sealed class DairyGame
         var zone = Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.TerritoryType>().GetRowOrDefault(t)?.PlaceName.ValueNullable?.Name.ExtractText() ?? "";
         Net.SetCreamery(new
         {
+            slot,
             name = string.IsNullOrWhiteSpace(name) ? "The Grand Creamery" : name.Trim(),
             territory = t,
             mapId = Plugin.ClientState.MapId,
             zone,
             x = me.Position.X, y = me.Position.Y, z = me.Position.Z,
             radius,
-        }, () => Say($"The Grand Creamery is now here ({zone}).", 1), e => Fail(e));
+        }, () => Say($"Grand Creamery {slot + 1} is now here ({zone}).", 1), e => Fail(e));
     }
 
     public void Ship(int oz)

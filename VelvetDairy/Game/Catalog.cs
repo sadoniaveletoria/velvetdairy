@@ -185,8 +185,8 @@ public static class Catalog
         new FeedItem("starclover", "Star clover", "starclover", 200, 1, "Rare and sweet. A big step up in milk quality, and faster milk for 30 minutes.", Happy: 0.10f, Quality: 100, BoostMinutes: 30),
         // Baked by your dairy's farmers and bought off the dairy shelf (not sold in the Shop)
         new FeedItem("cheese", "Cheese", "cheese", 0, 1, "Made by your dairy's farmers. A little happy, and a milk boost for 10 minutes.", Happy: 0.04f, BoostMinutes: 10, Baked: true),
-        new FeedItem("cake", "Honey cream cake", "biscuit", 0, 1, "Baked by your dairy's farmers. Filling, very happy, and a milk boost for 25 minutes.", Fed: 0.06f, Happy: 0.09f, BoostMinutes: 25, Baked: true),
-        new FeedItem("tart", "Velvet tart", "biscuit", 0, 1, "Baked by your dairy's farmers. The best treat: filling, very happy, and a milk boost for 30 minutes.", Fed: 0.08f, Happy: 0.11f, BoostMinutes: 30, Baked: true),
+        new FeedItem("cake", "Honey cream cake", "cake", 0, 1, "Baked by your dairy's farmers. Filling, very happy, and a milk boost for 25 minutes.", Fed: 0.06f, Happy: 0.09f, BoostMinutes: 25, Baked: true),
+        new FeedItem("tart", "Velvet tart", "tart", 0, 1, "Baked by your dairy's farmers. The best treat: filling, very happy, and a milk boost for 30 minutes.", Fed: 0.08f, Happy: 0.11f, BoostMinutes: 30, Baked: true),
         new FeedItem("cookies", "Butter cookies", "biscuit", 0, 1, "Baked by your dairy's farmers. Happy, and a milk boost for 15 minutes.", Happy: 0.06f, BoostMinutes: 15, Baked: true),
         new FeedItem("buns", "Cream buns", "biscuit", 0, 1, "Baked by your dairy's farmers. Filling, happy, and a milk boost for 20 minutes.", Fed: 0.05f, Happy: 0.07f, BoostMinutes: 20, Baked: true),
         // Going away: keeps your grade from slipping
