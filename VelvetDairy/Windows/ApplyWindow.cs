@@ -107,7 +107,8 @@ public sealed class ApplyWindow : Window
 
         ImGui.SameLine();
         if (Ui.Button("##applycancel", "Cancel", new Vector2(100, 32), "cream", true, null)) IsOpen = false;
-        ImGui.TextColored(Theme.InkSoft, "You can apply to several dairies; when one accepts you, the others are withdrawn.");
+        ImGui.TextColored(Theme.Warn, "You can only be in one dairy at a time.");
+        ImGui.TextColored(Theme.InkSoft, "You can apply to several, but when one accepts you, your other applications are withdrawn.");
         ImGui.PopTextWrapPos();
     }
 }

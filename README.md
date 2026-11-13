@@ -99,9 +99,18 @@ Only the owner can take a role away from someone.
 
 ---
 
+## Joining a dairy
+
+- Get **invited** by the owner or a farmer, or **apply**: on the **Dairies** tab, dairies that are looking for members show what they want (Cows, Farmers, Bulls) and an **Apply** button. Pick your roles, add a short note and send it.
+- **You can only be in one dairy at a time.** You can apply to several, but when one accepts you, your other applications are withdrawn. To move to another dairy, leave yours first (**Dairy** tab).
+- If a dairy says no, you can apply to it again after 3 days.
+
+---
+
 ## Running a dairy (owners)
 
 - Invite people with **right-click → Eorzea Milkers**, or on **Dairy → Overview**.
+- Take **applications**: in **Members → Applications**, tick what you're looking for, then accept or deny. You can let your farmers answer applications too (off unless you turn it on).
 - **Manage members** shows everyone's levels, milk, quality, how much they've given and when they were last online.
 - The **owner HUD** shows who's online, who's in the dairy and how full each cow is.
 - Post **buy orders** to bring milk into your tank from other dairies. This works even if your dairy is private.

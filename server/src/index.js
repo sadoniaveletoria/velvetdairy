@@ -591,7 +591,7 @@ async function myApplications(env, me) {
 
 async function apply(env, me, request) {
   const b = await body(request);
-  if (await membership(env, me.id)) fail(409, "You're already in a dairy. Leave it first to apply to another.");
+  if (await membership(env, me.id)) fail(409, "You can only be in one dairy at a time. Leave yours first to apply to another.");
   const d = await env.DB.prepare("SELECT * FROM dairies WHERE id = ?").bind(String(b.dairyId || "")).first();
   if (!d) fail(404, "That dairy closed.");
   const looking = (await applyingOf(env, d.id)).lookingFor;

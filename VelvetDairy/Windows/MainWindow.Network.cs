@@ -198,7 +198,7 @@ public sealed partial class MainWindow
                 else applyBtn = new Btn($"##apply{d.Id}", "Apply", "rose", true, "Ask to join with the roles you want.");
             }
             else if (!d.Mine && d.LookingFor.Count > 0 && inDairy && F.NetMember?.DairyId != d.Id)
-                applyBtn = new Btn($"##apply{d.Id}", "Apply", "rose", false, "You're already in a dairy. Leave it first (Dairy tab) to apply to another.");
+                applyBtn = new Btn($"##apply{d.Id}", "Apply", "rose", false, "You can only be in one dairy at a time. Leave yours first (Dairy tab) to apply to another.");
             if (app?.Status == "pending") lines.Add(new Line($"You applied {Ago(app.Sent)} · waiting for an answer", Theme.HoneyDeep));
 
             var canVisit = d.Area != null || (d.HouseId != null && d.World != null && d.Ward != null);

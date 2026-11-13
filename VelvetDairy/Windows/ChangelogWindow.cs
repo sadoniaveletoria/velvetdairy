@@ -24,10 +24,10 @@ public sealed class ChangelogWindow : Window
     {
         new("0.9.35", "Apply to join a dairy", new[]
         {
-            "Not in a dairy yet? Dairies that are looking for members show what they're looking for (Cows, Farmers, Bulls) and an Apply button on the Dairies tab. Pick the roles you want, add a short note and send it. You can apply to several; when one accepts you, the others are withdrawn.",
+            "Not in a dairy yet? Dairies that are looking for members show what they're looking for (Cows, Farmers, Bulls) and an Apply button on the Dairies tab. Pick the roles you want, add a short note and send it.",
+            "You can only be in one dairy at a time. You can apply to several, but when one accepts you, your other applications are withdrawn. Already in a dairy? Leave it first (Dairy tab) to apply to another.",
             "Owners choose what they're looking for in Members > Applications, and answer applications there: untick a role to accept someone without it, or Deny (they can apply again in 3 days). Owners can let their farmers answer applications too (off unless you turn it on).",
             "Whoever can answer gets a message when a new application comes in.",
-            "Already in a dairy? Leave it first (Dairy tab) to apply to another.",
         }),
         new("0.9.34", "Island Sanctuary dairies with friends", new[]
         {
