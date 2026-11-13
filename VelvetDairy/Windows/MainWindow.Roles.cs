@@ -369,13 +369,15 @@ public sealed partial class MainWindow
         var need = G.NextSeedQuality;
         var from = Grades.QualityNeed[cap];
         var t = need is { } n ? (F.SeedQuality - from) / (n - from) : 1f;
+        // Label, then the bar under it, then the numbers, so nothing overlaps (like the milk quality bar)
+        var labelH = Ui.Measure(fonts.Label, "A").Y;
         Ui.Text(dl, fonts.Label, $"SEED QUALITY - GRADE {Grades.Name(cap)}", p, Theme.InkSoft);
-        Ui.Bar(dl, p + new Vector2(0, 22), new Vector2(p.X + Math.Min(width, 360), p.Y + 30), t, Theme.GradeColor(Math.Min(cap + 1, Grades.Count - 1)));
-        Ui.Text(dl, null, need is { } nn ? $"{F.SeedQuality:0} / {nn:0} to Grade {Grades.Name(cap + 1)}" : $"{F.SeedQuality:0} - every grade unlocked", p + new Vector2(0, 34), Theme.InkSoft);
-        if (ImGui.IsMouseHoveringRect(p, p + new Vector2(width, 54)))
+        Ui.Bar(dl, p + new Vector2(0, labelH + 4), new Vector2(p.X + Math.Min(width, 360), p.Y + labelH + 12), t, Theme.GradeColor(Math.Min(cap + 1, Grades.Count - 1)));
+        Ui.Text(dl, null, need is { } nn ? $"{F.SeedQuality:0} / {nn:0} to Grade {Grades.Name(cap + 1)}" : $"{F.SeedQuality:0} - every grade unlocked", p + new Vector2(0, labelH + 16), Theme.InkSoft);
+        if (ImGui.IsMouseHoveringRect(p, p + new Vector2(width, labelH + 36)))
             ImGui.SetTooltip(Units.Text($"Seed quality grows like milk quality: each 0.1 oz you're milked counts like 1 oz of milk (more by hand), and quality treats raise it too.\nSeed grades use the same steps as milk: {string.Join(", ", Grades.QualityNeed.Skip(1).Select((q, i) => $"{Grades.Name(i + 1)} at {q:0}"))}."));
         ImGui.SetCursorScreenPos(p);
-        ImGui.Dummy(new Vector2(width, 56));
+        ImGui.Dummy(new Vector2(width, labelH + 40));
     }
 
     /// <summary>Tooltip for a bull's seed grade.</summary>

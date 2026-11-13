@@ -832,15 +832,8 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        var extras = new List<string>();
-        if (seedOnly ? cow.SeedTaint > 0 : cow.Taint > 0) extras.Add("Off taste");
-        var slip = seedOnly ? G.SeedSlip : G.GradeSlip;
-        if (slip > 0) extras.Add($"Grade slipped {slip}");
-        if (G.Where.InDairy && G.Where.Seated && !milking) extras.Add("Resting");
-        if (G.Contented) extras.Add("Contented");
-        if (G.BoostLeft > TimeSpan.Zero) extras.Add($"Treat boost {Mins(G.BoostLeft)}");
-        if (extras.Count > 0) Ui.Text(dl, null, string.Join(" · ", extras), new Vector2(cx, y), Theme.SageDeep, 0.5f);
-        y += 22;
+        // (Resting, Contented, treat boost and the like show under "How you're doing")
+        y += 6;
 
         // Row of small bottles when you own more than one
         var label = seedOnly
@@ -866,10 +859,32 @@ public sealed partial class MainWindow : Window
         Ui.Text(dl, fonts.Small, label, new Vector2(cx, y + mh + 8), Theme.InkSoft, 0.5f);
     }
 
+    /// <summary>What's going on with you right now, as one short green line: resting, contented, a treat boost, an off taste.</summary>
+    private string StatusLine()
+    {
+        var cow = F.Cow;
+        var seedOnly = !G.ProducesMilk && G.ProducesSeed;
+        var extras = new List<string>();
+        if (seedOnly ? cow.SeedTaint > 0 : cow.Taint > 0) extras.Add("Off taste");
+        var slip = seedOnly ? G.SeedSlip : G.GradeSlip;
+        if (slip > 0) extras.Add($"Grade slipped {slip}");
+        if (G.Where.InDairy && G.Where.Seated && G.Active == null) extras.Add("Resting");
+        if (G.Contented) extras.Add("Contented");
+        if (G.BoostLeft > TimeSpan.Zero) extras.Add($"Treat boost {Mins(G.BoostLeft)}");
+        return string.Join(" · ", extras);
+    }
+
     private void DrawNeeds(float width)
     {
         var dl = ImGui.GetWindowDrawList();
         var cow = F.Cow;
+        var status = StatusLine();
+        if (status.Length > 0)
+        {
+            Ui.Wrapped(status, Theme.SageDeep, width);
+            Gap(2);
+        }
+
         var p = ImGui.GetCursorScreenPos();
         var y = p.Y;
         var rows = new (string Icon, string Label, float Value, float Bonus, Vector4 Color, string Tip)[]
