@@ -871,8 +871,6 @@ public sealed partial class MainWindow : Window
         if (G.Where.InDairy && G.Where.Seated && G.Active == null) extras.Add("Resting");
         if (G.Contented) extras.Add("Contented");
         if (G.BoostLeft > TimeSpan.Zero) extras.Add($"Treat boost {Mins(G.BoostLeft)}");
-        if (G.BredLeft > TimeSpan.Zero) extras.Add($"Bred +{G.BredBonusNow * 100:0.#}% {Mins(G.BredLeft)}");
-        if (G.Pregnant && G.IsCow) extras.Add($"Pregnant +{G.PregnancyBonus * 100:0}%");
         return string.Join(" · ", extras);
     }
 
@@ -910,6 +908,11 @@ public sealed partial class MainWindow : Window
         var notes = new List<(string, Vector4)>();
         var where = G.Where;
         if (G.Paused) notes.Add(("The game is paused (Developer settings).", Theme.InkSoft));
+        // Breeding and pregnancy (from Corruption), with their milk bonus
+        if (G.BredLeft > TimeSpan.Zero)
+            notes.Add(($"Bred by {F.BredBy}: +{G.BredBonusNow * 100:0.#}% milk for {Mins(G.BredLeft)} more.", Theme.RoseDeep));
+        if (G.Pregnant && G.IsCow)
+            notes.Add(($"Pregnant ({DairyGame.StageName(G.Preg.Stage)}): +{G.PregnancyBonus * 100:0}% milk until the birth." + (G.Preg.FatherName.Length > 0 ? $" Father: {G.Preg.FatherName}." : ""), Theme.RoseDeep));
         if (G.InScene)
             notes.Add(($"Corruption: {G.SceneLine}." + (G.BreedingAsBull ? " They're a cow of your dairy: when you finish, you breed them" + (G.ForcedCreampie ? " (always inside, so Corruption rolls for conception)." : ".")
                 : G.BredAsCow ? " They're a bull of your dairy: when they finish, you're bred" + (G.ConceiveChance > 0 ? $", with a {G.ConceiveChance * 100:0}% chance of conceiving (from Corruption)." : ".") : ""), Theme.RoseDeep));
