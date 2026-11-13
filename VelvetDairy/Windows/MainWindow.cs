@@ -871,6 +871,8 @@ public sealed partial class MainWindow : Window
         if (G.Where.InDairy && G.Where.Seated && G.Active == null) extras.Add("Resting");
         if (G.Contented) extras.Add("Contented");
         if (G.BoostLeft > TimeSpan.Zero) extras.Add($"Treat boost {Mins(G.BoostLeft)}");
+        if (G.BredLeft > TimeSpan.Zero) extras.Add($"Bred +{G.BredBonusNow * 100:0.#}% {Mins(G.BredLeft)}");
+        if (G.Pregnant && G.IsCow) extras.Add($"Pregnant +{G.PregnancyBonus * 100:0}%");
         return string.Join(" · ", extras);
     }
 
