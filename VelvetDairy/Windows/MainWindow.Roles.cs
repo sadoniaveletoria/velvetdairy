@@ -327,6 +327,9 @@ public sealed partial class MainWindow
             Theme.InkSoft, width);
         Ui.Wrapped("Getting a cow pregnant is up to Corruption (their cycle and settings); Eorzea Milkers shows it when it happens.", Theme.InkSoft, width);
         if (!G.CorruptionOn) Ui.Wrapped("Corruption isn't installed or loaded, so breeding doesn't count yet. It's on GitHub: RaylaPetal/corruption.", Theme.Warn, width);
+        else if (G.ForceCreampieAnswer == "not-allowed")
+            Ui.Wrapped("Breeding always finishes inside your dairy's cows, but Corruption needs your OK first: turn on \"Let other plugins control Corruption\" in Corruption's Settings > Other plugins.", Theme.Warn, width);
+        else Ui.Wrapped("In a scene with a cow of your dairy you always finish inside: every climax is a pussy creampie, so Corruption rolls for conception (the cow's Cummy blocks still apply).", Theme.InkSoft, width);
     }
 
     private void DrawSeedQuality(float width)
@@ -421,10 +424,7 @@ public sealed partial class MainWindow
             ImGui.TextColored(Theme.InkSoft, $"Another breeding counts in {(int)G.BreedCooldownLeft.TotalMinutes + 1} min");
         else Ui.Wrapped($"When a bull of your dairy finishes in a Corruption scene with you, you're bred: +{DairyGame.BredBonus * 100:0}% milk for {DairyGame.BredMinutes} minutes (less if they're tired), once every {DairyGame.BredCooldownMinutes} minutes.", Theme.InkSoft, width);
 
-        // Breeding scenes always end in a creampie (Corruption's forced creampies, set by Eorzea Milkers)
-        if (G.ForceCreampieAnswer == "not-allowed")
-            Ui.Wrapped("Breeding scenes with your dairy's bulls always count as a pussy creampie, but Corruption needs your OK first: turn on \"Let other plugins control Corruption\" in Corruption's Settings > Other plugins.", Theme.Warn, width);
-        else Ui.Wrapped("Breeding scenes with your dairy's bulls always count as a pussy creampie, so Corruption rolls for conception every time a bull finishes.", Theme.InkSoft, width);
+        Ui.Wrapped("A bull of your dairy always finishes inside: their climaxes count as a pussy creampie, so Corruption rolls for conception each time (your Cummy blocks still apply).", Theme.InkSoft, width);
 
         var p = G.Preg;
         if (G.Pregnant)

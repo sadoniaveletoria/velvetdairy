@@ -153,14 +153,26 @@ public sealed partial class DairyGame
         nextForceTry = 0;
     }
 
+    /// <summary>Your scene partner is a cow of your dairy (so you're breeding them, as a bull).</summary>
+    private bool PartnerIsDairyCow
+    {
+        get
+        {
+            if (!InScene || SceneNow.Solo || SceneNow.PartnerName.Length == 0) return false;
+            var p = DairyMember(SceneNow.PartnerName, SceneNow.PartnerWorld);
+            return p != null && (p.Roles.Contains("cow") || p.Role == "cow");
+        }
+    }
+
     /// <summary>
-    /// A cow in a scene with a bull of their dairy: every finish counts as a pussy creampie (so Corruption rolls for
-    /// conception). Off again as soon as the scene isn't a breeding scene. Corruption's own consent switch and Cummy's
-    /// blocks still decide; if Corruption says no, try again now and then (the player may turn consent on).
+    /// A bull in a scene with a cow of their dairy: every finish creampies the cow's pussy (Corruption 0.3.5: set on the
+    /// bull's side, and the cow's Corruption honours it for that bull only), so Corruption rolls for conception. Always on
+    /// for breeding scenes, off again as soon as the scene isn't one. Corruption's own consent switch (the bull's) and the
+    /// cow's Cummy blocks still apply; if Corruption says no, try again now and then (consent may be turned on).
     /// </summary>
     private void UpdateForcedCreampie()
     {
-        var want = CorruptionOn && IsCow && SceneBreeds;
+        var want = CorruptionOn && IsBull && PartnerIsDairyCow;
         if (want == forcedOn && (!want || ForceCreampieAnswer == "ok")) return;
         if (!want)
         {
