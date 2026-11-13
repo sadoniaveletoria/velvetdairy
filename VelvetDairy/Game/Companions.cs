@@ -9,7 +9,8 @@ namespace VelvetDairy.Game;
 /// </summary>
 public sealed class Companions
 {
-    public sealed record Companion(string Name, string For, bool On);
+    /// <summary>Repo is the custom plugin repository link (for /xlsettings), Page the GitHub page; empty when not needed.</summary>
+    public sealed record Companion(string Name, string For, bool On, string Repo = "", string Page = "");
 
     private readonly Plugin plugin;
     private double nextCheck = -1;
@@ -24,8 +25,10 @@ public sealed class Companions
         list = new List<Companion>
         {
             new("Penumbra", "animation mods while milking", PenumbraLink.Available),
-            new("Corruption", "breeding, arousal and pregnancy", plugin.Corruption.Available),
-            new("Cummy", "creampies, so Corruption can get a cow pregnant", CummyCanCreampie()),
+            new("Corruption", "breeding, arousal and pregnancy", plugin.Corruption.Available,
+                "https://raw.githubusercontent.com/RaylaPetal/corruption/main/repo.json", "https://github.com/RaylaPetal/corruption"),
+            new("Cummy", "creampies, so Corruption can get a cow pregnant", CummyCanCreampie(),
+                "https://raw.githubusercontent.com/RaylaPetal/cummy/main/repo.json", "https://github.com/RaylaPetal/cummy"),
             new("Lifestream", "Visit travels straight to a dairy", Lifestream.Installed),
         };
         return list;

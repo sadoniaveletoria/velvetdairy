@@ -189,6 +189,7 @@ public class FarmSave
     public bool StockPaidOut { get; set; }
     public bool TutorialDone { get; set; }
     public string SeenChanges { get; set; } = "";   // the version whose What's new you last saw
+    public List<string> HelperNoticeSeen { get; set; } = new();   // helper plugins we've already told this character are missing
     public int FarmerXp { get; set; }                  // each role levels on its own (Xp is the cow's)
     public int BullXp { get; set; }             // the first-run walkthrough was shown            // old sellable milk was paid out when milk started paying at milking time        // minutes of milk-making today (tired after 12 h)        // bonus orders at other dairies, per day
     public List<string>? VisitOrdersDone { get; set; }
