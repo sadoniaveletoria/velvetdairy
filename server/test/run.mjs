@@ -501,4 +501,19 @@ await test("stats work without logging in", async () => {
   assert.equal(r.data.online, 7, "five players plus Fay and Gus");
 });
 
+await test("island dairies: boxes may overlap other islands, and members count as in their own", async () => {
+  const isle = { territory: 1055, world: 40, house: "", x: 10, y: 0, z: 10, width: 20, length: 20 };
+  const a = player("Isla One"), b = player("Isla Two"), friend = player("Isla Friend");
+  await beat(a); await beat(b); await beat(friend);
+  assert.equal((await call(a, "PUT", "/v1/dairy", { name: "Isle Farm One", isPublic: true, role: "cow", area: isle })).status, 200);
+  // Same spot on another player's island: no overlap
+  assert.equal((await call(b, "PUT", "/v1/dairy", { name: "Isle Farm Two", isPublic: true, role: "cow", area: { ...isle, house: "123456789" } })).status, 200);
+  // The owner standing there counts as in their dairy; so does a member visiting that island
+  const r = await beat(a, { pos: { territory: 1055, world: 40, house: "", x: 12, y: 0, z: 11 } });
+  assert.equal(r.data.here?.mine, true);
+  const other = await beat(friend, { pos: { territory: 1055, world: 40, house: "", x: 12, y: 0, z: 11 } });
+  assert.equal(other.data.here, null);   // not a member of either: can't tell whose island
+});
+
+
 console.log(`\n${passed} passed`);

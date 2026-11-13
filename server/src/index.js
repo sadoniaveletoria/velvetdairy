@@ -369,11 +369,26 @@ const areaRow = r => r && ({
  * The dairy whose box contains this position, if any. With `memberOf` (a dairy id), that dairy's private place
  * counts too: only its own members ever find themselves "in" a private place.
  */
+// The Island Sanctuary: everyone's island is the same zone at the same positions, and friends can visit, so nobody can
+// tell whose island a player is on. Boxes there may overlap other dairies' (they're on other islands), and a player
+// on an island only counts as in a box of their own dairy.
+const ISLAND_TERRITORIES = [1055];
+const isIsland = t => ISLAND_TERRITORIES.includes(Number(t));
+
 async function dairyInArea(env, pos, memberOf = null) {
   if (!pos || typeof pos !== "object") return null;
   const territory = Number(pos.territory), world = Number(pos.world), house = pos.house ? String(pos.house) : "";
   const p = { x: Number(pos.x), y: Number(pos.y), z: Number(pos.z) };
   if (!Number.isFinite(territory) || !Number.isFinite(world) || !Number.isFinite(p.x)) return null;
+  if (isIsland(territory)) {
+    if (!memberOf) return null;
+    const pub = await env.DB.prepare("SELECT * FROM dairy_area WHERE dairy_id = ? AND territory = ? AND world = ?").bind(memberOf, territory, world).first();
+    const priv = await env.DB.prepare("SELECT * FROM dairy_private WHERE dairy_id = ? AND territory = ? AND world = ?").bind(memberOf, territory, world).first();
+    const inPub = pub && inArea(pub, p), inPriv = priv && (priv.whole || inArea(priv, p));
+    if (!inPub && !inPriv) return null;
+    const d = await env.DB.prepare("SELECT * FROM dairies WHERE id = ?").bind(memberOf).first();
+    return d ? (inPub ? d : { ...d, in_private: 1 }) : null;
+  }
   const rows = (await env.DB.prepare("SELECT * FROM dairy_area WHERE territory = ? AND world = ? AND house = ?").bind(territory, world, house).all()).results;
   const hit = rows.find(r => inArea(r, p));
   if (hit) return await env.DB.prepare("SELECT * FROM dairies WHERE id = ?").bind(hit.dairy_id).first();
@@ -387,6 +402,7 @@ async function dairyInArea(env, pos, memberOf = null) {
 
 /** Every box (public areas and private places) in this zone, world and house, except the given dairy's own. */
 async function boxesAt(env, a, exceptDairy) {
+  if (isIsland(a.territory)) return [];   // other dairies' island boxes are on other islands
   const q = "WHERE territory = ? AND world = ? AND house = ?";
   const pub = (await env.DB.prepare(`SELECT * FROM dairy_area ${q}`).bind(a.territory, a.world, a.house).all()).results;
   const priv = (await env.DB.prepare(`SELECT * FROM dairy_private ${q}`).bind(a.territory, a.world, a.house).all()).results;
