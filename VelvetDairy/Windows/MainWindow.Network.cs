@@ -145,9 +145,14 @@ public sealed partial class MainWindow
             return;
         }
 
-        ImGui.SetNextItemWidth(Math.Min(260, width - 200));
+        // The search box takes what's left after the filters; if that's too little, the filters go on the next line
+        var style = ImGui.GetStyle();
+        float CheckW(string label) => ImGui.GetFrameHeight() + style.ItemInnerSpacing.X + ImGui.CalcTextSize(label).X;
+        var filtersW = CheckW("Public only") + CheckW("Taking applications") + ImGui.CalcTextSize("Refresh").X + style.FramePadding.X * 2 + style.ItemSpacing.X * 3;
+        var oneLine = width - filtersW >= 200;
+        ImGui.SetNextItemWidth(oneLine ? Math.Min(300, width - filtersW - style.ItemSpacing.X) : width);
         ImGui.InputTextWithHint("##dirfilter", "Search by name, world or district", ref dirFilter, 40);
-        ImGui.SameLine();
+        if (oneLine) ImGui.SameLine();
         ImGui.Checkbox("Public only", ref dirPublicOnly);
         ImGui.SameLine();
         ImGui.Checkbox("Taking applications", ref dirApplying);
