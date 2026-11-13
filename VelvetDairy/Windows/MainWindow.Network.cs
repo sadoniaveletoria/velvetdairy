@@ -179,7 +179,7 @@ public sealed partial class MainWindow
         {
             var lines = new List<Line>
             {
-                new(d.IsPublic || d.Mine ? $"{d.Address} · {d.WorldName}{(d.DcName.Length > 0 ? $" ({d.DcName})" : "")}" : $"Private · {d.WorldName}", Theme.InkSoft),
+                new(d.IsPublic || d.Mine ? $"{d.Address} · {d.WorldName}{(DcOf(d) is { Length: > 0 } dc ? $" ({dc})" : "")}" : $"Private · {d.WorldName}", Theme.InkSoft),
                 new($"{d.Members} member{(d.Members == 1 ? "" : "s")}{(d.CowsHere > 0 ? $" · {d.CowsHere} there now" : "")}{(d.OpenOrders > 0 ? $" · {d.OpenOrders} buy order{(d.OpenOrders == 1 ? "" : "s")}" : "")}",
                     d.CowsHere > 0 ? Theme.SageDeep : Theme.InkSoft),
             };
@@ -843,5 +843,25 @@ public sealed partial class MainWindow
         var problem = G.PostOrderProblem(orderOz, 0, orderCoins);
         if (Ui.Button("##postorder", "Post buy order", new Vector2(170, 32), "honey", problem == null, problem ?? "The coins are held until a cow delivers or you cancel."))
             G.PostBuyOrder(orderOz, 0, orderCoins);
+    }
+
+    private static readonly Dictionary<string, string> dcByWorld = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// A listing's data center, from the game's own world list (by its world), so it's right even when a listing was
+    /// saved with the wrong one by an older version. Falls back to what the listing says.
+    /// </summary>
+    private static string DcOf(DairyListing d)
+    {
+        if (d.WorldName.Length == 0) return d.DcName;
+        if (dcByWorld.Count == 0)
+            foreach (var w in Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.World>())
+            {
+                var name = w.Name.ExtractText();
+                var dc = w.DataCenter.ValueNullable?.Name.ExtractText() ?? "";
+                if (name.Length > 0 && dc.Length > 0 && w.IsPublic) dcByWorld[name] = dc;
+            }
+
+        return dcByWorld.TryGetValue(d.WorldName, out var found) ? found : d.DcName;
     }
 }
