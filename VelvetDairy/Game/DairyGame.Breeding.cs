@@ -153,16 +153,21 @@ public sealed partial class DairyGame
         nextForceTry = 0;
     }
 
-    /// <summary>Your scene partner is a cow of your dairy (so you're breeding them, as a bull).</summary>
-    private bool PartnerIsDairyCow
+    /// <summary>Your scene partner has that role in your dairy.</summary>
+    private bool PartnerIs(string role)
     {
-        get
-        {
-            if (!InScene || SceneNow.Solo || SceneNow.PartnerName.Length == 0) return false;
-            var p = DairyMember(SceneNow.PartnerName, SceneNow.PartnerWorld);
-            return p != null && (p.Roles.Contains("cow") || p.Role == "cow");
-        }
+        if (!InScene || SceneNow.Solo || SceneNow.PartnerName.Length == 0) return false;
+        var p = DairyMember(SceneNow.PartnerName, SceneNow.PartnerWorld);
+        return p != null && (p.Roles.Contains(role) || p.Role == role);
     }
+
+    /// <summary>You're a bull in a scene with a cow of your dairy: you're the one breeding.</summary>
+    public bool BreedingAsBull => IsBull && PartnerIs("cow");
+
+    /// <summary>You're a cow in a scene with a bull of your dairy: you're the one being bred.</summary>
+    public bool BredAsCow => IsCow && PartnerIs("bull");
+
+    private bool PartnerIsDairyCow => PartnerIs("cow");
 
     /// <summary>
     /// A bull in a scene with a cow of their dairy: every finish creampies the cow's pussy (Corruption 0.3.5: set on the
@@ -209,7 +214,7 @@ public sealed partial class DairyGame
 
         SceneNow = plugin.Corruption.GetScene();
         ArousalNow = InScene ? plugin.Corruption.GetArousal() : CorruptionLink.NoArousal;
-        ConceiveChance = IsCow && !Pregnant && SceneBreeds ? Math.Clamp(plugin.Corruption.BreedChance(SceneNow.PartnerName, SceneNow.PartnerWorld), 0, 1) : 0;
+        ConceiveChance = BredAsCow && !Pregnant ? Math.Clamp(plugin.Corruption.BreedChance(SceneNow.PartnerName, SceneNow.PartnerWorld), 0, 1) : 0;
 
         // A new scene (or a new partner) allows one more breeding; the same scene going on doesn't
         var key = InScene ? $"{SceneNow.PartnerName}@{SceneNow.PartnerWorld}" : "";
