@@ -110,7 +110,14 @@ public sealed partial class DairyGame
     /// <summary>One short line about the scene: who with and arousal.</summary>
     public string SceneLine =>
         (SceneNow.Solo || SceneNow.PartnerName.Length == 0 ? "Solo scene" : $"With {SceneNow.PartnerName.Split(' ')[0]}") +
-        (ArousalNow.Ready ? ArousalNow.RefractorySeconds > 0 ? " · catching your breath" : $" · arousal {ArousalNow.Value}%" : "");
+        (ArousalNow.Ready ? ArousalNow.RefractorySeconds > 0 ? " · catching your breath" : $" · arousal {ArousalNow.Value}%" : "") +
+        (ConceiveChance > 0 ? $" · {ConceiveChance * 100:0}% chance" : "");
+
+    /// <summary>
+    /// A cow in a scene with a bull of her dairy: Corruption's chance (0 to 1) that his finishing gets her pregnant now.
+    /// 0 when there's nothing to show (no breeding scene, already pregnant, or Corruption would refuse). Only shown to her.
+    /// </summary>
+    public double ConceiveChance { get; private set; }
 
     private void ReadScene(bool force = false)
     {
@@ -120,11 +127,13 @@ public sealed partial class DairyGame
         {
             SceneNow = CorruptionLink.NoScene;
             ArousalNow = CorruptionLink.NoArousal;
+            ConceiveChance = 0;
             return;
         }
 
         SceneNow = plugin.Corruption.GetScene();
         ArousalNow = InScene ? plugin.Corruption.GetArousal() : CorruptionLink.NoArousal;
+        ConceiveChance = IsCow && !Pregnant && SceneBreeds ? Math.Clamp(plugin.Corruption.BreedChance(SceneNow.PartnerName, SceneNow.PartnerWorld), 0, 1) : 0;
 
         // A new scene (or a new partner) allows one more breeding; the same scene going on doesn't
         var key = InScene ? $"{SceneNow.PartnerName}@{SceneNow.PartnerWorld}" : "";

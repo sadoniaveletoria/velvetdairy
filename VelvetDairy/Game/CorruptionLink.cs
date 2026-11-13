@@ -29,6 +29,7 @@ public sealed class CorruptionLink : IDisposable
     private readonly ICallGateSubscriber<int> apiVersion;
     private readonly ICallGateSubscriber<(bool, string, bool, string, string, int, double)> getScene;
     private readonly ICallGateSubscriber<(bool, int, double, bool, string)> getArousal;
+    private readonly ICallGateSubscriber<string, string, double> breedChance;
     private readonly ICallGateSubscriber<(bool, string, double, DateTime, DateTime, string, string, DateTime, string, bool, bool, int, int, int)> getPregnancy;
     private readonly ICallGateSubscriber<object> onClimax;
     private readonly ICallGateSubscriber<string, string, object> onPartnerClimax;
@@ -50,6 +51,7 @@ public sealed class CorruptionLink : IDisposable
         apiVersion = pi.GetIpcSubscriber<int>("Corruption.ApiVersion");
         getScene = pi.GetIpcSubscriber<(bool, string, bool, string, string, int, double)>("Corruption.GetScene");
         getArousal = pi.GetIpcSubscriber<(bool, int, double, bool, string)>("Corruption.GetArousal");
+        breedChance = pi.GetIpcSubscriber<string, string, double>("Corruption.BreedChance");
         getPregnancy = pi.GetIpcSubscriber<(bool, string, double, DateTime, DateTime, string, string, DateTime, string, bool, bool, int, int, int)>("Corruption.GetPregnancy");
         onClimax = pi.GetIpcSubscriber<object>("Corruption.OnClimax");
         onPartnerClimax = pi.GetIpcSubscriber<string, string, object>("Corruption.OnPartnerClimax");
@@ -93,6 +95,9 @@ public sealed class CorruptionLink : IDisposable
         var s = getScene.InvokeFunc();
         return new Scene(s.Item1, s.Item2, s.Item3, s.Item4, s.Item5);
     }, NoScene);
+
+    /// <summary>The chance (0 to 1) a breeding by that player would have right now, or 0 when it would be refused. Read only.</summary>
+    public double BreedChance(string name, string world) => Try(() => breedChance.InvokeFunc(name, world), 0);
 
     public Arousal GetArousal() => Try(() =>
     {
