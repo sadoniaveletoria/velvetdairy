@@ -23,6 +23,11 @@ public sealed class ChangelogWindow : Window
     /// <summary>Newest first. Write these for players: what changed for them, not how.</summary>
     private static readonly Entry[] Entries =
     {
+        new("0.9.39", "Metric fix", new[]
+        {
+            "With metric on, the big milk number on the Barn and the HUD now shows in the same unit as your bottles (for example 2.43 / 2.84 L instead of 82.1 / 2.84 L).",
+            "The \"+1 oz\" that floats up as milk comes in, and the milk quality tooltip, now show metric too.",
+        }),
         new("0.9.38", "Levels to 100, Grand Creameries, metric and cheese", new[]
         {
             "# Cow levels 31 to 100",

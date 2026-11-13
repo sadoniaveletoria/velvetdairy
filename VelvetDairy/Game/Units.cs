@@ -29,6 +29,18 @@ public static class Units
         return ml.ToString(ml < 10 ? "0.#" : "N0", CultureInfo.CurrentCulture);
     }
 
+    /// <summary>
+    /// Just the number of an amount, in the same unit <see cref="Oz"/> uses for <paramref name="like"/>, for a big
+    /// "82.1 / 2.84 L" readout: litres when the other amount is shown in litres, ml otherwise, oz with metric off.
+    /// </summary>
+    public static string NumLike(double oz, double like, string format = "0.#")
+    {
+        if (!Metric) return oz.ToString(format, CultureInfo.CurrentCulture);
+        var ml = oz * MlPerOz;
+        if (System.Math.Abs(like * MlPerOz) >= 1000) return (ml / 1000).ToString("0.00", CultureInfo.CurrentCulture);
+        return ml.ToString(ml < 10 ? "0.#" : "N0", CultureInfo.CurrentCulture);
+    }
+
     /// <summary>The unit that goes with <see cref="Num"/>.</summary>
     public static string Unit => Metric ? "ml" : "oz";
 

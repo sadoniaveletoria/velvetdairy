@@ -719,7 +719,7 @@ public sealed partial class MainWindow : Window
         foreach (var t0 in ozPops)
         {
             var a = (float)((nowT - t0) / 1.6);
-            Ui.Text(dl, fonts.Label, "+1 OZ", new Vector2(bmin.X + bw + 4, surface - 10 - a * 34), Theme.Alpha(Theme.SageDeep, 1f - a), 0f, 0.5f);
+            Ui.Text(dl, fonts.Label, Units.Oz(1).ToUpperInvariant(), new Vector2(bmin.X + bw + 4, surface - 10 - a * 34), Theme.Alpha(Theme.SageDeep, 1f - a), 0f, 0.5f);
         }
 
         // Grade seal on the bottle's shoulder
@@ -734,7 +734,7 @@ public sealed partial class MainWindow : Window
 
         var y = bmin.Y + bh + 6;
         var cx = min.X + w / 2;
-        Ui.Text(dl, fonts.Title, $"{cow.Milk:0.#}", new Vector2(cx - 6, y), Theme.Ink, 1f);
+        Ui.Text(dl, fonts.Title, Units.NumLike(cow.Milk, cap), new Vector2(cx - 6, y), Theme.Ink, 1f);
         Ui.Text(dl, fonts.Heading, $"/ {Units.Oz(cap, "0")}", new Vector2(cx, y + 14), Theme.InkSoft);
         y += 46;
 
@@ -921,7 +921,7 @@ public sealed partial class MainWindow : Window
         Ui.Text(dl, null, numbers, new Vector2(x, p.Y + 36), Theme.InkSoft);
         if (ImGui.IsMouseHoveringRect(p, p + new Vector2(width, 56)))
             ImGui.SetTooltip((need is { } q ? $"Grade {Grades.Name(cap + 1)} unlocks at {q:0} quality.\n" : "Every grade is unlocked.\n") +
-                             $"Each oz you're milked: +{Grades.QualityPerOz:0} (+{Grades.QualityPerOzHand:0.#} by hand). Each delivery: +{Grades.QualityPerOrder:0}.\n" +
+                             $"Each {Units.Oz(1)} you're milked: +{Grades.QualityPerOz:0} (+{Grades.QualityPerOzHand:0.#} by hand). Each delivery: +{Grades.QualityPerOrder:0}.\n" +
                              $"Quality treats in the Shop add more (one every hour): Cream biscuit +20, Golden alfalfa +50, Star clover +100.");
         ImGui.SetCursorScreenPos(p);
         ImGui.Dummy(new Vector2(width, 60));

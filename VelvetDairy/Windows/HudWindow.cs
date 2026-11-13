@@ -115,8 +115,9 @@ public sealed class HudWindow : Window
         // Milk and grade
         var x = bmin.X + bh / 2 + 14;
         var grade = G.CurrentGrade;
-        Ui.Text(dl, fonts.Heading, $"{cow.Milk:0.#}", new Vector2(x, o.Y + 18), Theme.Ink);
-        var mw = Ui.Measure(fonts.Heading, $"{cow.Milk:0.#}").X;
+        var amountText = Units.NumLike(cow.Milk, cap);
+        Ui.Text(dl, fonts.Heading, amountText, new Vector2(x, o.Y + 18), Theme.Ink);
+        var mw = Ui.Measure(fonts.Heading, amountText).X;
         Ui.Text(dl, fonts.Small, bCount > 1 ? $"/ {Units.Oz(cap, "0")} · {full} of {bCount} full" : $"/ {Units.Oz(cap, "0")}", new Vector2(x + mw + 4, o.Y + 24), Theme.InkSoft);
         Ui.Seal(dl, new Vector2(o.X + size.X - 38, o.Y + 38), 20, Grades.Name(grade), Theme.GradeColor(grade));
 
