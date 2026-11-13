@@ -77,7 +77,7 @@ public sealed partial class MainWindow
 
         var online = net.Last?.Online ?? net.Directory?.Online ?? 0;
         using (fonts.For(fonts.Heading, $"{online}")!.Push()) ImGui.TextColored(Theme.SageDeep, $"{online:N0} online");
-        ImGui.TextColored(Theme.InkSoft, "Players with Eorzea Milkers running in the last few minutes.");
+        Ui.Wrapped("Players with Eorzea Milkers running in the last few minutes.", Theme.InkSoft, width);
         ImGui.TextColored(net.Connected ? Theme.SageDeep : Theme.Warn, net.Status);
 
         SubHeading("You", width);
@@ -445,19 +445,20 @@ public sealed partial class MainWindow
         if (crs.Count > 0)
         {
             var here = G.CreameryHere;
-            ImGui.TextColored(here != null ? Theme.SageDeep : Theme.RoseDeep,
-                here != null ? $"You're at {here.Name}." : crs.Count == 1 ? "Bring your jugs here to ship them." : "Bring your jugs to any of these to ship them.");
+            Ui.Wrapped(here != null ? $"You're at {here.Name}." : crs.Count == 1 ? "Bring your jugs here to ship them." : "Bring your jugs to any of these to ship them.",
+                here != null ? Theme.SageDeep : Theme.RoseDeep, width);
             foreach (var cr in crs)
             {
+                // The name with its Map button, and where it is underneath (so narrow panels don't cut it off)
                 var link = CreameryLink(cr);
                 ImGui.TextColored(Theme.Ink, cr.Name);
-                ImGui.SameLine();
-                ImGui.TextColored(Theme.InkSoft, link != null ? $"{cr.Zone} ( {link.XCoord:0.0} , {link.YCoord:0.0} )" : cr.Zone);
                 if (link != null)
                 {
                     ImGui.SameLine();
                     if (ImGui.SmallButton($"Map##creamerymap{cr.Slot}")) Plugin.GameGui.OpenMapWithMapLink(link);
                 }
+
+                Ui.Wrapped(link != null ? $"{cr.Zone} ({link.XCoord:0.0}, {link.YCoord:0.0})" : cr.Zone, Theme.InkSoft, width);
             }
 
             Gap(6);

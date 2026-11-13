@@ -94,11 +94,11 @@ public sealed partial class MainWindow : Window
         this.art = art;
         this.fonts = fonts;
 
-        Size = new Vector2(1200, 760);
+        Size = new Vector2(1240, 820);
         SizeCondition = ImGuiCond.FirstUseEver;
         SizeConstraints = new WindowSizeConstraints
         {
-            MinimumSize = new Vector2(1120, 700),
+            MinimumSize = new Vector2(1180, 760),
             MaximumSize = new Vector2(float.MaxValue, float.MaxValue),
         };
 
@@ -357,7 +357,7 @@ public sealed partial class MainWindow : Window
     /// <summary>Icons for the sidebar, in the same order as <see cref="Tabs"/>.</summary>
     private static readonly string[] TabIcons = { "bucket", "ribbon", "hay", "coin", "cheese", "milk", "bell", "starclover", "gear" };
 
-    private const float SideW = 172f;
+    private const float SideW = 150f;
 
     /// <summary>
     /// The tabs down the left side, each with its icon, and at the bottom the plugins Eorzea Milkers works with
@@ -385,8 +385,8 @@ public sealed partial class MainWindow : Window
             }
             else if (hovered) dl.AddRectFilled(min, min + size, Ui.U(Theme.Rose, 0.16f), 8);
 
-            Ui.Icon(dl, TabIcons[i], min + new Vector2(24, size.Y / 2), 13, sel || hovered ? 1f : 0.8f);
-            Ui.Text(dl, fonts.Label, Tabs[i].ToUpperInvariant(), min + new Vector2(46, size.Y / 2), sel ? Theme.Ink : hovered ? Theme.RoseDeep : Theme.InkSoft, 0f, 0.5f);
+            Ui.Icon(dl, TabIcons[i], min + new Vector2(20, size.Y / 2), 13, sel || hovered ? 1f : 0.8f);
+            Ui.Text(dl, fonts.Label, Tabs[i].ToUpperInvariant(), min + new Vector2(40, size.Y / 2), sel ? Theme.Ink : hovered ? Theme.RoseDeep : Theme.InkSoft, 0f, 0.5f);
             y += rowH + 3;
         }
 
@@ -688,8 +688,8 @@ public sealed partial class MainWindow : Window
         // Top: your bottle and how you're doing. Then Care as one slim row. Milking along the bottom.
         // The space between Care and Milking is left open for now.
         var milkH = G.Active != null || !G.AutoStall ? 200f : 112f;
-        const float careH = 116f, gap = 14f;
-        var topH = Math.Clamp(max.Y - min.Y - milkH - careH - gap * 2, 300f, 380f);
+        const float careH = 126f, gap = 14f;
+        var topH = Math.Min(max.Y - min.Y - milkH - careH - gap * 2, 480f);
         var topMax = new Vector2(max.X, min.Y + topH);
         const float leftW = 270f;
 
@@ -754,7 +754,7 @@ public sealed partial class MainWindow : Window
 
         var w = max.X - min.X;
         var rowH = count > 1 ? 58f : 0f;
-        var bh = Math.Clamp(max.Y - min.Y - 150 - rowH, 150f, 380f);
+        var bh = Math.Clamp(max.Y - min.Y - 150 - rowH, 80f, 380f);
         var bw = bh / 2f;
         var bmin = new Vector2(min.X + (w - bw) / 2 - 8, min.Y + 26);
         var milking = G.Active != null;
@@ -969,7 +969,7 @@ public sealed partial class MainWindow : Window
                 "Eat", "honey", ok && !waiting, tip, () => G.UseFeed(id)));
         }
 
-        const float cellGap = 10f, cellH = 54f;
+        const float cellGap = 10f, cellH = 62f;
         var perRow = Math.Clamp((int)((width + cellGap) / (230 + cellGap)), 2, 6);
         var more = cells.Count > perRow ? cells.Count - (perRow - 1) : 0;
         var shown = more > 0 ? perRow - 1 : cells.Count;
@@ -990,15 +990,20 @@ public sealed partial class MainWindow : Window
                 var bw = Math.Max(62f, Ui.Measure(fonts.Label, c.Btn.ToUpperInvariant()).X + 26);
                 if (Ui.Button(c.Id, c.Btn, new Vector2(bw, 28), c.Color, c.Enabled, c.Tip, new Vector2(c1.X - bw - 10, midY - 14))) c.Act();
                 var tw = c1.X - bw - 18 - (c0.X + 46);
-                Ui.Text(dl, fonts.Label, FitText(c.Title.ToUpperInvariant(), tw, fonts.Label), new Vector2(c0.X + 46, midY - 17), Theme.Ink);
-                Ui.Text(dl, fonts.Small, FitText(c.Sub, tw), new Vector2(c0.X + 46, midY + 1), Theme.InkSoft);
+                var titleH = Ui.Measure(fonts.Label, "A").Y;
+                var subH = Ui.Measure(fonts.Small, "Ag").Y;
+                var ty = midY - (titleH + subH + 2) / 2;
+                Ui.Text(dl, fonts.Label, FitText(c.Title.ToUpperInvariant(), tw, fonts.Label), new Vector2(c0.X + 46, ty), Theme.Ink);
+                Ui.Text(dl, fonts.Small, FitText(c.Sub, tw), new Vector2(c0.X + 46, ty + titleH + 2), Theme.InkSoft);
             }
             else
             {
                 // More than fits: the rest are in the Pantry
                 Ui.Icon(dl, "hay", new Vector2(c0.X + 24, midY), 15);
-                Ui.Text(dl, fonts.Label, $"{more} MORE", new Vector2(c0.X + 46, midY - 17), Theme.Ink);
-                Ui.Text(dl, fonts.Small, "in your pantry", new Vector2(c0.X + 46, midY + 1), Theme.InkSoft);
+                var titleH = Ui.Measure(fonts.Label, "A").Y;
+                var ty = midY - (titleH + Ui.Measure(fonts.Small, "Ag").Y + 2) / 2;
+                Ui.Text(dl, fonts.Label, $"{more} MORE", new Vector2(c0.X + 46, ty), Theme.Ink);
+                Ui.Text(dl, fonts.Small, "in your pantry", new Vector2(c0.X + 46, ty + titleH + 2), Theme.InkSoft);
                 if (Ui.Button("##caremore", "Pantry", new Vector2(80, 28), "cream", true, "Everything you have to eat and drink.", new Vector2(c1.X - 90, midY - 14))) tab = TabPantry;
             }
         }
@@ -1675,10 +1680,12 @@ public sealed partial class MainWindow : Window
 
     private void DrawProgress(Vector2 min, Vector2 max)
     {
-        var third = (max.X - min.X - 28) / 3;
-        Panel("##level", min, new Vector2(min.X + third, max.Y), "Your levels", DrawLevelsSummary);
-        Panel("##daily", new Vector2(min.X + third + 14, min.Y), new Vector2(min.X + third * 2 + 14, max.Y), "Today", DrawDaily, true);
-        Panel("##awards", new Vector2(max.X - third, min.Y), max, "Awards", DrawAwards);
+        // Your levels down the left; Today and Awards wide on the right, one above the other, so their text fits on a line
+        var leftW = Math.Clamp((max.X - min.X) * 0.34f, 300f, 400f);
+        Panel("##level", min, new Vector2(min.X + leftW, max.Y), "Your levels", DrawLevelsSummary);
+        var midY = min.Y + (max.Y - min.Y) * 0.5f;
+        Panel("##daily", new Vector2(min.X + leftW + 14, min.Y), new Vector2(max.X, midY - 7), "Today", DrawDaily, true);
+        Panel("##awards", new Vector2(min.X + leftW + 14, midY + 7), max, "Awards", DrawAwards);
     }
 
     /// <summary>A small level line for one role (each role levels on its own).</summary>
