@@ -101,7 +101,7 @@ public sealed class OwnerHudWindow : Window
         if (con != null)
             Ui.Text(dl, fonts.Small, con.Completed ? "Contract done" : $"Contract {con.OzDone:0}/{con.OzNeed}", new Vector2(right, o.Y + 40), con.Completed ? Theme.SageDeep : Theme.InkSoft, 1f);
         var tankOz = mine.Progress?.Tank?.Total ?? 0;
-        var extra = (tankOz > 0 ? $"Tank {tankOz:N0} oz" + (mine.Invites.Count > 0 || G.Net.MyOrders.Count > 0 ? " · " : "") : "") + (mine.Invites.Count > 0 ? $"{mine.Invites.Count} invite(s) waiting" : "") +
+        var extra = (tankOz > 0 ? $"Tank {Units.Oz(tankOz, "N0")}" + (mine.Invites.Count > 0 || G.Net.MyOrders.Count > 0 ? " · " : "") : "") + (mine.Invites.Count > 0 ? $"{mine.Invites.Count} invite(s) waiting" : "") +
                     (mine.Invites.Count > 0 && G.Net.MyOrders.Count > 0 ? " · " : "") +
                     (G.Net.MyOrders.Count > 0 ? $"{G.Net.MyOrders.Count} buy order(s) open" : "");
         if (extra.Length > 0) Ui.Text(dl, fonts.Small, extra, new Vector2(x, o.Y + size.Y - 34), Theme.InkSoft);

@@ -39,7 +39,7 @@ public sealed class MilkAskWindow : Window
     {
         if (G.MilkAsk is not { } f) return;
         ImGui.TextColored(Theme.Ink, $"{f.Name} wants to milk you.");
-        ImGui.TextColored(Theme.InkSoft, $"You have {plugin.Config.Farm.Cow.Milk:0.#} oz. They're doing their Milk emote on you.");
+        ImGui.TextColored(Theme.InkSoft, $"You have {Units.Oz(plugin.Config.Farm.Cow.Milk, "0.#")}. They're doing their Milk emote on you.");
         ImGui.Spacing();
         if (Ui.Button("##askallow", "Allow", new Vector2(130, 32), "rose", true, "Start hand milking now.")) G.AnswerMilkAsk(true);
         ImGui.SameLine();

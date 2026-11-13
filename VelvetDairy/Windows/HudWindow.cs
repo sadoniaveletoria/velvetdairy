@@ -117,7 +117,7 @@ public sealed class HudWindow : Window
         var grade = G.CurrentGrade;
         Ui.Text(dl, fonts.Heading, $"{cow.Milk:0.#}", new Vector2(x, o.Y + 18), Theme.Ink);
         var mw = Ui.Measure(fonts.Heading, $"{cow.Milk:0.#}").X;
-        Ui.Text(dl, fonts.Small, bCount > 1 ? $"/ {cap:0} oz · {full} of {bCount} full" : $"/ {cap:0} oz", new Vector2(x + mw + 4, o.Y + 24), Theme.InkSoft);
+        Ui.Text(dl, fonts.Small, bCount > 1 ? $"/ {Units.Oz(cap, "0")} · {full} of {bCount} full" : $"/ {Units.Oz(cap, "0")}", new Vector2(x + mw + 4, o.Y + 24), Theme.InkSoft);
         Ui.Seal(dl, new Vector2(o.X + size.X - 38, o.Y + 38), 20, Grades.Name(grade), Theme.GradeColor(grade));
 
         // Needs as four thin bars
@@ -148,7 +148,7 @@ public sealed class HudWindow : Window
         }
         else if (s != null)
         {
-            status = $"Milking · {s.Extracted * s.Yield:0.#} oz";
+            status = $"Milking · {Units.Oz(s.Extracted * s.Yield, "0.#")}";
             col = Theme.BlueDeep;
             Ui.Bar(dl, new Vector2(x, o.Y + size.Y - 26), new Vector2(x + bw, o.Y + size.Y - 22), s.Progress, Theme.BlueDeep);
         }

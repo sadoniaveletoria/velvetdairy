@@ -81,7 +81,7 @@ public sealed partial class MainWindow
         {
             ImGui.TextColored(g == cur ? Theme.RoseDeep : Theme.Ink, $"Grade {Grades.Name(g)}");
             ImGui.SameLine(90);
-            ImGui.TextColored(Theme.InkSoft, $"{G.PayRate(g):0.#} coins per oz" + (g > 0 ? $" · +{Catalog.GradeBoost[g] * 100:0}% speed and milk" : "") + (g == cur ? "  ·  yours now" : ""));
+            ImGui.TextColored(Theme.InkSoft, Units.PerOz(G.PayRate(g)) + (g > 0 ? $" · +{Catalog.GradeBoost[g] * 100:0}% speed and milk" : "") + (g == cur ? "  ·  yours now" : ""));
         }
 
         Gap(6);
@@ -131,7 +131,7 @@ public sealed partial class MainWindow
             if (tank.Unlocks[i] <= G.FarmerLevel) continue;
             ImGui.TextColored(Theme.Ink, $"Lv {tank.Unlocks[i]}");
             ImGui.SameLine(56);
-            ImGui.TextColored(Theme.InkSoft, $"{Catalog.FarmerTankNames[i + 1]} ({Catalog.FarmerTankSizes[i + 1]} oz) in the Shop");
+            ImGui.TextColored(Theme.InkSoft, $"{Catalog.FarmerTankNames[i + 1]} ({Units.Oz(Catalog.FarmerTankSizes[i + 1])}) in the Shop");
             shown++;
         }
 
@@ -163,7 +163,7 @@ public sealed partial class MainWindow
 
         if (G.Baking is { } b)
             ImGui.TextColored(Theme.InkSoft, $"{Catalog.Doing(b.Recipe)} {Catalog.MadeName(b.Recipe.Makes).ToLowerInvariant()} · {F.Bake!.Done + 1} of {F.Bake.Count} · {(G.Where.InDairy ? $"{DairyGame.Wait(b.Left)} left" : "paused")}");
-        ImGui.TextColored(Theme.InkSoft, $"Jugs: {G.Carried:0.#} / {G.MaxCarry} oz");
+        ImGui.TextColored(Theme.InkSoft, $"Jugs: {Units.Num(G.Carried, "0.#")} / {Units.Num(G.MaxCarry)} {Units.Unit}");
         Gap(4);
     }
 
@@ -241,7 +241,7 @@ public sealed partial class MainWindow
                     near >= 0 && near <= G.HandRange ? Theme.SageDeep : Theme.InkSoft));
                 if (st != null)
                 {
-                    lines.Add(new Line(st.Spoiled ? "Their milk spoiled; they have to dump it first." : $"{st.Milk:0.#} / {st.Cap:0} oz · Grade {Grades.Name(Math.Clamp(st.Grade, 0, Grades.Count - 1))}",
+                    lines.Add(new Line(st.Spoiled ? "Their milk spoiled; they have to dump it first." : $"{Units.Num(st.Milk, "0.#")} / {Units.Num(st.Cap, "0")} {Units.Unit} · Grade {Grades.Name(Math.Clamp(st.Grade, 0, Grades.Count - 1))}",
                         st.Spoiled ? Theme.Warn : Theme.InkSoft));
                     if (st.HandBy.Length > 0)
                         lines.Add(new Line(st.HandBy.Equals(myName, StringComparison.OrdinalIgnoreCase) ? "You're milking them" : $"Being milked by {st.HandBy}", Theme.RoseDeep));

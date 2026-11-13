@@ -234,7 +234,7 @@ public sealed class MembersWindow : Window
                     {
                         var g = Math.Clamp(st.Grade, 0, Grades.Count - 1);
                         var full = st.Cap > 0 && st.Milk >= st.Cap - 0.1f;
-                        ImGui.TextColored(full ? Theme.RoseDeep : Theme.Ink, $"{st.Milk:0.#}/{st.Cap:0} oz");
+                        ImGui.TextColored(full ? Theme.RoseDeep : Theme.Ink, $"{Units.Num(st.Milk, "0.#")}/{Units.Num(st.Cap, "0")} {Units.Unit}");
                         ImGui.SameLine();
                         ImGui.TextColored(Theme.GradeColor(g), Grades.Name(g));
                         if (ImGui.IsItemHovered()) ImGui.SetTooltip($"Grade {Grades.Name(g)} · level {st.Level}");
@@ -255,7 +255,7 @@ public sealed class MembersWindow : Window
                 else ImGui.TextColored(Theme.InkSoft, "-");
 
                 ImGui.TableNextColumn();
-                if (Reports(m) && m.Status is { } t) ImGui.TextColored(t.TotalOz > 0 ? Theme.Ink : Theme.InkSoft, $"{t.TotalOz:N0} oz");
+                if (Reports(m) && m.Status is { } t) ImGui.TextColored(t.TotalOz > 0 ? Theme.Ink : Theme.InkSoft, $"{Units.Oz(t.TotalOz, "N0")}");
                 else ImGui.TextColored(Theme.InkSoft, "-");
                 if (ImGui.IsItemHovered()) ImGui.SetTooltip("All the milk they've ever given (stalls and hand milking).");
 

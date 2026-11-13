@@ -328,9 +328,9 @@ public sealed class DairyGame
         if (Blocked() != null) return Blocked();
         if (!CanCarry) return "Only farmers and the owner fill jugs from the dairy tank.";
         if (!Where.InDairy) return "Go to your dairy to fill jugs from its tank.";
-        if (Carried + oz > MaxCarry) return $"Your {FarmerTankName.ToLowerInvariant()} holds {MaxCarry} oz. Buy a bigger farmer tank in the Shop.";
+        if (Carried + oz > MaxCarry) return $"Your {FarmerTankName.ToLowerInvariant()} holds {Units.Oz(MaxCarry)}. Buy a bigger farmer tank in the Shop.";
         var inTank = Net.Progress?.Tank?.Total ?? 0;
-        if (inTank < oz) return $"The tank has {inTank:0.#} oz.";
+        if (inTank < oz) return $"The tank has {Units.Oz(inTank, "0.#")}.";
         return null;
     }
 
@@ -349,7 +349,7 @@ public sealed class DairyGame
             F.Tank![0] += r.Oz;
             AddFarmerXp(Math.Max(1, r.Oz / 4));
             plugin.SaveConfig();
-            Say($"Filled {r.Oz} oz from the dairy tank ({r.Left:0.#} oz left).", 1);
+            Say($"Filled {Units.Oz(r.Oz)} from the dairy tank ({Units.Oz(r.Left, "0.#")} left).", 1);
         }, e => Fail(e));
     }
 
@@ -408,7 +408,7 @@ public sealed class DairyGame
         }
         else if (!Where.InDairy) return "Go to your dairy to ship milk.";
         if (oz < 1) return "Nothing left to ship.";
-        if (Carried < oz - 0.01f) return $"You carry {Carried:0.#} oz. Fill jugs at your dairy (HUD > Kitchen).";
+        if (Carried < oz - 0.01f) return $"You carry {Units.Oz(Carried, "0.#")}. Fill jugs at your dairy (HUD > Kitchen).";
         return null;
     }
 
@@ -454,7 +454,7 @@ public sealed class DairyGame
             F.Tank![0] = Math.Max(0, F.Tank[0] - r.Shipped);
             AddFarmerXp(Math.Max(1, r.Shipped / 2));
             plugin.SaveConfig();
-            Say(r.Finished ? $"Contract finished! The reward goes to {DairyName}." : $"Shipped {r.Shipped} oz to the contract ({r.OzDone:0} / {r.OzNeed} oz).", 1);
+            Say(r.Finished ? $"Contract finished! The reward goes to {DairyName}." : $"Shipped {Units.Oz(r.Shipped)} to the contract ({Units.Num(r.OzDone, "0")} / {Units.Num(r.OzNeed)} {Units.Unit}).", 1);
         }, e => Fail(e));
     }
 
@@ -486,7 +486,7 @@ public sealed class DairyGame
         for (var g = 0; g < Grades.Count; g++) coins += (int)Math.Round(F.Tank[g] * Grades.All[g].Price * PriceBonus);
         Array.Clear(F.Tank);
         Receive(coins);
-        Say($"Milk now pays when you're milked. The {oz:0.#} oz you had stored was paid out: +{coins} coins.", 1);
+        Say($"Milk now pays when you're milked. The {Units.Oz(oz, "0.#")} you had stored was paid out: +{coins} coins.", 1);
         plugin.SaveConfig();
     }
 
@@ -1013,7 +1013,7 @@ public sealed class DairyGame
         F.Stats.OzDumped += oz;
         spoilWarned = 0;
         DumpSerial++;
-        Say($"You dumped {oz:0.#} oz of spoiled milk. Your milk will taste off until you're well cared for, milked and delivering again.", 2);
+        Say($"You dumped {Units.Oz(oz, "0.#")} of spoiled milk. Your milk will taste off until you're well cared for, milked and delivering again.", 2);
         plugin.SaveConfig();
         return true;
     }
@@ -1233,8 +1233,8 @@ public sealed class DairyGame
 
         AddXp(xp);
         var by = s.Kind == SessionKind.Hand ? $" by {(s.Hand!.IsTest ? "the test farmhand" : s.Hand.Name)}" : "";
-        Say($"Milked{by}: {collected:0.#} oz as a Grade {Grades.Name(s.Grade)} cow. +{pay} coins, +{xp} xp" +
-            (paidOz < collected - 0.05f ? $" (you've been paid for {Catalog.DailyPaidOz:N0} oz today; more milk still gives xp)"
+        Say($"Milked{by}: {Units.Oz(collected, "0.#")} as a Grade {Grades.Name(s.Grade)} cow. +{pay} coins, +{xp} xp" +
+            (paidOz < collected - 0.05f ? $" (you've been paid for {Units.Oz(Catalog.DailyPaidOz, "N0")} today; more milk still gives xp)"
                 : Catalog.TaperRate(F.DayEarned) < rateBefore || rateBefore < 1f ? $" (you've earned a lot today, so pay is at {(Catalog.TaperRate(F.DayEarned) >= 0.5f ? "half" : "a tenth")}; xp is the same)" : "") +
             (reason != null ? $" ({reason})" : ""), 1);
         plugin.SaveConfig();
@@ -1413,7 +1413,7 @@ public sealed class DairyGame
     /// </summary>
     public bool MilkCow(string cowName, string emote, float cowMilk, bool asksFirst = false)
     {
-        Diag.Info("milk", $"Milk on {cowName}: {emote}, {cowMilk:0.#} oz, asks first {asksFirst}, mod {(F.MilkModDir.Length > 0 ? PenumbraLink.NameOf(F.MilkModDir) : "none")}");
+        Diag.Info("milk", $"Milk on {cowName}: {emote}, {Units.Oz(cowMilk, "0.#")}, asks first {asksFirst}, mod {(F.MilkModDir.Length > 0 ? PenumbraLink.NameOf(F.MilkModDir) : "none")}");
         if (Emotes.Find(emote.Split(' ')[0]) == 0)
         {
             Diag.Warn("milk", $"{emote} isn't an emote the game knows");
@@ -2479,7 +2479,7 @@ public sealed class DairyGame
     {
         if (Blocked() != null) return Fail(Blocked()!);
         count = Math.Min(count, Bottles(grade));
-        if (count <= 0) return Fail("You need at least a cup (8 oz) to sell.");
+        if (count <= 0) return Fail($"You need at least a cup ({Units.Oz(8)}) to sell.");
         F.Tank![grade] -= count * Catalog.BottleOz;
         var coins = BottlePrice(grade) * count;
         Earn(coins);
@@ -2509,7 +2509,7 @@ public sealed class DairyGame
                     ? $"You need {per * count} {Catalog.MadeName(id).ToLowerInvariant()} (the dairy pantry has {IngredientCount(id)})."
                     : $"You need {per * count} {Catalog.MadeName(id).ToLowerInvariant()} (you have {Count(id)}). Buy more in the Shop.";
         if (r.MilkOz > 0 && OzAtOrAbove(r.MinGrade) < r.MilkOz * count)
-            return $"You need {r.MilkOz * count} oz of milk in your jugs. Fill them from the dairy tank at the top of the Kitchen.";
+            return $"You need {Units.Oz(r.MilkOz * count)} of milk in your jugs. Fill them from the dairy tank at the top of the Kitchen.";
         return null;
     }
 
@@ -2829,7 +2829,7 @@ public sealed class DairyGame
     public bool Fill(Order o)
     {
         if (Blocked() != null) return Fail(Blocked()!);
-        if (!CanFill(o)) return Fail($"You need {o.Oz} oz of milk in your jugs.");
+        if (!CanFill(o)) return Fail($"You need {Units.Oz(o.Oz)} of milk in your jugs.");
 
         var left = (float)o.Oz;
         for (var g = 0; g < Grades.Count && left > 0; g++)
@@ -3030,7 +3030,7 @@ public sealed class DairyGame
     public string? PostOrderProblem(int oz, int grade, int coins)
     {
         if (!Networked || F.NetMember?.IsOwner != true) return "Only a dairy owner can post buy orders.";
-        if (oz < 1 || oz > MaxOrderOz) return $"Ask for 1 to {MaxOrderOz} oz.";
+        if (oz < 1 || oz > MaxOrderOz) return $"Ask for 1 to {Units.Oz(MaxOrderOz)}.";
         if (coins < oz) return "Offer at least 1 coin per oz.";
         if (coins > oz * 40) return "That's more than 40 coins per oz.";
         if (F.Coins < coins) return $"You need {coins} coins.";
@@ -3049,7 +3049,7 @@ public sealed class DairyGame
         // The coins are held by the network until the order is filled or cancelled (then they come back in your inbox)
         F.Coins -= coins;
         plugin.SaveConfig();
-        Net.PostOrder(oz, grade, coins, () => Say($"Posted: {oz} oz of milk for {coins} coins.", 1), e =>
+        Net.PostOrder(oz, grade, coins, () => Say($"Posted: {Units.Oz(oz)} of milk for {coins} coins.", 1), e =>
         {
             F.Coins += coins;
             plugin.SaveConfig();
@@ -3069,7 +3069,7 @@ public sealed class DairyGame
         // From inside your own dairy, or in person at the buyer's public area (which pays a bonus)
         if (VisitingDairy?.Id != o.DairyId && !Where.InDairy)
             return o.DairyPublic ? $"Deliver from inside your own dairy, or in person at {o.DairyName} for +10%." : "Deliver from inside your own dairy.";
-        if (Carried < o.Oz) return $"You need {o.Oz} oz of milk in your jugs.";
+        if (Carried < o.Oz) return $"You need {Units.Oz(o.Oz)} of milk in your jugs.";
         return null;
     }
 
@@ -3102,7 +3102,7 @@ public sealed class DairyGame
             F.DayDelivered++;
             EaseTaint(Catalog.TaintPerOrder);
             AddQuality(Grades.QualityPerOrder);
-            Say($"Delivered {r.Oz} oz to {r.Dairy}. Your {r.Coins} coins are on the way{(r.Bonus > 0 ? $" (+{r.Bonus} for coming in person)" : "")}.", 1);
+            Say($"Delivered {Units.Oz(r.Oz)} to {r.Dairy}. Your {r.Coins} coins are on the way{(r.Bonus > 0 ? $" (+{r.Bonus} for coming in person)" : "")}.", 1);
             Net.RefreshBoard(true);
             plugin.SaveConfig();
         }, e =>
@@ -3178,7 +3178,7 @@ public sealed class DairyGame
         var list = new List<Goal>();
         if (ProducesMilk)
         {
-            list.Add(new Goal("Give 10 oz of milk", F.DayOz, 10, 0, false));
+            list.Add(new Goal($"Give {Units.Oz(10)} of milk", F.DayOz, 10, 0, false));
             list.Add(new Goal("Get milked at a stall", F.DayStall, 1, 1, false));
             list.Add(new Goal("Do 3 care tasks", F.DayCare, 3, 2, false));
             list.Add(new Goal("Get hand milked", F.DayHand, 1, 3, false));
@@ -3320,7 +3320,7 @@ public sealed class DairyGame
             var tank = Catalog.Upgrades.First(u => u.Id == "farmtank");
             var unlock = Array.IndexOf(tank.Unlocks, l);
             var perks = Leveling.FarmerPerks.Where(p => p.Level == l).Select(p => p.Name).ToList();
-            if (unlock >= 0) perks.Insert(0, $"{Catalog.FarmerTankNames[unlock + 1]} ({Catalog.FarmerTankSizes[unlock + 1]} oz) in the Shop");
+            if (unlock >= 0) perks.Insert(0, $"{Catalog.FarmerTankNames[unlock + 1]} ({Units.Oz(Catalog.FarmerTankSizes[unlock + 1])}) in the Shop");
             Say($"Farmer level {l}!" + (Leveling.FarmerRank(l) is { } title && l == 100 ? $" You're a {title}." : "") + (perks.Count > 0 ? " Unlocked: " + string.Join(", ", perks) + "." : ""), 1);
         }
     }

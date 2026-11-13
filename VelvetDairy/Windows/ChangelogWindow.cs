@@ -37,6 +37,8 @@ public sealed class ChangelogWindow : Window
             "# Grand Creameries and the weekly contract",
             "There can now be a Grand Creamery at each Grand Company. Ship your weekly contract milk at whichever is closest: Dairy > Contract lists them all, each with a map link. While you're at one, the HUD and the location tag say so.",
             "Weekly contracts are bigger: 2,000 oz at dairy level 1, plus 25 oz a level (up to 2,500), starting with next Monday's. You don't have to fill it: if it isn't full by Monday, your dairy still gets the share it delivered (half the milk, half the reward). Dairy > Contract shows what you've earned so far.",
+            "# Metric",
+            "Prefer millilitres? Settings > Show milk in metric shows milk in ml and litres everywhere in the plugin's windows and messages (it still counts in ounces underneath, so nothing changes in the game).",
             "# Cheese",
             "New treat: Cheese. Farmers make it in the Kitchen from milk alone (16 oz makes 2) from farmer level 1, so it's the first treat you can make. It goes on the dairy shelf (25 coins by default) and gives cows Happy +4% and a 10 minute milk boost: a little less than butter cookies and cream buns.",
         }),

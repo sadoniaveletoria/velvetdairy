@@ -396,7 +396,7 @@ public sealed partial class MainWindow
         Ui.Wrapped("The Grand Creamery wants milk from your dairy every week. Farmers and the owner fill jugs from the dairy tank and bring them to any Grand Creamery. Fill it for the full reward; if it isn't full by Monday, your dairy still gets the share it delivered.", Theme.InkSoft, width);
         Gap(8);
         using (fonts.For(fonts.Heading, $"{c.OzDone:0}")!.Push())
-            ImGui.TextColored(c.Completed ? Theme.SageDeep : Theme.Ink, c.Completed ? "Done for this week!" : $"{c.OzDone:0} / {c.OzNeed} oz");
+            ImGui.TextColored(c.Completed ? Theme.SageDeep : Theme.Ink, c.Completed ? "Done for this week!" : $"{Units.Num(c.OzDone, "0")} / {Units.Num(c.OzNeed)} {Units.Unit}");
         var cur = ImGui.GetCursorScreenPos();
         var barW = Math.Min(width, 420);
         Ui.Bar(ImGui.GetWindowDrawList(), cur + new Vector2(0, 4), cur + new Vector2(barW, 14), c.Progress, c.Completed ? Theme.SageDeep : Theme.BlueDeep);
@@ -409,11 +409,11 @@ public sealed partial class MainWindow
         if (c.Shippers.Count > 0)
         {
             Gap(6);
-            Ui.Wrapped("Shipped by: " + string.Join(", ", c.Shippers.Select(x => $"{x.Name.Split(' ')[0]} {x.Oz:N0} oz")), Theme.InkSoft, width);
+            Ui.Wrapped("Shipped by: " + string.Join(", ", c.Shippers.Select(x => $"{x.Name.Split(' ')[0]} {Units.Oz(x.Oz, "N0")}")), Theme.InkSoft, width);
         }
 
         Gap(6);
-        Ui.Wrapped("Contracts grow 40 oz with each dairy level. Any milk counts.", Theme.InkSoft, width);
+        Ui.Wrapped($"Contracts are {Units.Oz(2000, "N0")} at dairy level 1 and grow {Units.Oz(25)} a level. Any milk counts.", Theme.InkSoft, width);
     }
 
     private readonly Dictionary<CreameryInfo, Dalamud.Game.Text.SeStringHandling.Payloads.MapLinkPayload?> creameryLinks = new();
@@ -476,7 +476,7 @@ public sealed partial class MainWindow
             return;
         }
 
-        ImGui.TextColored(Theme.Ink, $"Your jugs: {G.Carried:0.#} oz");
+        ImGui.TextColored(Theme.Ink, $"Your jugs: {Units.Oz(G.Carried, "0.#")}");
         if (G.Carried <= 0) Ui.Wrapped("Fill jugs at your dairy first (HUD > Kitchen).", Theme.InkSoft, width);
         var leftOz = (int)Math.Ceiling(c.Left);
         if (G.Carried >= 0.05f)
@@ -484,7 +484,7 @@ public sealed partial class MainWindow
             var all = (int)Math.Min(Math.Floor(G.Carried + 0.01f), leftOz);
             var pAll = G.ShipProblem(all);
             var clicked = ListRow(Ico("bottle"), "Your milk", Theme.Ink,
-                new[] { new Line($"You carry {G.Carried:0.#} oz", Theme.InkSoft) },
+                new[] { new Line($"You carry {Units.Oz(G.Carried, "0.#")}", Theme.InkSoft) },
                 new[] { new Btn("##shipall", $"Ship {all}", "blue", pAll == null && all > 0, pAll) }, width);
             if (clicked == 0) G.Ship(all);
         }
@@ -508,13 +508,13 @@ public sealed partial class MainWindow
         if (p.Tank != null)
         {
             Gap(4);
-            ImGui.TextColored(Theme.BlueDeep, $"Dairy milk tank: {p.Tank.Total:N1} oz");
+            ImGui.TextColored(Theme.BlueDeep, $"Dairy milk tank: {Units.Oz(p.Tank.Total, "N1")}");
             if (ImGui.IsItemHovered())
                 ImGui.SetTooltip("Every milking in this dairy (stalls and hand) fills this tank. Farmers fill their jugs from it.");
             if (p.Tank.Total > 0)
             {
                 if (p.Tank.Pumpers.Count > 0)
-                    Ui.Wrapped("Top pumpers: " + string.Join(", ", p.Tank.Pumpers.Take(5).Select(x => $"{x.Name.Split(' ')[0]} {x.Oz:N0} oz")), Theme.InkSoft, width);
+                    Ui.Wrapped("Top pumpers: " + string.Join(", ", p.Tank.Pumpers.Take(5).Select(x => $"{x.Name.Split(' ')[0]} {Units.Oz(x.Oz, "N0")}")), Theme.InkSoft, width);
             }
             else ImGui.TextColored(Theme.InkSoft, "Empty. It fills as cows are milked here.");
         }
@@ -776,7 +776,7 @@ public sealed partial class MainWindow
                 var p = G.DeliverProblem(o);
                 var have = G.Carried;
                 var here = G.VisitingDairy?.Id == o.DairyId;
-                var clicked = ListRow(Ico("coin"), $"{o.DairyName} · {o.Oz} oz", Theme.Ink,
+                var clicked = ListRow(Ico("coin"), $"{o.DairyName} · {Units.Oz(o.Oz)}", Theme.Ink,
                     new[]
                     {
                         new Line(here ? $"Pays {o.Coins} + {(int)Math.Round(o.Coins * 0.1)} for coming in person" : $"Pays {o.Coins} coins{(o.DairyPublic ? " (+10% in person)" : "")}", Theme.HoneyDeep),
@@ -800,7 +800,7 @@ public sealed partial class MainWindow
                 var clicked = ListRow(Ico("bottle"), $"{o.Customer} (visitor order)", Theme.Ink,
                     new[]
                     {
-                        new Line($"{o.Oz} oz of milk", Theme.InkSoft),
+                        new Line($"{Units.Oz(o.Oz)} of milk", Theme.InkSoft),
                         new Line($"Pays {o.Coins} coins · {o.Xp} xp (the creamery pays)", Theme.HoneyDeep),
                     },
                     new[] { new Btn($"##vfill{visiting.Id}{o.Id}", "Deliver", "sage", can, can ? null : G.CanCarry ? "Fill your jugs from your dairy tank first." : "Only farmers and owners deliver milk.") }, width);
@@ -818,7 +818,7 @@ public sealed partial class MainWindow
         foreach (var o in net.MyOrders.ToList())
         {
             var left = DateTimeOffset.FromUnixTimeSeconds(o.Expires) - DateTimeOffset.UtcNow;
-            if (Row($"##cancelord{o.Id}", "coin", $"{o.Oz} oz of milk",
+            if (Row($"##cancelord{o.Id}", "coin", $"{Units.Oz(o.Oz)} of milk",
                     $"{o.Coins} coins held · ends in {(left.TotalDays >= 1 ? $"{(int)left.TotalDays}d {left.Hours}h" : Mins(left))}", "Cancel", "cream", true, "Cancel and get the coins back.", width))
                 G.CancelBuyOrder(o);
         }

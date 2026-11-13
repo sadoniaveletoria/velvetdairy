@@ -144,6 +144,7 @@ public sealed class Plugin : IDalamudPlugin
     {
         var dt = (float)fw.UpdateDelta.TotalSeconds;
         WatchCharacter();
+        Units.Metric = Config.Farm.Metric;   // how milk amounts are written (Settings)
         // Waiting to hear whose the old save is: nothing runs meanwhile (but the server's answer still comes in)
         if (Waiting || Config.ActiveKey == null)
         {

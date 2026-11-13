@@ -66,22 +66,22 @@ public sealed class KitchenWindow : Window
     private void DrawJugs()
     {
         var frac = G.MaxCarry > 0 ? Math.Clamp(G.Carried / G.MaxCarry, 0f, 1f) : 0f;
-        ImGui.TextColored(Theme.Ink, $"Your jugs: {G.Carried:0.#} / {G.MaxCarry} oz");
+        ImGui.TextColored(Theme.Ink, $"Your jugs: {Units.Num(G.Carried, "0.#")} / {Units.Num(G.MaxCarry)} {Units.Unit}");
         ImGui.SameLine();
-        ImGui.TextColored(Theme.InkSoft, $"· dairy tank {G.TankOz:0.#} oz");
+        ImGui.TextColored(Theme.InkSoft, $"· dairy tank {Units.Oz(G.TankOz, "0.#")}");
         ImGui.PushStyleColor(ImGuiCol.PlotHistogram, Theme.BlueDeep);
         ImGui.ProgressBar(frac, new Vector2(Math.Min(ImGui.GetContentRegionAvail().X, 260), 8), "");
         ImGui.PopStyleColor();
         ImGui.SameLine();
         var p8 = G.TakeJugProblem(8);
-        if (Ui.Button("##kjug8", "Fill 8 oz", new Vector2(84, 24), "cream", p8 == null, p8)) G.TakeJug(8);
+        if (Ui.Button("##kjug8", $"Fill {Units.Oz(8)}", new Vector2(Units.Metric ? 104 : 84, 24), "cream", p8 == null, p8)) G.TakeJug(8);
         ImGui.SameLine();
         var p32 = G.TakeJugProblem(32);
-        if (Ui.Button("##kjug32", "Fill 32 oz", new Vector2(90, 24), "cream", p32 == null, p32)) G.TakeJug(32);
+        if (Ui.Button("##kjug32", $"Fill {Units.Oz(32)}", new Vector2(Units.Metric ? 104 : 90, 24), "cream", p32 == null, p32)) G.TakeJug(32);
         ImGui.SameLine();
         var up = G.FillUpOz;
         var pUp = up < 1 ? (G.Carried >= G.MaxCarry - 0.5f ? "Your jugs are full." : "The dairy tank is empty.") : G.TakeJugProblem(up);
-        if (Ui.Button("##kjugup", "Fill up", new Vector2(80, 24), "blue", pUp == null, pUp ?? $"Take {up} oz")) G.TakeJug(up);
+        if (Ui.Button("##kjugup", "Fill up", new Vector2(80, 24), "blue", pUp == null, pUp ?? $"Take {Units.Oz(up)}")) G.TakeJug(up);
         ImGui.Spacing();
     }
 
@@ -160,7 +160,7 @@ public sealed class KitchenWindow : Window
 
         // What it takes, against what you have
         ImGui.TextColored(Theme.RoseDeep, "NEEDS");
-        if (r.MilkOz > 0) Need($"{r.MilkOz * n} oz milk", $"{G.Carried:0.#} oz in your jugs", G.Carried >= r.MilkOz * n);
+        if (r.MilkOz > 0) Need($"{Units.Oz(r.MilkOz * n)} milk", $"{Units.Oz(G.Carried, "0.#")} in your jugs", G.Carried >= r.MilkOz * n);
         foreach (var (id, per) in r.Needs())
         {
             Need($"{per * n} {Catalog.MadeName(id).ToLowerInvariant()}",
