@@ -1738,8 +1738,13 @@ public sealed partial class DairyGame
     /// <summary>The first shelf item there's any of (cookies for now).</summary>
     private ShelfItem? FeedStock => Net.Shelf.FirstOrDefault(x => x.Qty > 0 && Catalog.FeedById(x.Item) != null);
 
+    /// <summary>Every treat on the dairy shelf a farmer can feed, with how many there are.</summary>
+    public List<(string Item, int Qty)> ShelfFeeds() =>
+        Net.Shelf.Where(x => x.Qty > 0 && Catalog.FeedById(x.Item) != null)
+            .GroupBy(x => x.Item).Select(g => (g.Key, g.Sum(x => x.Qty))).ToList();
+
     public string FeedTip => FeedStock is { } st
-        ? $"Give them {Catalog.MadeName(st.Item).ToLowerInvariant()} from the dairy shelf ({st.Qty} left). Free; +{Catalog.FeedXp} farmer xp. One treat per cow or bull every 15 minutes, whoever gives it."
+        ? $"Pick a treat from the dairy shelf to give them. Free; +{Catalog.FeedXp} farmer xp. One treat per cow or bull every 15 minutes, whoever gives it."
         : "The dairy shelf is empty. Bake some in the Kitchen.";
 
     public string? FeedProblem(string name, string id, float distance)
@@ -1758,7 +1763,7 @@ public sealed partial class DairyGame
         return null;
     }
 
-    public void FeedFromShelf(string name, string id, float distance)
+    public void FeedFromShelf(string name, string id, float distance, string? which = null)
     {
         var p = FeedProblem(name, id, distance);
         if (p != null)
@@ -1770,7 +1775,7 @@ public sealed partial class DairyGame
         if (feeding) return;
         feeding = true;
         Touch();
-        var item = FeedStock!.Item;
+        var item = which != null && ShelfFeeds().Any(x => x.Item == which) ? which : FeedStock!.Item;
         Net.FeedShelf(item, id, () =>
         {
             feeding = false;

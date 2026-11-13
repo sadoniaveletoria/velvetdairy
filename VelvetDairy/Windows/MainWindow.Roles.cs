@@ -304,11 +304,49 @@ public sealed partial class MainWindow
                     }
             }
             else if (clicked == 1) G.Groom(c.Name, c.Id, near);
-            else if (clicked == 2) G.FeedFromShelf(c.Name, c.Id, near);
+            else if (clicked == 2)
+            {
+                // Pick which treat from the shelf
+                feedPick = (c.Name, c.Id, near);
+                ImGui.OpenPopup("##feedpick");
+            }
             else if (clicked == 0 && !G.MilkCow(c.Name, milkEmote, Math.Max(st?.Milk ?? 0, (st?.SeedOz ?? 0) / DairyGame.SeedRatio), st?.Ask == true)) G.Notify($"{milkEmote} isn't an emote the game knows. Ask them to fix their milking emotes (Roles > Cow).", 2);
         }
 
+        DrawFeedPicker();
         Ui.Wrapped("You get 25% of what the cow or bull is paid, on top of their pay, plus farmer xp. A bull's seed is milked the same way, into the dairy's seed tank.", Theme.InkSoft, width);
+    }
+
+    private (string Name, string Id, float Near) feedPick;
+
+    /// <summary>After pressing Feed: the treats on the dairy shelf, to pick which one they get.</summary>
+    private void DrawFeedPicker()
+    {
+        PaperStyle.Push();
+        if (ImGui.BeginPopup("##feedpick"))
+        {
+            ImGui.TextColored(Theme.RoseDeep, $"Feed {feedPick.Name}");
+            ImGui.Separator();
+            var feeds = G.ShelfFeeds();
+            if (feeds.Count == 0) ImGui.TextColored(Theme.InkSoft, "The dairy shelf is empty. Bake some in the Kitchen.");
+            foreach (var (item, qty) in feeds)
+            {
+                var f = Catalog.FeedById(item)!;
+                if (ImGui.Selectable($"{Catalog.MadeName(item)} ({qty} left)##pick{item}"))
+                {
+                    G.FeedFromShelf(feedPick.Name, feedPick.Id, feedPick.Near, item);
+                    ImGui.CloseCurrentPopup();
+                }
+
+                if (ImGui.IsItemHovered()) ImGui.SetTooltip(Units.Text(Effects(f)));
+                ImGui.SameLine();
+                ImGui.TextColored(Theme.InkSoft, Effects(f));
+            }
+
+            ImGui.EndPopup();
+        }
+
+        PaperStyle.Pop();
     }
 
     // ----- Bull -----
