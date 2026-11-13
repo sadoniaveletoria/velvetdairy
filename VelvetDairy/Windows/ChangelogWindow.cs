@@ -23,7 +23,7 @@ public sealed class ChangelogWindow : Window
     /// <summary>Newest first. Write these for players: what changed for them, not how.</summary>
     private static readonly Entry[] Entries =
     {
-        new("0.9.43", "Bulls: seed, the seed tank and breeding", new[]
+        new("0.9.44", "Bulls: seed, the seed tank and breeding", new[]
         {
             "# Bulls make seed",
             "Bulls now work like cows, with seed instead of milk. The same four needs (Fed, Watered, Comfy, Happy) speed it up, and care, treats, resting, levels, dozing and tiredness all work the same. If you're a cow and a bull, one set of needs feeds both.",
