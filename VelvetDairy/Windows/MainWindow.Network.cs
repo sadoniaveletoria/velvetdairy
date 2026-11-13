@@ -393,7 +393,7 @@ public sealed partial class MainWindow
             return;
         }
 
-        Ui.Wrapped("The Grand Creamery wants milk from your dairy every week. Farmers and the owner fill jugs from the dairy tank and bring them there. When it's full, the whole dairy is rewarded.", Theme.InkSoft, width);
+        Ui.Wrapped("The Grand Creamery wants milk from your dairy every week. Farmers and the owner fill jugs from the dairy tank and bring them to any Grand Creamery. Fill it for the full reward; if it isn't full by Monday, your dairy still gets the share it delivered.", Theme.InkSoft, width);
         Gap(8);
         using (fonts.For(fonts.Heading, $"{c.OzDone:0}")!.Push())
             ImGui.TextColored(c.Completed ? Theme.SageDeep : Theme.Ink, c.Completed ? "Done for this week!" : $"{c.OzDone:0} / {c.OzNeed} oz");
@@ -402,7 +402,8 @@ public sealed partial class MainWindow
         Ui.Bar(ImGui.GetWindowDrawList(), cur + new Vector2(0, 4), cur + new Vector2(barW, 14), c.Progress, c.Completed ? Theme.SageDeep : Theme.BlueDeep);
         ImGui.Dummy(new Vector2(barW, 20));
         ImGui.TextColored(Theme.InkSoft, "Any milk counts");
-        ImGui.TextColored(Theme.HoneyDeep, $"Reward: {c.RewardXp:N0} dairy xp + {c.RewardFund:N0} coins for the fund");
+        ImGui.TextColored(Theme.HoneyDeep, $"Full reward: {c.RewardXp:N0} dairy xp + {c.RewardFund:N0} coins for the fund");
+        if (!c.Completed) ImGui.TextColored(Theme.SageDeep, $"Earned so far: {c.EarnedXp:N0} dairy xp + {c.EarnedFund:N0} coins (paid Monday if it isn't full)");
         var left = NextMonday() - DateTime.UtcNow;
         ImGui.TextColored(Theme.InkSoft, c.Completed ? $"A new contract comes in {(int)left.TotalDays}d {left.Hours}h." : $"Ends in {(int)left.TotalDays}d {left.Hours}h (Monday 00:00 UTC).");
         if (c.Shippers.Count > 0)

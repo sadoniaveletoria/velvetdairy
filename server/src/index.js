@@ -63,7 +63,8 @@ const FEED_COOLDOWN = 900;          // a farmer can feed each cow or bull from t
 // Developer (same phrase hash as the plugin's dev mode)
 const DEV_KEY_HASH = "7d4e0a8c4a26de8d2843e2a563f667d74beda3b81ffa447c22bd40d93b5af76f";
 // Weekly contracts
-const CONTRACT_BASE_OZ = 200, CONTRACT_OZ_PER_LEVEL = 40, CONTRACT_MAX_OZ = 1200;
+const CONTRACT_BASE_OZ = 2000, CONTRACT_OZ_PER_LEVEL = 25, CONTRACT_NEED_MAX = 2500;   // weekly contract size
+const CONTRACT_MAX_OZ = 1200;       // most one shipment can carry
 const CONTRACT_XP_PER_OZ = 1.5, CONTRACT_FUND_PER_OZ = 4;             // most milk a farmer or owner can carry out of the tank at once
 const PUMP_PER_BEAT = 120;          // most oz one heartbeat can add to the dairy tank
 const MEMBER_DAILY_PUMP = 1500;     // most oz one member can add to a dairy tank per day
@@ -1430,10 +1431,35 @@ async function contractFor(env, dairyId, level) {
   const week = weekKey();
   let c = await env.DB.prepare("SELECT * FROM contracts WHERE dairy_id = ? AND week = ?").bind(dairyId, week).first();
   if (c) return c;
-  const need = Math.min(CONTRACT_MAX_OZ, CONTRACT_BASE_OZ + CONTRACT_OZ_PER_LEVEL * (level - 1));
+  await settleContracts(env, dairyId);
+  const need = Math.min(CONTRACT_NEED_MAX, CONTRACT_BASE_OZ + CONTRACT_OZ_PER_LEVEL * (level - 1));
   await env.DB.prepare(`INSERT OR IGNORE INTO contracts (dairy_id, week, oz_need, min_grade, reward_xp, reward_fund) VALUES (?, ?, ?, ?, ?, ?)`)
     .bind(dairyId, week, need, contractMinGrade(level), Math.round(need * CONTRACT_XP_PER_OZ), Math.round(need * CONTRACT_FUND_PER_OZ)).run();
   return await env.DB.prepare("SELECT * FROM contracts WHERE dairy_id = ? AND week = ?").bind(dairyId, week).first();
+}
+
+/**
+ * Contracts from past weeks that weren't finished still pay for what was delivered: the same share of the reward as
+ * the share of the milk (1,000 of 2,000 oz pays half). Done once, when the dairy's next contract is made.
+ */
+async function settleContracts(env, dairyId) {
+  const old = (await env.DB.prepare(
+    "UPDATE contracts SET completed = ? WHERE dairy_id = ? AND week < ? AND completed IS NULL RETURNING week, oz_need, oz_done, reward_xp, reward_fund")
+    .bind(now(), dairyId, weekKey()).all()).results;
+  for (const c of old) {
+    const share = Math.max(0, Math.min(1, c.oz_done / c.oz_need));
+    const xp = Math.floor(c.reward_xp * share), fund = Math.floor(c.reward_fund * share);
+    if (xp <= 0 && fund <= 0) continue;
+    const d = await env.DB.prepare("SELECT name FROM dairies WHERE id = ?").bind(dairyId).first();
+    const members = (await env.DB.prepare("SELECT install FROM members WHERE dairy_id = ?").bind(dairyId).all()).results;
+    await env.DB.batch([
+      addXpStmt(env, dairyId, xp),
+      env.DB.prepare(`INSERT INTO dairy_progress (dairy_id, fund, week) VALUES (?, ?, ?)
+        ON CONFLICT(dairy_id) DO UPDATE SET fund = fund + excluded.fund`).bind(dairyId, fund, weekKey()),
+      ...members.map(m => inboxStmt(env, m.install, "notice", 0, 0, 0,
+        `${d?.name || "Your dairy"} delivered ${Math.round(c.oz_done).toLocaleString("en-US")} of ${c.oz_need.toLocaleString("en-US")} oz for last week's creamery contract (${Math.round(share * 100)}%): +${xp} dairy xp and ${fund} coins for the fund.`)),
+    ]);
+  }
 }
 
 async function contractOut(env, dairyId, level) {
@@ -1443,6 +1469,8 @@ async function contractOut(env, dairyId, level) {
   return {
     week: c.week, ozNeed: c.oz_need, ozDone: Math.round(c.oz_done * 10) / 10, minGrade: 0,
     rewardXp: c.reward_xp, rewardFund: c.reward_fund, completed: !!c.completed,
+    // What it would pay right now if the week ended (the share delivered)
+    earnedXp: Math.floor(c.reward_xp * Math.min(1, c.oz_done / c.oz_need)), earnedFund: Math.floor(c.reward_fund * Math.min(1, c.oz_done / c.oz_need)),
     shippers: top.map(x => ({ name: x.name, oz: Math.round(x.oz * 10) / 10 })),
   };
 }

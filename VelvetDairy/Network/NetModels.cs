@@ -228,6 +228,8 @@ public sealed class ContractInfo
     public int MinGrade { get; set; }
     public int RewardXp { get; set; }
     public int RewardFund { get; set; }
+    public int EarnedXp { get; set; }     // what it pays if the week ends now (the share delivered)
+    public int EarnedFund { get; set; }
     public bool Completed { get; set; }
     public List<Pumper> Shippers { get; set; } = new();
 

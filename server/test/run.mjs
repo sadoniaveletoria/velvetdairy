@@ -226,7 +226,10 @@ await test("dairy XP: only in the dairy, capped per member per day", async () =>
 
   // Weekly contract: sized by level; shipped from carried jugs (at the Grand Creamery once it's set); pays once
   let c = (await call(alice, "GET", "/v1/dairy/mine")).data.progress.contract;
-  assert.equal(c.ozNeed, 200, "sized when first seen (level 1)");
+  assert.equal(c.ozNeed, 2000, "sized when first seen (level 1)");
+  assert.equal(c.rewardFund, 8000);
+  // The rest of this test ships a small contract to the end
+  sqlite.exec("UPDATE contracts SET oz_need = 200, reward_xp = 300, reward_fund = 800");
   assert.equal(c.minGrade, 0);
   assert.equal((await call(carl, "POST", "/v1/dairy/contract/ship", { grade: 0, oz: 5 })).status, 403, "bulls can't ship");
   await beat(bob, { houseId: HOUSE, awake: true });
@@ -584,6 +587,25 @@ await test("applications: accepting one withdraws the others; withdraw your own"
   assert.equal((await call(o1, "POST", `/v1/dairy/applications/${a1.data.id}/accept`, {})).status, 200);
   assert.equal((await call(o2, "GET", "/v1/dairy/applications")).data.applications.length, 0);   // withdrawn
   assert.equal((await call(o2, "POST", `/v1/dairy/applications/${a3.data.id}/accept`, {})).status, 404);
+});
+
+await test("weekly contract: an unfinished week still pays for the share delivered", async () => {
+  const o = player("Pia Partial");
+  await beat(o);
+  await call(o, "PUT", "/v1/dairy", dairyBody({ houseId: "5550001119999", name: "Partial Pasture", ownerName: "Pia Partial" }));
+  const mine = (await call(o, "GET", "/v1/dairy/mine")).data;
+  const id = mine.dairy.id, before = mine.progress;
+  // Last week: 500 of 2,000 oz delivered, never finished; this week's contract isn't made yet
+  sqlite.exec(`DELETE FROM contracts WHERE dairy_id = '${id}'`);
+  sqlite.exec(`INSERT INTO contracts (dairy_id, week, oz_need, min_grade, oz_done, reward_xp, reward_fund) VALUES ('${id}', '2000-01-03', 2000, 0, 500, 3000, 8000)`);
+  await call(o, "GET", "/v1/dairy/mine");   // makes this week's contract, which settles last week's
+  const after = (await call(o, "GET", "/v1/dairy/mine")).data.progress;
+  assert.equal(after.fund, before.fund + 2000, "a quarter of the fund reward");
+  assert.equal(after.xp, before.xp + 750, "a quarter of the xp");
+  assert.equal(after.contract.ozDone, 0, "a fresh contract for this week");
+  // Paid once
+  const again = (await call(o, "GET", "/v1/dairy/mine")).data.progress;
+  assert.equal(again.fund, after.fund);
 });
 
 console.log(`\n${passed} passed`);
