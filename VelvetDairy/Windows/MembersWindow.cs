@@ -235,7 +235,7 @@ public sealed class MembersWindow : Window
                 {
                     ImGui.SameLine();
                     ImGui.TextColored(Theme.InkSoft, $"· Breeding {bs.Seed}%");
-                    if (ImGui.IsItemHovered()) ImGui.SetTooltip("Tired from breeding today: breeding output for his next one");
+                    if (ImGui.IsItemHovered()) ImGui.SetTooltip("Tired from breeding today: breeding output for their next one");
                 }
 
                 ImGui.TableNextColumn();

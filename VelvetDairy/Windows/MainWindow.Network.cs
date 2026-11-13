@@ -527,7 +527,7 @@ public sealed partial class MainWindow
             // Bulls' seed goes into its own tank (just stored for now)
             ImGui.TextColored(Theme.BlueDeep, $"Dairy seed tank: {Units.Oz(p.Tank.Seed, "N2")}");
             if (ImGui.IsItemHovered())
-                ImGui.SetTooltip(Units.Text("Every time a bull is milked in this dairy (stalls and hand), his seed goes into this tank. Uses for it are coming in a later update."));
+                ImGui.SetTooltip(Units.Text("Every time a bull is milked in this dairy (stalls and hand), their seed goes into this tank. Uses for it are coming in a later update."));
             if (p.Tank.SeedPumpers.Count > 0)
                 Ui.Wrapped("Top bulls: " + string.Join(", ", p.Tank.SeedPumpers.Take(5).Select(x => $"{x.Name.Split(' ')[0]} {Units.Oz(x.Oz, "N1")}")), Theme.InkSoft, width);
         }

@@ -321,11 +321,11 @@ public sealed partial class MainWindow
         DrawFathered(width);
 
         SubHeading("Breeding", width);
-        Ui.Wrapped("Bulls breed their dairy's cows in a scene with the Corruption plugin. When you finish in a scene with a cow of your dairy, you've bred her: she gets a little more milk for a while, and you get bull xp.",
+        Ui.Wrapped("Bulls breed their dairy's cows in a scene with the Corruption plugin. When you finish in a scene with a cow of your dairy, you've bred them: they get a little more milk for a while, and you get bull xp.",
             Theme.Ink, width);
         Ui.Wrapped($"There's no limit on how often you breed, but you tire: after {DairyGame.FreshBreeds} breedings a day your breeding output drops 20% each time (down to 20%), which makes the cow's bonus and your xp smaller. It's back to full at midnight UTC.",
             Theme.InkSoft, width);
-        Ui.Wrapped("Getting a cow pregnant is up to Corruption (her cycle and settings); Eorzea Milkers shows it when it happens.", Theme.InkSoft, width);
+        Ui.Wrapped("Getting a cow pregnant is up to Corruption (their cycle and settings); Eorzea Milkers shows it when it happens.", Theme.InkSoft, width);
         if (!G.CorruptionOn) Ui.Wrapped("Corruption isn't installed or loaded, so breeding doesn't count yet. It's on GitHub: RaylaPetal/corruption.", Theme.Warn, width);
     }
 
@@ -419,7 +419,7 @@ public sealed partial class MainWindow
             ImGui.TextColored(Theme.RoseDeep, $"Bred by {F.BredBy}: +{G.BredBonusNow * 100:0.#}% milk for {(int)G.BredLeft.TotalMinutes + 1} more min");
         else if (G.BreedCooldownLeft > TimeSpan.Zero)
             ImGui.TextColored(Theme.InkSoft, $"Another breeding counts in {(int)G.BreedCooldownLeft.TotalMinutes + 1} min");
-        else Ui.Wrapped($"When a bull of your dairy finishes in a Corruption scene with you, you're bred: +{DairyGame.BredBonus * 100:0}% milk for {DairyGame.BredMinutes} minutes (less if he's tired), once every {DairyGame.BredCooldownMinutes} minutes.", Theme.InkSoft, width);
+        else Ui.Wrapped($"When a bull of your dairy finishes in a Corruption scene with you, you're bred: +{DairyGame.BredBonus * 100:0}% milk for {DairyGame.BredMinutes} minutes (less if they're tired), once every {DairyGame.BredCooldownMinutes} minutes.", Theme.InkSoft, width);
 
         var p = G.Preg;
         if (G.Pregnant)

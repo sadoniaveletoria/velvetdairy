@@ -212,7 +212,7 @@ public sealed partial class DairyGame
         F.BredUntilUtc = DateTime.UtcNow.AddMinutes(BredMinutes);
         F.BredStrength = Math.Clamp(seed / 100f, 0.2f, 1f);
         F.BredBy = bull.Name;
-        Say($"{bull.Name} bred you: +{BredBonusNow * 100:0.#}% milk for {BredMinutes} minutes{(seed < 100 ? $" (his seed is at {seed}% today)" : "")}.", 1);
+        Say($"{bull.Name} bred you: +{BredBonusNow * 100:0.#}% milk for {BredMinutes} minutes{(seed < 100 ? $" (their breeding output is at {seed}% today)" : "")}.", 1);
         plugin.SaveConfig();
     }
 
