@@ -310,9 +310,11 @@ await test("farmer chores: clean a stall (fresh an hour, again at half), groom a
   assert.ok((await call(carl, "GET", "/v1/dairy/mine")).data.stalls.find(x => x.id === stall.id).cleanUntil > 0, "everyone sees it's fresh");
 
   assert.equal((await call(carl, "POST", "/v1/groom", { cow: alice.id })).status, 403, "only farmers groom");
-  assert.equal((await call(bob, "POST", "/v1/groom", { cow: carl.id })).status, 400, "only cows get groomed");
+  assert.equal((await call(bob, "POST", "/v1/groom", { cow: carl.id })).status, 200, "bulls get groomed too");
+  assert.equal((await call(bob, "POST", "/v1/groom", { cow: bob.id })).status, 400, "not yourself");
   assert.equal((await call(bob, "POST", "/v1/groom", { cow: alice.id })).status, 200);
   assert.equal((await call(bob, "POST", "/v1/groom", { cow: alice.id })).status, 400, "15 minutes per cow");
+  assert.match((await call(bob, "POST", "/v1/groom", { cow: alice.id })).data.error ?? "", /again in \d+ min/, "says how long, so the plugin can wait that long");
   const items = (await call(alice, "POST", "/v1/inbox/claim")).data.items;
   assert.ok(items.some(i => i.kind === "groom"), "the cow hears about it");
   await beat(bob, { houseId: ELSEWHERE, awake: true });

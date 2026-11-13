@@ -1781,7 +1781,7 @@ public sealed partial class DairyGame
         }, e =>
         {
             feeding = false;
-            feedReady[id] = now + 60;
+            feedReady[id] = now + WaitFromServer(e, 60);
             Fail(e);
         });
     }
@@ -1809,9 +1809,17 @@ public sealed partial class DairyGame
         }, e =>
         {
             grooming = false;
-            groomReady[cowId] = now + 60;   // the server knows the real wait; don't spam it
+            // The server knows the real wait ("again in 11 min"): use it, so the button stays off that long
+            groomReady[cowId] = now + WaitFromServer(e, 60);
             Fail(e);
         });
+    }
+
+    /// <summary>Seconds from a server message like "again in 11 min" (or "in 11 min"); the fallback when there's none.</summary>
+    private static double WaitFromServer(string message, double fallback)
+    {
+        var m = System.Text.RegularExpressions.Regex.Match(message, @"in (\d+) min");
+        return m.Success && int.TryParse(m.Groups[1].Value, out var min) ? min * 60 : fallback;
     }
 
     public HashSet<ushort> HandEmoteIds() => F.HandEmotes!.Select(Emotes.Find).Where(id => id != 0).ToHashSet();

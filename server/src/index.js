@@ -1204,13 +1204,14 @@ async function cleanStall(env, me, id) {
 async function groom(env, me, request) {
   const b = await body(request);
   const mem = await membership(env, me.id);
-  if (!mem || !hasRole(mem, "farmer")) fail(403, "Only farmers groom cows.");
-  if (!inOwnDairy(me, mem)) fail(400, "Go to your dairy to groom its cows.");
+  if (!mem || !hasRole(mem, "farmer")) fail(403, "Only farmers groom cows and bulls.");
+  if (!inOwnDairy(me, mem)) fail(400, "Go to your dairy to groom its cows and bulls.");
   const cowId = String(b.cow || "");
   if (cowId === me.id) fail(400, "You can't groom yourself.");
-  const cow = await env.DB.prepare(`SELECT install, name FROM members WHERE install = ? AND dairy_id = ? AND ${ROLE_SQL}`)
-    .bind(cowId, mem.dairy_id, "cow").first();
-  if (!cow) fail(400, "That cow isn't in your dairy.");
+  // Cows and bulls (bulls make seed with the same needs, so grooming helps them the same way)
+  const cow = await env.DB.prepare(`SELECT install, name FROM members WHERE install = ? AND dairy_id = ? AND (${ROLE_SQL} OR ${ROLE_SQL})`)
+    .bind(cowId, mem.dairy_id, "cow", "bull").first();
+  if (!cow) fail(400, "They aren't a cow or bull in your dairy.");
   const t = now();
   const last = await env.DB.prepare("SELECT at FROM grooms WHERE farmer = ? AND cow = ?").bind(me.id, cow.install).first();
   if (last && t - last.at < GROOM_COOLDOWN) fail(400, `You can groom ${cow.name} again in ${Math.ceil((GROOM_COOLDOWN - (t - last.at)) / 60)} min.`);
