@@ -23,7 +23,7 @@ public sealed class ChangelogWindow : Window
     /// <summary>Newest first. Write these for players: what changed for them, not how.</summary>
     private static readonly Entry[] Entries =
     {
-        new("0.9.50", "Bulls: seed, the seed tank and breeding", new[]
+        new("0.9.51", "Bulls: seed, the seed tank and breeding", new[]
         {
             "# A new look",
             "The tabs are now down the left side of the main window, each with an icon. Under them is the list of helper plugins (Penumbra, Corruption, Cummy and Lifestream) with a green dot for each one you have: hover one to see what it's for, or click a missing one to copy its repository link.",
@@ -34,6 +34,7 @@ public sealed class ChangelogWindow : Window
             "Seed has its own grades and seed quality, built the same way as milk quality (being milked, by hand for more, and quality treats). It slips after days without milking, and full vials spoil after 3 days, the same as milk.",
             "Bulls are milked at stalls or by a farmer's hand, exactly like cows. Each oz of seed pays ten times milk's price, and gives bull xp. Farmers get their usual 25% share for hand milking a bull.",
             "Herd Care now lists bulls with their seed, so farmers can milk, groom and feed them. The member list, Owner HUD and Dairy tab show bulls' seed too.",
+            "Feed in Herd Care now asks which treat from the dairy shelf to give.",
             "# The seed tank",
             "Every dairy has a seed tank now. Seed from bulls milked in the dairy goes into it (shown on the Dairy tab with its top bulls). Uses for it are coming in a later update.",
             "# Breeding (with Corruption)",
