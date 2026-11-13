@@ -68,6 +68,8 @@ public static partial class Integrity
         if (cow.FedBonus != 0 || cow.WaterBonus != 0 || cow.ComfortBonus != 0 || cow.HappyBonus != 0)
             Add("bonus", $"{N(cow.FedBonus)},{N(cow.WaterBonus)},{N(cow.ComfortBonus)},{N(cow.HappyBonus)}");
         if (cow.LastMilkedUtc != null || cow.FreshHoldUntilUtc != DateTime.MinValue) Add("fresh", $"{D(cow.LastMilkedUtc)},{D(cow.FreshHoldUntilUtc)}");
+        if (f.SeedQuality != 0 || cow.Seed != 0 || cow.SeedSpoiled || cow.SeedTaint != 0 || cow.SeedLastMilkedUtc != null || cow.SeedFullSinceUtc != null)
+            Add("seed", $"{N(f.SeedQuality)},{N(cow.Seed)},{cow.SeedSpoiled},{N(cow.SeedTaint)},{D(cow.SeedLastMilkedUtc)},{D(cow.SeedFullSinceUtc)},{N(st.TotalSeedOz)},{N(f.DaySeedOz)}");
         return sb.ToString();
     }
 

@@ -84,26 +84,42 @@ public sealed class HudWindow : Window
         var size = HudSize;   // the bottle, needs and status keep their place; buttons go below
 
         var cow = F.Cow;
-        var cap = G.Capacity;
-        if (seenDump != G.DumpSerial)
+        // A bull who isn't a cow shows his seed vials here instead of milk bottles; a cow who's also a bull gets a small vial beside the bottle
+        var seedOnly = !G.ProducesMilk && G.ProducesSeed;
+        var amount = seedOnly ? cow.Seed : cow.Milk;
+        var cap = seedOnly ? G.SeedCapacity : G.Capacity;
+        var spoiled = seedOnly ? G.SeedSpoiled : G.Spoiled;
+        var overfull = seedOnly ? G.SeedFull : G.Overfull;
+        var serial = G.DumpSerial + G.SeedDumpSerial * 1000;
+        if (seenDump != serial)
         {
-            seenDump = G.DumpSerial;
-            shown = cow.Milk;
+            seenDump = serial;
+            shown = amount;
         }
 
-        shown = shown < 0 ? cow.Milk : shown + (cow.Milk - shown) * Math.Min(1f, ImGui.GetIO().DeltaTime * 4f);
+        shown = shown < 0 ? amount : shown + (amount - shown) * Math.Min(1f, ImGui.GetIO().DeltaTime * 4f);
 
         // Bottle
         var bh = size.Y - 34;
         var bmin = o + new Vector2(20, 17);
         var flow = G.Active != null ? Ui.Flow.Draining
-            : G.MilkComing ? Ui.Flow.Filling
+            : (seedOnly ? G.SeedComing : G.MilkComing) ? Ui.Flow.Filling
             : Ui.Flow.Still;
-        var bSize = G.BottleSize;
+        var bSize = seedOnly ? G.VialSize : G.BottleSize;
         var bCount = G.BottleCount;
         var full = Math.Min(bCount, (int)(shown / bSize + 0.001f));
         var frac = full >= bCount ? 1f : Math.Clamp((shown - full * bSize) / bSize, 0f, 1f);
-        Ui.Bottle(dl, bmin, new Vector2(bh / 2, bh), frac, flow, G.Spoiled ? MainWindow.SourMilk : null, G.BottleTier);
+        Ui.Bottle(dl, bmin, new Vector2(bh / 2, bh), frac, flow, spoiled ? MainWindow.SourMilk : seedOnly ? MainWindow.SeedTint : (Vector4?)null, G.BottleTier);
+        var milkAndSeed = G.ProducesMilk && G.ProducesSeed;
+        if (milkAndSeed)
+        {
+            // The seed vial: small, beside the bottle
+            var vf = Math.Clamp(cow.Seed / Math.Max(0.001f, G.SeedCapacity), 0f, 1f);
+            var vmin = bmin + new Vector2(bh / 2 + 4, bh * 0.45f);
+            Ui.Bottle(dl, vmin, new Vector2(bh * 0.55f / 2, bh * 0.55f), vf, G.SeedComing ? Ui.Flow.Filling : Ui.Flow.Still, G.SeedSpoiled ? MainWindow.SourMilk : MainWindow.SeedTint, G.BottleTier);
+            if (ImGui.IsMouseHoveringRect(vmin, vmin + new Vector2(bh * 0.55f / 2, bh * 0.55f)))
+                ImGui.SetTooltip(Units.Text($"Seed: {cow.Seed:0.##} / {G.SeedCapacity:0.#} oz · Grade {Grades.Name(G.SeedGrade)}" + (G.SeedSpoiled ? "\nSpoiled: dump it." : G.SeedFull ? "\nFull: get milked." : "")));
+        }
 
         // "+xp" floats up beside the bottle when making milk ticks XP in
         var tick = G.LastXpTick;
@@ -113,11 +129,13 @@ public sealed class HudWindow : Window
                 Theme.Alpha(Theme.HoneyDeep, (float)(1 - age / 3)));
 
         // Milk and grade
-        var x = bmin.X + bh / 2 + 14;
-        var grade = G.CurrentGrade;
-        Ui.Text(dl, fonts.Heading, $"{cow.Milk:0.#}", new Vector2(x, o.Y + 18), Theme.Ink);
-        var mw = Ui.Measure(fonts.Heading, $"{cow.Milk:0.#}").X;
-        Ui.Text(dl, fonts.Small, bCount > 1 ? $"/ {Units.Oz(cap, "0")} · {full} of {bCount} full" : $"/ {Units.Oz(cap, "0")}", new Vector2(x + mw + 4, o.Y + 24), Theme.InkSoft);
+        var x = bmin.X + bh / 2 + 14 + (milkAndSeed ? bh * 0.55f / 2 + 4 : 0);
+        var grade = seedOnly ? G.SeedGrade : G.CurrentGrade;
+        var amountText = seedOnly ? $"{amount:0.##}" : $"{amount:0.#}";
+        Ui.Text(dl, fonts.Heading, amountText, new Vector2(x, o.Y + 18), Theme.Ink);
+        var mw = Ui.Measure(fonts.Heading, amountText).X;
+        var capText = Units.Oz(cap, seedOnly ? "0.#" : "0") + (seedOnly ? " seed" : "");
+        Ui.Text(dl, fonts.Small, bCount > 1 ? $"/ {capText} · {full} of {bCount} full" : $"/ {capText}", new Vector2(x + mw + 4, o.Y + 24), Theme.InkSoft);
         Ui.Seal(dl, new Vector2(o.X + size.X - 38, o.Y + 38), 20, Grades.Name(grade), Theme.GradeColor(grade));
 
         // Needs as four thin bars
@@ -148,18 +166,18 @@ public sealed class HudWindow : Window
         }
         else if (s != null)
         {
-            status = $"Milking · {Units.Oz(s.Extracted * s.Yield, "0.#")}";
+            status = seedOnly ? $"Milking · {Units.Oz(s.ExtractedSeed * s.SeedYield, "0.##")} seed" : $"Milking · {Units.Oz(s.Extracted * s.Yield, "0.#")}" + (s.ExtractedSeed > 0 ? $" + {Units.Oz(s.ExtractedSeed * s.SeedYield, "0.##")} seed" : "");
             col = Theme.BlueDeep;
             Ui.Bar(dl, new Vector2(x, o.Y + size.Y - 26), new Vector2(x + bw, o.Y + size.Y - 22), s.Progress, Theme.BlueDeep);
         }
-        else if (G.Spoiled)
+        else if (G.Spoiled || G.SeedSpoiled)
         {
-            status = "Spoiled!";
+            status = G.Spoiled && G.SeedSpoiled ? "Milk and seed spoiled!" : G.Spoiled ? "Spoiled!" : "Seed spoiled!";
             col = Theme.Warn;
         }
-        else if (G.Overfull)
+        else if (overfull || (milkAndSeed && G.SeedFull))
         {
-            var left = G.SpoilsIn;
+            var left = overfull ? seedOnly ? G.SeedSpoilsIn : G.SpoilsIn : G.SeedSpoilsIn;
             status = left.HasValue && left.Value.TotalHours < 24 ? $"Full! Spoils in {(left.Value.TotalHours >= 1 ? $"{(int)left.Value.TotalHours}h {left.Value.Minutes}m" : $"{left.Value.Minutes}m")}" : "Full, get milked";
             col = Theme.Warn;
         }
@@ -173,10 +191,20 @@ public sealed class HudWindow : Window
             status = "Dozing · half-speed milk";
             col = Theme.HoneyDeep;
         }
-        else if (G.Tired && G.ProducesMilk)
+        else if (G.Tired && G.Producer)
         {
             status = "Tired · half speed today";
             col = Theme.HoneyDeep;
+        }
+        else if (G.BredLeft > TimeSpan.Zero)
+        {
+            status = $"Bred · +{G.BredBonusNow * 100:0.#}% for {(int)G.BredLeft.TotalMinutes + 1} min";
+            col = Theme.RoseDeep;
+        }
+        else if (G.Pregnant && G.IsCow)
+        {
+            status = $"Pregnant · {DairyGame.StageName(G.Preg.Stage)}";
+            col = Theme.RoseDeep;
         }
         else if (G.Where.InDairy)
         {
@@ -190,7 +218,7 @@ public sealed class HudWindow : Window
         }
 
         // Farmers and bulls don't make milk: say what they are instead
-        if (!G.ProducesMilk && !G.Paused && s == null)
+        if (!G.Producer && !G.Paused && s == null)
         {
             status = $"{char.ToUpperInvariant(G.Role[0])}{G.Role[1..]}{(G.DairyName.Length > 0 ? $" at {G.DairyName}" : "")}{(G.Where.InDairy ? " · here" : "")}";
             col = G.Where.InDairy ? Theme.SageDeep : Theme.InkSoft;
@@ -204,7 +232,7 @@ public sealed class HudWindow : Window
         }
 
         // A newer version is out
-        if (G.Net.UpdateVersion is { } nv && s == null && !G.Spoiled && cow.Milk < cap - 0.1f)
+        if (G.Net.UpdateVersion is { } nv && s == null && !G.Spoiled && !G.SeedSpoiled && !overfull)
         {
             status = $"Update {nv} is out · /xlplugins";
             col = Theme.BlueDeep;
@@ -218,16 +246,20 @@ public sealed class HudWindow : Window
             col = Toasts.Items[0].Kind == 2 ? Theme.Warn : Theme.Ink;
         }
 
-        var textRight = o.X + size.X - 20 - (G.Spoiled ? 112 : 0);
+        var dumpable = G.Spoiled || G.SeedSpoiled;
+        var textRight = o.X + size.X - 20 - (dumpable ? 112 : 0);
         dl.PushClipRect(new Vector2(x, o.Y), new Vector2(textRight, o.Y + size.Y), true);
         Ui.Text(dl, fonts.Small, Fit(status, textRight - x), new Vector2(x, o.Y + size.Y - 46), col);
         dl.PopClipRect();
 
         // Spoiled milk: the only way forward is to pour it out
-        if (G.Spoiled &&
-            Ui.Button("##huddump", "Dump milk", new Vector2(104, 30), "rose", true,
-                "Your milk spoiled. Pour it all out (no xp or coins).", new Vector2(o.X + size.X - 124, o.Y + size.Y - 54)))
-            G.DumpMilk();
+        if (dumpable &&
+            Ui.Button("##huddump", G.Spoiled ? "Dump milk" : "Dump seed", new Vector2(104, 30), "rose", true,
+                G.Spoiled ? "Your milk spoiled. Pour it all out (no xp or coins)." : "Your seed spoiled. Pour it all out (no xp or coins).", new Vector2(o.X + size.X - 124, o.Y + size.Y - 54)))
+        {
+            if (G.Spoiled) G.DumpMilk();
+            else G.DumpSeed();
+        }
 
         // Farmers: Herd Care and Kitchen, each opening its own window
         if (ShowHandMilk || ShowKitchen)

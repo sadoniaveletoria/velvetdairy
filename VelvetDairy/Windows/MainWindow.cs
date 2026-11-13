@@ -84,6 +84,8 @@ public sealed partial class MainWindow : Window
 
     /// <summary>Spoiled milk is tinted a sour yellow.</summary>
     public static readonly Vector4 SourMilk = new(0.93f, 0.88f, 0.60f, 1f);
+    /// <summary>A bull's seed: pearly, a little grey-blue next to milk.</summary>
+    public static readonly Vector4 SeedTint = new(0.88f, 0.90f, 0.95f, 1f);
 
     public MainWindow(Plugin plugin, Art art, Fonts fonts)
         : base("Eorzea Milkers##VelvetDairyMain", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
@@ -633,7 +635,7 @@ public sealed partial class MainWindow : Window
     private void DrawBarn(Vector2 min, Vector2 max)
     {
         // Not a cow? The barn is your work instead: the herd, the stalls, your tank and your goals
-        if (!G.ProducesMilk && G.Networked && (G.IsFarmer || F.NetMember?.IsOwner == true))
+        if (!G.Producer && G.Networked && (G.IsFarmer || F.NetMember?.IsOwner == true))
         {
             DrawFarmBarn(min, max);
             return;
@@ -680,15 +682,22 @@ public sealed partial class MainWindow : Window
         var dl = ImGui.GetWindowDrawList();
         Ui.Card(dl, min, max);
         var cow = F.Cow;
-        var cap = G.Capacity;
-        var size = G.BottleSize;
+        // A bull who isn't a cow sees his seed vials here; a cow who's also a bull gets a small vial in the corner
+        var seedOnly = !G.ProducesMilk && G.ProducesSeed;
+        var both = G.ProducesMilk && G.ProducesSeed;
+        var cap = seedOnly ? G.SeedCapacity : G.Capacity;
+        var size = seedOnly ? G.VialSize : G.BottleSize;
         var count = G.BottleCount;
+        var spoiled = seedOnly ? G.SeedSpoiled : G.Spoiled;
+        var overfull = seedOnly ? G.SeedFull : G.Overfull;
+        var unit = seedOnly ? 0.1f : 1f;   // "+0.1 oz" pops for seed
 
         // Ease the shown level toward the real one so filling and draining animate
-        var target = cow.Milk;
-        if (seenDump != G.DumpSerial)
+        var target = seedOnly ? cow.Seed : cow.Milk;
+        var serial = G.DumpSerial + G.SeedDumpSerial * 1000;
+        if (seenDump != serial)
         {
-            seenDump = G.DumpSerial;
+            seenDump = serial;
             shownMilk = target;
         }
 
@@ -705,12 +714,14 @@ public sealed partial class MainWindow : Window
         var bw = bh / 2f;
         var bmin = new Vector2(min.X + (w - bw) / 2 - 8, min.Y + 26);
         var milking = G.Active != null;
-        var tint = G.Spoiled ? SourMilk
+        var tint = spoiled ? SourMilk
+            : seedOnly ? SeedTint
             : milking && G.Active!.Kind == SessionKind.Hand ? new Vector4(1f, 0.97f, 0.96f, 1f) : (Vector4?)null;
-        Ui.Bottle(dl, bmin, new Vector2(bw, bh), frac, FlowNow(), tint, G.BottleTier);
+        Ui.Bottle(dl, bmin, new Vector2(bw, bh), frac, seedOnly ? (milking ? Ui.Flow.Draining : G.SeedComing ? Ui.Flow.Filling : Ui.Flow.Still) : FlowNow(), tint, G.BottleTier);
+        if (both) DrawSeedVial(dl, new Vector2(min.X + 14, min.Y + 26), Math.Max(60f, bh * 0.4f));
 
         // "+1 oz" floats up from the surface each time another whole ounce comes in
-        var whole = (int)MathF.Floor(cow.Milk);
+        var whole = (int)MathF.Floor(target / unit);
         if (lastWholeOz >= 0 && whole > lastWholeOz && G.Active == null) ozPops.Add(ImGui.GetTime());
         lastWholeOz = whole;
         var nowT = ImGui.GetTime();
@@ -719,14 +730,16 @@ public sealed partial class MainWindow : Window
         foreach (var t0 in ozPops)
         {
             var a = (float)((nowT - t0) / 1.6);
-            Ui.Text(dl, fonts.Label, "+1 OZ", new Vector2(bmin.X + bw + 4, surface - 10 - a * 34), Theme.Alpha(Theme.SageDeep, 1f - a), 0f, 0.5f);
+            Ui.Text(dl, fonts.Label, seedOnly ? Units.Oz(0.1f, "0.0").ToUpperInvariant() : Units.Oz(1).ToUpperInvariant(), new Vector2(bmin.X + bw + 4, surface - 10 - a * 34), Theme.Alpha(Theme.SageDeep, 1f - a), 0f, 0.5f);
         }
 
         // Grade seal on the bottle's shoulder
-        var grade = G.CurrentGrade;
+        var grade = seedOnly ? G.SeedGrade : G.CurrentGrade;
         var sealC = new Vector2(bmin.X + bw + 6, bmin.Y + bh * 0.3f);
         Ui.Seal(dl, sealC, 28, Grades.Name(grade), Theme.GradeColor(grade));
-        if (ImGui.IsMouseHoveringRect(sealC - new Vector2(28, 28), sealC + new Vector2(28, 28)))
+        if (ImGui.IsMouseHoveringRect(sealC - new Vector2(28, 28), sealC + new Vector2(28, 28)) && seedOnly)
+            ImGui.SetTooltip(SeedGradeTip());
+        else if (ImGui.IsMouseHoveringRect(sealC - new Vector2(28, 28), sealC + new Vector2(28, 28)))
             ImGui.SetTooltip($"Grade {Grades.Name(grade)} ({Grades.All[grade].Blurb}) if you're milked now.\nHigher grades pay more, milk faster and give more milk.\nYour grade comes from your milk quality, and stays up as long as you're milked every few days." +
                 (G.GradeSlip > 0 ? $"\nSlipped {G.GradeSlip} grade{(G.GradeSlip > 1 ? "s" : "")}: it's been a while since you were milked. Get milked to bring it back." : "") +
                 (cow.Taint > 0 ? "\nOff taste from dumped milk: one grade lower until it wears off." : "") +
@@ -734,46 +747,51 @@ public sealed partial class MainWindow : Window
 
         var y = bmin.Y + bh + 6;
         var cx = min.X + w / 2;
-        Ui.Text(dl, fonts.Title, $"{cow.Milk:0.#}", new Vector2(cx - 6, y), Theme.Ink, 1f);
-        Ui.Text(dl, fonts.Heading, $"/ {Units.Oz(cap, "0")}", new Vector2(cx, y + 14), Theme.InkSoft);
+        Ui.Text(dl, fonts.Title, seedOnly ? $"{Units.Num(target, "0.##")}" : $"{Units.Num(target, "0.#")}", new Vector2(cx - 6, y), Theme.Ink, 1f);
+        Ui.Text(dl, fonts.Heading, $"/ {Units.Oz(cap, seedOnly ? "0.#" : "0")}", new Vector2(cx, y + 14), Theme.InkSoft);
         y += 46;
 
         // Milk speed, with what goes into it on hover
         string line;
         Vector4 col = Theme.InkSoft;
-        if (G.Spoiled)
+        if (spoiled)
         {
             line = "Spoiled! Dump it";
             col = Theme.Warn;
         }
-        else if (G.Overfull)
+        else if (overfull)
         {
-            var left = G.SpoilsIn;
-            line = left.HasValue ? $"Full! Spoils in {Mins(left.Value)}" : count > 1 ? "All bottles full! Get milked" : "Full! Get milked soon";
+            var left = seedOnly ? G.SeedSpoilsIn : G.SpoilsIn;
+            line = left.HasValue ? $"Full! Spoils in {Mins(left.Value)}" : count > 1 ? (seedOnly ? "All vials full! Get milked" : "All bottles full! Get milked") : "Full! Get milked soon";
             col = Theme.Warn;
         }
         else if (milking) line = "Being milked";
-        else line = $"+{Units.Oz(G.ProductionPerMinute(), "0.00")} a minute";
+        else line = seedOnly ? $"+{Units.Oz(G.SeedPerMinute(), "0.000")} a minute" : $"+{Units.Oz(G.ProductionPerMinute(), "0.00")} a minute";
         var ls = Ui.Text(dl, fonts.Label, line.ToUpperInvariant(), new Vector2(cx, y), col, 0.5f);
         if (!milking && ImGui.IsMouseHoveringRect(new Vector2(cx - ls.X / 2, y), new Vector2(cx + ls.X / 2, y + ls.Y)))
         {
-            var tip = "Milk speed\n" + string.Join("\n", G.RateParts().Select(r => $"  {r.Name}: x{r.Multiplier:0.00}"));
+            var tip = (seedOnly ? "Seed speed\n" : "Milk speed\n") + string.Join("\n", (seedOnly ? G.SeedRateParts() : G.RateParts()).Select(r => $"  {r.Name}: x{r.Multiplier:0.00}"));
             tip += "\nFed, Watered, Comfy and Happy each add a bonus while their bar lasts; all four make you Contented. Level, treats and resting add more.";
             ImGui.SetTooltip(Units.Text(tip));
         }
 
         y += 24;
-        if (G.Spoiled)
+        if (spoiled)
         {
-            if (Ui.Button("##dumpmain", "Dump milk", new Vector2(150, 36), "rose", true,
-                    "Pour it all out. You get nothing for it, and your milk tastes off for a while.", new Vector2(cx - 75, y)))
-                G.DumpMilk();
+            if (Ui.Button("##dumpmain", seedOnly ? "Dump seed" : "Dump milk", new Vector2(150, 36), "rose", true,
+                    seedOnly ? "Pour it all out. You get nothing for it, and your seed grade is one lower for a while." : "Pour it all out. You get nothing for it, and your milk tastes off for a while.", new Vector2(cx - 75, y)))
+            {
+                if (seedOnly) G.DumpSeed();
+                else G.DumpMilk();
+            }
+
             return;
         }
 
         var extras = new List<string>();
-        if (cow.Taint > 0) extras.Add("Off taste");
-        if (G.GradeSlip > 0) extras.Add($"Grade slipped {G.GradeSlip}");
+        if (seedOnly ? cow.SeedTaint > 0 : cow.Taint > 0) extras.Add("Off taste");
+        var slip = seedOnly ? G.SeedSlip : G.GradeSlip;
+        if (slip > 0) extras.Add($"Grade slipped {slip}");
         if (G.Where.InDairy && G.Where.Seated && !milking) extras.Add("Resting");
         if (G.Contented) extras.Add("Contented");
         if (G.BoostLeft > TimeSpan.Zero) extras.Add($"Treat boost {Mins(G.BoostLeft)}");
@@ -781,7 +799,9 @@ public sealed partial class MainWindow : Window
         y += 22;
 
         // Row of small bottles when you own more than one
-        var label = count > 1 ? $"{G.BottleName} · bottle {current + 1} of {count}" : $"{G.BottleName} bottle · {Units.Oz(size, "0")}";
+        var label = seedOnly
+            ? count > 1 ? $"Seed vial {current + 1} of {count}" : $"Seed vial · {Units.Oz(size, "0.#")}"
+            : count > 1 ? $"{G.BottleName} · bottle {current + 1} of {count}" : $"{G.BottleName} bottle · {Units.Oz(size, "0")}";
         if (count == 1)
         {
             Ui.Text(dl, null, label, new Vector2(cx, y), Theme.InkSoft, 0.5f);
@@ -795,7 +815,7 @@ public sealed partial class MainWindow : Window
         {
             var f = i < full ? 1f : i == full ? frac : 0f;
             var mmin = new Vector2(mx + i * (mw + gap), y);
-            Ui.Bottle(dl, mmin, new Vector2(mw, mh), f, Ui.Flow.Still, null, G.BottleTier);
+            Ui.Bottle(dl, mmin, new Vector2(mw, mh), f, Ui.Flow.Still, seedOnly ? SeedTint : (Vector4?)null, G.BottleTier);
             if (i == current) dl.AddLine(new Vector2(mmin.X + 2, y + mh + 3), new Vector2(mmin.X + mw - 2, y + mh + 3), Ui.U(Theme.RoseDeep), 2f);
         }
 
@@ -841,6 +861,19 @@ public sealed partial class MainWindow : Window
             notes.Add((left.HasValue ? $"You're full and it's getting uncomfortable. It spoils in {Mins(left.Value)} if you don't get milked." : "You're full and it's getting uncomfortable.", Theme.Warn));
         }
 
+        if (G.ProducesSeed)
+        {
+            if (G.SeedSpoiled) notes.Add(("Your seed spoiled from sitting too long. Dump it before you can be milked.", Theme.Warn));
+            else if (G.SeedFull)
+            {
+                var left = G.SeedSpoilsIn;
+                notes.Add((left.HasValue ? $"Your seed vials are full. They spoil in {Mins(left.Value)} if you don't get milked." : "Your seed vials are full.", Theme.Warn));
+            }
+
+            if (G.SeedSlip > 0 && G.FreshHoldLeft <= TimeSpan.Zero) notes.Add(($"Your seed grade slipped {G.SeedSlip} step{(G.SeedSlip > 1 ? "s" : "")} from going days without milking.", Theme.RoseDeep));
+            if (cow.SeedTaint > 0) notes.Add(("Your seed is one grade lower after the dump. Care tasks and milkings wear it off.", Theme.RoseDeep));
+        }
+
         if (cow.Taint > 0)
             notes.Add(("Your milk tastes off after the dump (one grade lower). Care tasks, milkings and creamery deliveries wear it off.", Theme.RoseDeep));
         if (notes.Count == 0) notes.Add((G.Contented ? "Contented! Every bonus is going." : "Each use adds 30 minutes to a bar (up to an hour), then it drains as the bonus wears off. Bars wait while you're asleep or away, and running out never hurts.", Theme.SageDeep));
@@ -872,7 +905,7 @@ public sealed partial class MainWindow : Window
         var shown = 0;
         foreach (var item in Catalog.Feed)
         {
-            if (G.Level < item.Unlock || F.HiddenFeed!.Contains(item.Id)) continue;
+            if (G.ShopLevel < item.Unlock || F.HiddenFeed!.Contains(item.Id)) continue;
             var have = G.Count(item.Id);
             if (have <= 0) continue;   // Care only lists what you have right now (the Pantry can show the rest)
             shown++;
@@ -954,7 +987,13 @@ public sealed partial class MainWindow : Window
                     ? $"The test farmhand milks you every few seconds. {s.Strokes} strokes so far."
                     : $"{s.Hand.Name} is milking you while they keep their Milk emote going (within {G.HandRange:0.#} y{(G.HandNeedsTarget ? ", targeting you" : "")}).";
             if (ListRow(Ico(s.Kind == SessionKind.Stall ? "bucket" : "ribbon"), who, Theme.Ink,
-                    new[] { new Line($"{Units.Oz(s.Extracted * s.Yield, "0.#")} collected · Grade {Grades.Name(s.Grade)} cow", Theme.GradeColor(s.Grade)), new Line(hint, Theme.InkSoft) },
+                    new[]
+                    {
+                        G.ProducesMilk
+                            ? new Line($"{Units.Oz(s.Extracted * s.Yield, "0.#")} collected · Grade {Grades.Name(s.Grade)} cow" + (G.ProducesSeed ? $" · {Units.Oz(s.ExtractedSeed * s.SeedYield, "0.##")} seed (Grade {Grades.Name(s.SeedGrade)})" : ""), Theme.GradeColor(s.Grade))
+                            : new Line($"{Units.Oz(s.ExtractedSeed * s.SeedYield, "0.##")} of seed collected · Grade {Grades.Name(s.SeedGrade)} bull", Theme.GradeColor(s.SeedGrade)),
+                        new Line(hint, Theme.InkSoft),
+                    },
                     new[] { new Btn("##stop", "Stop", "cream") }, width, s.Progress, Theme.BlueDeep) == 0)
                 G.Stop();
             return;
@@ -1169,7 +1208,7 @@ public sealed partial class MainWindow : Window
             if (hidden) hiddenCount++;
             if (hidden && !showHiddenFeed) continue;
 
-            var locked = G.Level < item.Unlock;
+            var locked = G.ShopLevel < item.Unlock;
             var have = G.Count(item.Id);
             var p1 = G.BuyFeedProblem(item, 1);
             var p5 = G.BuyFeedProblem(item, 5);
@@ -1258,7 +1297,7 @@ public sealed partial class MainWindow : Window
                 _ => u.Desc,
             };
             var sub = maxed ? "Owned · " + desc
-                : G.Level < u.Unlocks[have] ? $"Unlocks at level {u.Unlocks[have]} · {desc}"
+                : (u.Farmer ? G.FarmerLevel : G.ShopLevel) < u.Unlocks[have] ? $"Unlocks at level {u.Unlocks[have]} · {desc}"
                 : $"{u.Prices[have]} coins · {desc}";
             if (Row($"##up{u.Id}", u.Icon, u.Name + levelText + (u.Cosmetic ? "  ·  look" : ""), sub, maxed ? "Owned" : "Buy", "blue", problem == null,
                     maxed ? u.Desc : problem ?? u.Desc, width))

@@ -176,7 +176,7 @@ public sealed class MembersWindow : Window
                 1 => m => m.RoleText,
                 2 => m => TopLevel(m),
                 3 => m => m.Online ? (m.Status?.InDairy == true ? long.MinValue : long.MinValue + 1) : -m.LastSeen,
-                4 => m => m.Has("cow") && m.Status is { Cap: > 0 } s ? s.Milk / s.Cap : -1f,
+                4 => m => m.Has("cow") && m.Status is { Cap: > 0 } s ? s.Milk / s.Cap : m.Has("bull") && m.Status is { SeedCap: > 0 } b ? b.SeedOz / b.SeedCap : -1f,
                 5 => m => m.Has("cow") ? m.Status?.Quality ?? 0 : -1,
                 6 => m => m.Status?.TotalOz ?? 0,
                 _ => m => m.Name,
@@ -225,6 +225,18 @@ public sealed class MembersWindow : Window
                 }
                 else if (m.Status?.InDairy == true) ImGui.TextColored(Theme.SageDeep, "In the dairy");
                 else ImGui.TextColored(Theme.HoneyDeep, "Online");
+                if (m.Online && m.Status is { Preg.Length: > 0 } ps)
+                {
+                    ImGui.SameLine();
+                    ImGui.TextColored(Theme.RoseDeep, "· Pregnant");
+                    if (ImGui.IsItemHovered()) ImGui.SetTooltip($"{DairyGame.StageName(ps.Preg)} (from Corruption)");
+                }
+                else if (m.Online && m.Has("bull") && m.Status is { Seed: > 0 and < 100 } bs)
+                {
+                    ImGui.SameLine();
+                    ImGui.TextColored(Theme.InkSoft, $"· Breeding {bs.Seed}%");
+                    if (ImGui.IsItemHovered()) ImGui.SetTooltip("Tired from breeding today: breeding output for his next one");
+                }
 
                 ImGui.TableNextColumn();
                 if (m.Has("cow") && m.Online && m.Status is { } st)
@@ -238,6 +250,18 @@ public sealed class MembersWindow : Window
                         ImGui.SameLine();
                         ImGui.TextColored(Theme.GradeColor(g), Grades.Name(g));
                         if (ImGui.IsItemHovered()) ImGui.SetTooltip(Units.Text($"Grade {Grades.Name(g)} · level {st.Level}"));
+                    }
+                }
+                else if (m.Has("bull") && m.Online && m.Status is { SeedCap: > 0 } bst)
+                {
+                    if (bst.SeedSpoiled) ImGui.TextColored(Theme.Warn, "Seed spoiled");
+                    else
+                    {
+                        var g = Math.Clamp(bst.SeedGrade, 0, Grades.Count - 1);
+                        ImGui.TextColored(bst.SeedOz >= bst.SeedCap - 0.01f ? Theme.RoseDeep : Theme.Ink, $"{Units.Num(bst.SeedOz, "0.##")}/{Units.Num(bst.SeedCap, "0.#")} seed");
+                        ImGui.SameLine();
+                        ImGui.TextColored(Theme.GradeColor(g), Grades.Name(g));
+                        if (ImGui.IsItemHovered()) ImGui.SetTooltip(Units.Text($"Seed grade {Grades.Name(g)} · bull level {bst.BullLevel}"));
                     }
                 }
                 else ImGui.TextColored(Theme.InkSoft, "-");

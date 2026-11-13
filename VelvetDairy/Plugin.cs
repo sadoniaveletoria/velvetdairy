@@ -37,6 +37,7 @@ public sealed class Plugin : IDalamudPlugin
     public MainWindow MainWindow { get; }
     public HudWindow Hud { get; }
     public Sounds Sounds { get; }
+    public CorruptionLink Corruption { get; }
     public NetClient Net { get; private set; }
     public OwnerHudWindow OwnerHud { get; }
     public MembersWindow Members { get; }
@@ -93,6 +94,11 @@ public sealed class Plugin : IDalamudPlugin
         Net = new NetClient(this);
         Game = new DairyGame(this);
         Sounds = new Sounds(this);
+        // Breeding and pregnancy come from the Corruption plugin; its events go to whichever character is playing
+        Corruption = new CorruptionLink();
+        Corruption.PartnerClimax += (name, world) => Game.OnPartnerClimax(name, world);
+        Corruption.Climax += () => Game.OnClimax();
+        Corruption.Changed += () => Game.ReadPregnancySoon();
         MainWindow = new MainWindow(this, art, fonts);
         Hud = new HudWindow(this, art, fonts);
         windowSystem.AddWindow(MainWindow);
@@ -173,6 +179,7 @@ public sealed class Plugin : IDalamudPlugin
         Game.Stop("Plugin unloaded.");
         Game.EndMilkMod();
         Sounds.Dispose();
+        Corruption.Dispose();
         Net.Dispose();
         contextMenu.Dispose();
 

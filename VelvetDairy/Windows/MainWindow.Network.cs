@@ -517,6 +517,13 @@ public sealed partial class MainWindow
                     Ui.Wrapped("Top pumpers: " + string.Join(", ", p.Tank.Pumpers.Take(5).Select(x => $"{x.Name.Split(' ')[0]} {Units.Oz(x.Oz, "N0")}")), Theme.InkSoft, width);
             }
             else ImGui.TextColored(Theme.InkSoft, "Empty. It fills as cows are milked here.");
+
+            // Bulls' seed goes into its own tank (just stored for now)
+            ImGui.TextColored(Theme.BlueDeep, $"Dairy seed tank: {Units.Oz(p.Tank.Seed, "N2")}");
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip(Units.Text("Every time a bull is milked in this dairy (stalls and hand), his seed goes into this tank. Uses for it are coming in a later update."));
+            if (p.Tank.SeedPumpers.Count > 0)
+                Ui.Wrapped("Top bulls: " + string.Join(", ", p.Tank.SeedPumpers.Take(5).Select(x => $"{x.Name.Split(' ')[0]} {Units.Oz(x.Oz, "N1")}")), Theme.InkSoft, width);
         }
 
         Gap(4);
@@ -738,6 +745,8 @@ public sealed partial class MainWindow
 
         var full = all.Count(x => x.Has("cow") && x.Online && x.Status is { Cap: > 0 } st && (st.Spoiled || st.Milk >= st.Cap - 0.1f));
         if (full > 0) ImGui.TextColored(Theme.RoseDeep, $"{full} cow{(full == 1 ? "" : "s")} full and waiting to be milked");
+        var fullBulls = all.Count(x => x.Has("bull") && x.Online && x.Status is { SeedCap: > 0 } st && (st.SeedSpoiled || st.SeedOz >= st.SeedCap - 0.01f));
+        if (fullBulls > 0) ImGui.TextColored(Theme.RoseDeep, $"{fullBulls} bull{(fullBulls == 1 ? "" : "s")} full and waiting to be milked");
 
         if (inside.Count > 0)
         {

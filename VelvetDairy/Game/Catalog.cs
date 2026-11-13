@@ -24,27 +24,32 @@ public static class Grades
     public const double FreshDays = 3;
 
     /// <summary>When freshness is counted from: your last milking, or the end of a Dry-off tonic if that's later.</summary>
-    public static DateTime FreshSince(CowState c)
+    public static DateTime FreshSince(CowState c) => FreshSince(c.LastMilkedUtc, c.FreshHoldUntilUtc);
+
+    public static DateTime FreshSince(DateTime? lastMilked, DateTime holdUntil)
     {
         var now = DateTime.UtcNow;
-        var since = c.LastMilkedUtc ?? now;
-        var hold = c.FreshHoldUntilUtc > now ? now : c.FreshHoldUntilUtc;
+        var since = lastMilked ?? now;
+        var hold = holdUntil > now ? now : holdUntil;
         return hold > since ? hold : since;
     }
 
     /// <summary>Grade steps lost to going too long without being milked.</summary>
-    public static int Slip(CowState c)
+    public static int Slip(CowState c) => Slip(c.LastMilkedUtc, c.FreshHoldUntilUtc);
+
+    public static int Slip(DateTime? lastMilked, DateTime holdUntil)
     {
-        var days = (DateTime.UtcNow - FreshSince(c)).TotalDays;
+        var days = (DateTime.UtcNow - FreshSince(lastMilked, holdUntil)).TotalDays;
         return days < FreshDays ? 0 : 1 + (int)((days - FreshDays) / FreshDays);
     }
 
     /// <summary>When the next slip happens (null while a tonic holds it).</summary>
-    public static DateTime? NextSlipUtc(CowState c)
+    public static DateTime? NextSlipUtc(CowState c) => NextSlipUtc(c.LastMilkedUtc, c.FreshHoldUntilUtc);
+
+    public static DateTime? NextSlipUtc(DateTime? lastMilked, DateTime holdUntil)
     {
-        if (c.FreshHoldUntilUtc > DateTime.UtcNow) return null;
-        var since = FreshSince(c);
-        return since.AddDays(FreshDays * (Slip(c) + 1));
+        if (holdUntil > DateTime.UtcNow) return null;
+        return FreshSince(lastMilked, holdUntil).AddDays(FreshDays * (Slip(lastMilked, holdUntil) + 1));
     }
 
     /// <summary>
@@ -77,12 +82,13 @@ public static class Grades
     /// from dumped milk takes one step off while it lasts. Hand milking makes up one lost step, but never goes past your quality.
     /// Needs don't change your grade; they only add milk speed.
     /// </summary>
-    public static int For(CowState c, bool hand, float quality)
-    {
-        var cap = Cap(quality);
-        var g = cap - Slip(c) - (c.Taint > 0 ? 1 : 0) + (hand ? 1 : 0);
-        return Math.Clamp(g, 0, cap);
-    }
+    public static int For(CowState c, bool hand, float quality) => For(Cap(quality), Slip(c), c.Taint > 0, hand);
+
+    /// <summary>A bull's seed grade: the same rules, from seed quality, seed freshness and seed off taste.</summary>
+    public static int SeedFor(CowState c, bool hand, float seedQuality) =>
+        For(Cap(seedQuality), Slip(c.SeedLastMilkedUtc, c.FreshHoldUntilUtc), c.SeedTaint > 0, hand);
+
+    public static int For(int cap, int slip, bool taint, bool hand) => Math.Clamp(cap - slip - (taint ? 1 : 0) + (hand ? 1 : 0), 0, cap);
 }
 
 /// <summary>A feed or treat you buy, keep in the pantry and use inside your dairy.</summary>

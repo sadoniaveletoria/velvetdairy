@@ -62,7 +62,7 @@ public sealed class ContextMenuHandler : IDisposable
                 if (game.CanRemove(member)) items.Add(Item($"Remove from {game.DairyName}", () => game.RemoveMember(member)));
             }
 
-            if (fh != null && game.ProducesMilk)
+            if (fh != null && game.Producer)
             {
                 if (game.Active == null) items.Add(Item("Let them milk me", () => game.StartHand(fh)));
                 else items.Add(Item("Stop milking", () => game.Stop()));

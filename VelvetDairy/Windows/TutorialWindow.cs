@@ -28,7 +28,7 @@ public sealed class TutorialWindow : Window
     {
         "Cow: you make milk and get milked in your own dairy.",
         "Farmer: you hand milk your dairy's cows and deliver the milk.",
-        "Bull: a role only for now (more is coming).",
+        "Bull: you make seed (like milk, but much less) and get milked, and you breed your dairy's cows with the Corruption plugin.",
     };
 
     public TutorialWindow(Plugin plugin, Fonts fonts) : base("Welcome to Eorzea Milkers##VelvetDairyTutorial", ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.AlwaysAutoResize)

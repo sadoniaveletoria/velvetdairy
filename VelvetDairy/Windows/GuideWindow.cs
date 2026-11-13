@@ -32,10 +32,10 @@ public sealed class GuideWindow : Window
         {
             "Cow: makes milk and gets milked. Paid per ounce at milking time. Cows treat themselves (food, water, rest, treats) for faster milk.",
             "Farmer: hand milks the dairy's cows (and gets a 25% share of what the cow is paid, on top), fills jugs from the dairy tank and delivers milk. Farmers can invite and give roles to others, farmer included.",
-            "Bull: a role only for now. More is coming in new updates.",
+            "Bull: makes seed and gets milked, the way a cow makes milk: the same needs and care, vials instead of bottles (a tenth the size), seed grades, stalls and hand milking, pay per oz, and a seed tank at the dairy. Seed comes in at 10% of milk speed at Grade C, up to 20% at S+, and pays ten times milk's price per oz. With the Corruption plugin, bulls also breed their dairy's cows.",
             "Owner: runs the dairy. Marks out where it is, sets up stalls, invites farmers, cows and bulls, spends the dairy fund and posts buy orders. The owner can also play any mix of roles.",
             "You can hold several roles at once (a Cow + Farmer + Bull can take care of everyone). Add cow or bull to yourself any time on Dairy > Overview. Farmer is given by a farmer or the owner. Only the owner takes roles away.",
-            "Each role has its own level: cow level (milk speed and shop unlocks), farmer level (unlocks bigger farmer tanks) and bull level. Adding or losing a role never loses its progress. The Roles tab has a page for each: cow level and milk quality, farmer level and tank, bull level (seed quality is coming).",
+            "Each role has its own level: cow level (milk speed and shop unlocks), farmer level (unlocks bigger farmer tanks) and bull level. Adding or losing a role never loses its progress. The Roles tab has a page for each: cow level and milk quality, farmer level and tank, bull level and seed quality.",
             "You belong to one dairy at a time. Invites show up on the Dairy tab; accepting one leaves your old dairy.",
         }),
         new("Your cow", new[]
@@ -79,7 +79,7 @@ public sealed class GuideWindow : Window
         {
             "You get +1 XP for every 0.2 oz of milk you make (more at better grades), plus a bonus when you're emptied at a stall or by hand, plus daily goals, orders and care.",
             "Max level is 100, and each level takes longer than the last: the first ten go by in an evening or two, the 90s take days each. Your cow level makes milk come 4% faster per level up to level 50 (about three times a new cow), and unlocks shop items and upgrades. Farmer and bull levels climb the same way.",
-            "Farmers level separately: hand milking pay, filling jugs, deliveries and contracts give farmer XP, and farmer levels unlock bigger farmer tanks to buy in the Shop. Bulls have their own level too, for things coming later.",
+            "Farmers level separately: hand milking pay, filling jugs, deliveries and contracts give farmer XP, and farmer levels unlock bigger farmer tanks to buy in the Shop. Bulls level from making seed, being milked, care and breeding; their level speeds up seed the way cow level speeds up milk.",
             "Daily goals (Progress tab) reset each day and pay coins and XP. Cows and farmers each have their own four; if you're both, you get both sets.",
         }),
         new("Staying awake", new[]

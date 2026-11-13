@@ -145,6 +145,17 @@ await test("members see the roster with roles and shared status", async () => {
   assert.equal(r.data.you.role, "farmer");
 });
 
+await test("breeding status: seed is kept within 0-100 and only real pregnancy stages pass", async () => {
+  await beat(carl, { status: { milk: 3.5, cap: 8, seed: 250, preg: "<b>twins</b>" } });
+  let st = (await call(bob, "GET", "/v1/dairy/mine")).data.members[2].status;
+  assert.equal(st.seed, 100);
+  assert.equal(st.preg, "");
+  await beat(carl, { status: { milk: 3.5, cap: 8, seed: 60, preg: "second" } });
+  st = (await call(bob, "GET", "/v1/dairy/mine")).data.members[2].status;
+  assert.equal(st.seed, 60);
+  assert.equal(st.preg, "second");
+});
+
 await test("several roles at once: self-add cow/bull, farmer is given, only the owner takes away", async () => {
   let r = await call(carl, "POST", `/v1/members/${carl.id}/roles`, { add: "cow" });
   assert.deepEqual(r.data.roles, ["cow", "bull"], "anyone can add cow to themselves");
@@ -223,6 +234,21 @@ await test("dairy XP: only in the dairy, capped per member per day", async () =>
   assert.equal(pay.coins, hp.data.coins);
   assert.equal(pay.grade, 1, "hand milking shares are marked as game-made (they taper in the plugin)");
   await beat(alice);   // back out of the dairy
+  // A bull's seed goes into its own seed tank, not the milk tank; only bulls add seed
+  assert.equal((await beat(carl, { houseId: HOUSE, seedPumped: 1.25, awake: true })).data.seedPumped, 1.25);
+  assert.equal((await beat(carl, { houseId: HOUSE, seedPumped: 999, awake: true })).data.seedPumped, 24, "per heartbeat");
+  assert.equal((await beat(bob, { houseId: HOUSE, seedPumped: 5, awake: true })).data.seedPumped, 0, "farmers make no seed");
+  const st2 = (await call(alice, "GET", "/v1/dairy/mine")).data.progress.tank;
+  assert.equal(st2.seed, 25.25);
+  assert.equal(st2.total, 8.5, "the milk tank doesn't change");
+  assert.equal(st2.seedPumpers[0].name, "Carl Bull");
+  assert.ok(st2.pumpers.every(x => x.name !== "Carl Bull"));
+  // A bull's hand milking pays the farmer a share at ten times the price per oz
+  const sp = await call(carl, "POST", "/v1/handpay", { farmer: "Bob Hand", world: "Gilgamesh", oz: 1, grade: 0, seed: true });
+  assert.equal(sp.data.coins, Math.round(1 * 6 * 10 * 1.02 * 0.25));
+  assert.equal((await call(alice, "POST", "/v1/handpay", { farmer: "Bob Hand", world: "Gilgamesh", oz: 1, grade: 0, seed: true })).status, 400, "cows don't report seed");
+  await call(bob, "POST", "/v1/inbox/claim");
+  await beat(carl);
 
   // Weekly contract: sized by level; shipped from carried jugs (at the Grand Creamery once it's set); pays once
   let c = (await call(alice, "GET", "/v1/dairy/mine")).data.progress.contract;

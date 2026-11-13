@@ -23,6 +23,25 @@ public sealed class ChangelogWindow : Window
     /// <summary>Newest first. Write these for players: what changed for them, not how.</summary>
     private static readonly Entry[] Entries =
     {
+        new("0.9.39", "Bulls: seed, the seed tank and breeding", new[]
+        {
+            "# Bulls make seed",
+            "Bulls now work like cows, with seed instead of milk. The same four needs (Fed, Watered, Comfy, Happy) speed it up, and care, treats, resting, levels, dozing and tiredness all work the same. If you're a cow and a bull, one set of needs feeds both.",
+            "Seed fills vials a tenth the size of your bottles (the bottle upgrades you buy apply to both). It comes in at 10% of milk speed at Grade C, rising to 20% at S+.",
+            "Seed has its own grades and seed quality, built the same way as milk quality (being milked, by hand for more, and quality treats). It slips after days without milking, and full vials spoil after 3 days, the same as milk.",
+            "Bulls are milked at stalls or by a farmer's hand, exactly like cows. Each oz of seed pays ten times milk's price, and gives bull xp. Farmers get their usual 25% share for hand milking a bull.",
+            "Herd Care now lists bulls with their seed, so farmers can milk, groom and feed them. The member list, Owner HUD and Dairy tab show bulls' seed too.",
+            "# The seed tank",
+            "Every dairy has a seed tank now. Seed from bulls milked in the dairy goes into it (shown on the Dairy tab with its top bulls). Uses for it are coming in a later update.",
+            "# Breeding (with Corruption)",
+            "Eorzea Milkers now works with the Corruption plugin (RaylaPetal/corruption). It only reads from Corruption (scenes, climaxes and pregnancy) and never changes anything there. Without Corruption everything else works as before.",
+            "When a bull of your own dairy finishes in a Corruption scene with you, you're bred: +5% milk for 30 minutes. It can count once every 20 minutes.",
+            "A bull gets up to 40 bull xp for each breeding. Bulls can breed as often as they like, but after 20 breedings a day their breeding output drops 20% each time (to 20% at the lowest), which makes the cow's bonus and his xp smaller. It's back to full at midnight UTC.",
+            "# Pregnancy",
+            "If Corruption gets you pregnant, it shows as a status on the HUD, the Roles tab (stage, a progress bar, due date and father) and your dairy's member list.",
+            "Pregnant cows give more milk: +5% in the first trimester, +10% in the second and +15% in the third. The bonus ends with the birth.",
+            "Getting pregnant is up to Corruption (its cycle and settings); Eorzea Milkers never makes it happen.",
+        }),
         new("0.9.38", "Levels to 100, Grand Creameries, metric and cheese", new[]
         {
             "# Cow levels 31 to 100",
