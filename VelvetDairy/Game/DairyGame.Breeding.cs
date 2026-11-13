@@ -84,8 +84,50 @@ public sealed partial class DairyGame
     /// <summary>Corruption said something changed: read the pregnancy on the next frame.</summary>
     public void ReadPregnancySoon() => nextPregRead = 0;
 
+    // ----- A Corruption scene going on right now (read once a second) -----
+
+    public CorruptionLink.Scene SceneNow { get; private set; } = CorruptionLink.NoScene;
+    public CorruptionLink.Arousal ArousalNow { get; private set; } = CorruptionLink.NoArousal;
+    private double nextSceneRead;
+
+    /// <summary>In a Corruption scene (solo or with a partner) right now.</summary>
+    public bool InScene => SceneNow.Ready && SceneNow.State != "idle";
+
+    /// <summary>Your scene partner is in your dairy and the roles fit, so finishing counts as a breeding.</summary>
+    public bool SceneBreeds
+    {
+        get
+        {
+            if (!InScene || SceneNow.Solo || SceneNow.PartnerName.Length == 0) return false;
+            var p = DairyMember(SceneNow.PartnerName, SceneNow.PartnerWorld);
+            if (p == null) return false;
+            return (IsCow && (p.Roles.Contains("bull") || p.Role == "bull")) || (IsBull && (p.Roles.Contains("cow") || p.Role == "cow"));
+        }
+    }
+
+    /// <summary>One short line about the scene: who with and arousal.</summary>
+    public string SceneLine =>
+        (SceneNow.Solo || SceneNow.PartnerName.Length == 0 ? "Solo scene" : $"With {SceneNow.PartnerName.Split(' ')[0]}") +
+        (ArousalNow.Ready ? ArousalNow.RefractorySeconds > 0 ? " · catching your breath" : $" · arousal {ArousalNow.Value}%" : "");
+
+    private void ReadScene()
+    {
+        if (now < nextSceneRead) return;
+        nextSceneRead = now + 1;
+        if (!CorruptionOn)
+        {
+            SceneNow = CorruptionLink.NoScene;
+            ArousalNow = CorruptionLink.NoArousal;
+            return;
+        }
+
+        SceneNow = plugin.Corruption.GetScene();
+        ArousalNow = InScene ? plugin.Corruption.GetArousal() : CorruptionLink.NoArousal;
+    }
+
     private void BreedingUpdate()
     {
+        ReadScene();
         if (now < nextPregRead || Plugin.ObjectTable.LocalPlayer == null) return;
         nextPregRead = now + 30;
         var p = CorruptionOn ? plugin.Corruption.GetPregnancy() : CorruptionLink.NoPregnancy;

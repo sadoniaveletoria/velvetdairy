@@ -849,6 +849,8 @@ public sealed partial class MainWindow : Window
         var notes = new List<(string, Vector4)>();
         var where = G.Where;
         if (G.Paused) notes.Add(("The game is paused (Developer settings).", Theme.InkSoft));
+        if (G.InScene)
+            notes.Add(($"Corruption: {G.SceneLine}." + (G.SceneBreeds ? G.IsCow ? " He's a bull of your dairy: when he finishes, you're bred." : " She's a cow of your dairy: finishing breeds her." : ""), Theme.RoseDeep));
         if (!where.InDairy) notes.Add((where.Why + " Care and milking wait until you're back.", Theme.RoseDeep));
         if (G.FreshHoldLeft > TimeSpan.Zero) notes.Add(($"Dry-off tonic: your grade won't slip for {DairyGame.Wait(G.FreshHoldLeft)}.", Theme.SageDeep));
         else if (G.GradeSlip > 0) notes.Add(($"Your grade slipped {G.GradeSlip} step{(G.GradeSlip > 1 ? "s" : "")} from going days without milking. One milking brings it back.", Theme.RoseDeep));

@@ -14,6 +14,12 @@ public sealed class CorruptionLink : IDisposable
 {
     public sealed record Scene(bool Ready, string State, bool Solo, string PartnerName, string PartnerWorld);
 
+    /// <summary>Arousal as Corruption shows it (0 to 100), refractory seconds left, and whether it's held at 100.</summary>
+    public sealed record Arousal(bool Ready, int Value, double RefractorySeconds, bool Edging);
+
+    public static readonly Scene NoScene = new(false, "idle", false, "", "");
+    public static readonly Arousal NoArousal = new(false, 0, 0, false);
+
     /// <summary>Stage is none, first, second, third or recovering.</summary>
     public sealed record Pregnancy(bool Ready, string Stage, double DaysPregnant, DateTime ConceivedUtc, DateTime DueUtc, string FatherName, string FatherWorld,
         DateTime RecoveryUntilUtc);
@@ -22,6 +28,7 @@ public sealed class CorruptionLink : IDisposable
 
     private readonly ICallGateSubscriber<int> apiVersion;
     private readonly ICallGateSubscriber<(bool, string, bool, string, string, int, double)> getScene;
+    private readonly ICallGateSubscriber<(bool, int, double, bool, string)> getArousal;
     private readonly ICallGateSubscriber<(bool, string, double, DateTime, DateTime, string, string, DateTime, string, bool, bool, int, int, int)> getPregnancy;
     private readonly ICallGateSubscriber<object> onClimax;
     private readonly ICallGateSubscriber<string, string, object> onPartnerClimax;
@@ -42,6 +49,7 @@ public sealed class CorruptionLink : IDisposable
         var pi = Plugin.PluginInterface;
         apiVersion = pi.GetIpcSubscriber<int>("Corruption.ApiVersion");
         getScene = pi.GetIpcSubscriber<(bool, string, bool, string, string, int, double)>("Corruption.GetScene");
+        getArousal = pi.GetIpcSubscriber<(bool, int, double, bool, string)>("Corruption.GetArousal");
         getPregnancy = pi.GetIpcSubscriber<(bool, string, double, DateTime, DateTime, string, string, DateTime, string, bool, bool, int, int, int)>("Corruption.GetPregnancy");
         onClimax = pi.GetIpcSubscriber<object>("Corruption.OnClimax");
         onPartnerClimax = pi.GetIpcSubscriber<string, string, object>("Corruption.OnPartnerClimax");
@@ -84,7 +92,13 @@ public sealed class CorruptionLink : IDisposable
     {
         var s = getScene.InvokeFunc();
         return new Scene(s.Item1, s.Item2, s.Item3, s.Item4, s.Item5);
-    }, new Scene(false, "idle", false, "", ""));
+    }, NoScene);
+
+    public Arousal GetArousal() => Try(() =>
+    {
+        var a = getArousal.InvokeFunc();
+        return new Arousal(a.Item1, a.Item2, a.Item3, a.Item4);
+    }, NoArousal);
 
     public Pregnancy GetPregnancy() => Try(() =>
     {

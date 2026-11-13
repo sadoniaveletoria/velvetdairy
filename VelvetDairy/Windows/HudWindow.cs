@@ -196,6 +196,14 @@ public sealed class HudWindow : Window
             status = "Tired · half speed today";
             col = Theme.HoneyDeep;
         }
+        else if (G.InScene)
+        {
+            // A Corruption scene: who with and arousal, with a bar where the milking bar goes
+            status = G.SceneLine;
+            col = Theme.RoseDeep;
+            if (G.ArousalNow.Ready)
+                Ui.Bar(dl, new Vector2(x, o.Y + size.Y - 26), new Vector2(x + bw, o.Y + size.Y - 22), G.ArousalNow.Value / 100f, Theme.RoseDeep);
+        }
         else if (G.BredLeft > TimeSpan.Zero)
         {
             status = $"Bred · +{G.BredBonusNow * 100:0.#}% for {(int)G.BredLeft.TotalMinutes + 1} min";
