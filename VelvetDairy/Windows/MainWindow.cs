@@ -374,7 +374,45 @@ public sealed partial class MainWindow : Window
             x += bw + 4;
         }
 
+        DrawHelperPlugins(dl, x + 12, o.X + width - Pad, o.Y + 8 + (h - 10) / 2);
         return h;
+    }
+
+    /// <summary>
+    /// The plugins Eorzea Milkers works with, at the right end of the tab row: a green dot and the name when it's
+    /// installed, a hollow dot when not. Hover for what each is for; click a missing one to copy its repository link.
+    /// </summary>
+    private void DrawHelperPlugins(ImDrawListPtr dl, float minX, float right, float midY)
+    {
+        var all = plugin.Companions.All(G.Now);
+        const float dot = 4f, gap = 14f;
+        var widths = all.Select(c => Ui.Measure(fonts.Small, c.Name).X + dot * 2 + 6).ToList();
+        var total = widths.Sum() + gap * (all.Count - 1);
+        if (right - total < minX) return;   // no room next to the tabs (a narrow window)
+        var x = right - total;
+        for (var i = 0; i < all.Count; i++)
+        {
+            var c = all[i];
+            var center = new Vector2(x + dot, midY);
+            if (c.On) dl.AddCircleFilled(center, dot, Ui.U(Theme.SageDeep));
+            else dl.AddCircle(center, dot, Ui.U(Theme.InkSoft), 0, 1.3f);
+            Ui.Text(dl, fonts.Small, c.Name, new Vector2(x + dot * 2 + 6, midY - Ui.Measure(fonts.Small, c.Name).Y / 2), c.On ? Theme.SageDeep : Theme.InkSoft);
+            var a0 = new Vector2(x - 2, midY - 10);
+            var a1 = new Vector2(x + widths[i] + 2, midY + 10);
+            if (ImGui.IsMouseHoveringRect(a0, a1))
+            {
+                ImGui.SetTooltip($"{c.Name}: {(c.On ? "installed" : "not installed")}\nFor {c.For}." +
+                                 (c.On ? "" : c.Repo.Length > 0 ? $"\nClick to copy its repository link, then add it in /xlsettings > Experimental > Custom Plugin Repositories.\n{c.Repo}" : "\nInstall it from /xlplugins.") +
+                                 "\nNone of these are needed to play; each one turns on more.");
+                if (!c.On && c.Repo.Length > 0 && ImGui.IsMouseClicked(ImGuiMouseButton.Left))
+                {
+                    ImGui.SetClipboardText(c.Repo);
+                    G.Notify($"Copied the {c.Name} repository link.", 1);
+                }
+            }
+
+            x += widths[i] + gap;
+        }
     }
 
     /// <summary>Link buttons in the header's bottom-right corner, from the right edge inwards (a Donate button can go here later).</summary>

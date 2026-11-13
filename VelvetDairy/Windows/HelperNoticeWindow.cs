@@ -83,7 +83,7 @@ public sealed class HelperNoticeWindow : Window
         }
 
         ImGui.TextColored(Theme.InkSoft, "To add one: /xlsettings > Experimental > Custom Plugin Repositories. Paste the link, press +, then Save. Install it from /xlplugins.");
-        ImGui.TextColored(Theme.InkSoft, "Your scene partner needs them too. The dots in the top right of the HUD show which plugins you have.");
+        ImGui.TextColored(Theme.InkSoft, "Your scene partner needs them too. The main window's tab row shows which plugins you have, with a green dot for each.");
         ImGui.PopTextWrapPos();
         ImGui.Spacing();
         if (Ui.Button("##helpersok", "Got it", new Vector2(120, 32), "rose", true, "This won't come up again for these plugins."))
