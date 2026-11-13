@@ -30,8 +30,9 @@ h1 { margin: 0; font-size: 20px; font-weight: 600; text-wrap: balance }
 /* controls */
 .controls { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; display: grid; gap: 10px 18px;
   grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)) }
-.ctl { display: grid; gap: 4px; min-width: 0 }
+.ctl { display: grid; gap: 4px; min-width: 0; align-content: start }
 .ctl > span { font-size: 11.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--soft) }
+.ctl > select { align-self: start }
 .ctl .row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center }
 select, input[type=range] { font: inherit; color: var(--ink); background: var(--page); border: 1px solid var(--line); border-radius: 6px; padding: 4px 6px; min-width: 0; max-width: 100% }
 input[type=range] { padding: 0; accent-color: var(--accent); width: 100% }
@@ -155,6 +156,10 @@ hr.s { border: 0; border-top: 1px solid var(--Linen); margin: 2px 0; width: 100%
       <select id="needs" aria-label="Needs"><option value="full">Needs full</option><option value="mix" selected>Needs mixed</option><option value="low">Needs empty</option></select>
     </div></div>
     <div class="ctl"><span>Kitchen</span><div class="row"><label class="chk"><input type="checkbox" id="baking"> Baking now</label><label class="chk"><input type="checkbox" id="asks"> Cow asks first</label></div></div>
+    <div class="ctl"><span>Applications (idea)</span>
+      <select id="app" aria-label="Your application">
+        <option value="none">Not applied yet</option><option value="sent" selected>Applied, waiting</option><option value="accepted">Accepted</option><option value="denied">Not this time</option>
+      </select></div>
     <div class="ctl"><span>Main window width <b id="mwV" class="num"></b></span><input type="range" id="mw" min="980" max="1600" step="10" value="1060"></div>
     <div class="ctl"><span>Show</span><div class="row" id="shows"></div></div>
   </div>
@@ -176,9 +181,9 @@ const GRADE_COL = ["var(--StoneDeep, #8a827d)", "var(--SageDeep)", "var(--BlueDe
 const BOTTLE_OZ = { 1: 8, 2: 16, 3: 24, 4: 32, 5: 48 };
 // Where milk sits in each bottle image (Ui.cs BottleStyle): top, bottom, drop y, drop x
 const STYLE = { 1: [.20, .96, .12, .5], 2: [.27, .96, .19, .5], 3: [.21, .96, .12, .405], 4: [.17, .96, .13, .28], 5: [.444, .902, 0, .5] };
-const WINDOWS = [["pay", "Daily pay (calculator)"], ["hud", "HUD"], ["main", "Main window"], ["herd", "Herd Care"], ["kitchen", "Kitchen"], ["changes", "What's new"], ["ask", "Milking request"]];
-const shown = new Set(["pay", "hud", "main", "herd", "kitchen", "changes", "ask"]);
-let tab = 0, recipe = "cookies";
+const WINDOWS = [["apply", "Apply to a dairy (idea)"], ["review", "Applications, owner and farmers (idea)"], ["pay", "Daily pay (calculator)"], ["hud", "HUD"], ["main", "Main window"], ["herd", "Herd Care"], ["kitchen", "Kitchen"], ["changes", "What's new"], ["ask", "Milking request"]];
+const shown = new Set(["apply", "review", "main"]);
+let tab = 6, recipe = "cookies", applyTo = 1, applyRoles = new Set(["cow"]);
 
 function btn(label, color, x, y, w, h, extra = "") {
   const b = Math.min(h * 0.45, w / 2, h / 2);
@@ -192,7 +197,7 @@ function state() {
   const tier = +$("tier").value, count = +$("count").value, cap = BOTTLE_OZ[tier] * count;
   const milk = Math.round(cap * $("milk").value / 100 * 10) / 10;
   return { cow: $("rCow").checked, farmer: $("rFarmer").checked, owner: $("rOwner").checked, st: $("st").value, tier, count, cap, milk,
-    grade: +$("grade").value, needs: $("needs").value, baking: $("baking").checked, asks: $("asks").checked, mw: +$("mw").value };
+    grade: +$("grade").value, needs: $("needs").value, baking: $("baking").checked, asks: $("asks").checked, mw: +$("mw").value, app: $("app").value };
 }
 
 // ---------------------------------------------------------------- Daily pay (Catalog.Tapered, Creamery > Your pay)
@@ -330,7 +335,7 @@ function mainWin(s) {
     <div class="abs jup16" style="left:${Rx - cw - 40 - ow - 34 - 13}px;top:23px;width:24px;height:24px;border-radius:50%;border:1.5px solid rgba(168,97,112,.6);display:grid;place-items:center;color:var(--RoseDeep)">?</div>`;
   let lx = Rx;
   for (const [label, color] of HEADER_LINKS) { const bw = measure(label.toUpperCase(), "21px 'Pathway Gothic One'") + 36; lx -= bw; headLinks += btn(label, color, lx, 56, bw, 26); lx -= 8; }
-  const body = tab === 0 ? barn(s, W) : tab === 8 ? settings(s, W) : `<div class="panel" style="left:${Pad}px;top:146px;right:${Pad}px;bottom:${Pad}px"><div class="ph">The ${TABS[tab]} tab isn't mocked up yet.<br>Ask Claude to add it when you're changing it.</div></div>`;
+  const body = tab === 0 ? barn(s, W) : tab === 6 ? dairies(s, W) : tab === 8 ? settings(s, W) : `<div class="panel" style="left:${Pad}px;top:146px;right:${Pad}px;bottom:${Pad}px"><div class="ph">The ${TABS[tab]} tab isn't mocked up yet.<br>Ask Claude to add it when you're changing it.</div></div>`;
   return `<div class="pl mw" style="--mw:${W}px">${head}${headLinks}<div class="tabs" role="tablist">${tabsHtml}</div>${body}</div>`;
 }
 
@@ -357,6 +362,94 @@ function barn(s, W) {
         ${row("bucket", "Hand milking by Maple", `${(s.milk * .4 * rate).toFixed(1)} oz collected · Grade ${GRADES[s.grade]} cow`, [["Stop", "rose"]])}
         <div class="prog" style="margin-top:8px"><i style="width:40%;background:var(--BlueDeep)"></i></div></div>`;
   return doing + care + milking;
+}
+
+// ---------------------------------------------------------------- Applications (idea, not in the plugin yet)
+// A dairy lists the roles it's looking for. Anyone not in it can apply from the Dairies tab with the roles they want
+// and a short note. The owner (and farmers, if the owner allows) see it in Members > Applications and accept or deny;
+// accepting adds them to the dairy with the roles that were accepted (like an invite they've already said yes to).
+const DAIRIES = [
+  { name: "Moonlit Meadow", where: "Gilgamesh · Mist, Ward 12, Plot 34", members: 9, open: ["Cows", "Farmers"], pub: true, mine: true, note: "Chill farm, evenings CST." },
+  { name: "Clover Isle", where: "Hyperion · Island Sanctuary", members: 4, open: ["Cows", "Farmers", "Bulls"], pub: true, note: "Cozy island farm. Say hi in your note!" },
+  { name: "Velvet Pastures", where: "Sargatanas · The Goblet, Ward 3, Plot 8", members: 12, open: ["Farmers"], pub: true, note: "Looking for farmers who like baking." },
+  { name: "Hidden Hollow", where: "Private", members: 3, open: [], pub: false, note: "Invite only." },
+];
+function dairies(s, W) {
+  const list = DAIRIES.map((d, i) => {
+    const looking = d.open.length ? `Looking for: ${d.open.join(", ")}` : "Not taking applications";
+    let b;
+    if (d.mine) b = `<span class="soft jup16" style="font-size:14px">Your dairy</span>`;
+    else if (i === applyTo && s.app === "sent") b = ibtn("Applied", "off", 100, 28) + `<span class="mini" style="margin-left:4px">Cancel</span>`;
+    else if (i === applyTo && s.app === "accepted") b = `<span class="jup16" style="font-size:14px;color:var(--SageDeep)">You're in!</span>`;
+    else if (d.open.length) b = `<span data-applyto="${i}">${ibtn("Apply", "rose", 80, 28)}</span>` + ibtn("Visit", "blue", 70, 28);
+    else b = ibtn("Visit", d.pub ? "blue" : "off", 70, 28);
+    return `<div class="lrow" style="${i === applyTo && !d.mine ? "background:rgba(222,171,176,.12)" : ""}"><img src="assets/icons/bell.png" alt=""><div class="t"><b>${esc(d.name)} <span class="soft num" style="display:inline;font-size:13px">· ${d.members} members</span></b>
+      <span>${esc(d.where)}</span><span style="color:${d.open.length ? "var(--SageDeep)" : "var(--InkSoft)"}">${looking}</span></div><div class="bs">${b}</div></div>`;
+  }).join("");
+  return `<div class="panel" style="left:16px;top:146px;right:16px;bottom:16px"><h3>Dairies</h3>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px"><span class="mini" style="cursor:text;min-width:220px">Search dairies...</span><label class="soft jup16" style="font-size:14px"><input type="checkbox" checked> Public only</label><label class="soft jup16" style="font-size:14px"><input type="checkbox"> Taking applications</label></div>
+    <div class="jup16" style="color:var(--BlueDeep);font-size:15px;margin-bottom:4px">4 dairies · 3 public · 3 taking applications</div>
+    ${list}</div>`;
+}
+
+function applyWin(s) {
+  const d = DAIRIES[applyTo];
+  const roleNames = { cow: "Cow", farmer: "Farmer", bull: "Bull" };
+  const allowed = d.open.map(o => o.toLowerCase().replace(/s$/, ""));
+  if (s.app === "accepted") return `<div class="iw" style="width:420px"><div class="iw-title"><span>Welcome to ${esc(d.name)}</span><span>✕</span></div>
+    <div class="iw-body"><p style="font-size:17px;color:var(--SageDeep)">${esc(d.name)} accepted you as a ${[...applyRoles].map(r => roleNames[r]).join(" and ")}!</p>
+    <p class="soft" style="font-size:14px">You're a member now. The Dairy tab has its info, and Visit takes you there.</p>
+    <div style="display:flex;gap:8px">${ibtn("Visit", "blue", 110, 30)}${ibtn("Got it", "sage", 110, 30)}</div></div></div>`;
+  if (s.app === "denied") return `<div class="iw" style="width:420px"><div class="iw-title"><span>Your application</span><span>✕</span></div>
+    <div class="iw-body"><p style="font-size:16px">${esc(d.name)} isn't taking you this time.</p>
+    <p class="soft" style="font-size:14px">You can apply to other dairies, or to ${esc(d.name)} again in 3 days.</p>${ibtn("OK", "cream", 100, 30)}</div></div>`;
+  const sent = s.app === "sent";
+  const boxes = Object.entries(roleNames).map(([id, n]) => {
+    const ok = allowed.includes(id), on = applyRoles.has(id) && ok;
+    return `<label class="chk" style="${ok ? "" : "opacity:.45"};font-family:var(--jupiter);font-size:15px"><input type="checkbox" data-role="${id}" ${on ? "checked" : ""} ${ok && !sent ? "" : "disabled"}> ${n}${ok ? "" : " (not wanted)"}</label>`;
+  }).join(" ");
+  return `<div class="iw" style="width:440px"><div class="iw-title"><span>Apply to ${esc(d.name)}</span><span>✕</span></div>
+    <div class="iw-body">
+      <div class="soft" style="font-size:14px">${esc(d.where)} · ${d.members} members</div>
+      <div style="font-size:15px;font-style:italic">"${esc(d.note)}"</div><hr class="s">
+      <div class="sect">Join as</div><div style="display:flex;flex-wrap:wrap;gap:6px">${boxes}</div>
+      <div class="soft" style="font-size:13px">They'll see your name, world and levels: Cow 23 · Farmer 12.</div>
+      <div class="sect">A note to them</div>
+      <div style="border:1px solid var(--Linen);border-radius:4px;background:#fff;padding:6px 8px;font:14px var(--axis);min-height:52px;color:var(--Ink)">Hi! I play most evenings and love baking. Would be happy to help in the kitchen.</div>
+      <div class="soft num" style="font-size:12px;text-align:right">74 / 200</div>
+      ${sent ? `<div style="color:var(--HoneyDeep);font-size:15px">Sent 12 min ago · waiting for ${esc(d.name)}. You'll get a message when they answer.</div>
+        <div>${ibtn("Cancel application", "cream", 210, 30)}</div>`
+             : `<div style="display:flex;gap:8px">${ibtn("Send application", "rose", 170, 32)}${ibtn("Cancel", "cream", 100, 32)}</div>`}
+      <div class="soft" style="font-size:12.5px">One application at a time. Being accepted moves you from your current dairy (if any) to this one.</div>
+    </div></div>`;
+}
+
+function reviewWin(s) {
+  const apps = [
+    { name: "Juniper Snow", world: "Hyperion", lv: "Cow 23 · Farmer 12", wants: ["Cow", "Farmer"], note: "Hi! I play most evenings and love baking. Would be happy to help in the kitchen.", ago: "12 min ago" },
+    { name: "Rowan Thatch", world: "Gilgamesh", lv: "Bull 8", wants: ["Bull"], note: "", ago: "2 h ago" },
+    { name: "Poppy Fields", world: "Sargatanas", lv: "New player", wants: ["Cow"], note: "First dairy! Be gentle :)", ago: "yesterday" },
+  ];
+  const can = s.owner || s.farmer;
+  const list = apps.map(a => `<div class="lrow" style="align-items:flex-start"><img src="assets/icons/bell.png" alt=""><div class="t">
+      <b>${esc(a.name)} <span class="soft num" style="display:inline;font-size:13px">· ${esc(a.world)} · ${a.ago}</span></b>
+      <span>${esc(a.lv)}</span>
+      <span style="margin-top:3px">${a.wants.map(w => `<label class="chk" style="font-family:var(--jupiter);font-size:13px;padding:1px 7px;margin-right:3px"><input type="checkbox" checked ${can ? "" : "disabled"}> ${w}</label>`).join("")}</span>
+      ${a.note ? `<span style="font-style:italic;color:var(--Ink);margin-top:3px">"${esc(a.note)}"</span>` : ""}</div>
+      <div class="bs" style="flex-direction:column">${ibtn("Accept", can ? "sage" : "off", 96, 28)}${ibtn("Deny", can ? "cream" : "off", 96, 28)}</div></div>`).join("");
+  return `<div class="iw" style="width:540px"><div class="iw-title"><span>Members · Applications (3)</span><span>✕</span></div>
+    <div class="iw-body">
+      ${can ? "" : `<div style="color:var(--Warn);font-size:14px">Only the owner and farmers can answer applications.</div>`}
+      <div class="soft" style="font-size:14px">Untick a role to accept them without it. Accept adds them to Moonlit Meadow right away; Deny sends a kind "not this time".</div>
+      ${list}
+      <hr class="s"><div class="sect" style="color:var(--BlueDeep)">Owner settings</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:15px">Looking for:
+        <label class="chk" style="font-family:var(--jupiter)"><input type="checkbox" checked ${s.owner ? "" : "disabled"}> Cows</label>
+        <label class="chk" style="font-family:var(--jupiter)"><input type="checkbox" checked ${s.owner ? "" : "disabled"}> Farmers</label>
+        <label class="chk" style="font-family:var(--jupiter)"><input type="checkbox" ${s.owner ? "" : "disabled"}> Bulls</label></div>
+      <label class="soft jup16" style="font-size:14px"><input type="checkbox" checked ${s.owner ? "" : "disabled"}> Farmers can answer applications</label>
+      <div class="soft" style="font-size:12.5px">The HUD shows a small "3 applications" note for whoever can answer them.</div>
+    </div></div>`;
 }
 
 function settings(s, W) {
@@ -447,7 +540,7 @@ function render() {
   const s = state();
   $("milkV").textContent = `${s.milk} / ${s.cap} oz`;
   $("mwV").textContent = `${s.mw}px`;
-  const parts = { pay: () => payWin(s), hud: () => hud(s), main: () => mainWin(s), herd: () => s.farmer ? herd(s) : null, kitchen: () => (s.farmer || s.owner) ? kitchen(s) : null,
+  const parts = { apply: () => applyWin(s), review: () => reviewWin(s), pay: () => payWin(s), hud: () => hud(s), main: () => mainWin(s), herd: () => s.farmer ? herd(s) : null, kitchen: () => (s.farmer || s.owner) ? kitchen(s) : null,
     changes: () => changes(), ask: () => s.cow ? ask(s) : null };
   $("stage").innerHTML = WINDOWS.filter(([id]) => shown.has(id)).map(([id, label]) => {
     const html = parts[id]();
@@ -455,12 +548,13 @@ function render() {
   }).join("");
 }
 
-$("shows").innerHTML = WINDOWS.map(([id, label]) => `<label class="chk"><input type="checkbox" data-show="${id}" checked> ${label}</label>`).join("");
+$("shows").innerHTML = WINDOWS.map(([id, label]) => `<label class="chk"><input type="checkbox" data-show="${id}" ${shown.has(id) ? "checked" : ""}> ${label}</label>`).join("");
 document.addEventListener("input", e => { if (e.target.dataset.pay) { payIn[e.target.dataset.pay] = +e.target.value; render(); const el = document.querySelector(`[data-pay="${e.target.dataset.pay}"]`); el && el.focus(); return; } if (e.target.dataset.show) e.target.checked ? shown.add(e.target.dataset.show) : shown.delete(e.target.dataset.show); render(); });
-document.addEventListener("change", render);
+document.addEventListener("change", e => { if (e.target.dataset.role) { e.target.checked ? applyRoles.add(e.target.dataset.role) : applyRoles.delete(e.target.dataset.role); } render(); });
 document.addEventListener("click", e => {
   const t = e.target.closest("[data-tab]"); if (t) { tab = +t.dataset.tab; render(); return; }
-  const r = e.target.closest("[data-recipe]"); if (r) { recipe = r.dataset.recipe; render(); }
+  const r = e.target.closest("[data-recipe]"); if (r) { recipe = r.dataset.recipe; render(); return; }
+  const a = e.target.closest("[data-applyto]"); if (a) { applyTo = +a.dataset.applyto; $("app").value = "none"; applyRoles = new Set(); render(); }
 });
 document.addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && e.target.matches("[data-tab],[data-recipe]")) { e.preventDefault(); e.target.click(); } });
 document.fonts?.ready.then(render);

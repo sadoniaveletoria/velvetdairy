@@ -40,7 +40,11 @@ public sealed class MembersWindow : Window
     private int pushedColors;
 
     /// <summary>Opening it brings your dairy's info up to date (it's checked less often while nothing shows it).</summary>
-    public override void OnOpen() => plugin.Net.MineWithin(1);
+    public override void OnOpen()
+    {
+        plugin.Net.MineWithin(1);
+        if (plugin.Net.Mine?.Applying?.CanAnswer == true) plugin.Net.RefreshApplications(true);
+    }
 
     public override void PreDraw()
     {
@@ -121,6 +125,8 @@ public sealed class MembersWindow : Window
                 ImGui.EndDisabled();
             }
         }
+
+        DrawApplications(mine);
 
         // Filters
         ImGui.Spacing();
@@ -310,6 +316,100 @@ public sealed class MembersWindow : Window
         Part("farmer", "Farmer", st.FarmerLevel);
         Part("bull", "Bull", st.BullLevel);
         if (first) ImGui.TextColored(Theme.InkSoft, "-");
+    }
+
+    // ----- Applications: answer them (owner, or farmers if allowed), and what the dairy is looking for (owner) -----
+    private readonly System.Collections.Generic.Dictionary<long, System.Collections.Generic.HashSet<string>> unticked = new();
+
+    private void DrawApplications(MyDairyReply mine)
+    {
+        var a = mine.Applying;
+        var isOwner = mine.You?.IsOwner == true;
+        if (a == null || (!a.CanAnswer && !isOwner)) return;
+        var net = G.Net;
+        if (a.CanAnswer) net.RefreshApplications();
+        var apps = a.CanAnswer ? net.Applications : new System.Collections.Generic.List<ApplicationInfo>();
+
+        ImGui.Spacing();
+        var head = apps.Count > 0 ? $"Applications ({apps.Count})###apps" : a.LookingFor.Count > 0 ? "Applications###apps" : "Applications (not taking any)###apps";
+        if (apps.Count > 0) ImGui.SetNextItemOpen(true, ImGuiCond.Once);
+        if (!ImGui.CollapsingHeader(head)) return;
+
+        if (isOwner)
+        {
+            ImGui.TextColored(Theme.Ink, "Looking for:");
+            var looking = a.LookingFor.ToList();
+            var changed = false;
+            foreach (var (id, name) in new[] { ("cow", "Cows"), ("farmer", "Farmers"), ("bull", "Bulls") })
+            {
+                ImGui.SameLine();
+                var on = looking.Contains(id);
+                if (ImGui.Checkbox($"{name}##look{id}", ref on))
+                {
+                    if (on) looking.Add(id);
+                    else looking.Remove(id);
+                    changed = true;
+                }
+            }
+
+            var farmers = a.FarmersAnswer;
+            ImGui.SameLine();
+            if (ImGui.Checkbox("Farmers can answer applications##farmapps", ref farmers)) changed = true;
+            if (changed)
+            {
+                a.LookingFor = looking;   // show it right away; the next refresh confirms it
+                a.FarmersAnswer = farmers;
+                net.SetApplying(looking, farmers, e => G.Notify(e, 2));
+            }
+
+            ImGui.TextColored(Theme.InkSoft, looking.Count == 0
+                ? "Not taking applications. Tick a role and players without a dairy can apply from the Dairies tab."
+                : "Players without a dairy can apply from the Dairies tab with these roles.");
+        }
+
+        if (!a.CanAnswer) return;
+        if (apps.Count == 0)
+        {
+            ImGui.TextColored(Theme.InkSoft, "No applications waiting.");
+            return;
+        }
+
+        ImGui.TextColored(Theme.InkSoft, "Untick a role to accept them without it. Accept adds them right away; Deny tells them \"not this time\" (they can apply again in 3 days).");
+        foreach (var ap in apps.ToList())
+        {
+            ImGui.PushID($"app{ap.Id}");
+            var off = unticked.TryGetValue(ap.Id, out var u) ? u : unticked[ap.Id] = new();
+            ImGui.TextColored(Theme.Ink, ap.Name);
+            ImGui.SameLine();
+            ImGui.TextColored(Theme.InkSoft, $"{ap.World} · {ap.Levels} · {Ago(ap.Sent)}");
+            foreach (var r in ap.Roles)
+            {
+                var on = !off.Contains(r);
+                if (ImGui.Checkbox($"{Cap1(r)}##r{r}", ref on))
+                {
+                    if (on) off.Remove(r);
+                    else off.Add(r);
+                }
+
+                ImGui.SameLine();
+            }
+
+            var accept = ap.Roles.Where(r => !off.Contains(r)).ToList();
+            ImGui.BeginDisabled(accept.Count == 0);
+            if (ImGui.SmallButton("Accept")) net.AcceptApplication(ap.Id, accept, e => G.Notify(e, 2));
+            ImGui.EndDisabled();
+            ImGui.SameLine();
+            if (ImGui.SmallButton("Deny")) net.DenyApplication(ap.Id, e => G.Notify(e, 2));
+            if (ap.Note.Length > 0)
+            {
+                ImGui.PushTextWrapPos(ImGui.GetContentRegionAvail().X);
+                ImGui.TextColored(Theme.HoneyDeep, $"\"{ap.Note}\"");
+                ImGui.PopTextWrapPos();
+            }
+
+            ImGui.Separator();
+            ImGui.PopID();
+        }
     }
 
     private static string Ago(long unix)

@@ -406,6 +406,16 @@ public sealed class NetClient : IDisposable
                 Plugin.ChatGui.Print(text, "Eorzea Milkers");
             }
 
+            // New applications for whoever can answer them
+            if (r.Applications > announcedApplications)
+            {
+                var text = r.Applications == 1 ? "Someone applied to join your dairy. Answer in Members > Applications." : $"{r.Applications} applications to your dairy are waiting. Answer in Members > Applications.";
+                Toast(text, 1);
+                Plugin.ChatGui.Print(text, "Eorzea Milkers");
+                if (plugin.Members.IsOpen) RefreshApplications(true);
+            }
+
+            announcedApplications = r.Applications;
             if (r.Inbox > 0) Claim();
         }, _ => beating = false);
     }
@@ -578,6 +588,64 @@ public sealed class NetClient : IDisposable
         }, failed);
 
     public void CancelInvite(long id, Action<string> failed) => Call<object>("DELETE", $"/v1/invites/{id}", null, _ => Poke(), failed);
+
+    // ----- Applications -----
+    private int announcedApplications;
+    private DateTime lastApplications = DateTime.MinValue;
+
+    /// <summary>Applications to your dairy (for the owner, or farmers if the owner allows it).</summary>
+    public List<ApplicationInfo> Applications { get; private set; } = new();
+
+    public void RefreshApplications(bool now = false)
+    {
+        if (!now && DateTime.UtcNow - lastApplications < TimeSpan.FromSeconds(30)) return;
+        lastApplications = DateTime.UtcNow;
+        Call<ApplicationsReply>("GET", "/v1/dairy/applications", null, r => Applications = r.Applications, _ => Applications = new());
+    }
+
+    /// <summary>Apply to a dairy with the roles you want and a short note.</summary>
+    public void Apply(string dairyId, List<string> roles, string note, Action<string> ok, Action<string> failed)
+    {
+        var me = Plugin.ObjectTable.LocalPlayer;
+        var g = plugin.Game;
+        var levels = string.Join(" · ", new[] { $"Cow {g.Level}", g.FarmerLevel > 1 ? $"Farmer {g.FarmerLevel}" : "", g.BullLevel > 1 ? $"Bull {g.BullLevel}" : "" }.Where(x => x.Length > 0));
+        Call<IdReply>("POST", "/v1/applications", new
+        {
+            dairyId, roles, note,
+            name = me?.Name.TextValue ?? "",
+            worldName = me?.HomeWorld.ValueNullable?.Name.ExtractText() ?? "",
+            levels,
+        }, _ =>
+        {
+            RefreshDirectory();
+            ok(dairyId);
+        }, failed);
+    }
+
+    public void WithdrawApplication(long id, Action<string> failed) =>
+        Call<object>("DELETE", $"/v1/applications/{id}", null, _ => RefreshDirectory(), failed);
+
+    public void AcceptApplication(long id, List<string> roles, Action<string> failed) =>
+        Call<object>("POST", $"/v1/dairy/applications/{id}/accept", new { roles }, _ =>
+        {
+            RefreshApplications(true);
+            Poke();
+        }, e =>
+        {
+            RefreshApplications(true);
+            failed(e);
+        });
+
+    public void DenyApplication(long id, Action<string> failed) =>
+        Call<object>("POST", $"/v1/dairy/applications/{id}/deny", new { }, _ => RefreshApplications(true), e =>
+        {
+            RefreshApplications(true);
+            failed(e);
+        });
+
+    /// <summary>Owner: which roles the dairy takes applications for, and whether farmers can answer them.</summary>
+    public void SetApplying(List<string> lookingFor, bool farmersAnswer, Action<string> failed) =>
+        Call<object>("PUT", "/v1/dairy/applying", new { lookingFor, farmersAnswer }, _ => MineWithin(1), failed);
 
     public void Leave(Action ok, Action<string> failed) =>
         Call<object>("POST", "/v1/members/leave", new { }, _ =>
