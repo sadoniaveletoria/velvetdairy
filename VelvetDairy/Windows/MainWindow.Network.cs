@@ -510,7 +510,7 @@ public sealed partial class MainWindow
             Gap(4);
             ImGui.TextColored(Theme.BlueDeep, $"Dairy milk tank: {Units.Oz(p.Tank.Total, "N1")}");
             if (ImGui.IsItemHovered())
-                ImGui.SetTooltip("Every milking in this dairy (stalls and hand) fills this tank. Farmers fill their jugs from it.");
+                ImGui.SetTooltip(Units.Text("Every milking in this dairy (stalls and hand) fills this tank. Farmers fill their jugs from it."));
             if (p.Tank.Total > 0)
             {
                 if (p.Tank.Pumpers.Count > 0)
@@ -521,7 +521,7 @@ public sealed partial class MainWindow
 
         Gap(4);
         ImGui.TextColored(Theme.HoneyDeep, $"Dairy fund: {p.Fund:N0} coins");
-        if (ImGui.IsItemHovered()) ImGui.SetTooltip("Anyone in the dairy can add coins. The owner spends them on new stalls and stall upgrades.");
+        if (ImGui.IsItemHovered()) ImGui.SetTooltip(Units.Text("Anyone in the dairy can add coins. The owner spends them on new stalls and stall upgrades."));
         ImGui.SetNextItemWidth(110);
         ImGui.InputInt("##donate", ref donateCoins, 50, 250);
         donateCoins = Math.Clamp(donateCoins, 1, 100000);
@@ -648,7 +648,7 @@ public sealed partial class MainWindow
         if (ImGui.SliderFloat("Turn##arear", ref turn, -180f, 180f, "%.0f°")) d.Rot = turn * MathF.PI / 180f;
         ImGui.SetNextItemWidth(Math.Min(260, width - 120));
         if (ImGui.SliderFloat("Height##areah", ref h, 2f, 20f, "%.0f y")) d.Height = h;
-        if (ImGui.IsItemHovered()) ImGui.SetTooltip("How far above or below the floor still counts as inside (stairs, lofts).");
+        if (ImGui.IsItemHovered()) ImGui.SetTooltip(Units.Text("How far above or below the floor still counts as inside (stairs, lofts)."));
         if (ImGui.SmallButton("Center on me##areacenter")) G.CenterDraftOnMe();
         ImGui.SameLine();
         if (ImGui.SmallButton("Face my way##areaface")) G.FaceDraftMyWay();

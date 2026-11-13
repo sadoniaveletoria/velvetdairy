@@ -268,7 +268,7 @@ public sealed partial class MainWindow : Window
             if (progress >= 0) dl.AddRectFilled(a0, new Vector2(a0.X + (a1.X - a0.X) * Math.Clamp(progress, 0f, 1f), a1.Y), Ui.U(color, 0.22f), 99);
             dl.AddRect(a0, a1, Ui.U(color, 0.55f), 99, ImDrawFlags.None, 1f);
             Ui.Text(dl, fonts.Small, text, a0 + new Vector2(5, 1), color);
-            if (tip != null && ImGui.IsMouseHoveringRect(a0, a1)) ImGui.SetTooltip(tip);
+            if (tip != null && ImGui.IsMouseHoveringRect(a0, a1)) ImGui.SetTooltip(Units.Text(tip));
             px = a1.X + 4;
         }
 
@@ -334,7 +334,7 @@ public sealed partial class MainWindow : Window
         ImGui.SetCursorScreenPos(qc - new Vector2(13, 13));
         if (ImGui.InvisibleButton("##guidebtn", new Vector2(26, 26))) plugin.Guide.Open();
         var qh = ImGui.IsItemHovered();
-        if (qh) ImGui.SetTooltip("How to play (/milkers guide)");
+        if (qh) ImGui.SetTooltip(Units.Text("How to play (/milkers guide)"));
         dl.AddCircleFilled(qc, 12f, Ui.U(qh ? Theme.Rose : Theme.Paper));
         dl.AddCircle(qc, 12f, Ui.U(Theme.RoseDeep, 0.6f), 0, 1.5f);
         Ui.Text(dl, fonts.Small, "?", qc, Theme.RoseDeep, 0.5f, 0.5f);
@@ -497,7 +497,7 @@ public sealed partial class MainWindow : Window
         ImGui.PushTextWrapPos(ImGui.GetCursorPosX() + textW);
         using (fonts.For(fonts.Row, title)!.Push()) ImGui.TextColored(titleColor, title);
         foreach (var l in lines)
-            if (l.Text.Length > 0) ImGui.TextColored(l.Color, l.Text);
+            if (l.Text.Length > 0) ImGui.TextColored(l.Color, Units.Text(l.Text));
         ImGui.PopTextWrapPos();
         ImGui.EndGroup();
         var textBottom = ImGui.GetItemRectMax().Y + 2;
@@ -759,7 +759,7 @@ public sealed partial class MainWindow : Window
         {
             var tip = "Milk speed\n" + string.Join("\n", G.RateParts().Select(r => $"  {r.Name}: x{r.Multiplier:0.00}"));
             tip += "\nFed, Watered, Comfy and Happy each add a bonus while their bar lasts; all four make you Contented. Level, treats and resting add more.";
-            ImGui.SetTooltip(tip);
+            ImGui.SetTooltip(Units.Text(tip));
         }
 
         y += 24;
@@ -821,7 +821,7 @@ public sealed partial class MainWindow : Window
             var left = r.Value / 100f * Catalog.NeedMinutes;
             var text = r.Value > 0 && r.Bonus > 0 ? $"+{r.Bonus * 100:0}% · {(left >= 1 ? $"{left:0}m" : "<1m")}" : "plain";
             var h = Ui.Gauge(dl, new Vector2(p.X, y), width, r.Icon, r.Label, r.Value, r.Color, text);
-            if (ImGui.IsMouseHoveringRect(new Vector2(p.X, y), new Vector2(p.X + width, y + h))) ImGui.SetTooltip(r.Tip);
+            if (ImGui.IsMouseHoveringRect(new Vector2(p.X, y), new Vector2(p.X + width, y + h))) ImGui.SetTooltip(Units.Text(r.Tip));
             y += h + 10;
         }
 
@@ -1034,7 +1034,7 @@ public sealed partial class MainWindow : Window
         ImGui.TextColored(Theme.Ink, $"Your jugs: {Units.Num(G.Carried, "0.#")} / {Units.Num(G.MaxCarry)} {Units.Unit}");
         ImGui.SameLine();
         if (ImGui.SmallButton("Fill jugs##jugsnote")) plugin.Kitchen.IsOpen = true;
-        if (ImGui.IsItemHovered()) ImGui.SetTooltip("Jugs are filled from the dairy tank at the top of the Kitchen window.");
+        if (ImGui.IsItemHovered()) ImGui.SetTooltip(Units.Text("Jugs are filled from the dairy tank at the top of the Kitchen window."));
         Gap(4);
     }
 
@@ -1353,7 +1353,7 @@ public sealed partial class MainWindow : Window
             plugin.SaveConfig();
         }
 
-        if (ImGui.IsItemHovered()) ImGui.SetTooltip("Limit the dairy to part of the house, like one room. Measured from where you stood when you registered.");
+        if (ImGui.IsItemHovered()) ImGui.SetTooltip(Units.Text("Limit the dairy to part of the house, like one room. Measured from where you stood when you registered."));
     }
 
     private void DrawStalls(float width)
@@ -1641,13 +1641,13 @@ public sealed partial class MainWindow : Window
         b = F.NetEnabled;
         if (ImGui.Checkbox("Join the Eorzea Milkers Network (dairies, invites, deliveries, online count)", ref b)) { F.NetEnabled = b; changed = true; }
         if (ImGui.IsItemHovered())
-            ImGui.SetTooltip("Shares only what the network needs: a random id for this install, your dairy's listing, and your character name with the dairy you join.");
+            ImGui.SetTooltip(Units.Text("Shares only what the network needs: a random id for this install, your dairy's listing, and your character name with the dairy you join."));
         b = F.ShowOwnerHud;
         if (ImGui.Checkbox("Show the owner HUD when I own a dairy", ref b)) { F.ShowOwnerHud = b; changed = true; }
 
         b = F.ShowStallMarkers;
         if (ImGui.Checkbox("Show stall markers (only you see them)", ref b)) { F.ShowStallMarkers = b; changed = true; }
-        if (ImGui.IsItemHovered()) ImGui.SetTooltip("A small green dot above each of your dairy's stalls while you're in the dairy, so you can see which seats milk you.");
+        if (ImGui.IsItemHovered()) ImGui.SetTooltip(Units.Text("A small green dot above each of your dairy's stalls while you're in the dairy, so you can see which seats milk you."));
         if (F.ShowStallMarkers)
         {
             var here = G.StallsHere().Count();
@@ -1758,7 +1758,7 @@ public sealed partial class MainWindow : Window
             ImGui.Spacing();
             Ui.Wrapped(cr != null ? $"{slot + 1}. {cr.Name} · {cr.Zone} · radius {cr.Radius:0} y" : $"{slot + 1}. (empty)", cr != null ? Theme.Ink : Theme.InkSoft, width);
             if (ImGui.SmallButton($"Set here##creamset{slot}") && G.Networked) G.SetCreameryHere(slot, creameryName, creameryRadius);
-            if (ImGui.IsItemHovered()) ImGui.SetTooltip("Puts this Grand Creamery where you're standing, with the name and radius above, for every player. Takes effect within a minute.");
+            if (ImGui.IsItemHovered()) ImGui.SetTooltip(Units.Text("Puts this Grand Creamery where you're standing, with the name and radius above, for every player. Takes effect within a minute."));
             if (cr != null)
             {
                 ImGui.SameLine();
@@ -1823,7 +1823,7 @@ public sealed partial class MainWindow : Window
         SubHeading("Community", width);
         Ui.Wrapped("Questions, finding a dairy, update news and testing builds: join the Eorzea Milkers Discord (18+).", Theme.Ink, width);
         if (ImGui.Button("Join the Discord##helpdiscord")) Plugin.OpenDiscord();
-        if (ImGui.IsItemHovered()) ImGui.SetTooltip(Plugin.DiscordUrl);
+        if (ImGui.IsItemHovered()) ImGui.SetTooltip(Units.Text(Plugin.DiscordUrl));
 
         SubHeading("Credits", width);
         Ui.Wrapped("Milking machine sound: \"Milk Pump Step02\" by Erdie, freesound.org/s/49877 (cut into start, loop and stop).", Theme.InkSoft, width);

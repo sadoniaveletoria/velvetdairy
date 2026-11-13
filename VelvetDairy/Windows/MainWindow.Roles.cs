@@ -101,7 +101,7 @@ public sealed partial class MainWindow
             plugin.SaveConfig();
         }
 
-        if (ImGui.IsItemHovered()) ImGui.SetTooltip("Off: only the emotes listed below. One-shot gestures like /pet can't be seen by the plugin; use looping ones.");
+        if (ImGui.IsItemHovered()) ImGui.SetTooltip(Units.Text("Off: only the emotes listed below. One-shot gestures like /pet can't be seen by the plugin; use looping ones."));
         var auto = F.AutoHand;
         if (ImGui.Checkbox("Farmers can start milking me without asking##autohand", ref auto))
         {
@@ -110,7 +110,7 @@ public sealed partial class MainWindow
         }
 
         if (ImGui.IsItemHovered())
-            ImGui.SetTooltip("On: a farmer pressing Milk on you starts it right away. Off: you get a pop-up asking if they can (Allow or Not now).");
+            ImGui.SetTooltip(Units.Text("On: a farmer pressing Milk on you starts it right away. Off: you get a pop-up asking if they can (Allow or Not now)."));
         DrawEmotes(width);
     }
 

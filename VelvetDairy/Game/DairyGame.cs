@@ -3338,6 +3338,7 @@ public sealed class DairyGame
 
     private bool Fail(string text)
     {
+        text = Units.Text(text);
         Diag.Info("game", "Problem: " + text);
         Toast?.Invoke(text, 2);
         return false;
@@ -3345,6 +3346,7 @@ public sealed class DairyGame
 
     private void Say(string text, int kind)
     {
+        text = Units.Text(text);
         Diag.Info("game", text);
         Toast?.Invoke(text, kind);
         var log = F.Log!;

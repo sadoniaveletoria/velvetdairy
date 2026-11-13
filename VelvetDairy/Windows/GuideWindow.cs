@@ -1,5 +1,6 @@
 using System;
 using System.Numerics;
+using VelvetDairy.Game;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Windowing;
 
@@ -183,7 +184,7 @@ public sealed class GuideWindow : Window
         ImGui.PushTextWrapPos(ImGui.GetContentRegionAvail().X);
         foreach (var p in t.Paragraphs)
         {
-            ImGui.TextWrapped(p);
+            ImGui.TextWrapped(Units.Text(p));
             ImGui.Spacing();
         }
 

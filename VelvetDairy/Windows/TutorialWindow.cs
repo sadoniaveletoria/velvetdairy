@@ -73,7 +73,7 @@ public sealed class TutorialWindow : Window
     private static void Para(string text)
     {
         ImGui.PushTextWrapPos(520);
-        ImGui.TextWrapped(text);
+        ImGui.TextWrapped(Units.Text(text));
         ImGui.PopTextWrapPos();
         ImGui.Spacing();
     }

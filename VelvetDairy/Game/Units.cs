@@ -32,6 +32,32 @@ public static class Units
     /// <summary>The unit that goes with <see cref="Num"/>.</summary>
     public static string Unit => Metric ? "ml" : "oz";
 
+    private static readonly System.Text.RegularExpressions.Regex Pair = new(@"(\d[\d,]*(?:\.\d+)?) ?/ ?(\d[\d,]*(?:\.\d+)?) ?oz\b");
+    private static readonly System.Text.RegularExpressions.Regex PerOzRx = new(@"(\d[\d,]*(?:\.\d+)?) (coins?) per (?:oz|ounce)\b");
+    private static readonly System.Text.RegularExpressions.Regex Amount = new(@"(\d[\d,]*(?:\.\d+)?) ?(?:oz|fl oz|ounces?)\b");
+    private static readonly System.Text.RegularExpressions.Regex Bare = new(@"\b(?:per oz|per ounce|an ounce|ounces|oz)\b");
+
+    private static double Parse(string n) => double.Parse(n.Replace(",", ""), CultureInfo.InvariantCulture);
+
+    /// <summary>
+    /// Any text that mentions ounces (item descriptions, the guide, What's new, server messages), written in metric
+    /// when the setting is on. Text without ounces, or with metric off, comes back as it is.
+    /// </summary>
+    public static string Text(string text)
+    {
+        if (!Metric || text.IndexOf("oz", System.StringComparison.Ordinal) < 0 && text.IndexOf("ounce", System.StringComparison.Ordinal) < 0) return text;
+        text = Pair.Replace(text, m => $"{Num(Parse(m.Groups[1].Value))} / {Num(Parse(m.Groups[2].Value))} ml");
+        text = PerOzRx.Replace(text, m => PerOz(Parse(m.Groups[1].Value)).Replace("coins per", m.Groups[2].Value + " per"));
+        text = Amount.Replace(text, m => Oz(Parse(m.Groups[1].Value)));
+        return Bare.Replace(text, m => m.Value switch
+        {
+            "per oz" or "per ounce" => "per 100 ml",
+            "an ounce" => "a little milk",
+            "ounces" => "millilitres",
+            _ => "ml",
+        });
+    }
+
     /// <summary>A price per amount of milk: "12 coins per oz", or "41 coins per 100 ml".</summary>
     public static string PerOz(double coinsPerOz) => Metric
         ? $"{(coinsPerOz * 100 / MlPerOz).ToString("0.#", CultureInfo.CurrentCulture)} coins per 100 ml"

@@ -273,7 +273,7 @@ public sealed class MilkAnimationWindow : Window
             plugin.SaveConfig();
         }
 
-        if (ImGui.IsItemHovered()) ImGui.SetTooltip("Some animation mods only show after your character reloads. This blinks you for a moment before the emote starts.");
+        if (ImGui.IsItemHovered()) ImGui.SetTooltip(Units.Text("Some animation mods only show after your character reloads. This blinks you for a moment before the emote starts."));
         ImGui.Spacing();
         DrawMilkModOptions();
     }

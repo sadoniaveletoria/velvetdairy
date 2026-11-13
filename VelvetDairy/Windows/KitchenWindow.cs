@@ -131,7 +131,7 @@ public sealed class KitchenWindow : Window
                 if (locked) ImGui.PushStyleColor(ImGuiCol.Text, Theme.InkSoft with { W = 0.6f });
                 if (ImGui.Selectable(locked ? $"{r.Name}  (Lv {r.FarmerLevel})##kr{r.Id}" : $"{r.Name}##kr{r.Id}", selected == r.Id)) selected = r.Id;
                 if (locked) ImGui.PopStyleColor();
-                if (ImGui.IsItemHovered()) ImGui.SetTooltip(ready ? "You can make this now." : G.MakeProblem(r) ?? "");
+                if (ImGui.IsItemHovered()) ImGui.SetTooltip(Units.Text(ready ? "You can make this now." : G.MakeProblem(r) ?? ""));
             }
 
             ImGui.Spacing();
@@ -171,7 +171,7 @@ public sealed class KitchenWindow : Window
             {
                 ImGui.SameLine();
                 if (ImGui.SmallButton($"Buy##kbuy{id}")) plugin.MainWindow.OpenShopFor(id);
-                if (ImGui.IsItemHovered()) ImGui.SetTooltip($"Open the Shop on {shopItem.Name} ({shopItem.Price} coins each).");
+                if (ImGui.IsItemHovered()) ImGui.SetTooltip(Units.Text($"Open the Shop on {shopItem.Name} ({shopItem.Price} coins each)."));
             }
         }
         if (r.FarmerLevel > 1) Need($"Farmer level {r.FarmerLevel}", $"you're {G.FarmerLevel}", G.FarmerLevel >= r.FarmerLevel);

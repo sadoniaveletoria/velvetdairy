@@ -1,5 +1,6 @@
 using System;
 using System.Numerics;
+using VelvetDairy.Game;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.GameFonts;
 using Dalamud.Interface.ManagedFontAtlas;
@@ -119,6 +120,7 @@ public static class Ui
     /// <summary>Draws text aligned around pos (0,0 = top-left, 0.5,0.5 = centered). Returns its size.</summary>
     public static Vector2 Text(ImDrawListPtr dl, IFontHandle? font, string text, Vector2 pos, Vector4 col, float alignX = 0f, float alignY = 0f)
     {
+        text = Units.Text(text);
         text = Fonts?.Clean(font, text) ?? text;
         font = Fonts?.For(font, text) ?? font;
         IDisposable? pushed = font?.Push();
@@ -137,6 +139,7 @@ public static class Ui
 
     public static Vector2 Measure(IFontHandle? font, string text)
     {
+        text = Units.Text(text);
         text = Fonts?.Clean(font, text) ?? text;
         font = Fonts?.For(font, text) ?? font;
         IDisposable? pushed = font?.Push();
@@ -148,7 +151,7 @@ public static class Ui
     public static void Wrapped(string text, Vector4 col, float width)
     {
         ImGui.PushTextWrapPos(ImGui.GetCursorPosX() + width);
-        ImGui.TextColored(col, text);
+        ImGui.TextColored(col, Units.Text(text));
         ImGui.PopTextWrapPos();
     }
 
@@ -497,7 +500,7 @@ public static class Ui
 
         Text(dl, Fonts?.Label, label.ToUpperInvariant(), (min + max) / 2 + new Vector2(0, -1), enabled ? Theme.Ink : Theme.InkSoft, 0.5f, 0.5f);
 
-        if (tooltip != null && hovered) ImGui.SetTooltip(tooltip);
+        if (tooltip != null && hovered) ImGui.SetTooltip(Units.Text(tooltip));
         return clicked && enabled;
     }
 }

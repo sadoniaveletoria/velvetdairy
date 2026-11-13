@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Numerics;
+using VelvetDairy.Game;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Windowing;
 
@@ -247,7 +248,7 @@ public sealed class ChangelogWindow : Window
 
                 ImGui.TextColored(Theme.HoneyDeep, "•");
                 ImGui.SameLine();
-                ImGui.TextColored(Theme.Ink, n);
+                ImGui.TextColored(Theme.Ink, Units.Text(n));
             }
         }
 
