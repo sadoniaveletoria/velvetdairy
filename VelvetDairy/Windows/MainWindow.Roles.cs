@@ -318,6 +318,7 @@ public sealed partial class MainWindow
         RoleNote("bull", width);
         LevelHeader(F.BullXp, $"Bull level {G.BullLevel}", Theme.HoneyDeep, width);
         if (Leveling.BullRank(G.BullLevel) is { } title) ImGui.TextColored(Theme.HoneyDeep, title);
+        DrawFathered(width);
 
         SubHeading("Breeding", width);
         Ui.Wrapped("Bulls breed their dairy's cows in a scene with the Corruption plugin. When you finish in a scene with a cow of your dairy, you've bred her: she gets a little more milk for a while, and you get bull xp.",
@@ -428,12 +429,39 @@ public sealed partial class MainWindow
             Ui.Bar(ImGui.GetWindowDrawList(), cur + new Vector2(0, 4), cur + new Vector2(barW, 12), G.PregnancyProgress, Theme.RoseDeep);
             ImGui.Dummy(new Vector2(barW, 18));
             var due = p.DueUtc - DateTime.UtcNow;
-            ImGui.TextColored(Theme.InkSoft, $"Day {p.DaysPregnant:0} of {(p.DueUtc - p.ConceivedUtc).TotalDays:0}" + (due > TimeSpan.Zero ? $" · due in {(int)due.TotalDays}d {due.Hours}h" : " · due now") +
-                                             (p.FatherName.Length > 0 ? $" · father: {p.FatherName}" : ""));
+            if (p.FatherName.Length > 0) ImGui.TextColored(Theme.Ink, $"Father: {p.FatherName}" + (p.FatherWorld.Length > 0 ? $" ({p.FatherWorld})" : ""));
+            ImGui.TextColored(Theme.InkSoft, $"Day {p.DaysPregnant:0} of {(p.DueUtc - p.ConceivedUtc).TotalDays:0}" + (due > TimeSpan.Zero ? $" · due in {(int)due.TotalDays}d {due.Hours}h" : " · due now"));
+            if (p.Craving.Length > 0) ImGui.TextColored(p.CravingMet ? Theme.SageDeep : Theme.HoneyDeep, $"Craving today: {p.Craving}" + (p.CravingMet ? " (met)" : ""));
             ImGui.TextColored(Theme.InkSoft, "Milk +5% in the first trimester, +10% in the second, +15% in the third. It ends with the birth.");
         }
         else if (p.Stage == "recovering")
             ImGui.TextColored(Theme.InkSoft, p.RecoveryUntilUtc > DateTime.UtcNow ? $"Recovering after the birth for {(int)(p.RecoveryUntilUtc - DateTime.UtcNow).TotalHours + 1} more h" : "Recovering after the birth");
-        else ImGui.TextColored(Theme.InkSoft, "Not pregnant. Pregnancy comes from Corruption's own breeding (its cycle and settings); it shows here when it happens.");
+        else ImGui.TextColored(Theme.InkSoft, "Not pregnant. Pregnancy comes from Corruption's own breeding (its cycle and settings); it shows here once it's confirmed (a test, or at day 5).");
+
+        // Past births, newest first, with their fathers
+        var births = G.BirthsNow;
+        if (births.Count > 0)
+        {
+            Gap(4);
+            ImGui.TextColored(Theme.Ink, $"Births: {births.Count}");
+            foreach (var b in births.AsEnumerable().Reverse().Take(5))
+                ImGui.TextColored(Theme.InkSoft, $"  {b.BornUtc.ToLocalTime():MMM d}: father {(b.FatherName.Length > 0 ? b.FatherName : "unknown")}");
+            if (births.Count > 5) ImGui.TextColored(Theme.InkSoft, $"  and {births.Count - 5} more");
+        }
+
+        if (G.IsBull) DrawFathered(width);
+    }
+
+    /// <summary>A bull: the cows of your dairy pregnant by you, and how many children you've fathered (from Corruption).</summary>
+    private void DrawFathered(float width)
+    {
+        if (!G.CorruptionOn) return;
+        var mine = G.PregnantByMe();
+        var fathered = G.Preg.Fathered;
+        if (mine.Count == 0 && fathered == 0) return;
+        Gap(4);
+        foreach (var (name, stage) in mine)
+            ImGui.TextColored(Theme.RoseDeep, $"Pregnant by you: {name} · {DairyGame.StageName(stage)}");
+        if (fathered > 0) ImGui.TextColored(Theme.InkSoft, $"Children you've fathered: {fathered}");
     }
 }

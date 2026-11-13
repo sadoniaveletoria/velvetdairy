@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System;
 using System.Linq;
 using VelvetDairy.Network;
@@ -86,6 +87,19 @@ public sealed partial class DairyGame
 
     // ----- A Corruption scene going on right now (read once a second) -----
 
+    /// <summary>Your past births from Corruption (read with your pregnancy, every 30 seconds).</summary>
+    public List<CorruptionLink.Birth> BirthsNow { get; private set; } = new();
+
+    /// <summary>Cows of your dairy who are pregnant by you (confirmed), from their status: (name, stage).</summary>
+    public List<(string Name, string Stage)> PregnantByMe()
+    {
+        var me = Plugin.ObjectTable.LocalPlayer?.Name.TextValue ?? "";
+        if (me.Length == 0 || Net.Mine == null) return new();
+        return Net.Mine.Members
+            .Where(m => m.Status is { Preg.Length: > 0 } st && st.PregFather.Equals(me, StringComparison.OrdinalIgnoreCase))
+            .Select(m => (m.Name, m.Status!.Preg)).ToList();
+    }
+
     public CorruptionLink.Scene SceneNow { get; private set; } = CorruptionLink.NoScene;
     public CorruptionLink.Arousal ArousalNow { get; private set; } = CorruptionLink.NoArousal;
     private double nextSceneRead;
@@ -152,6 +166,7 @@ public sealed partial class DairyGame
         var p = CorruptionOn ? plugin.Corruption.GetPregnancy() : CorruptionLink.NoPregnancy;
         if (!p.Ready) p = CorruptionLink.NoPregnancy;
         Preg = p;
+        BirthsNow = CorruptionOn ? plugin.Corruption.GetBirths() : new List<CorruptionLink.Birth>();
         var was = F.PregStage;
         if (was == p.Stage) return;
         F.PregStage = p.Stage;

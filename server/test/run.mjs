@@ -150,10 +150,13 @@ await test("breeding status: seed is kept within 0-100 and only real pregnancy s
   let st = (await call(bob, "GET", "/v1/dairy/mine")).data.members[2].status;
   assert.equal(st.seed, 100);
   assert.equal(st.preg, "");
-  await beat(carl, { status: { milk: 3.5, cap: 8, seed: 60, preg: "second" } });
+  await beat(carl, { status: { milk: 3.5, cap: 8, seed: 60, preg: "second", pregFather: "Bram <b>Bull</b>" } });
   st = (await call(bob, "GET", "/v1/dairy/mine")).data.members[2].status;
   assert.equal(st.seed, 60);
   assert.equal(st.preg, "second");
+  assert.equal(st.pregFather, "Bram bBullb", "the father's name, cleaned");
+  await beat(carl, { status: { milk: 3.5, cap: 8, pregFather: "Bram Bull" } });
+  assert.equal((await call(bob, "GET", "/v1/dairy/mine")).data.members[2].status.pregFather, "", "no father without a pregnancy");
 });
 
 await test("several roles at once: self-add cow/bull, farmer is given, only the owner takes away", async () => {

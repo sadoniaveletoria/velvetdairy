@@ -328,6 +328,7 @@ public sealed class MemberStatus
     public bool Crown { get; set; }         // a crown next to their name in the member list
     public int Seed { get; set; }           // a bull: seed output for his next breeding (20 to 100; 0 = not a bull)
     public string Preg { get; set; } = "";  // a cow: pregnancy stage from Corruption (first, second, third), or empty
+    public string PregFather { get; set; } = "";   // a pregnant cow: the father's name (from Corruption), so he can see it
     public float SeedOz { get; set; }       // a bull: seed waiting to be milked
     public float SeedCap { get; set; }      // a bull: what his vials hold (0 = not a bull)
     public int SeedGrade { get; set; }

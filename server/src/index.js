@@ -493,6 +493,7 @@ async function heartbeat(env, me, request) {
       crown: !!st.crown,                 // cow level 100 with the Velvet crown, or farmer level 100: shown in the member list
       seed: Math.max(0, Math.min(100, Math.round(num(st.seed)))),   // a bull's seed output for his next breeding
       preg: ["first", "second", "third"].includes(st.preg) ? st.preg : "",   // a cow's pregnancy stage (from Corruption)
+      pregFather: ["first", "second", "third"].includes(st.preg) ? String(st.pregFather || "").replace(/[^\p{L}\p{N} '\-]/gu, "").slice(0, 32) : "",   // the father's name
       // A bull's seed vials, like a cow's milk and cap
       seedOz: Math.max(0, Math.min(100, Math.round(num(st.seedOz) * 100) / 100)), seedCap: Math.max(0, Math.min(100, num(st.seedCap))),
       seedGrade: Math.max(0, Math.min(GRADES - 1, Math.floor(num(st.seedGrade)))), seedSpoiled: !!st.seedSpoiled,

@@ -1,3 +1,5 @@
+using System.Linq;
+using System.Collections.Generic;
 using System;
 using Dalamud.Plugin.Ipc;
 using Dalamud.Plugin.Ipc.Exceptions;
@@ -21,10 +23,17 @@ public sealed class CorruptionLink : IDisposable
     public static readonly Arousal NoArousal = new(false, 0, 0, false);
 
     /// <summary>Stage is none, first, second, third or recovering.</summary>
+    /// <summary>
+    /// Your pregnancy as Corruption shows it (API 2: it reads "none" until it's confirmed by a test or shows at day 5),
+    /// with today's craving and your totals: times conceived, births, and children you've fathered as a breeder.
+    /// </summary>
     public sealed record Pregnancy(bool Ready, string Stage, double DaysPregnant, DateTime ConceivedUtc, DateTime DueUtc, string FatherName, string FatherWorld,
-        DateTime RecoveryUntilUtc);
+        DateTime RecoveryUntilUtc, string Craving = "", bool CravingMet = false, int Conceptions = 0, int Births = 0, int Fathered = 0);
 
     public static readonly Pregnancy NoPregnancy = new(false, "none", 0, default, default, "", "", default);
+
+    /// <summary>One past birth: when, and who the father was.</summary>
+    public sealed record Birth(DateTime BornUtc, DateTime ConceivedUtc, string FatherName, string FatherWorld);
 
     private readonly ICallGateSubscriber<int> apiVersion;
     private readonly ICallGateSubscriber<(bool, string, bool, string, string, int, double)> getScene;
@@ -32,6 +41,7 @@ public sealed class CorruptionLink : IDisposable
     private readonly ICallGateSubscriber<string, string, double> breedChanceV1;          // Corruption API 1
     private readonly ICallGateSubscriber<string, string, double, double> breedChance;    // API 2 adds a chance factor
     private readonly ICallGateSubscriber<(bool, string, double, DateTime, DateTime, string, string, DateTime, string, bool, bool, int, int, int)> getPregnancy;
+    private readonly ICallGateSubscriber<List<(DateTime, DateTime, string, string)>> getBirths;
     private readonly ICallGateSubscriber<object> onClimax;
     private readonly ICallGateSubscriber<string, string, object> onPartnerClimax;
     private readonly ICallGateSubscriber<object> onStateChanged;
@@ -55,6 +65,7 @@ public sealed class CorruptionLink : IDisposable
         breedChanceV1 = pi.GetIpcSubscriber<string, string, double>("Corruption.BreedChance");
         breedChance = pi.GetIpcSubscriber<string, string, double, double>("Corruption.BreedChance");
         getPregnancy = pi.GetIpcSubscriber<(bool, string, double, DateTime, DateTime, string, string, DateTime, string, bool, bool, int, int, int)>("Corruption.GetPregnancy");
+        getBirths = pi.GetIpcSubscriber<List<(DateTime, DateTime, string, string)>>("Corruption.GetBirths");
         onClimax = pi.GetIpcSubscriber<object>("Corruption.OnClimax");
         onPartnerClimax = pi.GetIpcSubscriber<string, string, object>("Corruption.OnPartnerClimax");
         onStateChanged = pi.GetIpcSubscriber<object>("Corruption.OnStateChanged");
@@ -115,6 +126,10 @@ public sealed class CorruptionLink : IDisposable
     public Pregnancy GetPregnancy() => Try(() =>
     {
         var p = getPregnancy.InvokeFunc();
-        return new Pregnancy(p.Item1, string.IsNullOrEmpty(p.Item2) ? "none" : p.Item2, p.Item3, p.Item4, p.Item5, p.Item6, p.Item7, p.Item8);
+        return new Pregnancy(p.Item1, string.IsNullOrEmpty(p.Item2) ? "none" : p.Item2, p.Item3, p.Item4, p.Item5, p.Item6 ?? "", p.Item7 ?? "", p.Item8,
+            p.Item9 ?? "", p.Item10, p.Item12, p.Item13, p.Item14);
     }, NoPregnancy);
+
+    /// <summary>Your past births, oldest first, each with its father.</summary>
+    public List<Birth> GetBirths() => Try(() => getBirths.InvokeFunc().Select(b => new Birth(b.Item1, b.Item2, b.Item3 ?? "", b.Item4 ?? "")).ToList(), new List<Birth>());
 }

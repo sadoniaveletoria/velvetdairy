@@ -45,6 +45,8 @@ public sealed class ChangelogWindow : Window
             "# Pregnancy",
             "If Corruption gets you pregnant, it shows as a status on the HUD, the Roles tab (stage, a progress bar, due date and father) and your dairy's member list.",
             "Pregnant cows give more milk: +5% in the first trimester, +10% in the second and +15% in the third. The bonus ends with the birth.",
+            "Roles > Cow shows the father, today's craving and your past births with their fathers. Bulls see which cows of their dairy are pregnant by them, and how many children they've fathered.",
+            "Pregnancies show once Corruption confirms them (a test, or at day 5), so nothing is given away early.",
             "Getting pregnant is up to Corruption (its cycle and settings); Eorzea Milkers never makes it happen.",
         }),
         new("0.9.39", "Metric fix", new[]
