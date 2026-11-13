@@ -131,7 +131,7 @@ public sealed class HudWindow : Window
         // Milk and grade
         var x = bmin.X + bh / 2 + 14 + (milkAndSeed ? bh * 0.55f / 2 + 4 : 0);
         var grade = seedOnly ? G.SeedGrade : G.CurrentGrade;
-        var amountText = seedOnly ? $"{amount:0.##}" : $"{amount:0.#}";
+        var amountText = Units.NumLike(amount, cap, seedOnly ? "0.##" : "0.#");
         Ui.Text(dl, fonts.Heading, amountText, new Vector2(x, o.Y + 18), Theme.Ink);
         var mw = Ui.Measure(fonts.Heading, amountText).X;
         var capText = Units.Oz(cap, seedOnly ? "0.#" : "0") + (seedOnly ? " seed" : "");
