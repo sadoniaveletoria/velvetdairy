@@ -89,6 +89,8 @@ public sealed partial class DairyGame
     public CorruptionLink.Scene SceneNow { get; private set; } = CorruptionLink.NoScene;
     public CorruptionLink.Arousal ArousalNow { get; private set; } = CorruptionLink.NoArousal;
     private double nextSceneRead;
+    private string sceneKey = "";
+    private bool bredThisScene;   // one breeding per scene: climaxing again in the same scene doesn't count again
 
     /// <summary>In a Corruption scene (solo or with a partner) right now.</summary>
     public bool InScene => SceneNow.Ready && SceneNow.State != "idle";
@@ -110,9 +112,9 @@ public sealed partial class DairyGame
         (SceneNow.Solo || SceneNow.PartnerName.Length == 0 ? "Solo scene" : $"With {SceneNow.PartnerName.Split(' ')[0]}") +
         (ArousalNow.Ready ? ArousalNow.RefractorySeconds > 0 ? " · catching your breath" : $" · arousal {ArousalNow.Value}%" : "");
 
-    private void ReadScene()
+    private void ReadScene(bool force = false)
     {
-        if (now < nextSceneRead) return;
+        if (!force && now < nextSceneRead) return;
         nextSceneRead = now + 1;
         if (!CorruptionOn)
         {
@@ -123,6 +125,14 @@ public sealed partial class DairyGame
 
         SceneNow = plugin.Corruption.GetScene();
         ArousalNow = InScene ? plugin.Corruption.GetArousal() : CorruptionLink.NoArousal;
+
+        // A new scene (or a new partner) allows one more breeding; the same scene going on doesn't
+        var key = InScene ? $"{SceneNow.PartnerName}@{SceneNow.PartnerWorld}" : "";
+        if (key != sceneKey)
+        {
+            sceneKey = key;
+            bredThisScene = false;
+        }
     }
 
     private void BreedingUpdate()
@@ -157,8 +167,15 @@ public sealed partial class DairyGame
     public void OnPartnerClimax(string name, string world)
     {
         if (!IsCow || Blocked() != null) return;
+        ReadScene(true);   // up to date, so a scene that only just started is the one this breeding belongs to
         var bull = DairyMember(name, world);
         if (bull == null || !(bull.Roles.Contains("bull") || bull.Role == "bull")) return;
+        if (bredThisScene)
+        {
+            Diag.Info("breed", $"{name} finished again in the same scene; only the first counts");
+            return;
+        }
+
         if (BreedCooldownLeft > TimeSpan.Zero)
         {
             Diag.Info("breed", $"Bred by {name} again, but the last breeding was under {BredCooldownMinutes} min ago");
@@ -166,6 +183,7 @@ public sealed partial class DairyGame
         }
 
         var seed = bull.Status?.Seed is > 0 and var s ? s : 100;
+        bredThisScene = true;
         F.BredAtUtc = DateTime.UtcNow;
         F.BredUntilUtc = DateTime.UtcNow.AddMinutes(BredMinutes);
         F.BredStrength = Math.Clamp(seed / 100f, 0.2f, 1f);
@@ -186,10 +204,18 @@ public sealed partial class DairyGame
     public void OnClimax()
     {
         if (!IsBull || Blocked() != null) return;
-        var scene = plugin.Corruption.GetScene();
+        ReadScene(true);
+        var scene = SceneNow;
         if (!scene.Ready || scene.Solo || scene.PartnerName.Length == 0) return;
         var cow = DairyMember(scene.PartnerName, scene.PartnerWorld);
         if (cow == null || !(cow.Roles.Contains("cow") || cow.Role == "cow")) return;
+        if (bredThisScene)
+        {
+            Diag.Info("breed", $"Finished again with {cow.Name} in the same scene; only the first counts");
+            return;
+        }
+
+        bredThisScene = true;
         var output = SeedFor(F.DayBreeds);
         F.DayBreeds++;
         var xp = Math.Max(1, (int)Math.Round(BreedXp * output));
