@@ -421,6 +421,11 @@ public sealed partial class MainWindow
             ImGui.TextColored(Theme.InkSoft, $"Another breeding counts in {(int)G.BreedCooldownLeft.TotalMinutes + 1} min");
         else Ui.Wrapped($"When a bull of your dairy finishes in a Corruption scene with you, you're bred: +{DairyGame.BredBonus * 100:0}% milk for {DairyGame.BredMinutes} minutes (less if they're tired), once every {DairyGame.BredCooldownMinutes} minutes.", Theme.InkSoft, width);
 
+        // Breeding scenes always end in a creampie (Corruption's forced creampies, set by Eorzea Milkers)
+        if (G.ForceCreampieAnswer == "not-allowed")
+            Ui.Wrapped("Breeding scenes with your dairy's bulls always count as a pussy creampie, but Corruption needs your OK first: turn on \"Let other plugins control Corruption\" in Corruption's Settings > Other plugins.", Theme.Warn, width);
+        else Ui.Wrapped("Breeding scenes with your dairy's bulls always count as a pussy creampie, so Corruption rolls for conception every time a bull finishes.", Theme.InkSoft, width);
+
         var p = G.Preg;
         if (G.Pregnant)
         {

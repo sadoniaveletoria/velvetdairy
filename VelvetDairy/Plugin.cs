@@ -102,6 +102,7 @@ public sealed class Plugin : IDalamudPlugin
         Corruption.PartnerClimax += (name, world) => Game.OnPartnerClimax(name, world);
         Corruption.Climax += () => Game.OnClimax();
         Corruption.Changed += () => Game.ReadPregnancySoon();
+        Corruption.Reloaded += () => Game.CorruptionReloaded();
         MainWindow = new MainWindow(this, art, fonts);
         Hud = new HudWindow(this, art, fonts);
         windowSystem.AddWindow(MainWindow);
@@ -185,6 +186,7 @@ public sealed class Plugin : IDalamudPlugin
         Game.Stop("Plugin unloaded.");
         Game.EndMilkMod();
         Sounds.Dispose();
+        Game.StopForcedCreampie();
         Corruption.Dispose();
         Net.Dispose();
         contextMenu.Dispose();

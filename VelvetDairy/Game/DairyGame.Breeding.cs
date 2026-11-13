@@ -125,13 +125,63 @@ public sealed partial class DairyGame
     public string SceneLine =>
         (SceneNow.Solo || SceneNow.PartnerName.Length == 0 ? "Solo scene" : $"With {SceneNow.PartnerName.Split(' ')[0]}") +
         (ArousalNow.Ready ? ArousalNow.RefractorySeconds > 0 ? " · catching your breath" : $" · arousal {ArousalNow.Value}%" : "") +
-        (ConceiveChance > 0 ? $" · {ConceiveChance * 100:0}% chance" : "");
+        (ConceiveChance > 0 ? $" · {ConceiveChance * 100:0}% chance" : "") +
+        (ForcedCreampie ? " · creampie" : "");
 
     /// <summary>
     /// A cow in a scene with a bull of her dairy: Corruption's chance (0 to 1) that his finishing gets her pregnant now.
     /// 0 when there's nothing to show (no breeding scene, already pregnant, or Corruption would refuse). Only shown to her.
     /// </summary>
     public double ConceiveChance { get; private set; }
+
+    // ----- Forced creampies while a bull of your dairy breeds you -----
+
+    /// <summary>What we last asked Corruption for (forced creampies on or off).</summary>
+    private bool forcedOn;
+    private double nextForceTry;
+
+    /// <summary>Corruption's last answer when turning forced creampies on ("ok", "not-allowed", ...).</summary>
+    public string ForceCreampieAnswer { get; private set; } = "";
+
+    /// <summary>Forced creampies are on right now (a breeding scene with a bull of your dairy).</summary>
+    public bool ForcedCreampie => forcedOn && ForceCreampieAnswer == "ok";
+
+    /// <summary>Corruption reloaded: it forgot, so set it again on the next check.</summary>
+    public void CorruptionReloaded()
+    {
+        forcedOn = false;
+        nextForceTry = 0;
+    }
+
+    /// <summary>
+    /// A cow in a scene with a bull of their dairy: every finish counts as a pussy creampie (so Corruption rolls for
+    /// conception). Off again as soon as the scene isn't a breeding scene. Corruption's own consent switch and Cummy's
+    /// blocks still decide; if Corruption says no, try again now and then (the player may turn consent on).
+    /// </summary>
+    private void UpdateForcedCreampie()
+    {
+        var want = CorruptionOn && IsCow && SceneBreeds;
+        if (want == forcedOn && (!want || ForceCreampieAnswer == "ok")) return;
+        if (!want)
+        {
+            plugin.Corruption.SetForceCreampie(false);
+            forcedOn = false;
+            return;
+        }
+
+        if (now < nextForceTry) return;
+        nextForceTry = now + 30;
+        ForceCreampieAnswer = plugin.Corruption.SetForceCreampie(true);
+        forcedOn = true;
+        if (ForceCreampieAnswer != "ok") Diag.Info("breed", $"Forced creampies: Corruption answered {ForceCreampieAnswer}");
+    }
+
+    /// <summary>Turn forced creampies off (unloading).</summary>
+    public void StopForcedCreampie()
+    {
+        if (forcedOn) plugin.Corruption.SetForceCreampie(false);
+        forcedOn = false;
+    }
 
     private void ReadScene(bool force = false)
     {
@@ -156,6 +206,8 @@ public sealed partial class DairyGame
             sceneKey = key;
             bredThisScene = false;
         }
+
+        UpdateForcedCreampie();
     }
 
     private void BreedingUpdate()

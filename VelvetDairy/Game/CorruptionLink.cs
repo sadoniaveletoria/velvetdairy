@@ -46,6 +46,10 @@ public sealed class CorruptionLink : IDisposable
     private readonly ICallGateSubscriber<string, string, object> onPartnerClimax;
     private readonly ICallGateSubscriber<object> onStateChanged;
     private readonly ICallGateSubscriber<object> onReady;
+    private readonly ICallGateSubscriber<string, bool, string> setForceCreampie;
+
+    /// <summary>Corruption (re)loaded: anything we set there (forced creampies) has to be set again.</summary>
+    public event Action? Reloaded;
 
     /// <summary>You climaxed (Corruption).</summary>
     public event Action? Climax;
@@ -70,11 +74,22 @@ public sealed class CorruptionLink : IDisposable
         onPartnerClimax = pi.GetIpcSubscriber<string, string, object>("Corruption.OnPartnerClimax");
         onStateChanged = pi.GetIpcSubscriber<object>("Corruption.OnStateChanged");
         onReady = pi.GetIpcSubscriber<object>("Corruption.Ready");
+        setForceCreampie = pi.GetIpcSubscriber<string, bool, string>("Corruption.SetForceCreampie");
         onClimax.Subscribe(OnClimax);
         onPartnerClimax.Subscribe(OnPartnerClimax);
         onStateChanged.Subscribe(OnChanged);
         onReady.Subscribe(OnChanged);
+        onReady.Subscribe(OnReloaded);
     }
+
+    private void OnReloaded() => Reloaded?.Invoke();
+
+    /// <summary>
+    /// Turns Corruption's forced creampies on or off for this character (a partner's climax creampies your pussy, so a
+    /// breeder's climax rolls for conception). Corruption only allows it with the player's consent in its own settings
+    /// ("not-allowed" otherwise), and keeps Cummy's blocks. Returns Corruption's answer, or "" if it couldn't be reached.
+    /// </summary>
+    public string SetForceCreampie(bool on) => Try(() => setForceCreampie.InvokeFunc("Eorzea Milkers", on) ?? "", "");
 
     public void Dispose()
     {
@@ -82,6 +97,7 @@ public sealed class CorruptionLink : IDisposable
         onPartnerClimax.Unsubscribe(OnPartnerClimax);
         onStateChanged.Unsubscribe(OnChanged);
         onReady.Unsubscribe(OnChanged);
+        onReady.Unsubscribe(OnReloaded);
     }
 
     private void OnClimax() => Climax?.Invoke();

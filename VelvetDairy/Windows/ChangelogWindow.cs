@@ -47,7 +47,8 @@ public sealed class ChangelogWindow : Window
             "Pregnant cows give more milk: +5% in the first trimester, +10% in the second and +15% in the third. The bonus ends with the birth.",
             "Roles > Cow shows the father, today's craving and your past births with their fathers. Bulls see which cows of their dairy are pregnant by them, and how many children they've fathered.",
             "Pregnancies show once Corruption confirms them (a test, or at day 5), so nothing is given away early.",
-            "Getting pregnant is up to Corruption (its cycle and settings); Eorzea Milkers never makes it happen.",
+            "Breeding scenes with a bull of your dairy always end in a pussy creampie (Corruption's forced creampies, turned on just for those scenes), so Corruption rolls for conception every time the bull finishes. Corruption needs \"Let other plugins control Corruption\" turned on in its Settings > Other plugins, and Cummy's blocks still apply.",
+            "Whether a creampie gets you pregnant is still up to Corruption (your cycle and chance settings).",
         }),
         new("0.9.39", "Metric fix", new[]
         {
