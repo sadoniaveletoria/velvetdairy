@@ -397,7 +397,7 @@ public sealed partial class MainWindow
         Ui.Bottle(dl, at, new Vector2(w, height), f, G.Active != null ? Ui.Flow.Draining : G.SeedComing ? Ui.Flow.Filling : Ui.Flow.Still,
             G.SeedSpoiled ? SourMilk : SeedTint, G.BottleTier);
         Ui.Text(dl, fonts.Small, "SEED", new Vector2(at.X + w / 2, at.Y + height + 2), Theme.InkSoft, 0.5f);
-        Ui.Text(dl, fonts.Small, Units.Num(F.Cow.Seed, "0.##"), new Vector2(at.X + w / 2, at.Y + height + 16), G.SeedSpoiled || G.SeedFull ? Theme.Warn : Theme.Ink, 0.5f);
+        Ui.Text(dl, fonts.Small, Units.Num(F.Cow.Seed, "0.##"), new Vector2(at.X + w / 2, at.Y + height + 2 + Ui.Measure(fonts.Small, "Ag").Y), G.SeedSpoiled || G.SeedFull ? Theme.Warn : Theme.Ink, 0.5f);
         if (ImGui.IsMouseHoveringRect(at, at + new Vector2(w, height + 30)))
             ImGui.SetTooltip(Units.Text($"Seed: {F.Cow.Seed:0.##} / {G.SeedCapacity:0.#} oz\n") + (G.SeedSpoiled ? "Spoiled: dump it (Roles > Bull, or the HUD).\n" : G.SeedFull ? "Full: get milked.\n" : "") + SeedGradeTip());
     }

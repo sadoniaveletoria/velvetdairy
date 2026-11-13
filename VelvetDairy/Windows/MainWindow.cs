@@ -387,19 +387,29 @@ public sealed partial class MainWindow : Window
         var all = plugin.Companions.All(G.Now);
         const float dot = 4f, gap = 14f;
         var widths = all.Select(c => Ui.Measure(fonts.Small, c.Name).X + dot * 2 + 6).ToList();
-        var total = widths.Sum() + gap * (all.Count - 1);
-        if (right - total < minX) return;   // no room next to the tabs (a narrow window)
-        var x = right - total;
+        var lineH = Ui.Measure(fonts.Small, "Ag").Y;
+
+        // One row when there's room next to the tabs, otherwise two rows of two (the tab row is tall enough)
+        var oneRow = widths.Sum() + gap * (all.Count - 1);
+        var perRow = right - oneRow >= minX ? all.Count : 2;
+        var rows = (all.Count + perRow - 1) / perRow;
+        var colW = new float[perRow];
+        for (var i = 0; i < all.Count; i++) colW[i % perRow] = Math.Max(colW[i % perRow], widths[i]);
+        var total = colW.Sum() + gap * (perRow - 1);
+        if (right - total < minX) return;   // a very narrow window: no room at all
+
+        var top = midY - rows * lineH / 2;
         for (var i = 0; i < all.Count; i++)
         {
             var c = all[i];
-            var center = new Vector2(x + dot, midY);
+            var col = i % perRow;
+            var x = right - total + colW.Take(col).Sum() + gap * col;
+            var y = top + (i / perRow) * lineH;
+            var center = new Vector2(x + dot, y + lineH / 2);
             if (c.On) dl.AddCircleFilled(center, dot, Ui.U(Theme.SageDeep));
             else dl.AddCircle(center, dot, Ui.U(Theme.InkSoft), 0, 1.3f);
-            Ui.Text(dl, fonts.Small, c.Name, new Vector2(x + dot * 2 + 6, midY - Ui.Measure(fonts.Small, c.Name).Y / 2), c.On ? Theme.SageDeep : Theme.InkSoft);
-            var a0 = new Vector2(x - 2, midY - 10);
-            var a1 = new Vector2(x + widths[i] + 2, midY + 10);
-            if (ImGui.IsMouseHoveringRect(a0, a1))
+            Ui.Text(dl, fonts.Small, c.Name, new Vector2(x + dot * 2 + 6, y), c.On ? Theme.SageDeep : Theme.InkSoft);
+            if (ImGui.IsMouseHoveringRect(new Vector2(x - 2, y), new Vector2(x + widths[i] + 2, y + lineH)))
             {
                 ImGui.SetTooltip($"{c.Name}: {(c.On ? "installed" : "not installed")}\nFor {c.For}." +
                                  (c.On ? "" : c.Repo.Length > 0 ? $"\nClick to copy its repository link, then add it in /xlsettings > Experimental > Custom Plugin Repositories.\n{c.Repo}" : "\nInstall it from /xlplugins.") +
@@ -410,8 +420,6 @@ public sealed partial class MainWindow : Window
                     G.Notify($"Copied the {c.Name} repository link.", 1);
                 }
             }
-
-            x += widths[i] + gap;
         }
     }
 
