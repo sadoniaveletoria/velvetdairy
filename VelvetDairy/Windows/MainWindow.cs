@@ -94,11 +94,11 @@ public sealed partial class MainWindow : Window
         this.art = art;
         this.fonts = fonts;
 
-        Size = new Vector2(1060, 760);
+        Size = new Vector2(1200, 760);
         SizeCondition = ImGuiCond.FirstUseEver;
         SizeConstraints = new WindowSizeConstraints
         {
-            MinimumSize = new Vector2(980, 700),
+            MinimumSize = new Vector2(1120, 700),
             MaximumSize = new Vector2(float.MaxValue, float.MaxValue),
         };
 
@@ -216,8 +216,8 @@ public sealed partial class MainWindow : Window
         }
 
         var headerH = DrawHeader(dl, origin, avail.X);
-        var tabsH = DrawTabs(dl, origin + new Vector2(0, headerH), avail.X);
-        var bodyMin = origin + new Vector2(Pad, headerH + tabsH + 10);
+        DrawSidebar(dl, origin + new Vector2(0, headerH), avail.Y - headerH);
+        var bodyMin = origin + new Vector2(SideW + Pad, headerH + 14);
         var bodyMax = origin + avail - new Vector2(Pad, Pad);
 
         if (!F.Confirmed18) DrawGate(bodyMin, bodyMax);
@@ -354,62 +354,57 @@ public sealed partial class MainWindow : Window
         return h;
     }
 
-    private float DrawTabs(ImDrawListPtr dl, Vector2 o, float width)
-    {
-        const float h = 44f;
-        var x = o.X + Pad;
-        for (var i = 0; i < Tabs.Length; i++)
-        {
-            var label = Tabs[i].ToUpperInvariant();
-            var size = Ui.Measure(fonts.Label, label);
-            var min = new Vector2(x, o.Y + 8);
-            var bw = size.X + 28;
-            ImGui.SetCursorScreenPos(min);
-            if (ImGui.InvisibleButton($"##tab{i}", new Vector2(bw, h - 10))) tab = i;
-            var hovered = ImGui.IsItemHovered();
-            var sel = tab == i;
-            if (sel) dl.AddRectFilled(min, min + new Vector2(bw, h - 10), Ui.U(Theme.Paper, 0.85f), 8, ImDrawFlags.RoundCornersTop);
-            Ui.Text(dl, fonts.Label, label, min + new Vector2(bw / 2, (h - 10) / 2), sel ? Theme.Ink : hovered ? Theme.RoseDeep : Theme.InkSoft, 0.5f, 0.5f);
-            if (sel) dl.AddLine(min + new Vector2(10, h - 12), min + new Vector2(bw - 10, h - 12), Ui.U(Theme.RoseDeep), 2f);
-            x += bw + 4;
-        }
+    /// <summary>Icons for the sidebar, in the same order as <see cref="Tabs"/>.</summary>
+    private static readonly string[] TabIcons = { "bucket", "ribbon", "hay", "coin", "cheese", "milk", "bell", "starclover", "gear" };
 
-        DrawHelperPlugins(dl, x + 12, o.X + width - Pad, o.Y + 8 + (h - 10) / 2);
-        return h;
-    }
+    private const float SideW = 172f;
 
     /// <summary>
-    /// The plugins Eorzea Milkers works with, at the right end of the tab row: a green dot and the name when it's
-    /// installed, a hollow dot when not. Hover for what each is for; click a missing one to copy its repository link.
+    /// The tabs down the left side, each with its icon, and at the bottom the plugins Eorzea Milkers works with
+    /// (a green dot and the name when it's installed). Hover a plugin for what it's for; click a missing one to copy its repository link.
     /// </summary>
-    private void DrawHelperPlugins(ImDrawListPtr dl, float minX, float right, float midY)
+    private void DrawSidebar(ImDrawListPtr dl, Vector2 o, float h)
     {
-        var all = plugin.Companions.All(G.Now);
-        const float dot = 4f, gap = 14f;
-        var widths = all.Select(c => Ui.Measure(fonts.Small, c.Name).X + dot * 2 + 6).ToList();
-        var lineH = Ui.Measure(fonts.Small, "Ag").Y;
+        dl.AddRectFilled(o, o + new Vector2(SideW, h), Ui.U(Theme.Paper, 0.9f));
+        dl.AddLine(o + new Vector2(SideW, 0), o + new Vector2(SideW, h), Ui.U(Theme.RoseDeep, 0.22f), 1f);
 
-        // One row when there's room next to the tabs, otherwise two rows of two (the tab row is tall enough)
-        var oneRow = widths.Sum() + gap * (all.Count - 1);
-        var perRow = right - oneRow >= minX ? all.Count : 2;
-        var rows = (all.Count + perRow - 1) / perRow;
-        var colW = new float[perRow];
-        for (var i = 0; i < all.Count; i++) colW[i % perRow] = Math.Max(colW[i % perRow], widths[i]);
-        var total = colW.Sum() + gap * (perRow - 1);
-        if (right - total < minX) return;   // a very narrow window: no room at all
-
-        var top = midY - rows * lineH / 2;
-        for (var i = 0; i < all.Count; i++)
+        const float rowH = 40f;
+        var y = o.Y + 12;
+        for (var i = 0; i < Tabs.Length; i++)
         {
-            var c = all[i];
-            var col = i % perRow;
-            var x = right - total + colW.Take(col).Sum() + gap * col;
-            var y = top + (i / perRow) * lineH;
-            var center = new Vector2(x + dot, y + lineH / 2);
-            if (c.On) dl.AddCircleFilled(center, dot, Ui.U(Theme.SageDeep));
-            else dl.AddCircle(center, dot, Ui.U(Theme.InkSoft), 0, 1.3f);
-            Ui.Text(dl, fonts.Small, c.Name, new Vector2(x + dot * 2 + 6, y), c.On ? Theme.SageDeep : Theme.InkSoft);
-            if (ImGui.IsMouseHoveringRect(new Vector2(x - 2, y), new Vector2(x + widths[i] + 2, y + lineH)))
+            var min = new Vector2(o.X + 10, y);
+            var size = new Vector2(SideW - 20, rowH);
+            ImGui.SetCursorScreenPos(min);
+            if (ImGui.InvisibleButton($"##tab{i}", size)) tab = i;
+            var hovered = ImGui.IsItemHovered();
+            var sel = tab == i;
+            if (sel)
+            {
+                dl.AddRectFilled(min, min + size, Ui.U(Theme.Rose, 0.38f), 8);
+                dl.AddRectFilled(min, min + new Vector2(3, size.Y), Ui.U(Theme.RoseDeep), 2);
+            }
+            else if (hovered) dl.AddRectFilled(min, min + size, Ui.U(Theme.Rose, 0.16f), 8);
+
+            Ui.Icon(dl, TabIcons[i], min + new Vector2(24, size.Y / 2), 13, sel || hovered ? 1f : 0.8f);
+            Ui.Text(dl, fonts.Label, Tabs[i].ToUpperInvariant(), min + new Vector2(46, size.Y / 2), sel ? Theme.Ink : hovered ? Theme.RoseDeep : Theme.InkSoft, 0f, 0.5f);
+            y += rowH + 3;
+        }
+
+        // The helper plugins, at the bottom
+        var all = plugin.Companions.All(G.Now);
+        var lineH = Ui.Measure(fonts.Small, "Ag").Y + 3;
+        var top = o.Y + h - 12 - all.Count * lineH - 24;
+        if (top < y + 8) return;   // a very short window
+        dl.AddLine(new Vector2(o.X + 14, top), new Vector2(o.X + SideW - 14, top), Ui.U(Theme.RoseDeep, 0.18f), 1f);
+        Ui.Text(dl, fonts.Small, "PLUGINS", new Vector2(o.X + 18, top + 5), Theme.InkSoft);
+        var ly = top + 24;
+        foreach (var c in all)
+        {
+            var center = new Vector2(o.X + 22, ly + lineH / 2 - 1);
+            if (c.On) dl.AddCircleFilled(center, 4f, Ui.U(Theme.SageDeep));
+            else dl.AddCircle(center, 4f, Ui.U(Theme.InkSoft), 0, 1.3f);
+            Ui.Text(dl, fonts.Small, c.Name, new Vector2(o.X + 32, ly), c.On ? Theme.SageDeep : Theme.InkSoft);
+            if (ImGui.IsMouseHoveringRect(new Vector2(o.X + 12, ly), new Vector2(o.X + SideW - 8, ly + lineH)))
             {
                 ImGui.SetTooltip($"{c.Name}: {(c.On ? "installed" : "not installed")}\nFor {c.For}." +
                                  (c.On ? "" : c.Repo.Length > 0 ? $"\nClick to copy its repository link, then add it in /xlsettings > Experimental > Custom Plugin Repositories.\n{c.Repo}" : "\nInstall it from /xlplugins.") +
@@ -420,6 +415,8 @@ public sealed partial class MainWindow : Window
                     G.Notify($"Copied the {c.Name} repository link.", 1);
                 }
             }
+
+            ly += lineH;
         }
     }
 
@@ -688,16 +685,17 @@ public sealed partial class MainWindow : Window
         }
 
         var blocked = G.Blocked();
+        // Top: your bottle and how you're doing. Then Care as one slim row. Milking along the bottom.
+        // The space between Care and Milking is left open for now.
         var milkH = G.Active != null || !G.AutoStall ? 200f : 112f;
-        var topMax = new Vector2(max.X, max.Y - milkH - 14);
-        var leftW = 270f;
-        var rightW = 330f;
+        const float careH = 116f, gap = 14f;
+        var topH = Math.Clamp(max.Y - min.Y - milkH - careH - gap * 2, 300f, 380f);
+        var topMax = new Vector2(max.X, min.Y + topH);
+        const float leftW = 270f;
 
         DrawBottleCard(min, new Vector2(min.X + leftW, topMax.Y));
-        var midMin = new Vector2(min.X + leftW + 14, min.Y);
-        var midMax = new Vector2(max.X - rightW - 14, topMax.Y);
-        Panel("##needs", midMin, midMax, "How you're doing", DrawNeeds);
-        Panel("##care", new Vector2(max.X - rightW, min.Y), topMax, "Care", DrawCare);
+        Panel("##needs", new Vector2(min.X + leftW + gap, min.Y), topMax, "How you're doing", DrawNeeds);
+        DrawCareRow(new Vector2(min.X, topMax.Y + gap), new Vector2(max.X, topMax.Y + gap + careH));
         Panel("##milking", new Vector2(min.X, max.Y - milkH), max, G.Active != null ? "Milking now" : "Milking", DrawMilking, true);
 
         if (blocked != null && blocked != "Not logged in.")
@@ -926,6 +924,104 @@ public sealed partial class MainWindow : Window
             notes.Add(("Your milk tastes off after the dump (one grade lower). Care tasks, milkings and creamery deliveries wear it off.", Theme.RoseDeep));
         if (notes.Count == 0) notes.Add((G.Contented ? "Contented! Every bonus is going." : "Each use adds 30 minutes to a bar (up to an hour), then it drains as the bonus wears off. Bars wait while you're asleep or away, and running out never hurts.", Theme.SageDeep));
         foreach (var (t, c) in notes) Ui.Wrapped(t, c, width);
+    }
+
+    /// <summary>Care as one slim row of cards: drink, rest, then what you have to eat. More than fits: a card to open the Pantry.</summary>
+    private void DrawCareRow(Vector2 min, Vector2 max)
+    {
+        var dl = ImGui.GetWindowDrawList();
+        Ui.Card(dl, min, max);
+        var inMin = min + new Vector2(22, 16);
+        var width = max.X - min.X - 44;
+        Ui.Eyebrow(dl, "Care", inMin, width, Theme.RoseDeep);
+        var problem = G.CareProblem();
+        if (problem != null)
+        {
+            var pw = Ui.Measure(fonts.Small, problem).X;
+            Ui.Text(dl, fonts.Small, FitText(problem, width * 0.6f), new Vector2(inMin.X + width - Math.Min(pw, width * 0.6f), inMin.Y + 1), Theme.RoseDeep);
+        }
+
+        var ok = problem == null;
+        var cells = new List<(string Id, string Icon, string Title, string Sub, string Btn, string Color, bool Enabled, string? Tip, Action Act)>();
+        var wcd = G.DrinkWait;
+        cells.Add(("##drink", "water", "Drink", wcd > TimeSpan.Zero ? $"Ready in {DairyGame.Wait(wcd)}" : $"Free · Watered +{Catalog.TroughBonus * 100:0}%",
+            "Drink", "blue", ok && wcd <= TimeSpan.Zero, problem ?? $"Free. Watered +{Catalog.TroughBonus * 100:0}%, +30 minutes.", () => G.Drink()));
+        var rcd = G.RestWait;
+        var restProblem = G.RestProblem();
+        var settle = G.RestSettleLeft;
+        cells.Add(("##rest", "cushion", "Rest",
+            settle > TimeSpan.Zero ? $"Stay seated {DairyGame.Wait(settle)}" : rcd > TimeSpan.Zero ? $"Ready in {DairyGame.Wait(rcd)}" : restProblem != null && ok ? "Sit on furniture first" : $"Free · Comfy +{G.ComfyNow * 100:0}%",
+            "Rest", "rose", restProblem == null && rcd <= TimeSpan.Zero, restProblem ?? $"Free. Comfy +{G.ComfyNow * 100:0}%, +30 minutes.", () => G.Rest()));
+        foreach (var item in Catalog.Feed)
+        {
+            if (G.ShopLevel < item.Unlock || F.HiddenFeed!.Contains(item.Id)) continue;
+            var have = G.Count(item.Id);
+            if (have <= 0) continue;
+            var wait = item.HoldDays > 0 ? TimeSpan.Zero : G.FeedWait(item);
+            var qwait = item.Quality > 0 ? G.QualityTreatWait : TimeSpan.Zero;
+            var qualityHeld = qwait > wait;
+            if (qualityHeld) wait = qwait;
+            var waiting = wait > TimeSpan.Zero;
+            var tip = problem ?? (qualityHeld ? $"Quality treats share a {Grades.QualityTreatHours:0}-hour cooldown." :
+                waiting ? $"Eating, drinking, resting and treats each wait {Catalog.NeedCooldownMinutes:0} minutes between uses." : $"{item.Desc}\n{Effects(item)}");
+            var id = item.Id;
+            cells.Add(($"##feed{id}", item.Icon, item.Name, waiting ? $"{have} left · ready in {DairyGame.Wait(wait)}" : $"{have} left · {Effects(item)}",
+                "Eat", "honey", ok && !waiting, tip, () => G.UseFeed(id)));
+        }
+
+        const float cellGap = 10f, cellH = 54f;
+        var perRow = Math.Clamp((int)((width + cellGap) / (230 + cellGap)), 2, 6);
+        var more = cells.Count > perRow ? cells.Count - (perRow - 1) : 0;
+        var shown = more > 0 ? perRow - 1 : cells.Count;
+        var cellW = (width - cellGap * (perRow - 1)) / perRow;
+        var y = inMin.Y + 34;
+        for (var i = 0; i < perRow; i++)
+        {
+            var c0 = new Vector2(inMin.X + i * (cellW + cellGap), y);
+            var c1 = c0 + new Vector2(cellW, cellH);
+            if (i >= shown && more == 0) break;
+            dl.AddRectFilled(c0, c1, Ui.U(Theme.Paper, 0.95f), 8);
+            dl.AddRect(c0, c1, Ui.U(Theme.RoseDeep, 0.18f), 8, ImDrawFlags.None, 1f);
+            var midY = c0.Y + cellH / 2;
+            if (i < shown)
+            {
+                var c = cells[i];
+                Ui.Icon(dl, c.Icon, new Vector2(c0.X + 24, midY), 15, c.Enabled ? 1f : 0.65f);
+                var bw = Math.Max(62f, Ui.Measure(fonts.Label, c.Btn.ToUpperInvariant()).X + 26);
+                if (Ui.Button(c.Id, c.Btn, new Vector2(bw, 28), c.Color, c.Enabled, c.Tip, new Vector2(c1.X - bw - 10, midY - 14))) c.Act();
+                var tw = c1.X - bw - 18 - (c0.X + 46);
+                Ui.Text(dl, fonts.Label, FitText(c.Title.ToUpperInvariant(), tw, fonts.Label), new Vector2(c0.X + 46, midY - 17), Theme.Ink);
+                Ui.Text(dl, fonts.Small, FitText(c.Sub, tw), new Vector2(c0.X + 46, midY + 1), Theme.InkSoft);
+            }
+            else
+            {
+                // More than fits: the rest are in the Pantry
+                Ui.Icon(dl, "hay", new Vector2(c0.X + 24, midY), 15);
+                Ui.Text(dl, fonts.Label, $"{more} MORE", new Vector2(c0.X + 46, midY - 17), Theme.Ink);
+                Ui.Text(dl, fonts.Small, "in your pantry", new Vector2(c0.X + 46, midY + 1), Theme.InkSoft);
+                if (Ui.Button("##caremore", "Pantry", new Vector2(80, 28), "cream", true, "Everything you have to eat and drink.", new Vector2(c1.X - 90, midY - 14))) tab = TabPantry;
+            }
+        }
+
+        if (cells.Count == 2 && max.X - min.X > 0)
+        {
+            // Nothing to eat: point at the Shop in the next cell
+            var c0 = new Vector2(inMin.X + 2 * (cellW + cellGap), y);
+            if (perRow > 2)
+            {
+                Ui.Text(dl, fonts.Small, "Your pantry is empty.", new Vector2(c0.X + 4, c0.Y + 8), Theme.InkSoft);
+                if (Ui.Button("##careshop", "Shop", new Vector2(80, 28), "cream", true, "Buy feed and treats.", new Vector2(c0.X + 4, c0.Y + 26))) tab = TabShop;
+            }
+        }
+    }
+
+    /// <summary>Shortens text with "..." to fit a width.</summary>
+    private string FitText(string text, float width, Dalamud.Interface.ManagedFontAtlas.IFontHandle? font = null)
+    {
+        font ??= fonts.Small;
+        if (width <= 10 || Ui.Measure(font, text).X <= width) return text;
+        while (text.Length > 4 && Ui.Measure(font, text + "...").X > width) text = text[..^1];
+        return text.TrimEnd(' ', '·') + "...";
     }
 
     private void DrawCare(float width)
