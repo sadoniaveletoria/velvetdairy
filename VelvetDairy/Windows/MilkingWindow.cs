@@ -39,7 +39,7 @@ public sealed class MilkingWindow : Window
         ImGui.TextColored(Theme.InkSoft, $"Milk does {emote} · {mod}");
         ImGui.SameLine();
         if (ImGui.SmallButton("Animation...##hmanim")) plugin.MilkAnimation.IsOpen = true;
-        if (ImGui.IsItemHovered()) ImGui.SetTooltip("Pick the emote the Milk button does, and a Penumbra animation mod used only while you milk.");
+        if (ImGui.IsItemHovered()) ImGui.SetTooltip(Units.Text("Pick the emote the Milk button does, and a Penumbra animation mod used only while you milk."));
         ImGui.Separator();
         ImGui.Spacing();
         if (ImGui.BeginChild("##handmilklist", Vector2.Zero, false))

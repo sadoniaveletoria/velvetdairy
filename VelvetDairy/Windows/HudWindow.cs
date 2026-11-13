@@ -69,7 +69,18 @@ public sealed class HudWindow : Window
         var dl = ImGui.GetWindowDrawList();
         var o = ImGui.GetWindowPos();
         var whole = ImGui.GetWindowSize();
-        Ui.Card(dl, o, o + whole);
+        Ui.Card(dl, o, o + whole, false, G.Level >= 75);   // cow level 75: velvet frame
+
+        // Cow level 50: your title in gold along the top edge (with the crown when you have it)
+        if (G.Level >= 50 || G.Crowned)
+        {
+            var title = G.Level >= 50 ? Leveling.Rank(G.Level) : Leveling.FarmerRank(G.FarmerLevel) ?? "";
+            var tw = Ui.Measure(fonts.Small, title).X;
+            var cw = G.Crowned ? 16f : 0f;
+            var tx = o.X + (whole.X - tw - cw) / 2;
+            if (G.Crowned) Ui.Crown(dl, new Vector2(tx, o.Y + 4), 12);
+            Ui.Text(dl, fonts.Small, title, new Vector2(tx + cw, o.Y + 2), Theme.HoneyDeep);
+        }
         var size = HudSize;   // the bottle, needs and status keep their place; buttons go below
 
         var cow = F.Cow;
@@ -106,7 +117,7 @@ public sealed class HudWindow : Window
         var grade = G.CurrentGrade;
         Ui.Text(dl, fonts.Heading, $"{cow.Milk:0.#}", new Vector2(x, o.Y + 18), Theme.Ink);
         var mw = Ui.Measure(fonts.Heading, $"{cow.Milk:0.#}").X;
-        Ui.Text(dl, fonts.Small, bCount > 1 ? $"/ {cap:0} oz · {full} of {bCount} full" : $"/ {cap:0} oz", new Vector2(x + mw + 4, o.Y + 24), Theme.InkSoft);
+        Ui.Text(dl, fonts.Small, bCount > 1 ? $"/ {Units.Oz(cap, "0")} · {full} of {bCount} full" : $"/ {Units.Oz(cap, "0")}", new Vector2(x + mw + 4, o.Y + 24), Theme.InkSoft);
         Ui.Seal(dl, new Vector2(o.X + size.X - 38, o.Y + 38), 20, Grades.Name(grade), Theme.GradeColor(grade));
 
         // Needs as four thin bars
@@ -137,7 +148,7 @@ public sealed class HudWindow : Window
         }
         else if (s != null)
         {
-            status = $"Milking · {s.Extracted * s.Yield:0.#} oz";
+            status = $"Milking · {Units.Oz(s.Extracted * s.Yield, "0.#")}";
             col = Theme.BlueDeep;
             Ui.Bar(dl, new Vector2(x, o.Y + size.Y - 26), new Vector2(x + bw, o.Y + size.Y - 22), s.Progress, Theme.BlueDeep);
         }
@@ -183,6 +194,13 @@ public sealed class HudWindow : Window
         {
             status = $"{char.ToUpperInvariant(G.Role[0])}{G.Role[1..]}{(G.DairyName.Length > 0 ? $" at {G.DairyName}" : "")}{(G.Where.InDairy ? " · here" : "")}";
             col = G.Where.InDairy ? Theme.SageDeep : Theme.InkSoft;
+        }
+
+        // At a Grand Creamery: say so the whole time you're there
+        if (s == null && !G.Paused && G.CreameryHere is { } here)
+        {
+            status = $"At {here.Name}";
+            col = Theme.BlueDeep;
         }
 
         // A newer version is out

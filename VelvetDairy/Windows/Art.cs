@@ -41,9 +41,9 @@ public sealed class Art
     public IDalamudTextureWrap? Button(string color) => Get($"ui/button_{color}.png");
     public IDalamudTextureWrap? Seal => Get("ui/seal.png");
     // Five bottle types (1 Quart, 2 Half gallon, 3 Gallon, 4 Big jug, 5 Milk churn), each in three layers
-    public IDalamudTextureWrap? BottleBack(int tier) => Get($"ui/bottle{Math.Clamp(tier, 1, 5)}_back.png");
-    public IDalamudTextureWrap? BottleMilk(int tier) => Get($"ui/bottle{Math.Clamp(tier, 1, 5)}_milk.png");
-    public IDalamudTextureWrap? BottleFront(int tier) => Get($"ui/bottle{Math.Clamp(tier, 1, 5)}_front.png");
+    public IDalamudTextureWrap? BottleBack(int tier) => Get($"ui/bottle{Math.Clamp(tier, 1, 6)}_back.png");
+    public IDalamudTextureWrap? BottleMilk(int tier) => Get($"ui/bottle{Math.Clamp(tier, 1, 6)}_milk.png");
+    public IDalamudTextureWrap? BottleFront(int tier) => Get($"ui/bottle{Math.Clamp(tier, 1, 6)}_front.png");
     public IDalamudTextureWrap? Icon(string name) => Get($"icons/{name}.png");
     public IDalamudTextureWrap? Avatar(string name) => Get($"avatars/{name}.png");
 

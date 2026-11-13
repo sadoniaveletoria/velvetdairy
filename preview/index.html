@@ -156,6 +156,9 @@ hr.s { border: 0; border-top: 1px solid var(--Linen); margin: 2px 0; width: 100%
       <select id="needs" aria-label="Needs"><option value="full">Needs full</option><option value="mix" selected>Needs mixed</option><option value="low">Needs empty</option></select>
     </div></div>
     <div class="ctl"><span>Kitchen</span><div class="row"><label class="chk"><input type="checkbox" id="baking"> Baking now</label><label class="chk"><input type="checkbox" id="asks"> Cow asks first</label></div></div>
+    <div class="ctl"><span>Levels (idea) · cow <b id="lvV" class="num"></b> · farmer <b id="flV" class="num"></b></span>
+      <input type="range" id="lv" min="1" max="100" value="58" aria-label="Cow level">
+      <input type="range" id="fl" min="1" max="100" value="40" aria-label="Farmer level"></div>
     <div class="ctl"><span>Applications (idea)</span>
       <select id="app" aria-label="Your application">
         <option value="none">Not applied yet</option><option value="sent" selected>Applied, waiting</option><option value="accepted">Accepted</option><option value="denied">Not this time</option>
@@ -181,9 +184,9 @@ const GRADE_COL = ["var(--StoneDeep, #8a827d)", "var(--SageDeep)", "var(--BlueDe
 const BOTTLE_OZ = { 1: 8, 2: 16, 3: 24, 4: 32, 5: 48 };
 // Where milk sits in each bottle image (Ui.cs BottleStyle): top, bottom, drop y, drop x
 const STYLE = { 1: [.20, .96, .12, .5], 2: [.27, .96, .19, .5], 3: [.21, .96, .12, .405], 4: [.17, .96, .13, .28], 5: [.444, .902, 0, .5] };
-const WINDOWS = [["apply", "Apply to a dairy (idea)"], ["review", "Applications, owner and farmers (idea)"], ["pay", "Daily pay (calculator)"], ["hud", "HUD"], ["main", "Main window"], ["herd", "Herd Care"], ["kitchen", "Kitchen"], ["changes", "What's new"], ["ask", "Milking request"]];
-const shown = new Set(["apply", "review", "main"]);
-let tab = 6, recipe = "cookies", applyTo = 1, applyRoles = new Set(["cow"]);
+const WINDOWS = [["rewards", "Level rewards 31-100 (idea)"], ["apply", "Apply to a dairy (idea)"], ["review", "Applications, owner and farmers (idea)"], ["pay", "Daily pay (calculator)"], ["hud", "HUD"], ["main", "Main window"], ["herd", "Herd Care"], ["kitchen", "Kitchen"], ["changes", "What's new"], ["ask", "Milking request"]];
+const shown = new Set(["kitchen", "rewards", "main"]);
+let tab = 0, recipe = "cheese", applyTo = 1, applyRoles = new Set(["cow"]);
 
 function btn(label, color, x, y, w, h, extra = "") {
   const b = Math.min(h * 0.45, w / 2, h / 2);
@@ -197,7 +200,7 @@ function state() {
   const tier = +$("tier").value, count = +$("count").value, cap = BOTTLE_OZ[tier] * count;
   const milk = Math.round(cap * $("milk").value / 100 * 10) / 10;
   return { cow: $("rCow").checked, farmer: $("rFarmer").checked, owner: $("rOwner").checked, st: $("st").value, tier, count, cap, milk,
-    grade: +$("grade").value, needs: $("needs").value, baking: $("baking").checked, asks: $("asks").checked, mw: +$("mw").value, app: $("app").value };
+    lv: +$("lv").value, fl: +$("fl").value, grade: +$("grade").value, needs: $("needs").value, baking: $("baking").checked, asks: $("asks").checked, mw: +$("mw").value, app: $("app").value };
 }
 
 // ---------------------------------------------------------------- Daily pay (Catalog.Tapered, Creamery > Your pay)
@@ -308,8 +311,8 @@ function mainWin(s) {
   const W = s.mw, Pad = 16;
   // Header
   // Roles with their level; the fill shows how far to the next level (hover for the numbers)
-  const roles = [s.cow && ["COW 23", "var(--RoseDeep)", .6, "Cow level 23\n1,212 / 2,020 xp to level 24 (60%)"],
-    s.farmer && ["FARMER 12", "var(--SageDeep)", .25, "Farmer level 12\n171 / 684 xp to level 13 (25%)"],
+  const roles = [s.cow && [`COW ${s.lv}`, "var(--RoseDeep)", s.lv >= 100 ? 1 : .6, `Cow level ${s.lv} · ${rankFor(s.lv)}`],
+    s.farmer && [`FARMER ${s.fl}`, "var(--SageDeep)", s.fl >= 100 ? 1 : .25, `Farmer level ${s.fl}${s.fl >= 100 ? " · Master Farmer" : ""}`],
     s.owner && ["OWNER", "var(--RoseDeep)"]].filter(Boolean);
   const where = s.st === "away" ? ["AWAY", "var(--InkSoft)", null, "Away from your dairy."] : s.st === "seated" ? ["RESTING", "var(--SageDeep)", null, "Resting in your dairy."] : s.st === "private" ? ["PRIVATE", "var(--SageDeep)", null, "In your dairy's private place."] : ["HERE", "var(--SageDeep)", null, "In your dairy."];
   const pills = [...roles, ["DAIRY LV 7", "var(--BlueDeep)"], where].map(([t, c, p, tip]) => `<span class="pill" ${tip ? `title="${tip}"` : ""} style="color:${c};border-color:${c};background:${p != null
@@ -320,7 +323,7 @@ function mainWin(s) {
     <div class="abs trump23" style="left:${Pad + 74}px;top:14px;color:var(--RoseDeep)">EORZEA</div>
     <div class="abs trump34" style="left:${Pad + 73}px;top:34px;color:var(--Ink)">MILKERS</div>
     <div class="abs" style="left:${Pad + 74 + Math.max(150, brandW + 24)}px;top:12px">
-      <div class="jup23" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Moonlit Meadow</div>
+      <div class="jup23" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Moonlit Meadow${s.lv >= 100 ? ` ${CROWN}` : s.lv >= 75 ? ` ${STAR}` : ""} <span class="soft" style="font-size:15px">· ${esc(rankFor(s.lv))}</span></div>
       <div style="margin-top:8px;white-space:nowrap">${pills}</div>
       <div style="display:flex;gap:8px;align-items:center;margin-top:6px"><div class="bar" style="position:relative;width:240px;height:6px"><i style="width:62%;background:var(--BlueDeep)"></i></div><span class="soft num" style="font-size:12.5px">Contract 1,240 / 2,000 oz · 4d 6h left</span></div>
     </div></div>`;
@@ -362,6 +365,51 @@ function barn(s, W) {
         ${row("bucket", "Hand milking by Maple", `${(s.milk * .4 * rate).toFixed(1)} oz collected · Grade ${GRADES[s.grade]} cow`, [["Stop", "rose"]])}
         <div class="prog" style="margin-top:8px"><i style="width:40%;background:var(--BlueDeep)"></i></div></div>`;
   return doing + care + milking;
+}
+
+// ---------------------------------------------------------------- Level rewards 31-100 (idea, not in the plugin yet)
+const CROWN = `<svg width="20" height="16" viewBox="0 0 20 16" aria-label="Velvet crown" style="vertical-align:-1px"><path d="M2 13 L1 4 L6 8 L10 1 L14 8 L19 4 L18 13 Z" fill="#d9b25c" stroke="#a8803a" stroke-width="1"/><rect x="2" y="13" width="16" height="2.5" rx="1" fill="#b08a4e"/><circle cx="10" cy="7.5" r="1.6" fill="#a86170"/></svg>`;
+const STAR = `<svg width="15" height="15" viewBox="0 0 20 20" aria-label="Star" style="vertical-align:-1px"><path d="M10 1.5l2.6 5.6 6.1.6-4.6 4.1 1.3 6-5.4-3.1-5.4 3.1 1.3-6L1.3 7.7l6.1-.6z" fill="#d9b25c" stroke="#a8803a"/></svg>`;
+const RANKS = [[1, "New Cow"], [3, "Dairy Cow"], [6, "Good Producer"], [10, "Prize Cow"], [15, "Blue Ribbon"], [21, "Champion"], [28, "Velvet Legend"],
+  [35, "Dairy Darling"], [50, "Grand Champion"], [65, "Eorzean Treasure"], [80, "Living Legend"], [100, "Velvet Icon"]];
+const rankFor = lv => RANKS.filter(r => lv >= r[0]).pop()[1];
+const COW_REWARDS = [
+  [33, "Extra bottle 5", 6000, "One more bottle: 6, the most you can have."],
+  [35, "Title: Dairy Darling", 0, ""],
+  [40, "Bigger bottle 5", 7500, "Every bottle holds more."],
+  [45, "Silk cushion", 6500, "Comfy drains 15% slower."],
+  [50, "Title: Grand Champion", 0, "Plus a gold bottle label on your HUD."],
+  [55, "Heirloom bell", 9000, "+3% milk price."],
+  [62, "Night owl", 10000, "Get tired 2 hours later (stacks with Steady producer)."],
+  [65, "Title: Eorzean Treasure", 0, ""],
+  [70, "Royal halter", 12000, "+3% milk price."],
+  [75, "Velvet HUD frame", 0, "Plus a star next to your name in the member list."],
+  [80, "Title: Living Legend", 0, ""],
+  [85, "Endless spring", 15000, "Watered drains 20% slower."],
+  [92, "Sweet tooth", 18000, "Treat boosts last 15% longer."],
+  [100, "Title: Velvet Icon + Velvet crown", 25000, "A crown on your HUD and in the member list. The final prize."],
+];
+const FARMER_REWARDS = [
+  [30, "Bigger farmer tank 6", 0, ""],
+  [35, "Recipe: Honey cream cake", 0, "Flour, butter and milk: a stronger treat for the dairy shelf."],
+  [45, "Bigger hand milking share", 0, "You get 30% of what the cow is paid (was 25%)."],
+  [60, "Bigger farmer tank 7", 0, ""],
+  [70, "Recipe: Velvet tart", 0, "The best baked treat."],
+  [85, "Faster baking", 0, "Everything bakes 20% faster."],
+  [100, "Title: Master Farmer + crown", 0, ""],
+];
+function rewardsWin(s) {
+  const list = (rows, lv) => rows.map(([at, name, price, what]) => {
+    const got = lv >= at, next = !got && rows.find(r => r[0] > lv)?.[0] === at;
+    return `<div class="lrow" style="opacity:${got || next ? 1 : .55}"><div style="width:64px;flex:none;white-space:nowrap;font:400 20px var(--trump);color:${got ? "var(--SageDeep)" : next ? "var(--RoseDeep)" : "var(--InkSoft)"}">LV ${at}</div>
+      <div class="t"><b style="font-size:16px">${esc(name)}${at === 100 ? ` ${CROWN}` : at === 75 && rows === COW_REWARDS ? ` ${STAR}` : ""}</b>${what ? `<span>${esc(what)}</span>` : ""}</div>
+      <div style="flex:none;font:14px var(--jupiter);color:${got ? "var(--SageDeep)" : "var(--InkSoft)"}">${got ? (price ? "In the Shop" : "Unlocked") : next ? `Next · ${at - lv} level${at - lv === 1 ? "" : "s"}` : "Locked"}${price ? `<div class="num soft" style="font-size:12.5px;text-align:right">${price.toLocaleString()}</div>` : ""}</div></div>`;
+  }).join("");
+  return `<div class="iw" style="width:560px"><div class="iw-title"><span>Progress · level rewards 31 to 100</span><span>✕</span></div>
+    <div class="iw-body"><div class="soft" style="font-size:14px">Your rank: <b style="color:var(--RoseDeep);font-weight:400">${esc(rankFor(s.lv))}</b>. Bulls get titles at 25, 50, 75 and 100.</div>
+      <div class="sect">Cow · level ${s.lv}</div>${list(COW_REWARDS, s.lv)}
+      <div class="sect" style="color:var(--SageDeep)">Farmer · level ${s.fl}</div>${list(FARMER_REWARDS, s.fl)}
+    </div></div>`;
 }
 
 // ---------------------------------------------------------------- Applications (idea, not in the plugin yet)
@@ -491,6 +539,10 @@ const RECIPES = {
     effects: ["For cows: Fed +5% milk speed, Happy +7% milk speed, filling half the bar (30 minutes).", "Milk boost: +30% milk for 20 minutes.",
       "Goes on the dairy shelf at 70 coins each (the owner sets it). You get 56 for each one a member buys; the fund gets the rest.",
       "Farmers can also feed them to cows and bulls for free (Herd Care > Feed). Bulls get bull xp.", "Each bake makes 2 and gives +25 farmer xp."] },
+  cheese: { name: "Make cheese", makes: "Cheese", icon: "cheese", group: "Treats", milk: 16, uses: "", secs: 40, xp: 10, amount: 2, verb: "Make",
+    effects: ["For cows: Happy +4% milk speed, filling half the bar (30 minutes).", "Milk boost: +30% milk for 10 minutes.",
+      "Goes on the dairy shelf at 25 coins each (the owner sets it). You get 20 for each one a member buys; the fund gets the rest.",
+      "Farmers can also feed it to cows and bulls for free (Herd Care > Feed). Bulls get bull xp.", "Each batch makes 2 and gives +10 farmer xp."] },
   cookies: { name: "Bake butter cookies", makes: "Butter cookies", icon: "biscuit", group: "Treats", level: 3, milk: 8, uses: "1 butter", usesNote: "5 in the dairy pantry", secs: 45, xp: 15, amount: 3,
     effects: ["For cows: Happy +6% milk speed, filling half the bar (30 minutes).", "Milk boost: +30% milk for 15 minutes.",
       "Goes on the dairy shelf at 40 coins each (the owner sets it). You get 32 for each one a member buys; the fund gets the rest.",
@@ -498,7 +550,7 @@ const RECIPES = {
 };
 function kitchen(s) {
   const r = RECIPES[recipe];
-  const groups = ["Ingredients", "Treats"].map(g => `<div class="grp">${g}</div>` + Object.entries(RECIPES).filter(([, x]) => x.group === g)
+  const groups = ["Ingredients", "Treats"].map(g => `<div class="grp">${g}</div>` + Object.entries(RECIPES).filter(([, x]) => x.group === g).sort((a, b) => (a[1].level || 1) - (b[1].level || 1))
     .map(([id, x]) => `<div class="it ${id === recipe ? "sel" : ""}" data-recipe="${id}" role="button" tabindex="0" style="${(x.level || 1) > 12 ? "opacity:.55" : ""}"><img src="assets/icons/${x.icon}.png" alt="">${x.name}${(x.level || 1) > 12 ? `<span class="soft" style="font-size:12px;margin-left:4px">(Lv ${x.level})</span>` : ""}</div>`).join("")).join("");
   const baking = s.baking ? `<div class="soft" style="font-size:15px">Bake butter cookies · 2 of 5 · 1m 10s left</div><div class="prog"><i style="width:45%"></i></div>${ibtn("Stop", "rose", 80, 26)}` : "";
   return `<div class="iw" style="width:600px"><div class="iw-title"><span>Kitchen</span><span>✕</span></div>
@@ -513,7 +565,7 @@ function kitchen(s) {
         <div class="sect">Makes</div><div style="font-size:15px">${r.amount} ${r.makes.toLowerCase()} · ${r.secs} s each</div>
         <div class="sect">Needs</div><div style="font-size:15px">${r.milk ? `${r.milk} oz milk <span class="soft">· 40 oz in your jugs</span>` : ""}${r.uses ? `${r.milk ? "<br>" : ""}${r.uses} <span class="soft">· ${r.usesNote}</span>${r.shop ? ` <span class="mini">Buy</span>` : ""}` : ""}${r.uses2 ? `<br>${r.uses2} <span class="soft">· 5 in the dairy pantry</span>` : ""}${(r.level || 1) > 1 ? `<br>Farmer level ${r.level} <span class="soft">· you're 12</span>` : ""}</div>
         <div class="sect">What it does</div><div style="font-size:15px;display:grid;gap:3px">${r.effects.map(e => `<div>${esc(e)}</div>`).join("")}</div>
-        <div style="display:flex;gap:6px;align-items:center;margin-top:4px">${ibtn("−", "cream", 34, 28)}<span class="num" style="min-width:24px;text-align:center">1</span>${ibtn("+", "cream", 34, 28)}${ibtn("Max", "cream", 54, 28)}${ibtn(r.group === "Treats" ? "Bake" : "Make", "honey", 90, 30)}</div>
+        <div style="display:flex;gap:6px;align-items:center;margin-top:4px">${ibtn("−", "cream", 34, 28)}<span class="num" style="min-width:24px;text-align:center">1</span>${ibtn("+", "cream", 34, 28)}${ibtn("Max", "cream", 54, 28)}${ibtn(r.verb || (r.group === "Treats" ? "Bake" : "Make"), "honey", 90, 30)}</div>
       </div></div>
     </div></div>`;
 }
@@ -540,7 +592,8 @@ function render() {
   const s = state();
   $("milkV").textContent = `${s.milk} / ${s.cap} oz`;
   $("mwV").textContent = `${s.mw}px`;
-  const parts = { apply: () => applyWin(s), review: () => reviewWin(s), pay: () => payWin(s), hud: () => hud(s), main: () => mainWin(s), herd: () => s.farmer ? herd(s) : null, kitchen: () => (s.farmer || s.owner) ? kitchen(s) : null,
+  $("lvV").textContent = s.lv; $("flV").textContent = s.fl;
+  const parts = { rewards: () => rewardsWin(s), apply: () => applyWin(s), review: () => reviewWin(s), pay: () => payWin(s), hud: () => hud(s), main: () => mainWin(s), herd: () => s.farmer ? herd(s) : null, kitchen: () => (s.farmer || s.owner) ? kitchen(s) : null,
     changes: () => changes(), ask: () => s.cow ? ask(s) : null };
   $("stage").innerHTML = WINDOWS.filter(([id]) => shown.has(id)).map(([id, label]) => {
     const html = parts[id]();

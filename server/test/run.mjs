@@ -226,7 +226,10 @@ await test("dairy XP: only in the dairy, capped per member per day", async () =>
 
   // Weekly contract: sized by level; shipped from carried jugs (at the Grand Creamery once it's set); pays once
   let c = (await call(alice, "GET", "/v1/dairy/mine")).data.progress.contract;
-  assert.equal(c.ozNeed, 200, "sized when first seen (level 1)");
+  assert.equal(c.ozNeed, 500, "sized when first seen (level 1)");
+  assert.equal(c.rewardFund, 2000);
+  // The rest of this test ships a small contract to the end
+  sqlite.exec("UPDATE contracts SET oz_need = 200, reward_xp = 300, reward_fund = 800");
   assert.equal(c.minGrade, 0);
   assert.equal((await call(carl, "POST", "/v1/dairy/contract/ship", { grade: 0, oz: 5 })).status, 403, "bulls can't ship");
   await beat(bob, { houseId: HOUSE, awake: true });
@@ -241,6 +244,14 @@ await test("dairy XP: only in the dairy, capped per member per day", async () =>
   assert.equal((await call(alice, "PUT", "/v1/dev/creamery", { territory: 129, x: 1, y: 2, z: 3 })).status, 403, "developer only");
   sqlite.exec(`INSERT INTO settings (key, value) VALUES ('creamery', '{"name":"Test Creamery","territory":129,"x":0,"y":0,"z":0,"radius":8}')`);
   assert.equal((await beat(bob, { houseId: HOUSE })).data.creamery.name, "Test Creamery");
+  assert.equal((await beat(bob, { houseId: HOUSE })).data.creameries.length, 1, "the old single creamery counts as the first");
+  // Several Grand Creameries (one per Grand Company): all listed, the first also as "creamery" for older plugins
+  sqlite.exec(`INSERT INTO settings (key, value) VALUES ('creameries', '[{"name":"Limsa Creamery","territory":128,"x":0,"y":0,"z":0,"radius":8},null,{"name":"Uldah Creamery","territory":130,"x":0,"y":0,"z":0,"radius":8}]')`);
+  const many = (await beat(bob, { houseId: HOUSE })).data;
+  assert.deepEqual(many.creameries.map(c => [c.name, c.slot]), [["Limsa Creamery", 0], ["Uldah Creamery", 2]]);
+  assert.equal(many.creamery.name, "Limsa Creamery");
+  assert.match((await call(bob, "POST", "/v1/dairy/contract/ship", { grade: 1, oz: 10 })).data.error, /a Grand Creamery \(Limsa Creamery, Uldah Creamery\)/);
+  assert.equal((await call(alice, "DELETE", "/v1/dev/creamery/1")).status, 403, "developer only");
   assert.equal((await call(bob, "POST", "/v1/dairy/contract/ship", { grade: 1, oz: 10 })).status, 400, "not at the creamery");
   await beat(bob, { atCreamery: true });
   const fundBefore = (await call(alice, "GET", "/v1/dairy/mine")).data.progress.fund;
@@ -576,6 +587,25 @@ await test("applications: accepting one withdraws the others; withdraw your own"
   assert.equal((await call(o1, "POST", `/v1/dairy/applications/${a1.data.id}/accept`, {})).status, 200);
   assert.equal((await call(o2, "GET", "/v1/dairy/applications")).data.applications.length, 0);   // withdrawn
   assert.equal((await call(o2, "POST", `/v1/dairy/applications/${a3.data.id}/accept`, {})).status, 404);
+});
+
+await test("weekly contract: an unfinished week still pays for the share delivered", async () => {
+  const o = player("Pia Partial");
+  await beat(o);
+  await call(o, "PUT", "/v1/dairy", dairyBody({ houseId: "5550001119999", name: "Partial Pasture", ownerName: "Pia Partial" }));
+  const mine = (await call(o, "GET", "/v1/dairy/mine")).data;
+  const id = mine.dairy.id, before = mine.progress;
+  // Last week: 500 of 2,000 oz delivered, never finished; this week's contract isn't made yet
+  sqlite.exec(`DELETE FROM contracts WHERE dairy_id = '${id}'`);
+  sqlite.exec(`INSERT INTO contracts (dairy_id, week, oz_need, min_grade, oz_done, reward_xp, reward_fund) VALUES ('${id}', '2000-01-03', 2000, 0, 500, 3000, 8000)`);
+  await call(o, "GET", "/v1/dairy/mine");   // makes this week's contract, which settles last week's
+  const after = (await call(o, "GET", "/v1/dairy/mine")).data.progress;
+  assert.equal(after.fund, before.fund + 2000, "a quarter of the fund reward");
+  assert.equal(after.xp, before.xp + 750, "a quarter of the xp");
+  assert.equal(after.contract.ozDone, 0, "a fresh contract for this week");
+  // Paid once
+  const again = (await call(o, "GET", "/v1/dairy/mine")).data.progress;
+  assert.equal(again.fund, after.fund);
 });
 
 console.log(`\n${passed} passed`);

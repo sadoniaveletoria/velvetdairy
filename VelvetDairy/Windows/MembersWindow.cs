@@ -189,7 +189,19 @@ public sealed class MembersWindow : Window
                 ImGui.TableNextRow();
                 ImGui.TableNextColumn();
                 ImGui.TextColored(Theme.Ink, m.Name + (m.Id == meId ? " (you)" : ""));
-                if (ImGui.IsItemHovered()) ImGui.SetTooltip(m.World);
+                // Cow level 75: a star; the Velvet crown (or farmer level 100): a crown
+                var badge = m.Status?.Crown == true ? 2 : (m.Status?.Level ?? 0) >= 75 ? 1 : 0;
+                if (badge > 0)
+                {
+                    ImGui.SameLine(0, 4);
+                    var at = ImGui.GetCursorScreenPos() + new Vector2(0, 2);
+                    var h = ImGui.GetTextLineHeight() - 4;
+                    if (badge == 2) Ui.Crown(ImGui.GetWindowDrawList(), at, h);
+                    else Ui.Star(ImGui.GetWindowDrawList(), at + new Vector2(h / 2, h / 2), h / 2);
+                    ImGui.Dummy(new Vector2(h * 1.3f, h));
+                    if (ImGui.IsItemHovered()) ImGui.SetTooltip(Units.Text(badge == 2 ? "Velvet crown" : "Cow level 75+"));
+                }
+                if (ImGui.IsItemHovered()) ImGui.SetTooltip(Units.Text(m.World));
 
                 ImGui.TableNextColumn();
                 ImGui.TextColored(RoleColor(m.AllRoles.Count == 1 ? m.AllRoles[0] : ""), (m.IsOwner ? "Owner · " : "") + m.RoleText);
@@ -201,7 +213,7 @@ public sealed class MembersWindow : Window
                 if (Outdated(m) && Reports(m))
                 {
                     ImGui.TextColored(Theme.Warn, "Old version");
-                    if (ImGui.IsItemHovered()) ImGui.SetTooltip($"They're on {m.Version}; the newest is {Plugin.Version}.");
+                    if (ImGui.IsItemHovered()) ImGui.SetTooltip(Units.Text($"They're on {m.Version}; the newest is {Plugin.Version}."));
                     ImGui.SameLine();
                 }
 
@@ -209,7 +221,7 @@ public sealed class MembersWindow : Window
                 {
                     ImGui.TextColored(Theme.InkSoft, m.LastSeen > 0 ? $"Seen {Ago(m.LastSeen)}" : "Offline");
                     if (m.LastSeen > 0 && ImGui.IsItemHovered())
-                        ImGui.SetTooltip($"Last online {DateTimeOffset.FromUnixTimeSeconds(m.LastSeen).ToLocalTime():MMM d, h:mm tt}");
+                        ImGui.SetTooltip(Units.Text($"Last online {DateTimeOffset.FromUnixTimeSeconds(m.LastSeen).ToLocalTime():MMM d, h:mm tt}"));
                 }
                 else if (m.Status?.InDairy == true) ImGui.TextColored(Theme.SageDeep, "In the dairy");
                 else ImGui.TextColored(Theme.HoneyDeep, "Online");
@@ -222,10 +234,10 @@ public sealed class MembersWindow : Window
                     {
                         var g = Math.Clamp(st.Grade, 0, Grades.Count - 1);
                         var full = st.Cap > 0 && st.Milk >= st.Cap - 0.1f;
-                        ImGui.TextColored(full ? Theme.RoseDeep : Theme.Ink, $"{st.Milk:0.#}/{st.Cap:0} oz");
+                        ImGui.TextColored(full ? Theme.RoseDeep : Theme.Ink, $"{Units.Num(st.Milk, "0.#")}/{Units.Num(st.Cap, "0")} {Units.Unit}");
                         ImGui.SameLine();
                         ImGui.TextColored(Theme.GradeColor(g), Grades.Name(g));
-                        if (ImGui.IsItemHovered()) ImGui.SetTooltip($"Grade {Grades.Name(g)} · level {st.Level}");
+                        if (ImGui.IsItemHovered()) ImGui.SetTooltip(Units.Text($"Grade {Grades.Name(g)} · level {st.Level}"));
                     }
                 }
                 else ImGui.TextColored(Theme.InkSoft, "-");
@@ -243,9 +255,9 @@ public sealed class MembersWindow : Window
                 else ImGui.TextColored(Theme.InkSoft, "-");
 
                 ImGui.TableNextColumn();
-                if (Reports(m) && m.Status is { } t) ImGui.TextColored(t.TotalOz > 0 ? Theme.Ink : Theme.InkSoft, $"{t.TotalOz:N0} oz");
+                if (Reports(m) && m.Status is { } t) ImGui.TextColored(t.TotalOz > 0 ? Theme.Ink : Theme.InkSoft, $"{Units.Oz(t.TotalOz, "N0")}");
                 else ImGui.TextColored(Theme.InkSoft, "-");
-                if (ImGui.IsItemHovered()) ImGui.SetTooltip("All the milk they've ever given (stalls and hand milking).");
+                if (ImGui.IsItemHovered()) ImGui.SetTooltip(Units.Text("All the milk they've ever given (stalls and hand milking)."));
 
                 ImGui.TableNextColumn();
                 var canAct = G.IsOwner || G.IsFarmer || G.CanRemove(m);
@@ -291,7 +303,7 @@ public sealed class MembersWindow : Window
     {
         ImGui.TextColored(Theme.Warn, "Needs update");
         if (ImGui.IsItemHovered())
-            ImGui.SetTooltip(m.Version.Length > 0 ? $"They're on {m.Version}. Their levels, quality and milk given show once they update (newest: {Plugin.Version})." : "Shows once they've played with the newest version.");
+            ImGui.SetTooltip(Units.Text(m.Version.Length > 0 ? $"They're on {m.Version}. Their levels, quality and milk given show once they update (newest: {Plugin.Version})." : "Shows once they've played with the newest version."));
     }
 
     private static void DrawLevels(MemberInfo m)

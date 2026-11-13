@@ -41,6 +41,7 @@ const LEADERBOARD_SIZE = 20;
 const GRADE_PRICE = [6, 8, 10, 12, 14];   // coins per oz the dairy pays a cow, by grade (C..S+)
 const PAY_PER_LEVEL = 0.02;         // each dairy level adds 2% to what it pays
 const FARMER_CUT = 0.25;            // a farmer gets this share of what the cow was paid for a hand milking
+const FARMER_CUT_BIG = 0.30, FARMER_CUT_BIG_LEVEL = 45;   // ...and this much from farmer level 45
 const FARMER_DAILY_COINS = 4500;
 const COW_DAILY_HAND_OZ = 800;
 const MAX_TAKE_OZ = 96;
@@ -49,6 +50,9 @@ const IN_PERSON_BONUS = 0.1;
 const SHELF_ITEMS = {
   cookies: { name: "Butter cookies", price: 40, min: 10, max: 150 },
   buns: { name: "Cream buns", price: 70, min: 15, max: 250 },
+  cheese: { name: "Cheese", price: 25, min: 5, max: 100 },   // new items go at the end: fed notices carry the item's place here
+  cake: { name: "Honey cream cakes", price: 110, min: 20, max: 400 },
+  tart: { name: "Velvet tarts", price: 160, min: 30, max: 600 },
 };
 const SHELF_BAKER_SHARE = 0.8;      // the rest goes to the dairy fund
 const SHELF_MAX_STOCK = 200;        // per item per dairy      // delivering a buy order in person at the buyer's public area pays 10% more
@@ -59,7 +63,8 @@ const FEED_COOLDOWN = 900;          // a farmer can feed each cow or bull from t
 // Developer (same phrase hash as the plugin's dev mode)
 const DEV_KEY_HASH = "7d4e0a8c4a26de8d2843e2a563f667d74beda3b81ffa447c22bd40d93b5af76f";
 // Weekly contracts
-const CONTRACT_BASE_OZ = 200, CONTRACT_OZ_PER_LEVEL = 40, CONTRACT_MAX_OZ = 1200;
+const CONTRACT_BASE_OZ = 500, CONTRACT_OZ_PER_LEVEL = 50, CONTRACT_NEED_MAX = 1500;   // weekly contract size
+const CONTRACT_MAX_OZ = 1200;       // most one shipment can carry
 const CONTRACT_XP_PER_OZ = 1.5, CONTRACT_FUND_PER_OZ = 4;             // most milk a farmer or owner can carry out of the tank at once
 const PUMP_PER_BEAT = 120;          // most oz one heartbeat can add to the dairy tank
 const MEMBER_DAILY_PUMP = 1500;     // most oz one member can add to a dairy tank per day
@@ -274,6 +279,7 @@ async function route(request, env) {
     ["POST", /^\/v1\/dairy\/contract\/ship$/, () => shipToContract(env, me, request)],
     ["POST", /^\/v1\/carry\/use$/, () => useCarried(env, me, request)],
     ["PUT", /^\/v1\/dev\/creamery$/, () => setCreamery(env, request)],
+    ["DELETE", /^\/v1\/dev\/creamery\/(\d)$/, m => removeCreamery(env, request, Number(m[1]))],
     ["GET", /^\/v1\/leaderboard$/, () => leaderboard(env, me)],
     ["GET", /^\/v1\/inbox$/, () => inbox(env, me)],
     ["POST", /^\/v1\/inbox\/claim$/, () => claim(env, me)],
@@ -477,7 +483,8 @@ async function heartbeat(env, me, request) {
       anyEmote: st.anyEmote === undefined ? true : !!st.anyEmote,   // older plugins don't say; any looping emote is their default
       ask: !!st.ask,                     // a cow who wants to Allow each hand milking first (a pop-up)
       refused: clean(st.refused, 40),    // a cow: the farmer they just told "Not now"
-      treatAt: Math.max(0, Math.floor(num(st.treatAt))),   // a cow: when she can have her next treat (unix seconds; her own 15 min cooldown)
+      treatAt: Math.max(0, Math.floor(num(st.treatAt))),
+      crown: !!st.crown,                 // cow level 100 with the Velvet crown, or farmer level 100: shown in the member list   // a cow: when she can have her next treat (unix seconds; her own 15 min cooldown)
     });
     if (status !== mem.status) await env.DB.prepare("UPDATE members SET status = ? WHERE install = ?").bind(status, me.id).run();
   }
@@ -542,7 +549,8 @@ async function heartbeat(env, me, request) {
     membership: mem ? { dairyId: mem.dairy_id, dairy: mem.dairy_name, role: primaryRole(mem.role), roles: roleList(mem.role), isOwner: !!mem.is_owner, level: (await progressOf(env, mem.dairy_id)).level } : null,
     dairyXp,
     pumped,
-    creamery: await creameryOf(env),
+    creamery: await creameryOf(env),          // the first one, for plugins before there were several
+    creameries: await creameriesOf(env),
     carried: await carriedOf(env, me.id),
     invites: invites.map(i => ({ id: i.id, role: i.role, dairy: i.dairy, world: i.world })),
     applications: mem && (await canAnswer(env, mem)) ? (await env.DB.prepare(
@@ -1389,7 +1397,7 @@ async function handPay(env, me, request) {
   if (oz <= 0) fail(400, "No milk.");
   const name = clean(b.farmer, 40), world = clean(b.world, 30);
   const farmer = await env.DB.prepare(
-    `SELECT install, name FROM members WHERE dairy_id = ? AND ${ROLE_SQL} AND name = ? AND world_name = ?`).bind(mem.dairy_id, "farmer", name, world).first();
+    `SELECT install, name, status FROM members WHERE dairy_id = ? AND ${ROLE_SQL} AND name = ? AND world_name = ?`).bind(mem.dairy_id, "farmer", name, world).first();
   if (!farmer || farmer.install === me.id) fail(400, "That farmer isn't in your dairy.");
 
   const day = today();
@@ -1399,7 +1407,9 @@ async function handPay(env, me, request) {
   const counted = Math.min(oz, COW_DAILY_HAND_OZ - cowUsed);
   if (counted <= 0) return { ok: true, coins: 0 };
   const p = await progressOf(env, mem.dairy_id);
-  const coins = Math.min(Math.round(counted * GRADE_PRICE[grade] * payBonus(p.level) * FARMER_CUT), FARMER_DAILY_COINS - farmUsed);
+  // Farmer level 45 and up get a bigger share (the farmer's plugin shares its level with the dairy)
+  const cut = (safeParse(farmer.status)?.farmerLevel || 0) >= FARMER_CUT_BIG_LEVEL ? FARMER_CUT_BIG : FARMER_CUT;
+  const coins = Math.min(Math.round(counted * GRADE_PRICE[grade] * payBonus(p.level) * cut), FARMER_DAILY_COINS - farmUsed);
   if (coins <= 0) return { ok: true, coins: 0 };
   await env.DB.batch([
     env.DB.prepare(`INSERT INTO member_pump (install, day, oz) VALUES (?, ?, ?)
@@ -1421,10 +1431,35 @@ async function contractFor(env, dairyId, level) {
   const week = weekKey();
   let c = await env.DB.prepare("SELECT * FROM contracts WHERE dairy_id = ? AND week = ?").bind(dairyId, week).first();
   if (c) return c;
-  const need = Math.min(CONTRACT_MAX_OZ, CONTRACT_BASE_OZ + CONTRACT_OZ_PER_LEVEL * (level - 1));
+  await settleContracts(env, dairyId);
+  const need = Math.min(CONTRACT_NEED_MAX, CONTRACT_BASE_OZ + CONTRACT_OZ_PER_LEVEL * (level - 1));
   await env.DB.prepare(`INSERT OR IGNORE INTO contracts (dairy_id, week, oz_need, min_grade, reward_xp, reward_fund) VALUES (?, ?, ?, ?, ?, ?)`)
     .bind(dairyId, week, need, contractMinGrade(level), Math.round(need * CONTRACT_XP_PER_OZ), Math.round(need * CONTRACT_FUND_PER_OZ)).run();
   return await env.DB.prepare("SELECT * FROM contracts WHERE dairy_id = ? AND week = ?").bind(dairyId, week).first();
+}
+
+/**
+ * Contracts from past weeks that weren't finished still pay for what was delivered: the same share of the reward as
+ * the share of the milk (1,000 of 2,000 oz pays half). Done once, when the dairy's next contract is made.
+ */
+async function settleContracts(env, dairyId) {
+  const old = (await env.DB.prepare(
+    "UPDATE contracts SET completed = ? WHERE dairy_id = ? AND week < ? AND completed IS NULL RETURNING week, oz_need, oz_done, reward_xp, reward_fund")
+    .bind(now(), dairyId, weekKey()).all()).results;
+  for (const c of old) {
+    const share = Math.max(0, Math.min(1, c.oz_done / c.oz_need));
+    const xp = Math.floor(c.reward_xp * share), fund = Math.floor(c.reward_fund * share);
+    if (xp <= 0 && fund <= 0) continue;
+    const d = await env.DB.prepare("SELECT name FROM dairies WHERE id = ?").bind(dairyId).first();
+    const members = (await env.DB.prepare("SELECT install FROM members WHERE dairy_id = ?").bind(dairyId).all()).results;
+    await env.DB.batch([
+      addXpStmt(env, dairyId, xp),
+      env.DB.prepare(`INSERT INTO dairy_progress (dairy_id, fund, week) VALUES (?, ?, ?)
+        ON CONFLICT(dairy_id) DO UPDATE SET fund = fund + excluded.fund`).bind(dairyId, fund, weekKey()),
+      ...members.map(m => inboxStmt(env, m.install, "notice", 0, 0, 0,
+        `${d?.name || "Your dairy"} delivered ${Math.round(c.oz_done).toLocaleString("en-US")} of ${c.oz_need.toLocaleString("en-US")} oz for last week's creamery contract (${Math.round(share * 100)}%): +${xp} dairy xp and ${fund} coins for the fund.`)),
+    ]);
+  }
 }
 
 async function contractOut(env, dairyId, level) {
@@ -1434,6 +1469,8 @@ async function contractOut(env, dairyId, level) {
   return {
     week: c.week, ozNeed: c.oz_need, ozDone: Math.round(c.oz_done * 10) / 10, minGrade: 0,
     rewardXp: c.reward_xp, rewardFund: c.reward_fund, completed: !!c.completed,
+    // What it would pay right now if the week ended (the share delivered)
+    earnedXp: Math.floor(c.reward_xp * Math.min(1, c.oz_done / c.oz_need)), earnedFund: Math.floor(c.reward_fund * Math.min(1, c.oz_done / c.oz_need)),
     shippers: top.map(x => ({ name: x.name, oz: Math.round(x.oz * 10) / 10 })),
   };
 }
@@ -1444,10 +1481,11 @@ async function shipToContract(env, me, request) {
   const mem = await membership(env, me.id);
   if (!mem) fail(400, "Join a dairy first.");
   if (!mem.is_owner && !hasRole(mem, "farmer")) fail(403, "Only farmers and the owner ship milk to the contract.");
-  const creamery = await creameryOf(env);
-  if (creamery) {
+  const creameries = await creameriesOf(env);
+  if (creameries.length) {
     const seen = await env.DB.prepare("SELECT at FROM creamery_presence WHERE install = ?").bind(me.id).first();
-    if (!seen || seen.at < now() - ONLINE_WINDOW) fail(400, `Bring your jugs to ${creamery.name} to ship them.`);
+    if (!seen || seen.at < now() - ONLINE_WINDOW)
+      fail(400, creameries.length === 1 ? `Bring your jugs to ${creameries[0].name} to ship them.` : `Bring your jugs to a Grand Creamery (${creameries.map(c => c.name).join(", ")}) to ship them.`);
   } else if (!inOwnDairy(me, mem)) fail(400, "Go to your dairy to ship milk.");
   const grade = int(b.grade, 0, GRADES - 1, "grade");
   const p = await progressOf(env, mem.dairy_id);
@@ -1512,16 +1550,51 @@ async function useCarried(env, me, request) {
   return { ok: true, carried: await carriedOf(env, me.id) };
 }
 
-async function creameryOf(env) {
-  const r = await env.DB.prepare("SELECT value FROM settings WHERE key = 'creamery'").first();
-  return r ? safeParse(r.value) : null;
+// Up to 3 Grand Creameries (one at each Grand Company), set by the developer. Contract milk can be shipped at any of them.
+const MAX_CREAMERIES = 3;
+
+/** The creameries in their slots (0-2), skipping empty ones; each has its slot. */
+async function creameriesOf(env) {
+  const r = await env.DB.prepare("SELECT value FROM settings WHERE key = 'creameries'").first();
+  if (r) return (safeParse(r.value) || []).map((c, slot) => c && { ...c, slot }).filter(Boolean);
+  const one = await env.DB.prepare("SELECT value FROM settings WHERE key = 'creamery'").first();   // from before there were several
+  const c = one ? safeParse(one.value) : null;
+  return c ? [{ ...c, slot: 0 }] : [];
 }
 
-/** Developer only: puts the Grand Creamery where the developer is standing. */
-async function setCreamery(env, request) {
+async function creameryOf(env) {
+  return (await creameriesOf(env))[0] || null;
+}
+
+async function saveCreameries(env, list) {
+  const slots = Array.from({ length: MAX_CREAMERIES }, (_, i) => { const c = list.find(x => x.slot === i); if (!c) return null; const { slot, ...rest } = c; return rest; });
+  const first = slots.find(Boolean);
+  await env.DB.batch([
+    env.DB.prepare(`INSERT INTO settings (key, value) VALUES ('creameries', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`).bind(JSON.stringify(slots)),
+    first
+      ? env.DB.prepare(`INSERT INTO settings (key, value) VALUES ('creamery', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`).bind(JSON.stringify(first))
+      : env.DB.prepare("DELETE FROM settings WHERE key = 'creamery'"),
+  ]);
+}
+
+async function devOnly(request) {
   const phrase = request.headers.get("X-VD-Dev") || "";
   if (!phrase || (await sha256(phrase)) !== DEV_KEY_HASH) fail(403, "Developer only.");
+}
+
+/** Developer only: removes one Grand Creamery. */
+async function removeCreamery(env, request, slot) {
+  await devOnly(request);
+  if (slot < 0 || slot >= MAX_CREAMERIES) fail(400, "Bad slot.");
+  await saveCreameries(env, (await creameriesOf(env)).filter(c => c.slot !== slot));
+  return { ok: true };
+}
+
+/** Developer only: puts a Grand Creamery (slot 0-2) where the developer is standing. */
+async function setCreamery(env, request) {
+  await devOnly(request);
   const b = await body(request);
+  const slot = b.slot === undefined ? 0 : int(b.slot, 0, MAX_CREAMERIES - 1, "slot");
   const value = {
     name: clean(b.name, 40) || "The Grand Creamery",
     territory: int(b.territory, 1, 100000, "territory"),
@@ -1530,8 +1603,9 @@ async function setCreamery(env, request) {
     x: Number(b.x) || 0, y: Number(b.y) || 0, z: Number(b.z) || 0,
     radius: Math.max(2, Math.min(50, Number(b.radius) || 8)),
   };
-  await env.DB.prepare(`INSERT INTO settings (key, value) VALUES ('creamery', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`)
-    .bind(JSON.stringify(value)).run();
+  const list = (await creameriesOf(env)).filter(c => c.slot !== slot);
+  list.push({ ...value, slot });
+  await saveCreameries(env, list);
   return { ok: true, creamery: value };
 }
 

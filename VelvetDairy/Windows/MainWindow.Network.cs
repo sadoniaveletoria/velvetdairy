@@ -393,46 +393,46 @@ public sealed partial class MainWindow
             return;
         }
 
-        Ui.Wrapped("The Grand Creamery wants milk from your dairy every week. Farmers and the owner fill jugs from the dairy tank and bring them there. When it's full, the whole dairy is rewarded.", Theme.InkSoft, width);
+        Ui.Wrapped("The Grand Creamery wants milk from your dairy every week. Farmers and the owner fill jugs from the dairy tank and bring them to any Grand Creamery. Fill it for the full reward; if it isn't full by Monday, your dairy still gets the share it delivered.", Theme.InkSoft, width);
         Gap(8);
         using (fonts.For(fonts.Heading, $"{c.OzDone:0}")!.Push())
-            ImGui.TextColored(c.Completed ? Theme.SageDeep : Theme.Ink, c.Completed ? "Done for this week!" : $"{c.OzDone:0} / {c.OzNeed} oz");
+            ImGui.TextColored(c.Completed ? Theme.SageDeep : Theme.Ink, c.Completed ? "Done for this week!" : $"{Units.Num(c.OzDone, "0")} / {Units.Num(c.OzNeed)} {Units.Unit}");
         var cur = ImGui.GetCursorScreenPos();
         var barW = Math.Min(width, 420);
         Ui.Bar(ImGui.GetWindowDrawList(), cur + new Vector2(0, 4), cur + new Vector2(barW, 14), c.Progress, c.Completed ? Theme.SageDeep : Theme.BlueDeep);
         ImGui.Dummy(new Vector2(barW, 20));
         ImGui.TextColored(Theme.InkSoft, "Any milk counts");
-        ImGui.TextColored(Theme.HoneyDeep, $"Reward: {c.RewardXp:N0} dairy xp + {c.RewardFund:N0} coins for the fund");
+        ImGui.TextColored(Theme.HoneyDeep, $"Full reward: {c.RewardXp:N0} dairy xp + {c.RewardFund:N0} coins for the fund");
+        if (!c.Completed) ImGui.TextColored(Theme.SageDeep, $"Earned so far: {c.EarnedXp:N0} dairy xp + {c.EarnedFund:N0} coins (paid Monday if it isn't full)");
         var left = NextMonday() - DateTime.UtcNow;
         ImGui.TextColored(Theme.InkSoft, c.Completed ? $"A new contract comes in {(int)left.TotalDays}d {left.Hours}h." : $"Ends in {(int)left.TotalDays}d {left.Hours}h (Monday 00:00 UTC).");
         if (c.Shippers.Count > 0)
         {
             Gap(6);
-            Ui.Wrapped("Shipped by: " + string.Join(", ", c.Shippers.Select(x => $"{x.Name.Split(' ')[0]} {x.Oz:N0} oz")), Theme.InkSoft, width);
+            Ui.Wrapped("Shipped by: " + string.Join(", ", c.Shippers.Select(x => $"{x.Name.Split(' ')[0]} {Units.Oz(x.Oz, "N0")}")), Theme.InkSoft, width);
         }
 
         Gap(6);
-        Ui.Wrapped("Contracts grow 40 oz with each dairy level. Any milk counts.", Theme.InkSoft, width);
+        Ui.Wrapped($"Contracts are {Units.Oz(500, "N0")} at dairy level 1 and grow {Units.Oz(50)} a level, up to {Units.Oz(1500, "N0")}. Any milk counts.", Theme.InkSoft, width);
     }
 
-    private Dalamud.Game.Text.SeStringHandling.Payloads.MapLinkPayload? creameryLink;
-    private CreameryInfo? creameryLinkFor;
+    private readonly Dictionary<CreameryInfo, Dalamud.Game.Text.SeStringHandling.Payloads.MapLinkPayload?> creameryLinks = new();
 
-    /// <summary>A map link to the Grand Creamery (made once per location).</summary>
+    /// <summary>A map link to a Grand Creamery (made once per location).</summary>
     private Dalamud.Game.Text.SeStringHandling.Payloads.MapLinkPayload? CreameryLink(CreameryInfo c)
     {
-        if (creameryLinkFor == c) return creameryLink;
-        creameryLinkFor = c;
+        if (creameryLinks.TryGetValue(c, out var link)) return link;
+        if (creameryLinks.Count > 12) creameryLinks.Clear();
         try
         {
-            creameryLink = c.MapId > 0 ? new Dalamud.Game.Text.SeStringHandling.Payloads.MapLinkPayload(c.Territory, c.MapId, (int)(c.X * 1000), (int)(c.Z * 1000)) : null;
+            link = c.MapId > 0 ? new Dalamud.Game.Text.SeStringHandling.Payloads.MapLinkPayload(c.Territory, c.MapId, (int)(c.X * 1000), (int)(c.Z * 1000)) : null;
         }
         catch
         {
-            creameryLink = null;
+            link = null;
         }
 
-        return creameryLink;
+        return creameryLinks[c] = link;
     }
 
     private void DrawContractShip(float width)
@@ -440,17 +440,24 @@ public sealed partial class MainWindow
         var c = G.Net.Progress?.Contract;
         if (c == null) return;
 
-        // Where to deliver
-        var cr = G.Creamery;
-        if (cr != null)
+        // Where to deliver: any Grand Creamery
+        var crs = G.Creameries;
+        if (crs.Count > 0)
         {
-            var link = CreameryLink(cr);
-            ImGui.TextColored(Theme.Ink, cr.Name);
-            ImGui.TextColored(Theme.InkSoft, link != null ? $"{cr.Zone} ( {link.XCoord:0.0} , {link.YCoord:0.0} )" : cr.Zone);
-            ImGui.TextColored(G.AtCreamery ? Theme.SageDeep : Theme.RoseDeep, G.AtCreamery ? "You're here." : "Bring your jugs here to ship them.");
-            if (link != null)
+            var here = G.CreameryHere;
+            ImGui.TextColored(here != null ? Theme.SageDeep : Theme.RoseDeep,
+                here != null ? $"You're at {here.Name}." : crs.Count == 1 ? "Bring your jugs here to ship them." : "Bring your jugs to any of these to ship them.");
+            foreach (var cr in crs)
             {
-                if (ImGui.SmallButton("Show on map##creamerymap")) Plugin.GameGui.OpenMapWithMapLink(link);
+                var link = CreameryLink(cr);
+                ImGui.TextColored(Theme.Ink, cr.Name);
+                ImGui.SameLine();
+                ImGui.TextColored(Theme.InkSoft, link != null ? $"{cr.Zone} ( {link.XCoord:0.0} , {link.YCoord:0.0} )" : cr.Zone);
+                if (link != null)
+                {
+                    ImGui.SameLine();
+                    if (ImGui.SmallButton($"Map##creamerymap{cr.Slot}")) Plugin.GameGui.OpenMapWithMapLink(link);
+                }
             }
 
             Gap(6);
@@ -469,7 +476,7 @@ public sealed partial class MainWindow
             return;
         }
 
-        ImGui.TextColored(Theme.Ink, $"Your jugs: {G.Carried:0.#} oz");
+        ImGui.TextColored(Theme.Ink, $"Your jugs: {Units.Oz(G.Carried, "0.#")}");
         if (G.Carried <= 0) Ui.Wrapped("Fill jugs at your dairy first (HUD > Kitchen).", Theme.InkSoft, width);
         var leftOz = (int)Math.Ceiling(c.Left);
         if (G.Carried >= 0.05f)
@@ -477,7 +484,7 @@ public sealed partial class MainWindow
             var all = (int)Math.Min(Math.Floor(G.Carried + 0.01f), leftOz);
             var pAll = G.ShipProblem(all);
             var clicked = ListRow(Ico("bottle"), "Your milk", Theme.Ink,
-                new[] { new Line($"You carry {G.Carried:0.#} oz", Theme.InkSoft) },
+                new[] { new Line($"You carry {Units.Oz(G.Carried, "0.#")}", Theme.InkSoft) },
                 new[] { new Btn("##shipall", $"Ship {all}", "blue", pAll == null && all > 0, pAll) }, width);
             if (clicked == 0) G.Ship(all);
         }
@@ -501,20 +508,20 @@ public sealed partial class MainWindow
         if (p.Tank != null)
         {
             Gap(4);
-            ImGui.TextColored(Theme.BlueDeep, $"Dairy milk tank: {p.Tank.Total:N1} oz");
+            ImGui.TextColored(Theme.BlueDeep, $"Dairy milk tank: {Units.Oz(p.Tank.Total, "N1")}");
             if (ImGui.IsItemHovered())
-                ImGui.SetTooltip("Every milking in this dairy (stalls and hand) fills this tank. Farmers fill their jugs from it.");
+                ImGui.SetTooltip(Units.Text("Every milking in this dairy (stalls and hand) fills this tank. Farmers fill their jugs from it."));
             if (p.Tank.Total > 0)
             {
                 if (p.Tank.Pumpers.Count > 0)
-                    Ui.Wrapped("Top pumpers: " + string.Join(", ", p.Tank.Pumpers.Take(5).Select(x => $"{x.Name.Split(' ')[0]} {x.Oz:N0} oz")), Theme.InkSoft, width);
+                    Ui.Wrapped("Top pumpers: " + string.Join(", ", p.Tank.Pumpers.Take(5).Select(x => $"{x.Name.Split(' ')[0]} {Units.Oz(x.Oz, "N0")}")), Theme.InkSoft, width);
             }
             else ImGui.TextColored(Theme.InkSoft, "Empty. It fills as cows are milked here.");
         }
 
         Gap(4);
         ImGui.TextColored(Theme.HoneyDeep, $"Dairy fund: {p.Fund:N0} coins");
-        if (ImGui.IsItemHovered()) ImGui.SetTooltip("Anyone in the dairy can add coins. The owner spends them on new stalls and stall upgrades.");
+        if (ImGui.IsItemHovered()) ImGui.SetTooltip(Units.Text("Anyone in the dairy can add coins. The owner spends them on new stalls and stall upgrades."));
         ImGui.SetNextItemWidth(110);
         ImGui.InputInt("##donate", ref donateCoins, 50, 250);
         donateCoins = Math.Clamp(donateCoins, 1, 100000);
@@ -641,7 +648,7 @@ public sealed partial class MainWindow
         if (ImGui.SliderFloat("Turn##arear", ref turn, -180f, 180f, "%.0f°")) d.Rot = turn * MathF.PI / 180f;
         ImGui.SetNextItemWidth(Math.Min(260, width - 120));
         if (ImGui.SliderFloat("Height##areah", ref h, 2f, 20f, "%.0f y")) d.Height = h;
-        if (ImGui.IsItemHovered()) ImGui.SetTooltip("How far above or below the floor still counts as inside (stairs, lofts).");
+        if (ImGui.IsItemHovered()) ImGui.SetTooltip(Units.Text("How far above or below the floor still counts as inside (stairs, lofts)."));
         if (ImGui.SmallButton("Center on me##areacenter")) G.CenterDraftOnMe();
         ImGui.SameLine();
         if (ImGui.SmallButton("Face my way##areaface")) G.FaceDraftMyWay();
@@ -769,7 +776,7 @@ public sealed partial class MainWindow
                 var p = G.DeliverProblem(o);
                 var have = G.Carried;
                 var here = G.VisitingDairy?.Id == o.DairyId;
-                var clicked = ListRow(Ico("coin"), $"{o.DairyName} · {o.Oz} oz", Theme.Ink,
+                var clicked = ListRow(Ico("coin"), $"{o.DairyName} · {Units.Oz(o.Oz)}", Theme.Ink,
                     new[]
                     {
                         new Line(here ? $"Pays {o.Coins} + {(int)Math.Round(o.Coins * 0.1)} for coming in person" : $"Pays {o.Coins} coins{(o.DairyPublic ? " (+10% in person)" : "")}", Theme.HoneyDeep),
@@ -793,7 +800,7 @@ public sealed partial class MainWindow
                 var clicked = ListRow(Ico("bottle"), $"{o.Customer} (visitor order)", Theme.Ink,
                     new[]
                     {
-                        new Line($"{o.Oz} oz of milk", Theme.InkSoft),
+                        new Line($"{Units.Oz(o.Oz)} of milk", Theme.InkSoft),
                         new Line($"Pays {o.Coins} coins · {o.Xp} xp (the creamery pays)", Theme.HoneyDeep),
                     },
                     new[] { new Btn($"##vfill{visiting.Id}{o.Id}", "Deliver", "sage", can, can ? null : G.CanCarry ? "Fill your jugs from your dairy tank first." : "Only farmers and owners deliver milk.") }, width);
@@ -811,7 +818,7 @@ public sealed partial class MainWindow
         foreach (var o in net.MyOrders.ToList())
         {
             var left = DateTimeOffset.FromUnixTimeSeconds(o.Expires) - DateTimeOffset.UtcNow;
-            if (Row($"##cancelord{o.Id}", "coin", $"{o.Oz} oz of milk",
+            if (Row($"##cancelord{o.Id}", "coin", $"{Units.Oz(o.Oz)} of milk",
                     $"{o.Coins} coins held · ends in {(left.TotalDays >= 1 ? $"{(int)left.TotalDays}d {left.Hours}h" : Mins(left))}", "Cancel", "cream", true, "Cancel and get the coins back.", width))
                 G.CancelBuyOrder(o);
         }

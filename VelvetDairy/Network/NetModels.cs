@@ -15,6 +15,7 @@ public sealed class HeartbeatReply
     public int Inbox { get; set; }
     public int DairyXp { get; set; }
     public CreameryInfo? Creamery { get; set; }
+    public List<CreameryInfo>? Creameries { get; set; }   // up to 3 (one per Grand Company); Creamery is the first
     public float Carried { get; set; }
 }
 
@@ -29,6 +30,7 @@ public sealed class CreameryInfo
     public float Y { get; set; }
     public float Z { get; set; }
     public float Radius { get; set; } = 8;
+    public int Slot { get; set; }
 }
 
 public sealed class HereInfo
@@ -226,6 +228,8 @@ public sealed class ContractInfo
     public int MinGrade { get; set; }
     public int RewardXp { get; set; }
     public int RewardFund { get; set; }
+    public int EarnedXp { get; set; }     // what it pays if the week ends now (the share delivered)
+    public int EarnedFund { get; set; }
     public bool Completed { get; set; }
     public List<Pumper> Shippers { get; set; } = new();
 
@@ -319,6 +323,7 @@ public sealed class MemberStatus
     public int Level { get; set; }          // cow level
     public int FarmerLevel { get; set; }
     public int BullLevel { get; set; }
+    public bool Crown { get; set; }         // a crown next to their name in the member list
     public int Quality { get; set; }        // milk quality score (cows)
     public int TotalOz { get; set; }        // all the milk they've ever given
     public List<string> Emotes { get; set; } = new();   // the emotes this cow's farmers milk her with

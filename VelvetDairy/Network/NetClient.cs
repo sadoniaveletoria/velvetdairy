@@ -379,7 +379,7 @@ public sealed class NetClient : IDisposable
             status = new MemberStatus
             {
                 Milk = (float)Math.Round(F.Cow.Milk, 1), Cap = g.Capacity, Grade = g.CurrentGrade, Spoiled = g.Spoiled,
-                InDairy = g.Where.InDairy, Level = g.Level, FarmerLevel = g.FarmerLevel, BullLevel = g.BullLevel,
+                InDairy = g.Where.InDairy, Level = g.Level, FarmerLevel = g.FarmerLevel, BullLevel = g.BullLevel, Crown = g.Crowned,
                 Quality = (int)F.Quality, TotalOz = (int)F.Stats.TotalOz,
                 Emotes = g.IsCow ? g.MilkEmotesForFarmers() : new List<string>(),
                 HandBy = g.Active is { Kind: VelvetDairy.Game.SessionKind.Hand, Hand: { IsTest: false } h } ? h.Name : "",
@@ -478,7 +478,15 @@ public sealed class NetClient : IDisposable
             ok(r);
         }, failed);
 
-    /// <summary>Developer: puts the Grand Creamery where you're standing (for everyone).</summary>
+    /// <summary>Developer: removes one of the Grand Creameries.</summary>
+    public void RemoveCreamery(int slot, Action ok, Action<string> failed) =>
+        Call<object>("DELETE", $"/v1/dev/creamery/{slot}", null, _ =>
+        {
+            Poke();
+            ok();
+        }, failed, dev: true);
+
+    /// <summary>Developer: puts a Grand Creamery where you're standing (for everyone).</summary>
     public void SetCreamery(object body, Action ok, Action<string> failed) =>
         Call<IdReply>("PUT", "/v1/dev/creamery", body, _ =>
         {

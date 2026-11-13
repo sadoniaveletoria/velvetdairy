@@ -138,12 +138,21 @@ public static class Catalog
         new Recipe("butter", "Churn butter", "butter", 1, 16, 0, 1, 12, 30, "Churn 16 oz of milk from your jugs into a pat of butter."),
         new Recipe("flour", "Mill flour", "flour", 1, 0, 0, 6, 6, 20, "Mill 2 wheat grain (from the Shop) into flour for the dairy pantry.",
             Uses: "hay", UsesCount: 2),
+        new Recipe("cheese", "Make cheese", "cheese", 2, 16, 0, 1, 10, 40,
+            "16 oz of milk makes 2 cheese for the dairy shelf: the simplest treat, nothing else needed. Members buy them; you get 80% of the price.",
+            ToShelf: true),
         new Recipe("cookies", "Bake butter cookies", "cookies", 3, 8, 0, 3, 15, 45,
             "1 butter and 8 oz of milk make 3 butter cookies for the dairy shelf. Members buy them; you get 80% of the price.",
             Uses: "butter", UsesCount: 1, ToShelf: true),
         new Recipe("buns", "Bake cream buns", "buns", 2, 12, 0, 10, 25, 75,
             "1 flour, 1 butter and 12 oz of milk make 2 cream buns for the dairy shelf: a bigger treat than cookies. Members buy them; you get 80% of the price.",
             Uses: "flour", UsesCount: 1, ToShelf: true, Uses2: "butter", UsesCount2: 1),
+        new Recipe("cake", "Bake honey cream cake", "cake", 2, 16, 0, 35, 40, 100,
+            "1 flour, 2 butter and 16 oz of milk make 2 honey cream cakes for the dairy shelf: a big treat. Members buy them; you get 80% of the price.",
+            Uses: "flour", UsesCount: 1, ToShelf: true, Uses2: "butter", UsesCount2: 2),
+        new Recipe("tart", "Bake velvet tart", "tart", 2, 24, 0, 70, 60, 130,
+            "2 flour, 2 butter and 24 oz of milk make 2 velvet tarts for the dairy shelf: the best treat there is. Members buy them; you get 80% of the price.",
+            Uses: "flour", UsesCount: 2, ToShelf: true, Uses2: "butter", UsesCount2: 2),
     };
 
     public static Ingredient? IngredientById(string id) => Ingredients.FirstOrDefault(i => i.Id == id);
@@ -154,7 +163,8 @@ public static class Catalog
     public static Recipe? RecipeById(string id) => Recipes.FirstOrDefault(r => r.Id == id);
 
     /// <summary>Treats are baked; ingredients (butter, flour) are made.</summary>
-    public static bool IsBaked(Recipe r) => FeedById(r.Makes)?.Baked == true;
+    // Cookies and buns are baked; butter, flour and cheese are made
+    public static bool IsBaked(Recipe r) => r.Name.StartsWith("Bake ", StringComparison.Ordinal);
     public static string Verb(Recipe r) => IsBaked(r) ? "Bake" : "Make";
     public static string Doing(Recipe r) => IsBaked(r) ? "Baking" : "Making";
 
@@ -174,6 +184,9 @@ public static class Catalog
         new FeedItem("alfalfa", "Golden alfalfa", "alfalfa", 80, 1, "Prized hay. Builds your milk quality a lot and speeds up your milk for 30 minutes.", Fed: 0.06f, Quality: 50, BoostMinutes: 30),
         new FeedItem("starclover", "Star clover", "starclover", 200, 1, "Rare and sweet. A big step up in milk quality, and faster milk for 30 minutes.", Happy: 0.10f, Quality: 100, BoostMinutes: 30),
         // Baked by your dairy's farmers and bought off the dairy shelf (not sold in the Shop)
+        new FeedItem("cheese", "Cheese", "cheese", 0, 1, "Made by your dairy's farmers. A little happy, and a milk boost for 10 minutes.", Happy: 0.04f, BoostMinutes: 10, Baked: true),
+        new FeedItem("cake", "Honey cream cake", "cake", 0, 1, "Baked by your dairy's farmers. Filling, very happy, and a milk boost for 25 minutes.", Fed: 0.06f, Happy: 0.09f, BoostMinutes: 25, Baked: true),
+        new FeedItem("tart", "Velvet tart", "tart", 0, 1, "Baked by your dairy's farmers. The best treat: filling, very happy, and a milk boost for 30 minutes.", Fed: 0.08f, Happy: 0.11f, BoostMinutes: 30, Baked: true),
         new FeedItem("cookies", "Butter cookies", "biscuit", 0, 1, "Baked by your dairy's farmers. Happy, and a milk boost for 15 minutes.", Happy: 0.06f, BoostMinutes: 15, Baked: true),
         new FeedItem("buns", "Cream buns", "biscuit", 0, 1, "Baked by your dairy's farmers. Filling, happy, and a milk boost for 20 minutes.", Fed: 0.05f, Happy: 0.07f, BoostMinutes: 20, Baked: true),
         // Going away: keeps your grade from slipping
@@ -186,10 +199,10 @@ public static class Catalog
     {
         new Upgrade("stallkit", "Stall kit", "bucket", new[] { 200, 500 }, new[] { 6, 12 }, "Lets you register one more stall."),
         new Upgrade("cushion", "Plush bedding", "cushion", new[] { 250 }, new[] { 4 }, "Resting makes you comfier: Comfy bonus +7% instead of +4%, and it lasts twice as long after you get up."),
-        new Upgrade("bottle", "Bigger bottle", "bottle", new[] { 180, 450, 1000, 2200 }, new[] { 3, 8, 14, 21 }, "Each bottle holds more."),
-        new Upgrade("rack", "Extra bottle", "milk", new[] { 300, 800, 1800, 3500 }, new[] { 6, 12, 19, 25 }, "One more bottle. When one fills, the next one starts."),
+        new Upgrade("bottle", "Bigger bottle", "bottle", new[] { 180, 450, 1000, 2200, 7500 }, new[] { 3, 8, 14, 21, 40 }, "Each bottle holds more."),
+        new Upgrade("rack", "Extra bottle", "milk", new[] { 300, 800, 1800, 3500, 6000 }, new[] { 6, 12, 19, 25, 33 }, "One more bottle. When one fills, the next one starts."),
         // Farmers (and owners) buy a bigger tank to carry milk from the dairy tank; unlocks go by farmer level
-        new Upgrade("farmtank", "Bigger farmer tank", "bucket", new[] { 200, 500, 1200, 2500, 5000 }, new[] { 2, 5, 10, 16, 22 },
+        new Upgrade("farmtank", "Bigger farmer tank", "bucket", new[] { 200, 500, 1200, 2500, 5000, 8000, 14000 }, new[] { 2, 5, 10, 16, 22, 30, 60 },
             "Carry more milk from the dairy tank to customers, other dairies and the Grand Creamery.", Farmer: true),
         new Upgrade("trough", "Clean trough", "water", new[] { 160 }, new[] { 5 }, "Watered lasts half again as long."),
         new Upgrade("bell", "Bell collar", "bell", new[] { 80 }, new[] { 3 }, "A brass bell. Happy lasts a little longer.", true),
@@ -207,6 +220,14 @@ public static class Catalog
         new Upgrade("velvetbell", "Velvet bell", "bell", new[] { 2600 }, new[] { 26 }, "A velvet-wrapped bell. +5% pay.", true),
         new Upgrade("champion", "Champion's ribbon", "ribbon", new[] { 3200 }, new[] { 28 }, "Milk quality builds 20% faster.", true),
         new Upgrade("velvetchamp", "Velvet champion sash", "coin", new[] { 5000 }, new[] { 30 }, "The best cow in Eorzea. +10% pay.", true),
+        // Levels 31 to 100: fewer, bigger rewards
+        new Upgrade("silkcushion", "Silk cushion", "cushion", new[] { 6500 }, new[] { 45 }, "Comfy drains 15% slower."),
+        new Upgrade("heirloombell", "Heirloom bell", "bell", new[] { 9000 }, new[] { 55 }, "A family heirloom bell. +3% pay.", true),
+        new Upgrade("nightowl", "Night owl", "milk", new[] { 10000 }, new[] { 62 }, "You get tired 2 hours later each day (on top of Steady producer)."),
+        new Upgrade("royalhalter", "Royal halter", "ribbon", new[] { 12000 }, new[] { 70 }, "A halter fit for royalty. +3% pay.", true),
+        new Upgrade("spring", "Endless spring", "water", new[] { 15000 }, new[] { 85 }, "Watered drains 20% slower."),
+        new Upgrade("sweettooth", "Sweet tooth", "clover", new[] { 18000 }, new[] { 92 }, "Treat milk boosts last 15% longer."),
+        new Upgrade("crown", "Velvet crown", "coin", new[] { 25000 }, new[] { 100 }, "The final prize: a gold crown on your HUD and next to your name in your dairy's member list.", true),
     };
 
     public static Upgrade? UpgradeById(string id) => Upgrades.FirstOrDefault(u => u.Id == id);
@@ -220,7 +241,8 @@ public static class Catalog
 
     public const float HandYield = 1.25f;
     /// <summary>What can go on the dairy shelf, in the server's order (a "fed" inbox item says which by its place here).</summary>
-    public static readonly string[] ShelfOrder = { "cookies", "buns" };
+    // Same order as the server's SHELF_ITEMS (a fed notice carries the item's place in it): new items go at the end
+    public static readonly string[] ShelfOrder = { "cookies", "buns", "cheese", "cake", "tart" };
     public const int DailyPaidOz = 1500;   // milk you're paid for each day; past it you still get xp (matches the server's daily tank limit)
 
     // Everything you earn from the game in a day (milking, hand milking shares, orders, goals, awards) tapers off together:
@@ -273,12 +295,12 @@ public static class Catalog
 
     // Your bottles: size tier 1 is what you start with, the "bottle" upgrade raises it
     // Farmer tanks: what you carry milk in (Bigger farmer tank upgrades)
-    public static readonly string[] FarmerTankNames = { "Milk pail", "Milk can", "Carrying churn", "Hand cart", "Dairy wagon", "Tanker cart" };
-    public static readonly int[] FarmerTankSizes = { 32, 64, 96, 144, 192, 256 };
+    public static readonly string[] FarmerTankNames = { "Milk pail", "Milk can", "Carrying churn", "Hand cart", "Dairy wagon", "Tanker cart", "Big tanker", "Grand tanker" };
+    public static readonly int[] FarmerTankSizes = { 32, 64, 96, 144, 192, 256, 320, 400 };
 
-    public static readonly string[] BottleNames = { "", "Milk bottle", "Cream jar", "Dairy jug", "Big jug", "Milk churn" };
+    public static readonly string[] BottleNames = { "", "Milk bottle", "Cream jar", "Dairy jug", "Big jug", "Milk churn", "Velvet churn" };
     // Milk is sized at about five times a real person's yield: roughly 125-150 oz a day with good care
-    public static readonly float[] BottleSizes = { 0, 8, 12, 20, 32, 48 };
+    public static readonly float[] BottleSizes = { 0, 8, 12, 20, 32, 48, 64 };
 
     public const float LevelBonus = 0.04f;      // +4% milk per level above 1, up to Leveling.MilkBonusCap
     public const float ContentBonus = 0.10f;    // all four need bonuses active at once
@@ -339,9 +361,27 @@ public static class Leveling
     {
         (1, "New Cow"), (3, "Dairy Cow"), (6, "Good Producer"), (10, "Prize Cow"),
         (15, "Blue Ribbon"), (21, "Champion"), (28, "Velvet Legend"),
+        (35, "Dairy Darling"), (50, "Grand Champion"), (65, "Eorzean Treasure"), (80, "Living Legend"), (100, "Velvet Icon"),
     };
 
     public static string Rank(int level) => Ranks.Last(r => level >= r.Level).Name;
+
+    /// <summary>Farmer and bull titles (fewer: farmers get one at 100, bulls one every 25 levels).</summary>
+    public static string? FarmerRank(int level) => level >= 100 ? "Master Farmer" : null;
+
+    public static string? BullRank(int level) => level >= 100 ? "Legendary Bull" : level >= 75 ? "Champion Bull" : level >= 50 ? "Prize Bull" : level >= 25 ? "Strong Bull" : null;
+
+    /// <summary>Farmer level rewards that aren't Shop items (shown on level up and on the Roles tab).</summary>
+    public static readonly (int Level, string Name)[] FarmerPerks =
+    {
+        (35, "Recipe: Honey cream cake"), (45, "Hand milking share 30%"), (70, "Recipe: Velvet tart"), (85, "Faster baking (20%)"), (100, "Title: Master Farmer and a crown"),
+    };
+
+    /// <summary>Cow level rewards that aren't Shop items.</summary>
+    public static readonly (int Level, string Name)[] CowPerks =
+    {
+        (50, "Your title on the HUD, in gold"), (75, "Velvet HUD frame and a star in your dairy's member list"),
+    };
 
     public static string? NextRank(int level)
     {
