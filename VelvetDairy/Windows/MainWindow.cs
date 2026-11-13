@@ -688,7 +688,7 @@ public sealed partial class MainWindow : Window
         // Top: your bottle and how you're doing. Then Care as one slim row. Milking along the bottom.
         // The space between Care and Milking is left open for now.
         var milkH = G.Active != null || !G.AutoStall ? 200f : 112f;
-        const float careH = 126f, gap = 14f;
+        const float careH = 122f, gap = 14f;
         var topH = Math.Min(max.Y - min.Y - milkH - careH - gap * 2, 480f);
         var topMax = new Vector2(max.X, min.Y + topH);
         const float leftW = 270f;
@@ -969,12 +969,17 @@ public sealed partial class MainWindow : Window
                 "Eat", "honey", ok && !waiting, tip, () => G.UseFeed(id)));
         }
 
-        const float cellGap = 10f, cellH = 62f;
-        var perRow = Math.Clamp((int)((width + cellGap) / (230 + cellGap)), 2, 6);
-        var more = cells.Count > perRow ? cells.Count - (perRow - 1) : 0;
+        // Nothing to eat: the last card points at the Shop
+        if (cells.Count == 2)
+            cells.Add(("##careshop", "hay", "Pantry empty", "Buy feed in the Shop", "Shop", "cream", true, "Buy feed and treats.", () => tab = TabShop));
+
+        const float cellGap = 10f, cellH = 58f;
+        var fits = Math.Clamp((int)((width + cellGap) / (230 + cellGap)), 2, 6);
+        var more = cells.Count > fits ? cells.Count - (fits - 1) : 0;
+        var perRow = more > 0 ? fits : Math.Min(fits, Math.Max(cells.Count, 3));   // at least three across, so a short row doesn't stretch
         var shown = more > 0 ? perRow - 1 : cells.Count;
         var cellW = (width - cellGap * (perRow - 1)) / perRow;
-        var y = inMin.Y + 34;
+        var y = inMin.Y + 30;
         for (var i = 0; i < perRow; i++)
         {
             var c0 = new Vector2(inMin.X + i * (cellW + cellGap), y);
@@ -1005,17 +1010,6 @@ public sealed partial class MainWindow : Window
                 Ui.Text(dl, fonts.Label, $"{more} MORE", new Vector2(c0.X + 46, ty), Theme.Ink);
                 Ui.Text(dl, fonts.Small, "in your pantry", new Vector2(c0.X + 46, ty + titleH + 2), Theme.InkSoft);
                 if (Ui.Button("##caremore", "Pantry", new Vector2(80, 28), "cream", true, "Everything you have to eat and drink.", new Vector2(c1.X - 90, midY - 14))) tab = TabPantry;
-            }
-        }
-
-        if (cells.Count == 2 && max.X - min.X > 0)
-        {
-            // Nothing to eat: point at the Shop in the next cell
-            var c0 = new Vector2(inMin.X + 2 * (cellW + cellGap), y);
-            if (perRow > 2)
-            {
-                Ui.Text(dl, fonts.Small, "Your pantry is empty.", new Vector2(c0.X + 4, c0.Y + 8), Theme.InkSoft);
-                if (Ui.Button("##careshop", "Shop", new Vector2(80, 28), "cream", true, "Buy feed and treats.", new Vector2(c0.X + 4, c0.Y + 26))) tab = TabShop;
             }
         }
     }
