@@ -237,6 +237,12 @@ async function route(request, env) {
     ["POST", /^\/v1\/invites\/(\d+)\/decline$/, m => declineInvite(env, me, Number(m[1]))],
     ["DELETE", /^\/v1\/invites\/(\d+)$/, m => cancelInvite(env, me, Number(m[1]))],
     ["POST", /^\/v1\/members\/leave$/, () => leave(env, me)],
+    ["POST", /^\/v1\/applications$/, () => apply(env, me, request)],
+    ["DELETE", /^\/v1\/applications\/(\d+)$/, m => withdrawApplication(env, me, Number(m[1]))],
+    ["GET", /^\/v1\/dairy\/applications$/, () => dairyApplications(env, me)],
+    ["POST", /^\/v1\/dairy\/applications\/(\d+)\/accept$/, m => acceptApplication(env, me, Number(m[1]), request)],
+    ["POST", /^\/v1\/dairy\/applications\/(\d+)\/deny$/, m => denyApplication(env, me, Number(m[1]))],
+    ["PUT", /^\/v1\/dairy\/applying$/, () => setApplying(env, me, request)],
     ["DELETE", /^\/v1\/members\/([0-9a-f]{32})$/, m => removeMember(env, me, m[1])],
     ["PUT", /^\/v1\/members\/([0-9a-f]{32})\/role$/, m => setRole(env, me, m[1], request)],
     ["POST", /^\/v1\/members\/([0-9a-f]{32})\/roles$/, m => changeRoles(env, me, m[1], request)],
@@ -539,9 +545,144 @@ async function heartbeat(env, me, request) {
     creamery: await creameryOf(env),
     carried: await carriedOf(env, me.id),
     invites: invites.map(i => ({ id: i.id, role: i.role, dairy: i.dairy, world: i.world })),
+    applications: mem && (await canAnswer(env, mem)) ? (await env.DB.prepare(
+      "SELECT COUNT(*) AS n FROM applications WHERE dairy_id = ? AND status = 'pending'").bind(mem.dairy_id).first()).n : 0,
     inbox: waiting.n,
     time: t,
   };
+}
+
+// ---------------------------------------------------------------- applications
+// A player without a dairy applies to one that's looking for the roles they want. The owner answers (and farmers, if
+// the owner turned that on). Accepting adds them with the roles that were accepted and withdraws their other
+// applications. After a deny they can apply to that dairy again in 3 days.
+const APPLY_COOLDOWN = 3 * 24 * 3600;
+const APPLY_MAX_PENDING = 5;
+
+async function applyingOf(env, dairyId) {
+  const r = await env.DB.prepare("SELECT * FROM dairy_applying WHERE dairy_id = ?").bind(dairyId).first();
+  return { lookingFor: roleList(r?.looking_for || ""), farmersAnswer: !!r?.farmers_answer };
+}
+
+async function canAnswer(env, mem) {
+  if (!mem) return false;
+  if (mem.is_owner) return true;
+  return hasRole(mem, "farmer") && (await applyingOf(env, mem.dairy_id)).farmersAnswer;
+}
+
+async function applyingOut(env, dairyId, mem) {
+  const a = await applyingOf(env, dairyId);
+  const can = await canAnswer(env, mem);
+  const pending = can ? (await env.DB.prepare("SELECT COUNT(*) AS n FROM applications WHERE dairy_id = ? AND status = 'pending'").bind(dairyId).first()).n : 0;
+  return { lookingFor: a.lookingFor, farmersAnswer: a.farmersAnswer, canAnswer: can, pending };
+}
+
+/** Your pending applications, and dairies that denied you lately (with when you can apply again). */
+async function myApplications(env, me) {
+  const t = now();
+  const rows = (await env.DB.prepare(`
+      SELECT a.id, a.dairy_id, a.status, a.roles, a.answered, a.created, d.name AS dairy
+      FROM applications a JOIN dairies d ON d.id = a.dairy_id
+      WHERE a.install = ? AND (a.status = 'pending' OR (a.status = 'denied' AND a.answered >= ?))
+      ORDER BY a.id DESC`).bind(me.id, t - APPLY_COOLDOWN).all()).results;
+  return rows.map(a => ({ id: a.id, dairyId: a.dairy_id, dairy: a.dairy, status: a.status, roles: roleList(a.roles), sent: a.created,
+    retryAt: a.status === "denied" ? a.answered + APPLY_COOLDOWN : 0 }));
+}
+
+async function apply(env, me, request) {
+  const b = await body(request);
+  if (await membership(env, me.id)) fail(409, "You can only be in one dairy at a time. Leave yours first to apply to another.");
+  const d = await env.DB.prepare("SELECT * FROM dairies WHERE id = ?").bind(String(b.dairyId || "")).first();
+  if (!d) fail(404, "That dairy closed.");
+  const looking = (await applyingOf(env, d.id)).lookingFor;
+  if (!looking.length) fail(409, `${d.name} isn't taking applications.`);
+  const roles = roleList((Array.isArray(b.roles) ? b.roles : []).join(","));
+  if (!roles.length) fail(400, "Pick at least one role.");
+  const unwanted = roles.filter(r => !looking.includes(r));
+  if (unwanted.length) fail(409, `${d.name} isn't looking for ${unwanted.join(" or ")}s.`);
+  const t = now();
+  const open = await env.DB.prepare("SELECT id, dairy_id FROM applications WHERE install = ? AND status = 'pending'").bind(me.id).all();
+  if (open.results.some(a => a.dairy_id === d.id)) fail(409, `You already applied to ${d.name}.`);
+  if (open.results.length >= APPLY_MAX_PENDING) fail(409, `You can have ${APPLY_MAX_PENDING} applications waiting at once.`);
+  const denied = await env.DB.prepare("SELECT answered FROM applications WHERE install = ? AND dairy_id = ? AND status = 'denied' ORDER BY answered DESC LIMIT 1")
+    .bind(me.id, d.id).first();
+  if (denied && denied.answered + APPLY_COOLDOWN > t) {
+    const hours = Math.ceil((denied.answered + APPLY_COOLDOWN - t) / 3600);
+    fail(409, `You can apply to ${d.name} again in ${hours >= 24 ? `${Math.ceil(hours / 24)} days` : `${hours} hours`}.`);
+  }
+  const name = clean(b.name, 40);
+  if (!name) fail(400, "Missing your character name.");
+  const r = await env.DB.prepare(`INSERT INTO applications (dairy_id, install, name, world_name, roles, note, levels, created)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`)
+    .bind(d.id, me.id, name, clean(b.worldName, 30), roleText(roles), clean(b.note, 200), clean(b.levels, 80), t).first();
+  return { id: r.id, dairy: d.name };
+}
+
+async function withdrawApplication(env, me, id) {
+  const a = await env.DB.prepare("SELECT * FROM applications WHERE id = ? AND install = ? AND status = 'pending'").bind(id, me.id).first();
+  if (!a) fail(404, "That application isn't waiting anymore.");
+  await env.DB.prepare("UPDATE applications SET status = 'withdrawn', answered = ? WHERE id = ?").bind(now(), id).run();
+  return { ok: true };
+}
+
+async function answerer(env, me) {
+  const mem = await membership(env, me.id);
+  if (!mem) fail(403, "Join or register a dairy first.");
+  if (!(await canAnswer(env, mem))) fail(403, "Only the owner (or farmers, if the owner allows it) can answer applications.");
+  return mem;
+}
+
+async function dairyApplications(env, me) {
+  const mem = await answerer(env, me);
+  const rows = (await env.DB.prepare("SELECT * FROM applications WHERE dairy_id = ? AND status = 'pending' ORDER BY id").bind(mem.dairy_id).all()).results;
+  return { applications: rows.map(a => ({ id: a.id, name: a.name, world: a.world_name, roles: roleList(a.roles), note: a.note, levels: a.levels, sent: a.created })) };
+}
+
+async function pendingApplication(env, mem, id) {
+  const a = await env.DB.prepare("SELECT * FROM applications WHERE id = ? AND dairy_id = ? AND status = 'pending'").bind(id, mem.dairy_id).first();
+  if (!a) fail(404, "That application was already answered or withdrawn.");
+  return a;
+}
+
+async function acceptApplication(env, me, id, request) {
+  const mem = await answerer(env, me);
+  const a = await pendingApplication(env, mem, id);
+  const b = await body(request);
+  const wanted = roleList(a.roles);
+  const roles = Array.isArray(b.roles) ? roleList(b.roles.join(",")).filter(r => wanted.includes(r)) : wanted;
+  if (!roles.length) fail(400, "Accept at least one of the roles they asked for.");
+  const t = now();
+  if (await membership(env, a.install)) {
+    await env.DB.prepare("UPDATE applications SET status = 'withdrawn', answered = ? WHERE id = ?").bind(t, id).run();
+    fail(409, `${a.name} already joined a dairy.`);
+  }
+  await env.DB.batch([
+    env.DB.prepare("INSERT INTO members (install, dairy_id, role, name, world_name, joined) VALUES (?, ?, ?, ?, ?, ?)")
+      .bind(a.install, mem.dairy_id, roleText(roles), a.name, a.world_name, t),
+    env.DB.prepare("UPDATE applications SET status = 'accepted', answered = ?, answered_by = ? WHERE id = ?").bind(t, me.id, id),
+    env.DB.prepare("UPDATE applications SET status = 'withdrawn', answered = ? WHERE install = ? AND status = 'pending' AND id != ?").bind(t, a.install, id),
+  ]);
+  const names = { cow: "Cow", farmer: "Farmer", bull: "Bull" };
+  await notice(env, a.install, `${mem.dairy_name} accepted you as a ${roles.map(r => names[r]).join(" and ")}! You're a member now.`);
+  return { ok: true, name: a.name, roles };
+}
+
+async function denyApplication(env, me, id) {
+  const mem = await answerer(env, me);
+  const a = await pendingApplication(env, mem, id);
+  await env.DB.prepare("UPDATE applications SET status = 'denied', answered = ?, answered_by = ? WHERE id = ?").bind(now(), me.id, id).run();
+  await notice(env, a.install, `${mem.dairy_name} isn't taking you this time. You can apply to other dairies, or to them again in 3 days.`);
+  return { ok: true, name: a.name };
+}
+
+async function setApplying(env, me, request) {
+  const d = await ownedDairy(env, me);
+  const b = await body(request);
+  const looking = roleList((Array.isArray(b.lookingFor) ? b.lookingFor : []).join(","));
+  await env.DB.prepare(`INSERT INTO dairy_applying (dairy_id, looking_for, farmers_answer) VALUES (?, ?, ?)
+      ON CONFLICT(dairy_id) DO UPDATE SET looking_for = excluded.looking_for, farmers_answer = excluded.farmers_answer`)
+    .bind(d.id, looking.join(","), b.farmersAnswer ? 1 : 0).run();
+  return { lookingFor: looking, farmersAnswer: !!b.farmersAnswer };
 }
 
 // ---------------------------------------------------------------- directory
@@ -571,6 +712,7 @@ function listing(row, me) {
     plot: open ? row.plot : null,
     room: open ? row.room : null,
     members: row.members || 0,
+    lookingFor: roleList(row.looking_for || ""),
     cowsHere: row.here || 0,
     openOrders: open ? row.orders || 0 : 0,
     level: levelFor(row.xp || 0),
@@ -586,12 +728,13 @@ async function listDairies(env, me) {
       a.territory AS a_territory, a.world AS a_world, a.house AS a_house, a.x AS a_x, a.y AS a_y, a.z AS a_z, a.map_id AS a_map, a.zone AS a_zone,
       (SELECT COUNT(*) FROM installs i WHERE i.at_dairy = d.id AND i.last_seen >= ?) AS here,
       (SELECT COUNT(*) FROM members m WHERE m.dairy_id = d.id) AS members,
-      (SELECT COUNT(*) FROM orders o WHERE o.dairy_id = d.id AND o.status = 'open') AS orders
+      (SELECT COUNT(*) FROM orders o WHERE o.dairy_id = d.id AND o.status = 'open') AS orders,
+      (SELECT looking_for FROM dairy_applying ap WHERE ap.dairy_id = d.id) AS looking_for
     FROM dairies d LEFT JOIN dairy_progress p ON p.dairy_id = d.id LEFT JOIN dairy_area a ON a.dairy_id = d.id
     WHERE d.updated >= ? OR d.owner = ?
     ORDER BY COALESCE(p.xp, 0) DESC, here DESC, d.is_public DESC, d.updated DESC
     LIMIT 500`).bind(t - ONLINE_WINDOW, t - LISTING_MAX_AGE, me.id).all();
-  return { online: await onlineCount(env), dairies: rows.results.map(r => listing(r, me)) };
+  return { online: await onlineCount(env), dairies: rows.results.map(r => listing(r, me)), applications: await myApplications(env, me) };
 }
 
 /** Everything about the dairy you belong to: members (with their shared status), stalls, pending invites. */
@@ -626,6 +769,7 @@ async function myDairy(env, me) {
     stalls: stalls.map(s => ({ id: s.id, name: s.name, x: s.x, y: s.y, z: s.z, tier: s.tier, cleanUntil: s.clean_until > t ? s.clean_until : 0 })),
     progress: await progressOut(env, d.id, stalls.length),
     invites: invites.map(i => ({ id: i.id, name: i.to_name, role: i.role, expires: i.expires })),
+    applying: await applyingOut(env, d.id, mem),
   };
 }
 

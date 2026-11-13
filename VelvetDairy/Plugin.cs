@@ -40,6 +40,7 @@ public sealed class Plugin : IDalamudPlugin
     public NetClient Net { get; private set; }
     public OwnerHudWindow OwnerHud { get; }
     public MembersWindow Members { get; }
+    public ApplyWindow Apply { get; }
     public GuideWindow Guide { get; }
     public MilkAnimationWindow MilkAnimation { get; }
     public KitchenWindow Kitchen { get; }
@@ -100,6 +101,8 @@ public sealed class Plugin : IDalamudPlugin
         windowSystem.AddWindow(OwnerHud);
         Members = new MembersWindow(this, fonts);
         windowSystem.AddWindow(Members);
+        Apply = new ApplyWindow(this, fonts);
+        windowSystem.AddWindow(Apply);
         Guide = new GuideWindow(this, fonts);
         windowSystem.AddWindow(Guide);
         MilkAnimation = new MilkAnimationWindow(this);

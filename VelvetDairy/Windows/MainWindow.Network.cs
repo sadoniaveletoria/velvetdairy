@@ -17,6 +17,23 @@ public sealed partial class MainWindow
     private int orderCoins = -1;
     private string dirFilter = "";
     private bool dirPublicOnly;
+    private bool dirApplying;      // Dairies tab: only dairies taking applications
+
+    private static long NowUnix => DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+
+    private static string Ago(long unix)
+    {
+        var d = DateTimeOffset.UtcNow - DateTimeOffset.FromUnixTimeSeconds(unix);
+        if (d.TotalMinutes < 60) return $"{Math.Max(1, (int)d.TotalMinutes)} min ago";
+        if (d.TotalHours < 24) return $"{(int)d.TotalHours} h ago";
+        return $"{(int)d.TotalDays} d ago";
+    }
+
+    private static string Until(long unix)
+    {
+        var d = DateTimeOffset.FromUnixTimeSeconds(unix) - DateTimeOffset.UtcNow;
+        return d.TotalHours < 24 ? $"in {Math.Max(1, (int)Math.Ceiling(d.TotalHours))} h" : $"in {(int)Math.Ceiling(d.TotalDays)} days";
+    }
     private int donateCoins = 100;
 
 
@@ -133,10 +150,13 @@ public sealed partial class MainWindow
         ImGui.SameLine();
         ImGui.Checkbox("Public only", ref dirPublicOnly);
         ImGui.SameLine();
+        ImGui.Checkbox("Taking applications", ref dirApplying);
+        ImGui.SameLine();
         if (ImGui.SmallButton("Refresh")) net.RefreshDirectory();
         Gap(4);
 
         var list = net.Directory?.Dairies;
+        var apps = net.Directory?.Applications ?? new List<MyApplication>();
         if (list == null)
         {
             ImGui.TextColored(Theme.InkSoft, "Loading...");
@@ -144,13 +164,13 @@ public sealed partial class MainWindow
         }
 
         var f = dirFilter.Trim();
-        var shown = list.Where(d => (!dirPublicOnly || d.IsPublic) &&
+        var shown = list.Where(d => (!dirPublicOnly || d.IsPublic) && (!dirApplying || d.LookingFor.Count > 0) &&
                                     (f.Length == 0 || d.Name.Contains(f, StringComparison.OrdinalIgnoreCase) || d.WorldName.Contains(f, StringComparison.OrdinalIgnoreCase) ||
                                      d.District.Contains(f, StringComparison.OrdinalIgnoreCase) || d.Owner.Contains(f, StringComparison.OrdinalIgnoreCase)))
             .OrderByDescending(d => d.Level).ThenByDescending(d => d.CowsHere).ThenByDescending(d => d.IsPublic).ThenBy(d => d.Name).ToList();
         // How many there are (and how many the search or Public only leaves)
         var pub = list.Count(d => d.IsPublic);
-        var count = $"{list.Count} dair{(list.Count == 1 ? "y" : "ies")} · {pub} public";
+        var count = $"{list.Count} dair{(list.Count == 1 ? "y" : "ies")} · {pub} public · {list.Count(d => d.LookingFor.Count > 0)} taking applications";
         ImGui.TextColored(Theme.BlueDeep, shown.Count == list.Count ? count : $"Showing {shown.Count} of {count}");
         Gap(4);
         if (shown.Count == 0) Ui.Wrapped(list.Count == 0 ? "No dairies yet. Be the first: register your estate on the Dairy tab." : "Nothing matches.", Theme.InkSoft, width);
@@ -164,20 +184,40 @@ public sealed partial class MainWindow
                     d.CowsHere > 0 ? Theme.SageDeep : Theme.InkSoft),
             };
             if (d.Owner.Length > 0) lines.Add(new Line($"Owner: {d.Owner}", Theme.InkSoft));
+            if (d.LookingFor.Count > 0) lines.Add(new Line($"Looking for: {string.Join(", ", d.LookingFor.Select(r => char.ToUpperInvariant(r[0]) + r[1..] + "s"))}", Theme.SageDeep));
             if (d.Description.Length > 0) lines.Add(new Line(d.Description, Theme.Ink));
 
+            // Applying: only when you're not in a dairy yet, and it's looking for someone
+            var app = apps.FirstOrDefault(a => a.DairyId == d.Id);
+            var inDairy = F.NetMember != null;
+            Btn? applyBtn = null;
+            if (!d.Mine && d.LookingFor.Count > 0 && !inDairy)
+            {
+                if (app?.Status == "pending") applyBtn = new Btn($"##appcancel{d.Id}", "Withdraw", "cream", true, $"Applied {Ago(app.Sent)}: waiting for {d.Name}. Withdraw your application.");
+                else if (app?.Status == "denied" && app.RetryAt > NowUnix) applyBtn = new Btn($"##apply{d.Id}", "Apply", "rose", false, $"{d.Name} didn't take you last time. You can apply again {Until(app.RetryAt)}.");
+                else applyBtn = new Btn($"##apply{d.Id}", "Apply", "rose", true, "Ask to join with the roles you want.");
+            }
+            else if (!d.Mine && d.LookingFor.Count > 0 && inDairy && F.NetMember?.DairyId != d.Id)
+                applyBtn = new Btn($"##apply{d.Id}", "Apply", "rose", false, "You can only be in one dairy at a time. Leave yours first (Dairy tab) to apply to another.");
+            if (app?.Status == "pending") lines.Add(new Line($"You applied {Ago(app.Sent)} · waiting for an answer", Theme.HoneyDeep));
+
             var canVisit = d.Area != null || (d.HouseId != null && d.World != null && d.Ward != null);
-            var buttons = canVisit
-                ? new[]
-                {
-                    new Btn($"##copy{d.Id}", "Copy", "cream", true, "Copy the address."),
-                    new Btn($"##visit{d.Id}", "Visit", "blue", !Lifestream.Busy, Lifestream.Installed ? "Travel there with Lifestream." : "Copies the address (install Lifestream to travel automatically)."),
-                }
-                : Array.Empty<Btn>();
+            var buttons = new List<Btn>();
+            if (applyBtn is { } ab) buttons.Add(ab);
+            if (canVisit)
+            {
+                buttons.Add(new Btn($"##copy{d.Id}", "Copy", "cream", true, "Copy the address."));
+                buttons.Add(new Btn($"##visit{d.Id}", "Visit", "blue", !Lifestream.Busy, Lifestream.Installed ? "Travel there with Lifestream." : "Copies the address (install Lifestream to travel automatically)."));
+            }
+
             var title = $"Lv {d.Level}  {d.Name}" + (d.Mine ? "  ·  yours" : d.IsPublic ? "" : "  ·  private");
-            var clicked = ListRow(Ico(d.IsPublic ? "milk" : "ribbon", d.IsPublic || d.Mine ? 1f : 0.6f), title, d.Mine ? Theme.RoseDeep : Theme.Ink, lines, buttons, width);
-            if (clicked == 0) Copy(d);
-            else if (clicked == 1) Visit(d);
+            var clicked = ListRow(Ico(d.IsPublic ? "milk" : "ribbon", d.IsPublic || d.Mine ? 1f : 0.6f), title, d.Mine ? Theme.RoseDeep : Theme.Ink, lines, buttons.ToArray(), width);
+            if (clicked < 0) continue;
+            var label = buttons[clicked].Label;
+            if (label == "Apply") plugin.Apply.Open(d);
+            else if (label == "Withdraw" && app != null) net.WithdrawApplication(app.Id, e => G.Notify(e, 2));
+            else if (label == "Copy") Copy(d);
+            else if (label == "Visit") Visit(d);
         }
     }
 

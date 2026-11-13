@@ -516,4 +516,66 @@ await test("island dairies: boxes may overlap other islands, and members count a
 });
 
 
+
+await test("applications: apply, answer, cooldown, and farmers only when allowed", async () => {
+  const owner = player("Opal Owner"), farmer = player("Fern Farmer"), ann = player("Ann Applicant"), ben = player("Ben Applicant");
+  for (const p of [owner, farmer, ann, ben]) await beat(p);
+  const reg = await call(owner, "PUT", "/v1/dairy", dairyBody({ houseId: "5550001112223", name: "Apple Acres", ownerName: "Opal Owner", isPublic: true }));
+  assert.equal(reg.status, 200);
+  const acres = reg.data.id ?? (await call(owner, "GET", "/v1/dairy/mine")).data.dairy.id;
+  // Not taking applications until the owner says what they're looking for
+  assert.equal((await call(ann, "POST", "/v1/applications", { dairyId: acres, roles: ["cow"], name: "Ann Applicant" })).status, 409);
+  assert.equal((await call(farmer, "PUT", "/v1/dairy/applying", { lookingFor: ["cow"] })).status, 403);
+  assert.equal((await call(owner, "PUT", "/v1/dairy/applying", { lookingFor: ["cow", "farmer"] })).status, 200);
+  const listed = (await call(ann, "GET", "/v1/dairies")).data.dairies.find(d => d.id === acres);
+  assert.deepEqual(listed.lookingFor, ["cow", "farmer"]);
+  // Only roles they're looking for
+  assert.equal((await call(ann, "POST", "/v1/applications", { dairyId: acres, roles: ["bull"], name: "Ann Applicant" })).status, 409);
+  const sent = await call(ann, "POST", "/v1/applications", { dairyId: acres, roles: ["cow", "farmer"], name: "Ann Applicant", worldName: "Gilgamesh", note: "Hi!", levels: "Cow 3" });
+  assert.equal(sent.status, 200);
+  assert.equal((await call(ann, "POST", "/v1/applications", { dairyId: acres, roles: ["cow"], name: "Ann Applicant" })).status, 409);   // twice
+  assert.equal((await call(ann, "GET", "/v1/dairies")).data.applications[0].status, "pending");
+  // The owner sees it (and the heartbeat count); a farmer member doesn't until allowed
+  assert.equal((await beat(owner)).data.applications, 1);
+  const bens = await call(ben, "POST", "/v1/applications", { dairyId: acres, roles: ["farmer"], name: "Ben Applicant" });
+  assert.equal((await call(owner, "POST", `/v1/dairy/applications/${bens.data.id}/accept`, { roles: ["farmer"] })).status, 200);
+  assert.equal((await call(ben, "GET", "/v1/dairy/applications")).status, 403);   // ben is now a farmer, but farmers can't answer yet
+  assert.equal((await call(owner, "PUT", "/v1/dairy/applying", { lookingFor: ["cow", "farmer"], farmersAnswer: true })).status, 200);
+  const seen = await call(ben, "GET", "/v1/dairy/applications");
+  assert.equal(seen.status, 200);
+  assert.equal(seen.data.applications[0].name, "Ann Applicant");
+  // Accept only one of the two roles; members can't apply elsewhere
+  const ok = await call(ben, "POST", `/v1/dairy/applications/${sent.data.id}/accept`, { roles: ["cow"] });
+  assert.equal(ok.status, 200);
+  const roster = (await call(owner, "GET", "/v1/dairy/mine")).data.members.find(m => m.name === "Ann Applicant");
+  assert.deepEqual(roster.roles, ["cow"]);
+  assert.equal((await call(ann, "POST", "/v1/applications", { dairyId: acres, roles: ["cow"], name: "Ann Applicant" })).status, 409);
+  // Deny, then the 3 day wait
+  const cal = player("Cal Applicant");
+  await beat(cal);
+  const c1 = await call(cal, "POST", "/v1/applications", { dairyId: acres, roles: ["cow"], name: "Cal Applicant" });
+  assert.equal((await call(owner, "POST", `/v1/dairy/applications/${c1.data.id}/deny`)).status, 200);
+  const again = await call(cal, "POST", "/v1/applications", { dairyId: acres, roles: ["cow"], name: "Cal Applicant" });
+  assert.equal(again.status, 409);
+  assert.match(again.data.error, /again in 3 days/);
+  assert.ok((await call(cal, "GET", "/v1/dairies")).data.applications.some(a => a.status === "denied" && a.retryAt > 0));
+});
+
+await test("applications: accepting one withdraws the others; withdraw your own", async () => {
+  const o1 = player("Olive One"), o2 = player("Otto Two"), dee = player("Dee Applicant");
+  for (const p of [o1, o2, dee]) await beat(p);
+  await call(o1, "PUT", "/v1/dairy", dairyBody({ houseId: "5550001112224", name: "Dairy One", ownerName: "Olive One" }));
+  await call(o2, "PUT", "/v1/dairy", dairyBody({ houseId: "5550001112225", name: "Dairy Two", ownerName: "Otto Two" }));
+  await call(o1, "PUT", "/v1/dairy/applying", { lookingFor: ["cow"] });
+  await call(o2, "PUT", "/v1/dairy/applying", { lookingFor: ["cow"] });
+  const id1 = (await call(o1, "GET", "/v1/dairy/mine")).data.dairy.id, id2 = (await call(o2, "GET", "/v1/dairy/mine")).data.dairy.id;
+  const a1 = await call(dee, "POST", "/v1/applications", { dairyId: id1, roles: ["cow"], name: "Dee Applicant" });
+  const a2 = await call(dee, "POST", "/v1/applications", { dairyId: id2, roles: ["cow"], name: "Dee Applicant" });
+  assert.equal((await call(dee, "DELETE", `/v1/applications/${a2.data.id}`)).status, 200);
+  const a3 = await call(dee, "POST", "/v1/applications", { dairyId: id2, roles: ["cow"], name: "Dee Applicant" });
+  assert.equal((await call(o1, "POST", `/v1/dairy/applications/${a1.data.id}/accept`, {})).status, 200);
+  assert.equal((await call(o2, "GET", "/v1/dairy/applications")).data.applications.length, 0);   // withdrawn
+  assert.equal((await call(o2, "POST", `/v1/dairy/applications/${a3.data.id}/accept`, {})).status, 404);
+});
+
 console.log(`\n${passed} passed`);

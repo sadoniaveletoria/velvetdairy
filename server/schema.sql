@@ -283,3 +283,29 @@ CREATE TABLE IF NOT EXISTS shelf_price (
   price    INTEGER NOT NULL,
   PRIMARY KEY (dairy_id, item)
 );
+
+-- Applications: a player without a dairy asks to join one with the roles they want. The owner (and farmers, if the
+-- owner allows it) accept or deny. Accepting adds them; their other pending applications are withdrawn.
+CREATE TABLE IF NOT EXISTS applications (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  dairy_id   TEXT NOT NULL,
+  install    TEXT NOT NULL,
+  name       TEXT NOT NULL DEFAULT '',
+  world_name TEXT NOT NULL DEFAULT '',
+  roles      TEXT NOT NULL,               -- "cow,farmer"
+  note       TEXT NOT NULL DEFAULT '',
+  levels     TEXT NOT NULL DEFAULT '',    -- "Cow 23 · Farmer 12", as the applicant's plugin reports it
+  status     TEXT NOT NULL DEFAULT 'pending',  -- pending | accepted | denied | withdrawn
+  created    INTEGER NOT NULL,
+  answered   INTEGER NOT NULL DEFAULT 0,
+  answered_by TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS applications_dairy ON applications(dairy_id, status);
+CREATE INDEX IF NOT EXISTS applications_install ON applications(install, status);
+
+-- What a dairy is looking for, and whether its farmers may answer applications (off unless the owner turns it on).
+CREATE TABLE IF NOT EXISTS dairy_applying (
+  dairy_id       TEXT PRIMARY KEY,
+  looking_for    TEXT NOT NULL DEFAULT '',   -- "cow,farmer"; empty = not taking applications
+  farmers_answer INTEGER NOT NULL DEFAULT 0
+);

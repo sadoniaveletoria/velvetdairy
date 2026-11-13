@@ -11,6 +11,7 @@ public sealed class HeartbeatReply
     public HereInfo? Here { get; set; }
     public MembershipInfo? Membership { get; set; }
     public List<InviteInfo> Invites { get; set; } = new();
+    public int Applications { get; set; }          // waiting for you to answer (owner, or farmers if allowed)
     public int Inbox { get; set; }
     public int DairyXp { get; set; }
     public CreameryInfo? Creamery { get; set; }
@@ -63,6 +64,45 @@ public sealed class DirectoryReply
 {
     public int Online { get; set; }
     public List<DairyListing> Dairies { get; set; } = new();
+    public List<MyApplication> Applications { get; set; } = new();
+}
+
+/// <summary>An application you sent: waiting, or denied lately (with when you can apply to that dairy again).</summary>
+public sealed class MyApplication
+{
+    public long Id { get; set; }
+    public string DairyId { get; set; } = "";
+    public string Dairy { get; set; } = "";
+    public string Status { get; set; } = "";
+    public List<string> Roles { get; set; } = new();
+    public long Sent { get; set; }
+    public long RetryAt { get; set; }
+}
+
+/// <summary>An application to your dairy, waiting for an answer.</summary>
+public sealed class ApplicationInfo
+{
+    public long Id { get; set; }
+    public string Name { get; set; } = "";
+    public string World { get; set; } = "";
+    public List<string> Roles { get; set; } = new();
+    public string Note { get; set; } = "";
+    public string Levels { get; set; } = "";
+    public long Sent { get; set; }
+}
+
+public sealed class ApplicationsReply
+{
+    public List<ApplicationInfo> Applications { get; set; } = new();
+}
+
+/// <summary>What your dairy is looking for, and whether you can answer its applications.</summary>
+public sealed class ApplyingInfo
+{
+    public List<string> LookingFor { get; set; } = new();
+    public bool FarmersAnswer { get; set; }
+    public bool CanAnswer { get; set; }
+    public int Pending { get; set; }
 }
 
 public sealed class DairyListing
@@ -83,6 +123,7 @@ public sealed class DairyListing
     public int? Plot { get; set; }
     public int? Room { get; set; }
     public int Members { get; set; }
+    public List<string> LookingFor { get; set; } = new();   // roles it takes applications for (empty: not taking any)
     public int CowsHere { get; set; }
     public int OpenOrders { get; set; }
     public int Level { get; set; } = 1;
@@ -113,6 +154,7 @@ public sealed class MyDairyReply
     public List<StallInfo> Stalls { get; set; } = new();
     public List<SentInvite> Invites { get; set; } = new();
     public DairyProgress? Progress { get; set; }
+    public ApplyingInfo? Applying { get; set; }
 }
 
 /// <summary>A dairy's level, XP, shared fund and what its level allows.</summary>
