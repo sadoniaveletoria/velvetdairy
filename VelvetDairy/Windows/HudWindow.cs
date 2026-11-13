@@ -136,7 +136,8 @@ public sealed class HudWindow : Window
         var mw = Ui.Measure(fonts.Heading, amountText).X;
         var capText = Units.Oz(cap, seedOnly ? "0.#" : "0") + (seedOnly ? " seed" : "");
         Ui.Text(dl, fonts.Small, bCount > 1 ? $"/ {capText} · {full} of {bCount} full" : $"/ {capText}", new Vector2(x + mw + 4, o.Y + 24), Theme.InkSoft);
-        Ui.Seal(dl, new Vector2(o.X + size.X - 38, o.Y + 38), 20, Grades.Name(grade), Theme.GradeColor(grade));
+        // The grade seal sits on the jug's shoulder, like the Barn's, so it never covers the text
+        Ui.Seal(dl, new Vector2(bmin.X + bh / 2 - 4, bmin.Y + bh * 0.2f), 15, Grades.Name(grade), Theme.GradeColor(grade));
 
         // Needs as four thin bars
         var y = o.Y + 52;
