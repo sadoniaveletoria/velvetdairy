@@ -155,12 +155,13 @@ public static class Ui
     // ---------------------------------------------------------------- surfaces
 
     /// <summary>Cream card with a fine double rule.</summary>
-    public static void Card(ImDrawListPtr dl, Vector2 min, Vector2 max, bool blue = false)
+    public static void Card(ImDrawListPtr dl, Vector2 min, Vector2 max, bool blue = false, bool velvet = false)
     {
         var tex = Art?.Card(blue);
         if (tex != null)
         {
             Windows.Art.NineSlice(dl, tex, min, max, 48f, 34f);
+            if (velvet) VelvetFrame(dl, min, max);
             return;
         }
 
@@ -168,6 +169,45 @@ public static class Ui
         dl.AddRectFilled(min, max, U(Theme.Paper), 14);
         dl.AddRect(min, max, U(blue ? Theme.BlueDeep : Theme.RoseDeep, 0.5f), 14, ImDrawFlags.None, 1.5f);
         dl.AddRect(min + new Vector2(9, 9), max - new Vector2(9, 9), U(blue ? Theme.BlueDeep : Theme.RoseDeep, 0.35f), 8, ImDrawFlags.None, 1f);
+    }
+
+    /// <summary>Cow level 75: a velvet border with a thin gold line inside it around the HUD.</summary>
+    public static void VelvetFrame(ImDrawListPtr dl, Vector2 min, Vector2 max)
+    {
+        dl.AddRect(min + new Vector2(3, 3), max - new Vector2(3, 3), U(Theme.RoseDeep, 0.85f), 13, ImDrawFlags.None, 3f);
+        dl.AddRect(min + new Vector2(7, 7), max - new Vector2(7, 7), U(Theme.HoneyDeep, 0.7f), 10, ImDrawFlags.None, 1f);
+    }
+
+    /// <summary>A small gold star (cow level 75).</summary>
+    public static void Star(ImDrawListPtr dl, Vector2 c, float r)
+    {
+        var pts = new Vector2[10];
+        for (var i = 0; i < 10; i++)
+        {
+            var a = -MathF.PI / 2 + i * MathF.PI / 5;
+            var rr = i % 2 == 0 ? r : r * 0.45f;
+            pts[i] = c + new Vector2(MathF.Cos(a) * rr, MathF.Sin(a) * rr);
+        }
+
+        // A star isn't convex: fill it as triangles from the middle
+        for (var i = 0; i < 10; i++) dl.AddTriangleFilled(c, pts[i], pts[(i + 1) % 10], U(Theme.Honey));
+        for (var i = 0; i < 10; i++) dl.AddLine(pts[i], pts[(i + 1) % 10], U(Theme.HoneyDeep), 1f);
+    }
+
+    /// <summary>A small gold crown (cow or farmer level 100 with the Velvet crown).</summary>
+    public static void Crown(ImDrawListPtr dl, Vector2 at, float h)
+    {
+        var w = h * 1.25f;
+        var gold = U(Theme.Honey);
+        var deep = U(Theme.HoneyDeep);
+        // A band with three points on top
+        var band0 = at + new Vector2(0.06f * w, 0.55f * h);
+        var band1 = at + new Vector2(0.94f * w, h);
+        dl.AddRectFilled(band0, band1, gold, 1.5f);
+        foreach (var (l, tip, r) in new[] { (0.04f, 0.18f, 0.40f), (0.30f, 0.5f, 0.70f), (0.60f, 0.82f, 0.96f) })
+            dl.AddTriangleFilled(at + new Vector2(l * w, 0.6f * h), at + new Vector2(tip * w, tip == 0.5f ? 0 : 0.12f * h), at + new Vector2(r * w, 0.6f * h), gold);
+        dl.AddRect(band0, band1, deep, 1.5f, ImDrawFlags.None, 1f);
+        dl.AddCircleFilled(at + new Vector2(0.5f * w, 0.55f * h), h * 0.1f, U(Theme.RoseDeep));
     }
 
     /// <summary>Small-caps label with a hairline after it, like a menu board heading.</summary>
@@ -240,9 +280,10 @@ public static class Ui
         new(0.21f, 0.96f, 0.12f, 0.405f, true, 0.07f, 0.74f),         // 3 Gallon
         new(0.17f, 0.96f, 0.13f, 0.28f, true, 0.06f, 0.94f),          // 4 Big jug (big milk jug, cap on the left)
         new(0.444f, 0.902f, 0f, 0.5f, false, 0.41f, 0.59f),           // 5 Milk churn (milk shows in the window)
+        new(0.444f, 0.902f, 0f, 0.5f, false, 0.41f, 0.59f),           // 6 Velvet churn (a golden milk churn)
     };
 
-    private static BottleStyle StyleFor(int tier) => Styles[Math.Clamp(tier, 1, 5)];
+    private static BottleStyle StyleFor(int tier) => Styles[Math.Clamp(tier, 1, 6)];
 
     /// <summary>Inside width of the bottle at a height (fractions), for the surface line.</summary>
     private static (float X0, float X1) InsideAt(BottleStyle st, float y)

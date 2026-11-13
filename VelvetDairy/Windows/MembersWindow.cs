@@ -189,6 +189,18 @@ public sealed class MembersWindow : Window
                 ImGui.TableNextRow();
                 ImGui.TableNextColumn();
                 ImGui.TextColored(Theme.Ink, m.Name + (m.Id == meId ? " (you)" : ""));
+                // Cow level 75: a star; the Velvet crown (or farmer level 100): a crown
+                var badge = m.Status?.Crown == true ? 2 : (m.Status?.Level ?? 0) >= 75 ? 1 : 0;
+                if (badge > 0)
+                {
+                    ImGui.SameLine(0, 4);
+                    var at = ImGui.GetCursorScreenPos() + new Vector2(0, 2);
+                    var h = ImGui.GetTextLineHeight() - 4;
+                    if (badge == 2) Ui.Crown(ImGui.GetWindowDrawList(), at, h);
+                    else Ui.Star(ImGui.GetWindowDrawList(), at + new Vector2(h / 2, h / 2), h / 2);
+                    ImGui.Dummy(new Vector2(h * 1.3f, h));
+                    if (ImGui.IsItemHovered()) ImGui.SetTooltip(badge == 2 ? "Velvet crown" : "Cow level 75+");
+                }
                 if (ImGui.IsItemHovered()) ImGui.SetTooltip(m.World);
 
                 ImGui.TableNextColumn();

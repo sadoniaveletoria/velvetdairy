@@ -69,7 +69,18 @@ public sealed class HudWindow : Window
         var dl = ImGui.GetWindowDrawList();
         var o = ImGui.GetWindowPos();
         var whole = ImGui.GetWindowSize();
-        Ui.Card(dl, o, o + whole);
+        Ui.Card(dl, o, o + whole, false, G.Level >= 75);   // cow level 75: velvet frame
+
+        // Cow level 50: your title in gold along the top edge (with the crown when you have it)
+        if (G.Level >= 50 || G.Crowned)
+        {
+            var title = G.Level >= 50 ? Leveling.Rank(G.Level) : Leveling.FarmerRank(G.FarmerLevel) ?? "";
+            var tw = Ui.Measure(fonts.Small, title).X;
+            var cw = G.Crowned ? 16f : 0f;
+            var tx = o.X + (whole.X - tw - cw) / 2;
+            if (G.Crowned) Ui.Crown(dl, new Vector2(tx, o.Y + 4), 12);
+            Ui.Text(dl, fonts.Small, title, new Vector2(tx + cw, o.Y + 2), Theme.HoneyDeep);
+        }
         var size = HudSize;   // the bottle, needs and status keep their place; buttons go below
 
         var cow = F.Cow;

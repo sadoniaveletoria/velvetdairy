@@ -22,6 +22,21 @@ public sealed class ChangelogWindow : Window
     /// <summary>Newest first. Write these for players: what changed for them, not how.</summary>
     private static readonly Entry[] Entries =
     {
+        new("0.9.36", "Levels 31 to 100, cheese and two new bakes", new[]
+        {
+            "# Cow levels 31 to 100",
+            "New Shop upgrades: Extra bottle 5 at 33 (6 bottles, the most you can have), Bigger bottle 5 at 40 (the golden Velvet churn, 64 oz), Silk cushion at 45 (Comfy drains 15% slower), Heirloom bell at 55 (+3% pay), Night owl at 62 (tired 2 hours later), Royal halter at 70 (+3% pay), Endless spring at 85 (Watered drains 20% slower), Sweet tooth at 92 (treat boosts last 15% longer) and the Velvet crown at 100.",
+            "New titles: Dairy Darling (35), Grand Champion (50), Eorzean Treasure (65), Living Legend (80) and Velvet Icon (100).",
+            "From level 50 your title shows in gold along the top of the HUD. At 75 the HUD gets a velvet frame and a star shows next to your name in your dairy's member list. The Velvet crown puts a crown on both.",
+            "# Farmer levels 23 to 100",
+            "Bigger farmer tanks 6 and 7 at 30 and 60 (the Big tanker and Grand tanker).",
+            "New recipes: Honey cream cake at 35 and Velvet tart at 70, bigger treats for the dairy shelf.",
+            "At 45 your hand milking share goes from 25% to 30%. At 85 everything bakes 20% faster. At 100: Master Farmer, and a crown.",
+            "# Bulls",
+            "Bull titles at 25, 50, 75 and 100.",
+            "# Cheese",
+            "New treat: Cheese. Farmers make it in the Kitchen from milk alone (16 oz makes 2) from farmer level 1, so it's the first treat you can make. It goes on the dairy shelf (25 coins by default) and gives cows Happy +4% and a 10 minute milk boost: a little less than butter cookies and cream buns.",
+        }),
         new("0.9.35", "Apply to join a dairy", new[]
         {
             "Not in a dairy yet? Dairies that are looking for members show what they're looking for (Cows, Farmers, Bulls) and an Apply button on the Dairies tab. Pick the roles you want, add a short note and send it.",

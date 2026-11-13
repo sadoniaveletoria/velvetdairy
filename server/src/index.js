@@ -41,6 +41,7 @@ const LEADERBOARD_SIZE = 20;
 const GRADE_PRICE = [6, 8, 10, 12, 14];   // coins per oz the dairy pays a cow, by grade (C..S+)
 const PAY_PER_LEVEL = 0.02;         // each dairy level adds 2% to what it pays
 const FARMER_CUT = 0.25;            // a farmer gets this share of what the cow was paid for a hand milking
+const FARMER_CUT_BIG = 0.30, FARMER_CUT_BIG_LEVEL = 45;   // ...and this much from farmer level 45
 const FARMER_DAILY_COINS = 4500;
 const COW_DAILY_HAND_OZ = 800;
 const MAX_TAKE_OZ = 96;
@@ -49,6 +50,9 @@ const IN_PERSON_BONUS = 0.1;
 const SHELF_ITEMS = {
   cookies: { name: "Butter cookies", price: 40, min: 10, max: 150 },
   buns: { name: "Cream buns", price: 70, min: 15, max: 250 },
+  cheese: { name: "Cheese", price: 25, min: 5, max: 100 },   // new items go at the end: fed notices carry the item's place here
+  cake: { name: "Honey cream cakes", price: 110, min: 20, max: 400 },
+  tart: { name: "Velvet tarts", price: 160, min: 30, max: 600 },
 };
 const SHELF_BAKER_SHARE = 0.8;      // the rest goes to the dairy fund
 const SHELF_MAX_STOCK = 200;        // per item per dairy      // delivering a buy order in person at the buyer's public area pays 10% more
@@ -477,7 +481,8 @@ async function heartbeat(env, me, request) {
       anyEmote: st.anyEmote === undefined ? true : !!st.anyEmote,   // older plugins don't say; any looping emote is their default
       ask: !!st.ask,                     // a cow who wants to Allow each hand milking first (a pop-up)
       refused: clean(st.refused, 40),    // a cow: the farmer they just told "Not now"
-      treatAt: Math.max(0, Math.floor(num(st.treatAt))),   // a cow: when she can have her next treat (unix seconds; her own 15 min cooldown)
+      treatAt: Math.max(0, Math.floor(num(st.treatAt))),
+      crown: !!st.crown,                 // cow level 100 with the Velvet crown, or farmer level 100: shown in the member list   // a cow: when she can have her next treat (unix seconds; her own 15 min cooldown)
     });
     if (status !== mem.status) await env.DB.prepare("UPDATE members SET status = ? WHERE install = ?").bind(status, me.id).run();
   }
@@ -1389,7 +1394,7 @@ async function handPay(env, me, request) {
   if (oz <= 0) fail(400, "No milk.");
   const name = clean(b.farmer, 40), world = clean(b.world, 30);
   const farmer = await env.DB.prepare(
-    `SELECT install, name FROM members WHERE dairy_id = ? AND ${ROLE_SQL} AND name = ? AND world_name = ?`).bind(mem.dairy_id, "farmer", name, world).first();
+    `SELECT install, name, status FROM members WHERE dairy_id = ? AND ${ROLE_SQL} AND name = ? AND world_name = ?`).bind(mem.dairy_id, "farmer", name, world).first();
   if (!farmer || farmer.install === me.id) fail(400, "That farmer isn't in your dairy.");
 
   const day = today();
@@ -1399,7 +1404,9 @@ async function handPay(env, me, request) {
   const counted = Math.min(oz, COW_DAILY_HAND_OZ - cowUsed);
   if (counted <= 0) return { ok: true, coins: 0 };
   const p = await progressOf(env, mem.dairy_id);
-  const coins = Math.min(Math.round(counted * GRADE_PRICE[grade] * payBonus(p.level) * FARMER_CUT), FARMER_DAILY_COINS - farmUsed);
+  // Farmer level 45 and up get a bigger share (the farmer's plugin shares its level with the dairy)
+  const cut = (safeParse(farmer.status)?.farmerLevel || 0) >= FARMER_CUT_BIG_LEVEL ? FARMER_CUT_BIG : FARMER_CUT;
+  const coins = Math.min(Math.round(counted * GRADE_PRICE[grade] * payBonus(p.level) * cut), FARMER_DAILY_COINS - farmUsed);
   if (coins <= 0) return { ok: true, coins: 0 };
   await env.DB.batch([
     env.DB.prepare(`INSERT INTO member_pump (install, day, oz) VALUES (?, ?, ?)

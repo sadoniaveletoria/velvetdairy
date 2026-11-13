@@ -1544,8 +1544,12 @@ public sealed partial class MainWindow : Window
     private void DrawLevelsSummary(float width)
     {
         DrawRoleLevel("Cow level", F.Xp, Theme.RoseDeep, Leveling.Rank(G.Level), width);
-        DrawRoleLevel("Farmer level", F.FarmerXp, Theme.SageDeep, $"{G.FarmerTankName} · carries {G.MaxCarry} oz", width);
-        DrawRoleLevel("Bull level", F.BullXp, Theme.HoneyDeep, "More is coming in new updates.", width);
+        var nextPerk = Leveling.FarmerPerks.FirstOrDefault(p => p.Level > G.FarmerLevel);
+        DrawRoleLevel("Farmer level", F.FarmerXp, Theme.SageDeep,
+            (Leveling.FarmerRank(G.FarmerLevel) is { } ft ? ft + " · " : "") + $"{G.FarmerTankName} · carries {G.MaxCarry} oz" +
+            (nextPerk.Name != null ? $" · next at {nextPerk.Level}: {nextPerk.Name}" : ""), width);
+        DrawRoleLevel("Bull level", F.BullXp, Theme.HoneyDeep,
+            Leveling.BullRank(G.BullLevel) is { } bt ? $"{bt} · titles at 25, 50, 75 and 100" : "Titles at 25, 50, 75 and 100. More is coming in new updates.", width);
         Gap(4);
         if (ImGui.SmallButton("Details on the Roles tab##toroles")) tab = TabRoles;
 

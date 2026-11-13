@@ -1,7 +1,24 @@
 // Made by preview/build.py from the plugin's source. Don't edit by hand.
 window.PREVIEW = {
- "version": "0.9.34",
+ "version": "0.9.35",
  "changes": [
+  {
+   "version": "0.9.36",
+   "title": "Cheese",
+   "notes": [
+    "New treat: Cheese. Farmers make it in the Kitchen from milk alone (16 oz makes 2) from farmer level 1, so it's the first treat you can make. It goes on the dairy shelf (25 coins by default) and gives cows Happy +4% and a 10 minute milk boost: a little less than butter cookies and cream buns."
+   ]
+  },
+  {
+   "version": "0.9.35",
+   "title": "Apply to join a dairy",
+   "notes": [
+    "Not in a dairy yet? Dairies that are looking for members show what they're looking for (Cows, Farmers, Bulls) and an Apply button on the Dairies tab. Pick the roles you want, add a short note and send it.",
+    "You can only be in one dairy at a time. You can apply to several, but when one accepts you, your other applications are withdrawn. Already in a dairy? Leave it first (Dairy tab) to apply to another.",
+    "Owners choose what they're looking for in Members > Applications, and answer applications there: untick a role to accept someone without it, or Deny (they can apply again in 3 days). Owners can let their farmers answer applications too (off unless you turn it on).",
+    "Whoever can answer gets a message when a new application comes in."
+   ]
+  },
   {
    "version": "0.9.34",
    "title": "Island Sanctuary dairies with friends",

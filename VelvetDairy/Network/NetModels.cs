@@ -319,6 +319,7 @@ public sealed class MemberStatus
     public int Level { get; set; }          // cow level
     public int FarmerLevel { get; set; }
     public int BullLevel { get; set; }
+    public bool Crown { get; set; }         // a crown next to their name in the member list
     public int Quality { get; set; }        // milk quality score (cows)
     public int TotalOz { get; set; }        // all the milk they've ever given
     public List<string> Emotes { get; set; } = new();   // the emotes this cow's farmers milk her with

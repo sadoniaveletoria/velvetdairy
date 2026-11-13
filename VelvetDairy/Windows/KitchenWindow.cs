@@ -179,7 +179,7 @@ public sealed class KitchenWindow : Window
 
         ImGui.TextColored(Theme.RoseDeep, "MAKES");
         ImGui.TextColored(Theme.Ink, $"{r.Amount * n} {made}{(r.ToShelf ? " for the shelf" : $" ({G.IngredientCount(r.Makes)} in the dairy pantry)")}");
-        ImGui.TextColored(Theme.InkSoft, $"{Clock(TimeSpan.FromSeconds(Catalog.TotalSeconds(r, n)))} · +{r.Xp * n} farmer xp");
+        ImGui.TextColored(Theme.InkSoft, $"{Clock(TimeSpan.FromSeconds(Catalog.TotalSeconds(r, n) * G.BakeFactor))} · +{r.Xp * n} farmer xp");
         if (n > 1) ImGui.TextColored(Theme.InkSoft, "Each one in a batch takes a little longer than the last.");
         ImGui.Spacing();
 

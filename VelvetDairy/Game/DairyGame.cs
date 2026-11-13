@@ -288,7 +288,17 @@ public sealed class DairyGame
     public bool Overfull => Cow.Milk >= Capacity - 0.01f;
     public int MaxStalls => Networked ? Net.Progress?.StallSlots ?? 16 : 1 + Owned("stallkit");
     public float PriceBonus => 1f + (Owned("ribbon") > 0 ? 0.05f : 0) + (Owned("cap") > 0 ? 0.10f : 0) +
-                               (Owned("halter") > 0 ? 0.03f : 0) + (Owned("velvetbell") > 0 ? 0.05f : 0) + (Owned("velvetchamp") > 0 ? 0.10f : 0);
+                               (Owned("halter") > 0 ? 0.03f : 0) + (Owned("velvetbell") > 0 ? 0.05f : 0) + (Owned("velvetchamp") > 0 ? 0.10f : 0) +
+                               (Owned("heirloombell") > 0 ? 0.03f : 0) + (Owned("royalhalter") > 0 ? 0.03f : 0);
+
+    /// <summary>Cow level 100 with the Velvet crown, or farmer level 100: a crown on the HUD and in the member list.</summary>
+    public bool Crowned => Owned("crown") > 0 || FarmerLevel >= 100;
+
+    /// <summary>Treat milk boosts in minutes, with Sweet tooth (+15%).</summary>
+    public int BoostFor(FeedItem item) => Owned("sweettooth") > 0 ? (int)Math.Round(item.BoostMinutes * 1.15f) : item.BoostMinutes;
+
+    /// <summary>Baking speed: farmer level 85 bakes everything 20% faster.</summary>
+    public float BakeFactor => FarmerLevel >= 85 ? 0.8f : 1f;
 
     /// <summary>Hours full bottles keep before spoiling (Cooling mist makes it 96).</summary>
     public double SpoilHours => Owned("mist") > 0 ? 96 : Catalog.SpoilHours;
@@ -544,7 +554,7 @@ public sealed class DairyGame
         : Wakefulness.Awake;
 
     /// <summary>After 12 hours of making milk in one day, milk comes in at half speed until tomorrow.</summary>
-    public int TiredHours => Owned("steady") > 0 ? 14 : TiredAfterHours;
+    public int TiredHours => (Owned("steady") > 0 ? 14 : TiredAfterHours) + (Owned("nightowl") > 0 ? 2 : 0);
     public bool Tired => F.DayAwakeMinutes >= TiredHours * 60;
 
     /// <summary>Something real happened (a click in the plugin, care, a farmer's stroke...).</summary>
@@ -725,9 +735,9 @@ public sealed class DairyGame
         {
             var step = 100f / Catalog.NeedMinutes * m;
             Cow.Hunger = Clamp(Cow.Hunger - step);
-            Cow.Thirst = Clamp(Cow.Thirst - step / (Owned("trough") > 0 ? 1.5f : 1f));
+            Cow.Thirst = Clamp(Cow.Thirst - step / (Owned("trough") > 0 ? 1.5f : 1f) * (Owned("spring") > 0 ? 0.8f : 1f));
             Cow.Mood = Clamp(Cow.Mood - step / ((Owned("lavender") > 0 ? 2f : 1f) * (Owned("bell") > 0 ? 1.2f : 1f)));
-            Cow.Comfort = Clamp(Cow.Comfort - step / (cushion ? 2f : 1f));
+            Cow.Comfort = Clamp(Cow.Comfort - step / (cushion ? 2f : 1f) * (Owned("silkcushion") > 0 ? 0.85f : 1f));
         }
 
         if (!Overfull && Active == null && ProducesMilk)
@@ -801,12 +811,12 @@ public sealed class DairyGame
         {
             // Boosts don't stack past an hour
             var from = Cow.BoostUntilUtc > DateTime.UtcNow ? Cow.BoostUntilUtc : DateTime.UtcNow;
-            var until = from.AddMinutes(item.BoostMinutes);
+            var until = from.AddMinutes(BoostFor(item));
             var cap = DateTime.UtcNow.AddMinutes(60);
             Cow.BoostUntilUtc = until > cap ? cap : until;
         }
 
-        CareDone($"You eat some {item.Name.ToLowerInvariant()}." + (item.BoostMinutes > 0 ? $" Milk boost for {item.BoostMinutes} min." : ""));
+        CareDone($"You eat some {item.Name.ToLowerInvariant()}." + (item.BoostMinutes > 0 ? $" Milk boost for {BoostFor(item)} min." : ""));
         return true;
     }
 
@@ -832,7 +842,7 @@ public sealed class DairyGame
         if (item.BoostMinutes > 0)
         {
             var from = Cow.BoostUntilUtc > DateTime.UtcNow ? Cow.BoostUntilUtc : DateTime.UtcNow;
-            var until = from.AddMinutes(item.BoostMinutes);
+            var until = from.AddMinutes(BoostFor(item));
             var cap = DateTime.UtcNow.AddMinutes(60);
             Cow.BoostUntilUtc = until > cap ? cap : until;
         }
@@ -2607,7 +2617,7 @@ public sealed class DairyGame
     {
         F.Bake = new BakeJob { Recipe = r.Id, Count = count, BorrowedBy = borrowed };
         Touch();
-        Say($"{r.Name}: {count} batch{(count == 1 ? "" : "es")}, about {Wait(TimeSpan.FromSeconds(Catalog.TotalSeconds(r, count)))}. Stay in the dairy while it works.", 0);
+        Say($"{r.Name}: {count} batch{(count == 1 ? "" : "es")}, about {Wait(TimeSpan.FromSeconds(Catalog.TotalSeconds(r, count) * BakeFactor))}. Stay in the dairy while it works.", 0);
         plugin.SaveConfig();
     }
 
@@ -2670,8 +2680,8 @@ public sealed class DairyGame
         get
         {
             if (F.Bake is not { } j || Catalog.RecipeById(j.Recipe) is not { } r) return null;
-            var cur = Catalog.BatchSeconds(r, j.Done);
-            var left = Catalog.TotalSeconds(r, j.Count, j.Done) - j.Elapsed;
+            var cur = Catalog.BatchSeconds(r, j.Done) * BakeFactor;
+            var left = Catalog.TotalSeconds(r, j.Count, j.Done) * BakeFactor - j.Elapsed;
             return (r, Math.Clamp(j.Elapsed / cur, 0f, 1f), TimeSpan.FromSeconds(Math.Max(0, left)));
         }
     }
@@ -2695,7 +2705,7 @@ public sealed class DairyGame
 
         if (!Where.InDairy || Blocked() != null) return;
         j.Elapsed += dt;
-        if (j.Elapsed < Catalog.BatchSeconds(r, j.Done)) return;
+        if (j.Elapsed < Catalog.BatchSeconds(r, j.Done) * BakeFactor) return;
 
         // One finished: the milk comes out of your jugs now (lowest grade that qualifies first), and any ingredient
         var short_ = r.Needs().FirstOrDefault(n => Count(n.Id) < n.Count).Id;
@@ -3277,7 +3287,7 @@ public sealed class DairyGame
         var after = Level;
         for (var l = before + 1; l <= after; l++)
         {
-            var unlocks = Leveling.UnlocksAt(l, Networked).ToList();
+            var unlocks = Leveling.UnlocksAt(l, Networked).Concat(Leveling.CowPerks.Where(p => p.Level == l).Select(p => p.Name)).ToList();
             Say($"Cow level {l}! You're a {Leveling.Rank(l)}." + (unlocks.Count > 0 ? " Unlocked: " + string.Join(", ", unlocks) : ""), 1);
         }
     }
@@ -3292,7 +3302,9 @@ public sealed class DairyGame
         {
             var tank = Catalog.Upgrades.First(u => u.Id == "farmtank");
             var unlock = Array.IndexOf(tank.Unlocks, l);
-            Say($"Farmer level {l}!" + (unlock >= 0 ? $" Unlocked: {Catalog.FarmerTankNames[unlock + 1]} ({Catalog.FarmerTankSizes[unlock + 1]} oz) in the Shop." : ""), 1);
+            var perks = Leveling.FarmerPerks.Where(p => p.Level == l).Select(p => p.Name).ToList();
+            if (unlock >= 0) perks.Insert(0, $"{Catalog.FarmerTankNames[unlock + 1]} ({Catalog.FarmerTankSizes[unlock + 1]} oz) in the Shop");
+            Say($"Farmer level {l}!" + (Leveling.FarmerRank(l) is { } title && l == 100 ? $" You're a {title}." : "") + (perks.Count > 0 ? " Unlocked: " + string.Join(", ", perks) + "." : ""), 1);
         }
     }
 
