@@ -23,7 +23,7 @@ public sealed class ChangelogWindow : Window
     /// <summary>Newest first. Write these for players: what changed for them, not how.</summary>
     private static readonly Entry[] Entries =
     {
-        new("0.9.49", "Bulls: seed, the seed tank and breeding", new[]
+        new("0.9.50", "Bulls: seed, the seed tank and breeding", new[]
         {
             "# A new look",
             "The tabs are now down the left side of the main window, each with an icon. Under them is the list of helper plugins (Penumbra, Corruption, Cummy and Lifestream) with a green dot for each one you have: hover one to see what it's for, or click a missing one to copy its repository link.",
