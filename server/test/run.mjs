@@ -226,8 +226,8 @@ await test("dairy XP: only in the dairy, capped per member per day", async () =>
 
   // Weekly contract: sized by level; shipped from carried jugs (at the Grand Creamery once it's set); pays once
   let c = (await call(alice, "GET", "/v1/dairy/mine")).data.progress.contract;
-  assert.equal(c.ozNeed, 2000, "sized when first seen (level 1)");
-  assert.equal(c.rewardFund, 8000);
+  assert.equal(c.ozNeed, 500, "sized when first seen (level 1)");
+  assert.equal(c.rewardFund, 2000);
   // The rest of this test ships a small contract to the end
   sqlite.exec("UPDATE contracts SET oz_need = 200, reward_xp = 300, reward_fund = 800");
   assert.equal(c.minGrade, 0);

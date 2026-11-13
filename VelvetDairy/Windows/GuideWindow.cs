@@ -118,7 +118,7 @@ public sealed class GuideWindow : Window
         }),
         new("Weekly contract", new[]
         {
-            "Every week (Monday 00:00 UTC) the Grand Creamery gives each dairy a contract: 2,000 oz at dairy level 1, plus 25 oz a level (up to 2,500). Any milk counts. Fill it for the full reward; if it isn't full by Monday, your dairy still gets the share it delivered (half the milk, half the reward).",
+            "Every week (Monday 00:00 UTC) the Grand Creamery gives each dairy a contract: 500 oz at dairy level 1, plus 50 oz a level (up to 1,500). Any milk counts. Fill it for the full reward; if it isn't full by Monday, your dairy still gets the share it delivered (half the milk, half the reward).",
             "Farmers and the owner fill jugs at the dairy, take them to the Grand Creamery (Dairy > Contract shows where, with Show on map) and ship them there.",
             "When it's full the dairy gets dairy XP (which counts on the weekly leaderboard) and coins for the fund, and everyone is told.",
         }),

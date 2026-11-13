@@ -23,7 +23,7 @@ public sealed class ChangelogWindow : Window
     /// <summary>Newest first. Write these for players: what changed for them, not how.</summary>
     private static readonly Entry[] Entries =
     {
-        new("0.9.38", "Levels 31 to 100, cheese and two new bakes", new[]
+        new("0.9.38", "Levels to 100, Grand Creameries, metric and cheese", new[]
         {
             "# Cow levels 31 to 100",
             "New Shop upgrades: Extra bottle 5 at 33 (6 bottles, the most you can have), Bigger bottle 5 at 40 (the golden Velvet churn, 64 oz), Silk cushion at 45 (Comfy drains 15% slower), Heirloom bell at 55 (+3% pay), Night owl at 62 (tired 2 hours later), Royal halter at 70 (+3% pay), Endless spring at 85 (Watered drains 20% slower), Sweet tooth at 92 (treat boosts last 15% longer) and the Velvet crown at 100.",
@@ -34,10 +34,10 @@ public sealed class ChangelogWindow : Window
             "New recipes: Honey cream cake at 35 and Velvet tart at 70, bigger treats for the dairy shelf.",
             "At 45 your hand milking share goes from 25% to 30%. At 85 everything bakes 20% faster. At 100: Master Farmer, and a crown.",
             "# Bulls",
-            "Bull titles at 25, 50, 75 and 100.",
+            "Bull titles: Strong Bull (25), Prize Bull (50), Champion Bull (75) and Legendary Bull (100).",
             "# Grand Creameries and the weekly contract",
             "There can now be a Grand Creamery at each Grand Company. Ship your weekly contract milk at whichever is closest: Dairy > Contract lists them all, each with a map link. While you're at one, the HUD and the location tag say so.",
-            "Weekly contracts are bigger: 2,000 oz at dairy level 1, plus 25 oz a level (up to 2,500), starting with next Monday's. You don't have to fill it: if it isn't full by Monday, your dairy still gets the share it delivered (half the milk, half the reward). Dairy > Contract shows what you've earned so far.",
+            "Weekly contracts are bigger: 500 oz at dairy level 1, plus 50 oz a level (up to 1,500), starting with next Monday's. You don't have to fill it: if it isn't full by Monday, your dairy still gets the share it delivered (half the milk, half the reward). Dairy > Contract shows what you've earned so far.",
             "# Metric",
             "Prefer millilitres? Settings > Show milk in metric shows milk in ml and litres everywhere in the plugin's windows and messages (it still counts in ounces underneath, so nothing changes in the game).",
             "# Cheese",

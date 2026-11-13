@@ -63,7 +63,7 @@ const FEED_COOLDOWN = 900;          // a farmer can feed each cow or bull from t
 // Developer (same phrase hash as the plugin's dev mode)
 const DEV_KEY_HASH = "7d4e0a8c4a26de8d2843e2a563f667d74beda3b81ffa447c22bd40d93b5af76f";
 // Weekly contracts
-const CONTRACT_BASE_OZ = 2000, CONTRACT_OZ_PER_LEVEL = 25, CONTRACT_NEED_MAX = 2500;   // weekly contract size
+const CONTRACT_BASE_OZ = 500, CONTRACT_OZ_PER_LEVEL = 50, CONTRACT_NEED_MAX = 1500;   // weekly contract size
 const CONTRACT_MAX_OZ = 1200;       // most one shipment can carry
 const CONTRACT_XP_PER_OZ = 1.5, CONTRACT_FUND_PER_OZ = 4;             // most milk a farmer or owner can carry out of the tank at once
 const PUMP_PER_BEAT = 120;          // most oz one heartbeat can add to the dairy tank

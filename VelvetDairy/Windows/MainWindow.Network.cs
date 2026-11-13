@@ -413,7 +413,7 @@ public sealed partial class MainWindow
         }
 
         Gap(6);
-        Ui.Wrapped($"Contracts are {Units.Oz(2000, "N0")} at dairy level 1 and grow {Units.Oz(25)} a level. Any milk counts.", Theme.InkSoft, width);
+        Ui.Wrapped($"Contracts are {Units.Oz(500, "N0")} at dairy level 1 and grow {Units.Oz(50)} a level, up to {Units.Oz(1500, "N0")}. Any milk counts.", Theme.InkSoft, width);
     }
 
     private readonly Dictionary<CreameryInfo, Dalamud.Game.Text.SeStringHandling.Payloads.MapLinkPayload?> creameryLinks = new();
