@@ -474,7 +474,7 @@ public sealed partial class MainWindow
             Ui.Bar(ImGui.GetWindowDrawList(), cur + new Vector2(0, 4), cur + new Vector2(barW, 12), G.PregnancyProgress, Theme.RoseDeep);
             ImGui.Dummy(new Vector2(barW, 18));
             var due = p.DueUtc - DateTime.UtcNow;
-            if (p.FatherName.Length > 0) ImGui.TextColored(Theme.Ink, $"Father: {p.FatherName}" + (p.FatherWorld.Length > 0 ? $" ({p.FatherWorld})" : ""));
+            if (p.FatherName.Length > 0) ImGui.TextColored(Theme.Ink, $"Sire: {p.FatherName}" + (p.FatherWorld.Length > 0 ? $" ({p.FatherWorld})" : ""));
             ImGui.TextColored(Theme.InkSoft, $"Day {p.DaysPregnant:0} of {(p.DueUtc - p.ConceivedUtc).TotalDays:0}" + (due > TimeSpan.Zero ? $" · due in {(int)due.TotalDays}d {due.Hours}h" : " · due now"));
             if (p.Craving.Length > 0) ImGui.TextColored(p.CravingMet ? Theme.SageDeep : Theme.HoneyDeep, $"Craving today: {p.Craving}" + (p.CravingMet ? " (met)" : ""));
             ImGui.TextColored(Theme.InkSoft, "Milk +5% in the first trimester, +10% in the second, +15% in the third. It ends with the birth.");
@@ -490,7 +490,7 @@ public sealed partial class MainWindow
             Gap(4);
             ImGui.TextColored(Theme.Ink, $"Births: {births.Count}");
             foreach (var b in births.AsEnumerable().Reverse().Take(5))
-                ImGui.TextColored(Theme.InkSoft, $"  {b.BornUtc.ToLocalTime():MMM d}: father {(b.FatherName.Length > 0 ? b.FatherName : "unknown")}");
+                ImGui.TextColored(Theme.InkSoft, $"  {b.BornUtc.ToLocalTime():MMM d}: sire {(b.FatherName.Length > 0 ? b.FatherName : "unknown")}");
             if (births.Count > 5) ImGui.TextColored(Theme.InkSoft, $"  and {births.Count - 5} more");
         }
 
@@ -507,6 +507,6 @@ public sealed partial class MainWindow
         Gap(4);
         foreach (var (name, stage) in mine)
             ImGui.TextColored(Theme.RoseDeep, $"Pregnant by you: {name} · {DairyGame.StageName(stage)}");
-        if (fathered > 0) ImGui.TextColored(Theme.InkSoft, $"Children you've fathered: {fathered}");
+        if (fathered > 0) ImGui.TextColored(Theme.InkSoft, $"Children you've sired: {fathered}");
     }
 }

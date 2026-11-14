@@ -912,7 +912,7 @@ public sealed partial class MainWindow : Window
         if (G.BredLeft > TimeSpan.Zero)
             notes.Add(($"Bred by {F.BredBy}: +{G.BredBonusNow * 100:0.#}% milk for {Mins(G.BredLeft)} more.", Theme.RoseDeep));
         if (G.Pregnant && G.IsCow)
-            notes.Add(($"Pregnant ({DairyGame.StageName(G.Preg.Stage)}): +{G.PregnancyBonus * 100:0}% milk until the birth." + (G.Preg.FatherName.Length > 0 ? $" Father: {G.Preg.FatherName}." : ""), Theme.RoseDeep));
+            notes.Add(($"Pregnant ({DairyGame.StageName(G.Preg.Stage)}): +{G.PregnancyBonus * 100:0}% milk until the birth." + (G.Preg.FatherName.Length > 0 ? $" Sire: {G.Preg.FatherName}." : ""), Theme.RoseDeep));
         if (G.InScene)
             notes.Add(($"Corruption: {G.SceneLine}." + (G.BreedingAsBull ? " They're a cow of your dairy: when you finish, you breed them" + (G.ForcedCreampie ? " (always inside, so Corruption rolls for conception)." : ".")
                 : G.BredAsCow ? " They're a bull of your dairy: when they finish, you're bred" + (G.ConceiveChance > 0 ? $", with a {G.ConceiveChance * 100:0}% chance of conceiving (from Corruption)." : ".") : ""), Theme.RoseDeep));
