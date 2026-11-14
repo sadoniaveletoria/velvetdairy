@@ -376,6 +376,7 @@ public sealed class NetClient : IDisposable
             pumped = g.Wake == DairyGame.Wakefulness.Awake ? g.TakePumped() : null,
             seedPumped = g.Wake == DairyGame.Wakefulness.Awake ? g.TakeSeedPumped() : 0,
             atCreamery = g.AtCreamery,
+            creamerySlot = g.CreameryHere?.Slot ?? 0,
             awake = g.Wake == DairyGame.Wakefulness.Awake,
             status = new MemberStatus
             {

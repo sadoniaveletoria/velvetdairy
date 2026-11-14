@@ -23,6 +23,12 @@ public sealed class ChangelogWindow : Window
     /// <summary>Newest first. Write these for players: what changed for them, not how.</summary>
     private static readonly Entry[] Entries =
     {
+        new("0.9.54", "Busier Grand Creameries", new[]
+        {
+            "At a Grand Creamery you now see everyone else standing there on any world and data center (\"Also here now: Rayla (Lich), Bram (Gilgamesh)\"), on Dairy > Contract, and the HUD says how many others are there.",
+            "Each Grand Creamery counts what's been shipped there today: \"Delivered here today: 1,240 oz by 9 dairies\".",
+            "Bulls who aren't cows get the hand milking settings (milking emotes, ask first) on the Bull tab.",
+        }),
         new("0.9.53", "Data center fix", new[]
         {
             "The Dairies list shows each dairy's real data center again (Lich on Light, Lamia on Primal). The game's own world list gave the one next to it.",

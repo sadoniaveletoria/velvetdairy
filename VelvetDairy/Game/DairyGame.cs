@@ -381,6 +381,9 @@ public sealed partial class DairyGame
         }
     }
 
+    /// <summary>At a Grand Creamery: who else is there on any world, and today's deliveries there (from the last heartbeat).</summary>
+    public CreameryNow? CreameryNow => AtCreamery && Net.Last?.CreameryHere is { } c && c.Slot == CreameryHere!.Slot ? c : null;
+
     /// <summary>Standing at a Grand Creamery right now.</summary>
     public bool AtCreamery => CreameryHere != null;
 
@@ -395,6 +398,7 @@ public sealed partial class DairyGame
             if (CanCarry) Say($"You're at {CreameryHere!.Name}. Ship your jugs on Dairy > Contract.", 0);
         }
 
+        if (at) Net.BeatWithin(30);   // keep who's here and today's total fresh while you're there
         wasAtCreamery = at;
     }
 

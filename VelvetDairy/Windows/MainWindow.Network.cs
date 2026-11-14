@@ -452,6 +452,17 @@ public sealed partial class MainWindow
             var here = G.CreameryHere;
             Ui.Wrapped(here != null ? $"You're at {here.Name}." : crs.Count == 1 ? "Bring your jugs here to ship them." : "Bring your jugs to any of these to ship them.",
                 here != null ? Theme.SageDeep : Theme.RoseDeep, width);
+            if (here != null && G.CreameryNow is { } now)
+            {
+                // Everyone at this creamery on any world (you may not see them: other worlds, other instances)
+                Ui.Wrapped(now.TodayOz > 0 ? $"Delivered here today: {Units.Oz(now.TodayOz, "N0")} by {now.TodayDairies} dair{(now.TodayDairies == 1 ? "y" : "ies")}." : "Nothing delivered here yet today.", Theme.BlueDeep, width);
+                if (now.Here.Count > 0)
+                {
+                    var names = now.Here.Take(6).Select(p => p.World.Length > 0 ? $"{p.Name} ({p.World})" : p.Name);
+                    Ui.Wrapped("Also here now, on any world: " + string.Join(", ", names) + (now.Here.Count > 6 ? $" and {now.Here.Count - 6} more" : "") + ".", Theme.InkSoft, width);
+                }
+                else ImGui.TextColored(Theme.InkSoft, "No one else is here right now.");
+            }
             foreach (var cr in crs)
             {
                 // The name with its Map button, and where it is underneath (so narrow panels don't cut it off)

@@ -15,11 +15,27 @@ public sealed class HeartbeatReply
     public int Inbox { get; set; }
     public int DairyXp { get; set; }
     public CreameryInfo? Creamery { get; set; }
+    public CreameryNow? CreameryHere { get; set; }   // standing at a Grand Creamery: who else is there (any world) and today's deliveries
     public List<CreameryInfo>? Creameries { get; set; }   // up to 3 (one per Grand Company); Creamery is the first
     public float Carried { get; set; }
 }
 
 /// <summary>Where the Grand Creamery is (set by the developer): weekly contracts are delivered there.</summary>
+/// <summary>At a Grand Creamery right now: everyone else there on any world, and what's been shipped there today.</summary>
+public sealed class CreameryNow
+{
+    public int Slot { get; set; }
+    public List<CreameryPerson> Here { get; set; } = new();
+    public int TodayOz { get; set; }
+    public int TodayDairies { get; set; }
+}
+
+public sealed class CreameryPerson
+{
+    public string Name { get; set; } = "";
+    public string World { get; set; } = "";
+}
+
 public sealed class CreameryInfo
 {
     public string Name { get; set; } = "";

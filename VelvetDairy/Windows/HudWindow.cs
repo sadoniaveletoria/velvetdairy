@@ -236,7 +236,8 @@ public sealed class HudWindow : Window
         // At a Grand Creamery: say so the whole time you're there
         if (s == null && !G.Paused && G.CreameryHere is { } here)
         {
-            status = $"At {here.Name}";
+            var others = G.CreameryNow?.Here.Count ?? 0;
+            status = $"At {here.Name}" + (others > 0 ? $" · {others} other{(others == 1 ? "" : "s")} here" : "");
             col = Theme.BlueDeep;
         }
 

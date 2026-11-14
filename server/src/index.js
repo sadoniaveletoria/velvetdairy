@@ -73,6 +73,7 @@ const SEED_PER_BEAT = 24;
 const MEMBER_DAILY_SEED = 300;
 const SEED_PRICE_MULT = 10;
 const SEED_DAILY_HAND_OZ = 160;
+const CREAMERY_HERE_WINDOW = 120;  // seconds: someone counts as "at the creamery" this long after their last check-in there
 const SEED_TANK_GRADE = -1;         // the dairy's seed tank is its own dairy_tank row
 
 // Each public world's data center, so a listing shows the right one even if an older plugin saved the wrong one
@@ -583,9 +584,19 @@ async function heartbeat(env, me, request) {
       ]);
   }
 
-  if (b.atCreamery === true)
-    await env.DB.prepare(`INSERT INTO creamery_presence (install, at) VALUES (?, ?)
-      ON CONFLICT(install) DO UPDATE SET at = excluded.at`).bind(me.id, t).run();
+  // At a Grand Creamery: note which one, so everyone there (on any world) sees each other and the day's deliveries
+  let creameryHere = null;
+  if (b.atCreamery === true) {
+    const slot = Math.max(0, Math.min(2, Math.floor(Number(b.creamerySlot) || 0)));
+    await env.DB.batch([
+      env.DB.prepare(`INSERT INTO creamery_presence (install, at) VALUES (?, ?)
+        ON CONFLICT(install) DO UPDATE SET at = excluded.at`).bind(me.id, t),
+      env.DB.prepare(`INSERT INTO creamery_here (install, slot, name, world, at) VALUES (?, ?, ?, ?, ?)
+        ON CONFLICT(install) DO UPDATE SET slot = excluded.slot, name = excluded.name, world = excluded.world, at = excluded.at`)
+        .bind(me.id, slot, clean(b.name, 40) || mem?.name || "", clean(b.worldName, 30), t),
+    ]);
+    creameryHere = await creameryNow(env, slot, me.id, t);
+  }
 
   const waiting = await env.DB.prepare("SELECT COUNT(*) AS n FROM inbox WHERE install = ? AND claimed IS NULL").bind(me.id).first();
   const invites = charHash ? (await env.DB.prepare(`
@@ -599,6 +610,7 @@ async function heartbeat(env, me, request) {
     dairyXp,
     pumped,
     seedPumped,
+    creameryHere,
     creamery: await creameryOf(env),          // the first one, for plugins before there were several
     creameries: await creameriesOf(env),
     carried: await carriedOf(env, me.id),
@@ -1568,6 +1580,12 @@ async function shipToContract(env, me, request) {
     ON CONFLICT(dairy_id, week, install) DO UPDATE SET oz = oz + excluded.oz, name = excluded.name`)
     .bind(mem.dairy_id, c.week, me.id, mem.name || "", want).run();
 
+  // Count it toward this Grand Creamery's "delivered here today"
+  const at = await env.DB.prepare("SELECT slot FROM creamery_here WHERE install = ? AND at >= ?").bind(me.id, now() - CREAMERY_HERE_WINDOW).first();
+  if (at)
+    await env.DB.prepare(`INSERT INTO creamery_ship (day, slot, dairy_id, oz) VALUES (?, ?, ?, ?)
+      ON CONFLICT(day, slot, dairy_id) DO UPDATE SET oz = oz + excluded.oz`).bind(today(), at.slot, mem.dairy_id, want).run();
+
   let finished = false;
   if (done.oz_done >= done.oz_need) {
     // Only one shipment can mark it finished, so the reward is paid once
@@ -1590,6 +1608,20 @@ async function shipToContract(env, me, request) {
 }
 
 // ---------------------------------------------------------------- carried milk and the Grand Creamery
+
+/** Who else is at this Grand Creamery right now (any world), and what's been shipped to contracts here today. */
+async function creameryNow(env, slot, myId, t) {
+  const here = (await env.DB.prepare(`SELECT name, world FROM creamery_here WHERE slot = ? AND at >= ? AND install != ? ORDER BY at DESC LIMIT 30`)
+    .bind(slot, t - CREAMERY_HERE_WINDOW, myId).all()).results;
+  const shipped = await env.DB.prepare("SELECT COALESCE(SUM(oz), 0) AS oz, COUNT(*) AS dairies FROM creamery_ship WHERE day = ? AND slot = ?")
+    .bind(today(), slot).first();
+  return {
+    slot,
+    here: here.filter(x => x.name).map(x => ({ name: x.name, world: x.world })),
+    todayOz: Math.round(shipped?.oz || 0),
+    todayDairies: shipped?.dairies || 0,
+  };
+}
 
 async function carriedOf(env, install) {
   const r = await env.DB.prepare("SELECT oz FROM carried WHERE install = ?").bind(install).first();
