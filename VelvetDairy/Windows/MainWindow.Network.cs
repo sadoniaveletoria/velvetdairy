@@ -850,23 +850,10 @@ public sealed partial class MainWindow
             G.PostBuyOrder(orderOz, 0, orderCoins);
     }
 
-    private static readonly Dictionary<string, string> dcByWorld = new(StringComparer.OrdinalIgnoreCase);
-
     /// <summary>
-    /// A listing's data center, from the game's own world list (by its world), so it's right even when a listing was
-    /// saved with the wrong one by an older version. Falls back to what the listing says.
+    /// A listing's data center. The server works it out from the world (a fixed table of every world), so it's right
+    /// even for listings saved wrong by older versions. (The game's own world sheet, read through Lumina, gave the
+    /// data center next to the right one: Lich came out Chaos, Lamia Aether.)
     /// </summary>
-    private static string DcOf(DairyListing d)
-    {
-        if (d.WorldName.Length == 0) return d.DcName;
-        if (dcByWorld.Count == 0)
-            foreach (var w in Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.World>())
-            {
-                var name = w.Name.ExtractText();
-                var dc = w.DataCenter.ValueNullable?.Name.ExtractText() ?? "";
-                if (name.Length > 0 && dc.Length > 0 && w.IsPublic) dcByWorld[name] = dc;
-            }
-
-        return dcByWorld.TryGetValue(d.WorldName, out var found) ? found : d.DcName;
-    }
+    private static string DcOf(DairyListing d) => d.DcName;
 }
