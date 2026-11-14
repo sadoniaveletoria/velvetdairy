@@ -398,7 +398,6 @@ public sealed partial class DairyGame
             if (CanCarry) Say($"You're at {CreameryHere!.Name}. Ship your jugs on Dairy > Contract.", 0);
         }
 
-        if (at) Net.BeatWithin(30);   // keep who's here and today's total fresh while you're there
         wasAtCreamery = at;
     }
 

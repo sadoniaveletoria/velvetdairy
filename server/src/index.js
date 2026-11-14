@@ -467,6 +467,24 @@ const notice = (env, install, note) => addInbox(env, install, "notice", 0, 0, 0,
 
 // ---------------------------------------------------------------- presence
 
+// Fields that change a little with almost every heartbeat (milk filling, xp, drains). A change in only these is
+// written at most every STATUS_REFRESH seconds; anything else (milking, a stall, asking, spoiled...) is written at once.
+// This keeps database writes down without making anything that matters slower.
+const STATUS_VOLATILE = ["milk", "seedOz", "quality", "totalOz", "drainLeft", "drainAt", "w"];
+const STATUS_REFRESH = 90;
+
+function statusNeedsWrite(oldJson, newJson, t) {
+  if (!oldJson) return true;
+  const old = safeParse(oldJson) || {}, now_ = safeParse(newJson) || {};
+  const strip = o => JSON.stringify(Object.fromEntries(Object.entries(o).filter(([k]) => !STATUS_VOLATILE.includes(k))));
+  if (strip(old) !== strip(now_)) return true;                 // something that matters changed
+  const same = JSON.stringify({ ...old, w: 0 }) === JSON.stringify({ ...now_, w: 0 });
+  return !same && t - (Number(old.w) || 0) >= STATUS_REFRESH;  // only numbers moved: refresh now and then
+}
+
+/** The status as stored: with when it was written (for the refresh above). */
+const withWritten = (json, t) => JSON.stringify({ ...(safeParse(json) || {}), w: t });
+
 async function heartbeat(env, me, request) {
   const b = await body(request);
   const t = now();
@@ -518,7 +536,8 @@ async function heartbeat(env, me, request) {
       seedOz: Math.max(0, Math.min(100, Math.round(num(st.seedOz) * 100) / 100)), seedCap: Math.max(0, Math.min(100, num(st.seedCap))),
       seedGrade: Math.max(0, Math.min(GRADES - 1, Math.floor(num(st.seedGrade)))), seedSpoiled: !!st.seedSpoiled,
     });
-    if (status !== mem.status) await env.DB.prepare("UPDATE members SET status = ? WHERE install = ?").bind(status, me.id).run();
+    if (statusNeedsWrite(mem.status, status, t))
+      await env.DB.prepare("UPDATE members SET status = ? WHERE install = ?").bind(withWritten(status, t), me.id).run();
   }
 
   // Dairy XP from what the member did since the last heartbeat. It only counts while the server sees them
