@@ -162,10 +162,14 @@ public sealed partial class DairyGame
     }
 
     /// <summary>You're a bull in a scene with a cow of your dairy: you're the one breeding.</summary>
-    public bool BreedingAsBull => IsBull && PartnerIs("cow");
+    public bool BreedingAsBull => IsBull && myBody.CanBreed && partnerBody.CanCarry && PartnerIs("cow");
 
     /// <summary>You're a cow in a scene with a bull of your dairy: you're the one being bred.</summary>
-    public bool BredAsCow => IsCow && PartnerIs("bull");
+    public bool BredAsCow => IsCow && myBody.CanCarry && partnerBody.CanBreed && PartnerIs("bull");
+
+    // What each body can do in this scene (from Corruption: who can breed, who can carry). Two players who are both
+    // cows and bulls can go either way; their bodies decide which way(s) a finish breeds.
+    private (bool CanCarry, bool CanBreed) myBody = (true, true), partnerBody = (true, true);
 
     private bool PartnerIsDairyCow => PartnerIs("cow");
 
@@ -214,6 +218,12 @@ public sealed partial class DairyGame
 
         SceneNow = plugin.Corruption.GetScene();
         ArousalNow = InScene ? plugin.Corruption.GetArousal() : CorruptionLink.NoArousal;
+        if (InScene && !SceneNow.Solo)
+        {
+            myBody = plugin.Corruption.GetBody();
+            partnerBody = plugin.Corruption.GetBodyOf(SceneNow.PartnerName, SceneNow.PartnerWorld);
+        }
+        else myBody = partnerBody = (true, true);
         ConceiveChance = BredAsCow && !Pregnant ? Math.Clamp(plugin.Corruption.BreedChance(SceneNow.PartnerName, SceneNow.PartnerWorld), 0, 1) : 0;
 
         // A new scene (or a new partner) allows one more breeding; the same scene going on doesn't
@@ -287,6 +297,11 @@ public sealed partial class DairyGame
         ReadScene(true);   // up to date, so a scene that only just started is the one this breeding belongs to
         var bull = DairyMember(name, world);
         if (bull == null || !(bull.Roles.Contains("bull") || bull.Role == "bull")) return;
+        if (!myBody.CanCarry || !partnerBody.CanBreed)
+        {
+            Diag.Info("breed", $"{name} finished, but your bodies don't breed that way (you can carry: {myBody.CanCarry}, they can breed: {partnerBody.CanBreed})");
+            return;
+        }
         if (bredThisScene)
         {
             Diag.Info("breed", $"{name} finished again in the same scene; only the first counts");
@@ -326,6 +341,11 @@ public sealed partial class DairyGame
         if (!scene.Ready || scene.Solo || scene.PartnerName.Length == 0) return;
         var cow = DairyMember(scene.PartnerName, scene.PartnerWorld);
         if (cow == null || !(cow.Roles.Contains("cow") || cow.Role == "cow")) return;
+        if (!myBody.CanBreed || !partnerBody.CanCarry)
+        {
+            Diag.Info("breed", $"You finished, but your bodies don't breed that way (you can breed: {myBody.CanBreed}, they can carry: {partnerBody.CanCarry})");
+            return;
+        }
         if (bredThisScene)
         {
             Diag.Info("breed", $"Finished again with {cow.Name} in the same scene; only the first counts");
