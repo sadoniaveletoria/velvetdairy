@@ -31,7 +31,17 @@ public sealed partial class MainWindow
                 Panel("##farmertank", new Vector2(mid + 7, top.Y), max, "Farmer tank", DrawFarmerTankSummary, true);
                 break;
             default:
-                Panel("##bulllevel", top, new Vector2(mid - 7, max.Y), "Bull level", DrawBullRole);
+                Panel("##bulllevel", top, new Vector2(mid - 7, max.Y), "Bull level", w =>
+                {
+                    DrawBullRole(w);
+                    // Hand milking settings: the same ones for cows and bulls (set on the Cow tab if you're both)
+                    if (G.IsBull && !G.IsCow) DrawCowEmotes(w);
+                    else if (G.IsBull)
+                    {
+                        SubHeading("Being hand milked", w);
+                        Ui.Wrapped("Your milking emotes and \"start without asking\" are on the Cow tab. They're the same whether a farmer milks your milk or your seed.", Theme.InkSoft, w);
+                    }
+                });
                 Panel("##seedquality", new Vector2(mid + 7, top.Y), max, "Your seed", DrawSeedQuality, true);
                 break;
         }
