@@ -23,6 +23,11 @@ public sealed class ChangelogWindow : Window
     /// <summary>Newest first. Write these for players: what changed for them, not how.</summary>
     private static readonly Entry[] Entries =
     {
+        new("0.9.55", "Ready to be bred", new[]
+        {
+            "20 minutes after a cow is bred, when she can be bred again, everyone in her dairy with the HUD on gets a small pop-up with a soft bell: \"Rayla can be bred again.\" The cow gets one too.",
+            "The plugin and server write less to the database: milk levels on member lists refresh about every 90 seconds, while everything you act on (milking, Allow, stalls) stays instant.",
+        }),
         new("0.9.54", "Busier Grand Creameries", new[]
         {
             "At a Grand Creamery you now see everyone else standing there on any world and data center (\"Also here now: Rayla (Lich), Bram (Gilgamesh)\"), on Dairy > Contract, and the HUD says how many others are there.",
