@@ -151,10 +151,19 @@ public class FarmSave
     public int DayCleans { get; set; }
     public int DayDelivered { get; set; }             // customer orders, visitor orders, buy-order deliveries, contract shipments
     public int DayCowsMilked { get; set; }
+    // Breeding (with the Corruption plugin)
+    public DateTime BredAtUtc { get; set; }            // a cow: when a bull of her dairy last bred her
+    public DateTime BredUntilUtc { get; set; }         // ...and when its milk bonus ends
+    public float BredStrength { get; set; } = 1f;      // ...scaled by that bull's seed output (0.2 to 1)
+    public string BredBy { get; set; } = "";
+    public int DayBreeds { get; set; }                 // a bull: cows bred today (seed output drops after a few)
+    public string PregStage { get; set; } = "none";    // last pregnancy stage read from Corruption (to announce changes)
 
     // ----- Progress -----
     public int Xp { get; set; }
     public float Quality { get; set; }                // milk quality score: unlocks better grades
+    public float SeedQuality { get; set; }            // a bull's seed quality score: unlocks better seed grades (same steps as milk)
+    public float DaySeedOz { get; set; }              // a bull: seed milked today (paid up to a tenth of the milk amount)
     public HashSet<string> Awards { get; set; } = new();
     public FarmStats Stats { get; set; } = new();
     public List<string>? Log { get; set; }
@@ -180,6 +189,7 @@ public class FarmSave
     public bool StockPaidOut { get; set; }
     public bool TutorialDone { get; set; }
     public string SeenChanges { get; set; } = "";   // the version whose What's new you last saw
+    public List<string> HelperNoticeSeen { get; set; } = new();   // helper plugins we've already told this character are missing
     public int FarmerXp { get; set; }                  // each role levels on its own (Xp is the cow's)
     public int BullXp { get; set; }             // the first-run walkthrough was shown            // old sellable milk was paid out when milk started paying at milking time        // minutes of milk-making today (tired after 12 h)        // bonus orders at other dairies, per day
     public List<string>? VisitOrdersDone { get; set; }
@@ -297,6 +307,13 @@ public class CowState
     public bool Spoiled { get; set; }             // bottles have gone bad: dump them before anything else
     public float Taint { get; set; }              // off taste left from dumping (0-100); one grade lower while it lasts
     public DateTime QualityTreatReadyUtc { get; set; } = DateTime.MinValue;   // next quality treat allowed
+
+    // A bull's seed: works like milk (vials instead of bottles, a tenth the size), with the same needs feeding it
+    public float Seed { get; set; }                      // oz waiting to be milked (across all your vials)
+    public DateTime? SeedFullSinceUtc { get; set; }      // when every vial became full (spoils like milk)
+    public bool SeedSpoiled { get; set; }
+    public DateTime? SeedLastMilkedUtc { get; set; }     // freshness: the seed grade slips after days without milking
+    public float SeedTaint { get; set; }                 // off taste from dumping seed: one seed grade lower while it lasts
     public DateTime LastTickUtc { get; set; } = DateTime.UtcNow;
 }
 
@@ -315,6 +332,7 @@ public class Order
 public class FarmStats
 {
     public float TotalOz { get; set; }
+    public float TotalSeedOz { get; set; }
     public int StallSessions { get; set; }
     public int HandSessions { get; set; }
     public int OrdersFilled { get; set; }

@@ -68,6 +68,31 @@ const CONTRACT_MAX_OZ = 1200;       // most one shipment can carry
 const CONTRACT_XP_PER_OZ = 1.5, CONTRACT_FUND_PER_OZ = 4;             // most milk a farmer or owner can carry out of the tank at once
 const PUMP_PER_BEAT = 120;          // most oz one heartbeat can add to the dairy tank
 const MEMBER_DAILY_PUMP = 1500;     // most oz one member can add to a dairy tank per day
+// A bull's seed works like milk, but there's far less of it (a tenth of milk's speed, up to a fifth at S+), and each oz pays 10x
+const SEED_PER_BEAT = 24;
+const MEMBER_DAILY_SEED = 300;
+const SEED_PRICE_MULT = 10;
+const SEED_DAILY_HAND_OZ = 160;
+const SEED_TANK_GRADE = -1;         // the dairy's seed tank is its own dairy_tank row
+
+// Each public world's data center, so a listing shows the right one even if an older plugin saved the wrong one
+const DC_WORLDS = {
+  Aether: "Adamantoise Cactuar Faerie Gilgamesh Jenova Midgardsormr Sargatanas Siren",
+  Crystal: "Balmung Brynhildr Coeurl Diabolos Goblin Malboro Mateus Zalera",
+  Primal: "Behemoth Excalibur Exodus Famfrit Hyperion Lamia Leviathan Ultros",
+  Dynamis: "Cuchulainn Golem Halicarnassus Kraken Maduin Marilith Rafflesia Seraph",
+  Chaos: "Cerberus Louisoix Moogle Omega Phantom Ragnarok Sagittarius Spriggan",
+  Light: "Alpha Lich Odin Phoenix Raiden Shiva Twintania Zodiark",
+  Shadow: "Innocence Pixie Titania Tycoon",
+  Materia: "Bismarck Ravana Sephirot Sophia Zurvan",
+  Elemental: "Aegis Atomos Carbuncle Garuda Gungnir Kujata Tonberry Typhon",
+  Gaia: "Alexander Bahamut Durandal Fenrir Ifrit Ridill Tiamat Ultima",
+  Mana: "Anima Asura Chocobo Hades Ixion Masamune Pandaemonium Titan",
+  Meteor: "Belias Mandragora Ramuh Shinryu Unicorn Valefor Yojimbo Zeromus",
+};
+const DC_OF = Object.fromEntries(Object.entries(DC_WORLDS).flatMap(([dc, ws]) => ws.split(" ").map(w => [w.toLowerCase(), dc])));
+const dcFor = (worldName, saved) => DC_OF[String(worldName || "").toLowerCase()] || saved || "";
+
 const INVITE_ROLES = ["farmer", "cow", "bull"];
 const ROLE_ORDER = ["cow", "farmer", "bull"];
 
@@ -483,8 +508,14 @@ async function heartbeat(env, me, request) {
       anyEmote: st.anyEmote === undefined ? true : !!st.anyEmote,   // older plugins don't say; any looping emote is their default
       ask: !!st.ask,                     // a cow who wants to Allow each hand milking first (a pop-up)
       refused: clean(st.refused, 40),    // a cow: the farmer they just told "Not now"
-      treatAt: Math.max(0, Math.floor(num(st.treatAt))),
-      crown: !!st.crown,                 // cow level 100 with the Velvet crown, or farmer level 100: shown in the member list   // a cow: when she can have her next treat (unix seconds; her own 15 min cooldown)
+      treatAt: Math.max(0, Math.floor(num(st.treatAt))),   // a cow: when she can have her next treat (unix seconds; her own 15 min cooldown)
+      crown: !!st.crown,                 // cow level 100 with the Velvet crown, or farmer level 100: shown in the member list
+      seed: Math.max(0, Math.min(100, Math.round(num(st.seed)))),   // a bull's seed output for his next breeding
+      preg: ["first", "second", "third"].includes(st.preg) ? st.preg : "",   // a cow's pregnancy stage (from Corruption)
+      pregFather: ["first", "second", "third"].includes(st.preg) ? String(st.pregFather || "").replace(/[^\p{L}\p{N} '\-]/gu, "").slice(0, 32) : "",   // the father's name
+      // A bull's seed vials, like a cow's milk and cap
+      seedOz: Math.max(0, Math.min(100, Math.round(num(st.seedOz) * 100) / 100)), seedCap: Math.max(0, Math.min(100, num(st.seedCap))),
+      seedGrade: Math.max(0, Math.min(GRADES - 1, Math.floor(num(st.seedGrade)))), seedSpoiled: !!st.seedSpoiled,
     });
     if (status !== mem.status) await env.DB.prepare("UPDATE members SET status = ? WHERE install = ?").bind(status, me.id).run();
   }
@@ -534,6 +565,24 @@ async function heartbeat(env, me, request) {
     }
   }
 
+  // A bull's seed goes into the dairy's seed tank the same way
+  let seedPumped = 0;
+  const seedAsk = Math.max(0, Math.min(SEED_PER_BEAT, Number(b.seedPumped) || 0));
+  if (seedAsk > 0 && b.awake === true && atHome && hasRole(mem, "bull")) {
+    const day = today(), key = `seed:${me.id}`;
+    const used = (await env.DB.prepare("SELECT oz FROM member_pump WHERE install = ? AND day = ?").bind(key, day).first())?.oz || 0;
+    seedPumped = Math.round(Math.min(seedAsk, Math.max(0, MEMBER_DAILY_SEED - used)) * 1000) / 1000;
+    if (seedPumped > 0)
+      await env.DB.batch([
+        env.DB.prepare(`INSERT INTO dairy_tank (dairy_id, grade, oz) VALUES (?, ?, ?)
+          ON CONFLICT(dairy_id, grade) DO UPDATE SET oz = oz + excluded.oz`).bind(mem.dairy_id, SEED_TANK_GRADE, seedPumped),
+        env.DB.prepare(`INSERT INTO member_pump (install, day, oz) VALUES (?, ?, ?)
+          ON CONFLICT(install, day) DO UPDATE SET oz = oz + excluded.oz`).bind(key, day, seedPumped),
+        env.DB.prepare(`INSERT INTO tank_contrib (dairy_id, install, name, oz) VALUES (?, ?, ?, ?)
+          ON CONFLICT(dairy_id, install) DO UPDATE SET oz = oz + excluded.oz, name = excluded.name`).bind(mem.dairy_id, key, mem.name || "", seedPumped),
+      ]);
+  }
+
   if (b.atCreamery === true)
     await env.DB.prepare(`INSERT INTO creamery_presence (install, at) VALUES (?, ?)
       ON CONFLICT(install) DO UPDATE SET at = excluded.at`).bind(me.id, t).run();
@@ -549,6 +598,7 @@ async function heartbeat(env, me, request) {
     membership: mem ? { dairyId: mem.dairy_id, dairy: mem.dairy_name, role: primaryRole(mem.role), roles: roleList(mem.role), isOwner: !!mem.is_owner, level: (await progressOf(env, mem.dairy_id)).level } : null,
     dairyXp,
     pumped,
+    seedPumped,
     creamery: await creameryOf(env),          // the first one, for plugins before there were several
     creameries: await creameriesOf(env),
     carried: await carriedOf(env, me.id),
@@ -706,7 +756,7 @@ function listing(row, me) {
     mine,
     owner: row.show_owner ? row.owner_name : "",
     worldName: row.world_name,
-    dcName: row.dc_name,
+    dcName: dcFor(row.world_name, row.dc_name),
     // The address only goes to other players when the owner made the dairy public
     houseId: open && /^[0-9]+$/.test(row.house_id) ? row.house_id : null,
     area: open && row.a_territory ? {
@@ -801,13 +851,20 @@ async function tankOf(env, dairyId) {
   const rows = (await env.DB.prepare("SELECT grade, oz FROM dairy_tank WHERE dairy_id = ?").bind(dairyId).all()).results;
   // Milk isn't graded any more: everything shows as plain ounces (in the first slot, for older plugins)
   const byGrade = [0, 0, 0, 0, 0];
-  for (const r of rows) byGrade[0] += r.oz;
+  let seed = 0;
+  for (const r of rows) {
+    if (r.grade === SEED_TANK_GRADE) seed += r.oz;
+    else if (r.grade >= 0) byGrade[0] += r.oz;
+  }
   byGrade[0] = Math.round(byGrade[0] * 10) / 10;
-  const top = (await env.DB.prepare("SELECT name, oz FROM tank_contrib WHERE dairy_id = ? ORDER BY oz DESC LIMIT 10").bind(dairyId).all()).results;
+  const top = (await env.DB.prepare("SELECT name, oz FROM tank_contrib WHERE dairy_id = ? AND install NOT LIKE 'seed:%' ORDER BY oz DESC LIMIT 10").bind(dairyId).all()).results;
+  const seedTop = (await env.DB.prepare("SELECT name, oz FROM tank_contrib WHERE dairy_id = ? AND install LIKE 'seed:%' ORDER BY oz DESC LIMIT 10").bind(dairyId).all()).results;
   return {
     byGrade,
     total: Math.round(byGrade.reduce((a, v) => a + v, 0) * 10) / 10,
     pumpers: top.map(x => ({ name: x.name, oz: Math.round(x.oz * 10) / 10 })),
+    seed: Math.round(seed * 100) / 100,
+    seedPumpers: seedTop.map(x => ({ name: x.name, oz: Math.round(x.oz * 100) / 100 })),
   };
 }
 
@@ -863,6 +920,7 @@ async function putDairy(env, me, request) {
     worldName = existing.world_name;
     dcName = existing.dc_name;
   }
+  dcName = dcFor(worldName, dcName);
 
   const id = existing ? existing.id : randomId();
   await env.DB.prepare(`
@@ -1167,13 +1225,14 @@ async function cleanStall(env, me, id) {
 async function groom(env, me, request) {
   const b = await body(request);
   const mem = await membership(env, me.id);
-  if (!mem || !hasRole(mem, "farmer")) fail(403, "Only farmers groom cows.");
-  if (!inOwnDairy(me, mem)) fail(400, "Go to your dairy to groom its cows.");
+  if (!mem || !hasRole(mem, "farmer")) fail(403, "Only farmers groom cows and bulls.");
+  if (!inOwnDairy(me, mem)) fail(400, "Go to your dairy to groom its cows and bulls.");
   const cowId = String(b.cow || "");
   if (cowId === me.id) fail(400, "You can't groom yourself.");
-  const cow = await env.DB.prepare(`SELECT install, name FROM members WHERE install = ? AND dairy_id = ? AND ${ROLE_SQL}`)
-    .bind(cowId, mem.dairy_id, "cow").first();
-  if (!cow) fail(400, "That cow isn't in your dairy.");
+  // Cows and bulls (bulls make seed with the same needs, so grooming helps them the same way)
+  const cow = await env.DB.prepare(`SELECT install, name FROM members WHERE install = ? AND dairy_id = ? AND (${ROLE_SQL} OR ${ROLE_SQL})`)
+    .bind(cowId, mem.dairy_id, "cow", "bull").first();
+  if (!cow) fail(400, "They aren't a cow or bull in your dairy.");
   const t = now();
   const last = await env.DB.prepare("SELECT at FROM grooms WHERE farmer = ? AND cow = ?").bind(me.id, cow.install).first();
   if (last && t - last.at < GROOM_COOLDOWN) fail(400, `You can groom ${cow.name} again in ${Math.ceil((GROOM_COOLDOWN - (t - last.at)) / 60)} min.`);
@@ -1390,10 +1449,11 @@ async function mergeTank(env, dairyId) {
 async function handPay(env, me, request) {
   const b = await body(request);
   const mem = await membership(env, me.id);
-  if (!mem || !hasRole(mem, "cow")) fail(400, "Only cows report hand milkings.");
+  const seed = b.seed === true;   // a bull's seed: a tenth as much, ten times the price
+  if (!mem || !hasRole(mem, seed ? "bull" : "cow")) fail(400, seed ? "Only bulls report seed milkings." : "Only cows report hand milkings.");
   if (!inOwnDairy(me, mem)) fail(400, "Hand milkings count inside your dairy.");
   const grade = int(b.grade, 0, GRADES - 1, "grade");
-  const oz = Math.max(0, Math.min(200, Number(b.oz) || 0));
+  const oz = Math.max(0, Math.min(seed ? 40 : 200, Number(b.oz) || 0));
   if (oz <= 0) fail(400, "No milk.");
   const name = clean(b.farmer, 40), world = clean(b.world, 30);
   const farmer = await env.DB.prepare(
@@ -1401,15 +1461,15 @@ async function handPay(env, me, request) {
   if (!farmer || farmer.install === me.id) fail(400, "That farmer isn't in your dairy.");
 
   const day = today();
-  const cowKey = `hand:${me.id}`, farmKey = `farm:${farmer.install}`;
+  const cowKey = `${seed ? "handseed" : "hand"}:${me.id}`, farmKey = `farm:${farmer.install}`;
   const cowUsed = (await env.DB.prepare("SELECT oz FROM member_pump WHERE install = ? AND day = ?").bind(cowKey, day).first())?.oz || 0;
   const farmUsed = (await env.DB.prepare("SELECT oz FROM member_pump WHERE install = ? AND day = ?").bind(farmKey, day).first())?.oz || 0;
-  const counted = Math.min(oz, COW_DAILY_HAND_OZ - cowUsed);
+  const counted = Math.min(oz, (seed ? SEED_DAILY_HAND_OZ : COW_DAILY_HAND_OZ) - cowUsed);
   if (counted <= 0) return { ok: true, coins: 0 };
   const p = await progressOf(env, mem.dairy_id);
   // Farmer level 45 and up get a bigger share (the farmer's plugin shares its level with the dairy)
   const cut = (safeParse(farmer.status)?.farmerLevel || 0) >= FARMER_CUT_BIG_LEVEL ? FARMER_CUT_BIG : FARMER_CUT;
-  const coins = Math.min(Math.round(counted * GRADE_PRICE[grade] * payBonus(p.level) * cut), FARMER_DAILY_COINS - farmUsed);
+  const coins = Math.min(Math.round(counted * GRADE_PRICE[grade] * (seed ? SEED_PRICE_MULT : 1) * payBonus(p.level) * cut), FARMER_DAILY_COINS - farmUsed);
   if (coins <= 0) return { ok: true, coins: 0 };
   await env.DB.batch([
     env.DB.prepare(`INSERT INTO member_pump (install, day, oz) VALUES (?, ?, ?)
@@ -1417,7 +1477,8 @@ async function handPay(env, me, request) {
     env.DB.prepare(`INSERT INTO member_pump (install, day, oz) VALUES (?, ?, ?)
       ON CONFLICT(install, day) DO UPDATE SET oz = oz + excluded.oz`).bind(farmKey, day, coins),
     // grade 1 marks game-made coins (the plugin counts them toward the day's tapering earnings); 0 = from another player
-    inboxStmt(env, farmer.install, "payout", coins, 0, 1, `${mem.name || "A cow"} paid you ${coins} coins for hand milking ${Math.round(counted * 10) / 10} oz.`),
+    inboxStmt(env, farmer.install, "payout", coins, 0, 1, seed ? `${mem.name || "A bull"} paid you ${coins} coins for hand milking ${Math.round(counted * 100) / 100} oz of seed.`
+      : `${mem.name || "A cow"} paid you ${coins} coins for hand milking ${Math.round(counted * 10) / 10} oz.`),
   ]);
   return { ok: true, coins };
 }

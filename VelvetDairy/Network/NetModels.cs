@@ -187,6 +187,8 @@ public sealed class DairyTank
     public List<float> ByGrade { get; set; } = new();
     public float Total { get; set; }
     public List<Pumper> Pumpers { get; set; } = new();
+    public float Seed { get; set; }              // the dairy's seed tank (bulls' seed, in oz)
+    public List<Pumper> SeedPumpers { get; set; } = new();
 }
 
 public sealed class Pumper
@@ -324,6 +326,13 @@ public sealed class MemberStatus
     public int FarmerLevel { get; set; }
     public int BullLevel { get; set; }
     public bool Crown { get; set; }         // a crown next to their name in the member list
+    public int Seed { get; set; }           // a bull: seed output for his next breeding (20 to 100; 0 = not a bull)
+    public string Preg { get; set; } = "";  // a cow: pregnancy stage from Corruption (first, second, third), or empty
+    public string PregFather { get; set; } = "";   // a pregnant cow: the father's name (from Corruption), so he can see it
+    public float SeedOz { get; set; }       // a bull: seed waiting to be milked
+    public float SeedCap { get; set; }      // a bull: what his vials hold (0 = not a bull)
+    public int SeedGrade { get; set; }
+    public bool SeedSpoiled { get; set; }
     public int Quality { get; set; }        // milk quality score (cows)
     public int TotalOz { get; set; }        // all the milk they've ever given
     public List<string> Emotes { get; set; } = new();   // the emotes this cow's farmers milk her with

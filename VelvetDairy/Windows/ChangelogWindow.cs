@@ -23,6 +23,28 @@ public sealed class ChangelogWindow : Window
     /// <summary>Newest first. Write these for players: what changed for them, not how.</summary>
     private static readonly Entry[] Entries =
     {
+        new("0.9.52", "The Bull role and breeding", new[]
+        {
+            "# Bulls and breeding (in testing)",
+            "The Bull role is here, with breeding through the Corruption plugin. This is still very much in a testing phase: we're gathering data on how it plays, so numbers and details will change. Please tell us on Discord what feels off.",
+            "Bulls make seed and get milked, the way cows make milk. The same four needs (Fed, Watered, Comfy, Happy) speed it up, and care, treats, resting, levels, dozing and tiredness all work the same. If you're a cow and a bull, one set of needs feeds both.",
+            "Seed fills vials a tenth the size of your bottles (the bottle upgrades you buy apply to both). It comes in at 10% of milk speed at Grade C, rising to 20% at S+. Seed has its own grades and seed quality, slips after days without milking, and spoils after 3 days full, like milk.",
+            "Bulls are milked at stalls or by a farmer's hand. Each oz of seed pays ten times milk's price and gives bull xp; farmers get their usual 25% share for hand milking a bull. Every dairy now has a seed tank (on the Dairy tab); uses for it come later.",
+            "Breeding needs Corruption (RaylaPetal/corruption, 0.3.5 or newer) and Cummy. When a bull of your own dairy finishes in a Corruption scene with you, you're bred: +5% milk for 30 minutes, once per scene and at most every 20 minutes. The bull gets up to 40 bull xp, less after 20 breedings in a day.",
+            "In a scene with a cow of their dairy, a bull always finishes inside, so Corruption rolls for conception every time. The bull's Corruption needs \"Let other plugins control Corruption\" turned on (Settings > Other plugins), and the cow's Cummy blocks still apply. Whether it takes is up to Corruption.",
+            "During a scene the HUD shows who you're with, your arousal and (for the cow) the chance of conceiving.",
+            "Pregnancy shows once Corruption confirms it (a test, or once you're showing): on the HUD, under How you're doing, on Roles > Cow (trimester, due date, sire, cravings and past births) and in the member list. Pregnant cows give +5%, +10% and +15% milk by trimester, until the birth. Bulls see which cows of their dairy are pregnant by them.",
+            "# A new look",
+            "The tabs are now down the left side of the main window, with icons. Under them is the list of helper plugins (Penumbra, Corruption, Cummy, Lifestream) with a green dot for each one you have. If Corruption or Cummy is missing, you're told once, with the link to add it.",
+            "The Barn is laid out fresh: your bottle and how you're doing on top, Care as one slim row of cards, and milking along the bottom. Progress has Today and Awards as wide panels.",
+            "# Farmers",
+            "Herd Care lists bulls too, so farmers can milk, groom and feed them. Feed now asks which treat from the dairy shelf to give.",
+            "The Groom and Feed buttons wait the full time before you can use them again, instead of lighting up again after a minute.",
+            "# Fixes",
+            "The Dairies list shows the right data center for every dairy (Lich is on Light).",
+            "Text that was cut off in the Creamery, network, Dairies search and seed panels now fits, and the HUD's grade seal no longer covers the text.",
+            "The guide explains that you can stay seated on a stall between milkings and keep your resting bonus.",
+        }),
         new("0.9.39", "Metric fix", new[]
         {
             "With metric on, the big milk number on the Barn and the HUD now shows in the same unit as your bottles (for example 2.43 / 2.84 L instead of 82.1 / 2.84 L).",

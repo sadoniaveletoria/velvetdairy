@@ -32,10 +32,10 @@ public sealed class GuideWindow : Window
         {
             "Cow: makes milk and gets milked. Paid per ounce at milking time. Cows treat themselves (food, water, rest, treats) for faster milk.",
             "Farmer: hand milks the dairy's cows (and gets a 25% share of what the cow is paid, on top), fills jugs from the dairy tank and delivers milk. Farmers can invite and give roles to others, farmer included.",
-            "Bull: a role only for now. More is coming in new updates.",
+            "Bull: makes seed and gets milked, the way a cow makes milk: the same needs and care, vials instead of bottles (a tenth the size), seed grades, stalls and hand milking, pay per oz, and a seed tank at the dairy. Seed comes in at 10% of milk speed at Grade C, up to 20% at S+, and pays ten times milk's price per oz. With the Corruption plugin, bulls also breed their dairy's cows.",
             "Owner: runs the dairy. Marks out where it is, sets up stalls, invites farmers, cows and bulls, spends the dairy fund and posts buy orders. The owner can also play any mix of roles.",
             "You can hold several roles at once (a Cow + Farmer + Bull can take care of everyone). Add cow or bull to yourself any time on Dairy > Overview. Farmer is given by a farmer or the owner. Only the owner takes roles away.",
-            "Each role has its own level: cow level (milk speed and shop unlocks), farmer level (unlocks bigger farmer tanks) and bull level. Adding or losing a role never loses its progress. The Roles tab has a page for each: cow level and milk quality, farmer level and tank, bull level (seed quality is coming).",
+            "Each role has its own level: cow level (milk speed and shop unlocks), farmer level (unlocks bigger farmer tanks) and bull level. Adding or losing a role never loses its progress. The Roles tab has a page for each: cow level and milk quality, farmer level and tank, bull level and seed quality.",
             "You belong to one dairy at a time. Invites show up on the Dairy tab; accepting one leaves your old dairy.",
         }),
         new("Your cow", new[]
@@ -57,11 +57,13 @@ public sealed class GuideWindow : Window
         }),
         new("Getting milked", new[]
         {
-            "Stalls: sit on one of your dairy's stalls (on the seat itself, not next to it) and the milking machine empties your bottles. Better stall tiers get more milk out.",
+            "Stalls: sit on one of your dairy's stalls (on the seat itself, not next to it) and the milking machine starts by itself and empties your bottles (and a bull's seed vials). Better stall tiers get more milk out.",
+            "You don't have to get up between milkings: stay seated on the stall and it starts again by itself once half a bottle has refilled. Sitting on the stall counts as resting in your dairy, so you keep the resting milk bonus the whole time (not while milk is being drawn, since nothing fills then). Getting up stops a milking that's going.",
+            "One catch: if you sit without doing anything for 30 minutes you start dozing, and a dozing cow's stall doesn't start a new milking. Move, emote or click anything in Eorzea Milkers and it starts again.",
             "Hand milking: a farmer of your dairy stands within 3 yalms, targets you and presses Milk on you (HUD > Herd Care). Their plugin does their milking emote or pose (/beesknees, a sit pose like /groundsit, or whatever they picked) and tells yours they mean you; someone just doing an emote nearby never milks you. Milk then flows until you're empty, or until they stop, step away or change target. If they started with the Milk button, their emote ends by itself once you're empty (with a quick pat); a sit pose is left for them to get up from. Roles > Cow lets you allow any emote or sit pose (the default) or only the ones you list. It gets more out than a basic stall and pays the farmer a share on top of your pay. You can turn off 'Farmers can start milking me without asking' on Roles > Cow: then a farmer pressing Milk on you pops up a request, and milking (and their emote) only starts if you press Allow.",
             "Farmers: the Herd Care button on the HUD (or Roles > Farmer) opens a window with your dairy's cows, how close they are, how full, and which emotes milk each of them.",
             "The Kitchen (HUD > Kitchen, or Roles > Farmer): farmers fill their jugs from the dairy tank at the top, and bake with milk from their jugs, making ingredients for their pantry. For now that's butter (16 oz of milk makes 1). Ingredients are only used to make other things, and more recipes are coming.",
-            "Farmer chores: Groom a cow (in the Herd Care window) you're standing next to for 20 farmer xp; it adds 30 minutes to their Happy bar (once every 15 minutes per cow). Clean a stall nobody is sitting on for 25 farmer xp; cows milked there get +10% speed and xp for an hour, and it can be freshened again once half an hour is left. Stalls never get worse than their tier.",
+            "Farmer chores: Groom a cow or bull (in the Herd Care window) you're standing next to for 20 farmer xp; it adds 30 minutes to their Happy bar (once every 15 minutes each). Feed one a treat from the dairy shelf: press Feed and pick which treat (free for you, farmer xp, one treat per cow or bull every 15 minutes, whoever gives it). Clean a stall nobody is sitting on for 25 farmer xp; cows milked there get +10% speed and xp for an hour, and it can be freshened again once half an hour is left. Stalls never get worse than their tier.",
             "Feed from the shelf (Herd Care window): give a cow or bull something your dairy baked, straight from the dairy shelf. It's free for the farmer (nobody is paid for it) and earns 10 farmer xp; cows get the treat's Happy and milk boost, bulls get bull xp. Once every 15 minutes per cow or bull, and never to yourself.",
             "You're paid the moment you're milked: per ounce, by your grade, plus 2% for each dairy level and your looks bonus (Creamery > Your pay).",
         }),
@@ -79,7 +81,7 @@ public sealed class GuideWindow : Window
         {
             "You get +1 XP for every 0.2 oz of milk you make (more at better grades), plus a bonus when you're emptied at a stall or by hand, plus daily goals, orders and care.",
             "Max level is 100, and each level takes longer than the last: the first ten go by in an evening or two, the 90s take days each. Your cow level makes milk come 4% faster per level up to level 50 (about three times a new cow), and unlocks shop items and upgrades. Farmer and bull levels climb the same way.",
-            "Farmers level separately: hand milking pay, filling jugs, deliveries and contracts give farmer XP, and farmer levels unlock bigger farmer tanks to buy in the Shop. Bulls have their own level too, for things coming later.",
+            "Farmers level separately: hand milking pay, filling jugs, deliveries and contracts give farmer XP, and farmer levels unlock bigger farmer tanks to buy in the Shop. Bulls level from making seed, being milked, care and breeding; their level speeds up seed the way cow level speeds up milk.",
             "Daily goals (Progress tab) reset each day and pay coins and XP. Cows and farmers each have their own four; if you're both, you get both sets.",
         }),
         new("Staying awake", new[]

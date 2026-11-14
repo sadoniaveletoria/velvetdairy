@@ -85,6 +85,11 @@ await test("a dairy's data center comes from its own world, not where the owner 
   assert.equal((await listed()).dcName, "Primal");
   await call(alice, "PUT", "/v1/dairy", dairyBody({ namesFor: 40 }));
   assert.equal((await listed()).dcName, "Aether");
+  // A known world's data center always comes from the world list, whatever was sent or saved
+  await call(alice, "PUT", "/v1/dairy", dairyBody({ worldName: "Lich", dcName: "Chaos", namesFor: 40 }));
+  assert.equal((await listed()).dcName, "Light");
+  await call(alice, "PUT", "/v1/dairy", dairyBody({ namesFor: 40 }));
+  assert.equal((await listed()).dcName, "Aether");
 });
 
 await test("an address can only be registered once", async () => {
@@ -143,6 +148,20 @@ await test("members see the roster with roles and shared status", async () => {
   assert.deepEqual(names, ["Alice Cow:cow:true", "Bob Hand:farmer:false", "Carl Bull:bull:false"]);
   assert.equal(r.data.members[2].status.milk, 3.5);
   assert.equal(r.data.you.role, "farmer");
+});
+
+await test("breeding status: seed is kept within 0-100 and only real pregnancy stages pass", async () => {
+  await beat(carl, { status: { milk: 3.5, cap: 8, seed: 250, preg: "<b>twins</b>" } });
+  let st = (await call(bob, "GET", "/v1/dairy/mine")).data.members[2].status;
+  assert.equal(st.seed, 100);
+  assert.equal(st.preg, "");
+  await beat(carl, { status: { milk: 3.5, cap: 8, seed: 60, preg: "second", pregFather: "Bram <b>Bull</b>" } });
+  st = (await call(bob, "GET", "/v1/dairy/mine")).data.members[2].status;
+  assert.equal(st.seed, 60);
+  assert.equal(st.preg, "second");
+  assert.equal(st.pregFather, "Bram bBullb", "the father's name, cleaned");
+  await beat(carl, { status: { milk: 3.5, cap: 8, pregFather: "Bram Bull" } });
+  assert.equal((await call(bob, "GET", "/v1/dairy/mine")).data.members[2].status.pregFather, "", "no father without a pregnancy");
 });
 
 await test("several roles at once: self-add cow/bull, farmer is given, only the owner takes away", async () => {
@@ -223,6 +242,21 @@ await test("dairy XP: only in the dairy, capped per member per day", async () =>
   assert.equal(pay.coins, hp.data.coins);
   assert.equal(pay.grade, 1, "hand milking shares are marked as game-made (they taper in the plugin)");
   await beat(alice);   // back out of the dairy
+  // A bull's seed goes into its own seed tank, not the milk tank; only bulls add seed
+  assert.equal((await beat(carl, { houseId: HOUSE, seedPumped: 1.25, awake: true })).data.seedPumped, 1.25);
+  assert.equal((await beat(carl, { houseId: HOUSE, seedPumped: 999, awake: true })).data.seedPumped, 24, "per heartbeat");
+  assert.equal((await beat(bob, { houseId: HOUSE, seedPumped: 5, awake: true })).data.seedPumped, 0, "farmers make no seed");
+  const st2 = (await call(alice, "GET", "/v1/dairy/mine")).data.progress.tank;
+  assert.equal(st2.seed, 25.25);
+  assert.equal(st2.total, 8.5, "the milk tank doesn't change");
+  assert.equal(st2.seedPumpers[0].name, "Carl Bull");
+  assert.ok(st2.pumpers.every(x => x.name !== "Carl Bull"));
+  // A bull's hand milking pays the farmer a share at ten times the price per oz
+  const sp = await call(carl, "POST", "/v1/handpay", { farmer: "Bob Hand", world: "Gilgamesh", oz: 1, grade: 0, seed: true });
+  assert.equal(sp.data.coins, Math.round(1 * 6 * 10 * 1.02 * 0.25));
+  assert.equal((await call(alice, "POST", "/v1/handpay", { farmer: "Bob Hand", world: "Gilgamesh", oz: 1, grade: 0, seed: true })).status, 400, "cows don't report seed");
+  await call(bob, "POST", "/v1/inbox/claim");
+  await beat(carl);
 
   // Weekly contract: sized by level; shipped from carried jugs (at the Grand Creamery once it's set); pays once
   let c = (await call(alice, "GET", "/v1/dairy/mine")).data.progress.contract;
@@ -284,9 +318,11 @@ await test("farmer chores: clean a stall (fresh an hour, again at half), groom a
   assert.ok((await call(carl, "GET", "/v1/dairy/mine")).data.stalls.find(x => x.id === stall.id).cleanUntil > 0, "everyone sees it's fresh");
 
   assert.equal((await call(carl, "POST", "/v1/groom", { cow: alice.id })).status, 403, "only farmers groom");
-  assert.equal((await call(bob, "POST", "/v1/groom", { cow: carl.id })).status, 400, "only cows get groomed");
+  assert.equal((await call(bob, "POST", "/v1/groom", { cow: carl.id })).status, 200, "bulls get groomed too");
+  assert.equal((await call(bob, "POST", "/v1/groom", { cow: bob.id })).status, 400, "not yourself");
   assert.equal((await call(bob, "POST", "/v1/groom", { cow: alice.id })).status, 200);
   assert.equal((await call(bob, "POST", "/v1/groom", { cow: alice.id })).status, 400, "15 minutes per cow");
+  assert.match((await call(bob, "POST", "/v1/groom", { cow: alice.id })).data.error ?? "", /again in \d+ min/, "says how long, so the plugin can wait that long");
   const items = (await call(alice, "POST", "/v1/inbox/claim")).data.items;
   assert.ok(items.some(i => i.kind === "groom"), "the cow hears about it");
   await beat(bob, { houseId: ELSEWHERE, awake: true });

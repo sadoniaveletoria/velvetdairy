@@ -84,6 +84,8 @@ public sealed partial class MainWindow : Window
 
     /// <summary>Spoiled milk is tinted a sour yellow.</summary>
     public static readonly Vector4 SourMilk = new(0.93f, 0.88f, 0.60f, 1f);
+    /// <summary>A bull's seed: pearly, a little grey-blue next to milk.</summary>
+    public static readonly Vector4 SeedTint = new(0.88f, 0.90f, 0.95f, 1f);
 
     public MainWindow(Plugin plugin, Art art, Fonts fonts)
         : base("Eorzea Milkers##VelvetDairyMain", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
@@ -92,11 +94,11 @@ public sealed partial class MainWindow : Window
         this.art = art;
         this.fonts = fonts;
 
-        Size = new Vector2(1060, 760);
+        Size = new Vector2(1240, 820);
         SizeCondition = ImGuiCond.FirstUseEver;
         SizeConstraints = new WindowSizeConstraints
         {
-            MinimumSize = new Vector2(980, 700),
+            MinimumSize = new Vector2(1180, 760),
             MaximumSize = new Vector2(float.MaxValue, float.MaxValue),
         };
 
@@ -214,8 +216,8 @@ public sealed partial class MainWindow : Window
         }
 
         var headerH = DrawHeader(dl, origin, avail.X);
-        var tabsH = DrawTabs(dl, origin + new Vector2(0, headerH), avail.X);
-        var bodyMin = origin + new Vector2(Pad, headerH + tabsH + 10);
+        DrawSidebar(dl, origin + new Vector2(0, headerH), avail.Y - headerH);
+        var bodyMin = origin + new Vector2(SideW + Pad, headerH + 14);
         var bodyMax = origin + avail - new Vector2(Pad, Pad);
 
         if (!F.Confirmed18) DrawGate(bodyMin, bodyMax);
@@ -352,27 +354,70 @@ public sealed partial class MainWindow : Window
         return h;
     }
 
-    private float DrawTabs(ImDrawListPtr dl, Vector2 o, float width)
+    /// <summary>Icons for the sidebar, in the same order as <see cref="Tabs"/>.</summary>
+    private static readonly string[] TabIcons = { "bucket", "ribbon", "hay", "coin", "cheese", "milk", "bell", "starclover", "gear" };
+
+    private const float SideW = 150f;
+
+    /// <summary>
+    /// The tabs down the left side, each with its icon, and at the bottom the plugins Eorzea Milkers works with
+    /// (a green dot and the name when it's installed). Hover a plugin for what it's for; click a missing one to copy its repository link.
+    /// </summary>
+    private void DrawSidebar(ImDrawListPtr dl, Vector2 o, float h)
     {
-        const float h = 44f;
-        var x = o.X + Pad;
+        dl.AddRectFilled(o, o + new Vector2(SideW, h), Ui.U(Theme.Paper, 0.9f));
+        dl.AddLine(o + new Vector2(SideW, 0), o + new Vector2(SideW, h), Ui.U(Theme.RoseDeep, 0.22f), 1f);
+
+        const float rowH = 40f;
+        var y = o.Y + 12;
         for (var i = 0; i < Tabs.Length; i++)
         {
-            var label = Tabs[i].ToUpperInvariant();
-            var size = Ui.Measure(fonts.Label, label);
-            var min = new Vector2(x, o.Y + 8);
-            var bw = size.X + 28;
+            var min = new Vector2(o.X + 10, y);
+            var size = new Vector2(SideW - 20, rowH);
             ImGui.SetCursorScreenPos(min);
-            if (ImGui.InvisibleButton($"##tab{i}", new Vector2(bw, h - 10))) tab = i;
+            if (ImGui.InvisibleButton($"##tab{i}", size)) tab = i;
             var hovered = ImGui.IsItemHovered();
             var sel = tab == i;
-            if (sel) dl.AddRectFilled(min, min + new Vector2(bw, h - 10), Ui.U(Theme.Paper, 0.85f), 8, ImDrawFlags.RoundCornersTop);
-            Ui.Text(dl, fonts.Label, label, min + new Vector2(bw / 2, (h - 10) / 2), sel ? Theme.Ink : hovered ? Theme.RoseDeep : Theme.InkSoft, 0.5f, 0.5f);
-            if (sel) dl.AddLine(min + new Vector2(10, h - 12), min + new Vector2(bw - 10, h - 12), Ui.U(Theme.RoseDeep), 2f);
-            x += bw + 4;
+            if (sel)
+            {
+                dl.AddRectFilled(min, min + size, Ui.U(Theme.Rose, 0.38f), 8);
+                dl.AddRectFilled(min, min + new Vector2(3, size.Y), Ui.U(Theme.RoseDeep), 2);
+            }
+            else if (hovered) dl.AddRectFilled(min, min + size, Ui.U(Theme.Rose, 0.16f), 8);
+
+            Ui.Icon(dl, TabIcons[i], min + new Vector2(20, size.Y / 2), 13, sel || hovered ? 1f : 0.8f);
+            Ui.Text(dl, fonts.Label, Tabs[i].ToUpperInvariant(), min + new Vector2(40, size.Y / 2), sel ? Theme.Ink : hovered ? Theme.RoseDeep : Theme.InkSoft, 0f, 0.5f);
+            y += rowH + 3;
         }
 
-        return h;
+        // The helper plugins, at the bottom
+        var all = plugin.Companions.All(G.Now);
+        var lineH = Ui.Measure(fonts.Small, "Ag").Y + 3;
+        var top = o.Y + h - 12 - all.Count * lineH - 24;
+        if (top < y + 8) return;   // a very short window
+        dl.AddLine(new Vector2(o.X + 14, top), new Vector2(o.X + SideW - 14, top), Ui.U(Theme.RoseDeep, 0.18f), 1f);
+        Ui.Text(dl, fonts.Small, "PLUGINS", new Vector2(o.X + 18, top + 5), Theme.InkSoft);
+        var ly = top + 24;
+        foreach (var c in all)
+        {
+            var center = new Vector2(o.X + 22, ly + lineH / 2 - 1);
+            if (c.On) dl.AddCircleFilled(center, 4f, Ui.U(Theme.SageDeep));
+            else dl.AddCircle(center, 4f, Ui.U(Theme.InkSoft), 0, 1.3f);
+            Ui.Text(dl, fonts.Small, c.Name, new Vector2(o.X + 32, ly), c.On ? Theme.SageDeep : Theme.InkSoft);
+            if (ImGui.IsMouseHoveringRect(new Vector2(o.X + 12, ly), new Vector2(o.X + SideW - 8, ly + lineH)))
+            {
+                ImGui.SetTooltip($"{c.Name}: {(c.On ? "installed" : "not installed")}\nFor {c.For}." +
+                                 (c.On ? "" : c.Repo.Length > 0 ? $"\nClick to copy its repository link, then add it in /xlsettings > Experimental > Custom Plugin Repositories.\n{c.Repo}" : "\nInstall it from /xlplugins.") +
+                                 "\nNone of these are needed to play; each one turns on more.");
+                if (!c.On && c.Repo.Length > 0 && ImGui.IsMouseClicked(ImGuiMouseButton.Left))
+                {
+                    ImGui.SetClipboardText(c.Repo);
+                    G.Notify($"Copied the {c.Name} repository link.", 1);
+                }
+            }
+
+            ly += lineH;
+        }
     }
 
     /// <summary>Link buttons in the header's bottom-right corner, from the right edge inwards (a Donate button can go here later).</summary>
@@ -633,23 +678,24 @@ public sealed partial class MainWindow : Window
     private void DrawBarn(Vector2 min, Vector2 max)
     {
         // Not a cow? The barn is your work instead: the herd, the stalls, your tank and your goals
-        if (!G.ProducesMilk && G.Networked && (G.IsFarmer || F.NetMember?.IsOwner == true))
+        if (!G.Producer && G.Networked && (G.IsFarmer || F.NetMember?.IsOwner == true))
         {
             DrawFarmBarn(min, max);
             return;
         }
 
         var blocked = G.Blocked();
+        // Top: your bottle and how you're doing. Then Care as one slim row. Milking along the bottom.
+        // The space between Care and Milking is left open for now.
         var milkH = G.Active != null || !G.AutoStall ? 200f : 112f;
-        var topMax = new Vector2(max.X, max.Y - milkH - 14);
-        var leftW = 270f;
-        var rightW = 330f;
+        const float careH = 122f, gap = 14f;
+        var topH = Math.Min(max.Y - min.Y - milkH - careH - gap * 2, 480f);
+        var topMax = new Vector2(max.X, min.Y + topH);
+        const float leftW = 270f;
 
         DrawBottleCard(min, new Vector2(min.X + leftW, topMax.Y));
-        var midMin = new Vector2(min.X + leftW + 14, min.Y);
-        var midMax = new Vector2(max.X - rightW - 14, topMax.Y);
-        Panel("##needs", midMin, midMax, "How you're doing", DrawNeeds);
-        Panel("##care", new Vector2(max.X - rightW, min.Y), topMax, "Care", DrawCare);
+        Panel("##needs", new Vector2(min.X + leftW + gap, min.Y), topMax, "How you're doing", DrawNeeds);
+        DrawCareRow(new Vector2(min.X, topMax.Y + gap), new Vector2(max.X, topMax.Y + gap + careH));
         Panel("##milking", new Vector2(min.X, max.Y - milkH), max, G.Active != null ? "Milking now" : "Milking", DrawMilking, true);
 
         if (blocked != null && blocked != "Not logged in.")
@@ -680,15 +726,22 @@ public sealed partial class MainWindow : Window
         var dl = ImGui.GetWindowDrawList();
         Ui.Card(dl, min, max);
         var cow = F.Cow;
-        var cap = G.Capacity;
-        var size = G.BottleSize;
+        // A bull who isn't a cow sees his seed vials here; a cow who's also a bull gets a small vial in the corner
+        var seedOnly = !G.ProducesMilk && G.ProducesSeed;
+        var both = G.ProducesMilk && G.ProducesSeed;
+        var cap = seedOnly ? G.SeedCapacity : G.Capacity;
+        var size = seedOnly ? G.VialSize : G.BottleSize;
         var count = G.BottleCount;
+        var spoiled = seedOnly ? G.SeedSpoiled : G.Spoiled;
+        var overfull = seedOnly ? G.SeedFull : G.Overfull;
+        var unit = seedOnly ? 0.1f : 1f;   // "+0.1 oz" pops for seed
 
         // Ease the shown level toward the real one so filling and draining animate
-        var target = cow.Milk;
-        if (seenDump != G.DumpSerial)
+        var target = seedOnly ? cow.Seed : cow.Milk;
+        var serial = G.DumpSerial + G.SeedDumpSerial * 1000;
+        if (seenDump != serial)
         {
-            seenDump = G.DumpSerial;
+            seenDump = serial;
             shownMilk = target;
         }
 
@@ -701,16 +754,18 @@ public sealed partial class MainWindow : Window
 
         var w = max.X - min.X;
         var rowH = count > 1 ? 58f : 0f;
-        var bh = Math.Clamp(max.Y - min.Y - 150 - rowH, 150f, 380f);
+        var bh = Math.Clamp(max.Y - min.Y - 150 - rowH, 80f, 380f);
         var bw = bh / 2f;
         var bmin = new Vector2(min.X + (w - bw) / 2 - 8, min.Y + 26);
         var milking = G.Active != null;
-        var tint = G.Spoiled ? SourMilk
+        var tint = spoiled ? SourMilk
+            : seedOnly ? SeedTint
             : milking && G.Active!.Kind == SessionKind.Hand ? new Vector4(1f, 0.97f, 0.96f, 1f) : (Vector4?)null;
-        Ui.Bottle(dl, bmin, new Vector2(bw, bh), frac, FlowNow(), tint, G.BottleTier);
+        Ui.Bottle(dl, bmin, new Vector2(bw, bh), frac, seedOnly ? (milking ? Ui.Flow.Draining : G.SeedComing ? Ui.Flow.Filling : Ui.Flow.Still) : FlowNow(), tint, G.BottleTier);
+        if (both) DrawSeedVial(dl, new Vector2(min.X + 34, min.Y + 28), Math.Max(60f, bh * 0.4f));
 
         // "+1 oz" floats up from the surface each time another whole ounce comes in
-        var whole = (int)MathF.Floor(cow.Milk);
+        var whole = (int)MathF.Floor(target / unit);
         if (lastWholeOz >= 0 && whole > lastWholeOz && G.Active == null) ozPops.Add(ImGui.GetTime());
         lastWholeOz = whole;
         var nowT = ImGui.GetTime();
@@ -719,14 +774,16 @@ public sealed partial class MainWindow : Window
         foreach (var t0 in ozPops)
         {
             var a = (float)((nowT - t0) / 1.6);
-            Ui.Text(dl, fonts.Label, Units.Oz(1).ToUpperInvariant(), new Vector2(bmin.X + bw + 4, surface - 10 - a * 34), Theme.Alpha(Theme.SageDeep, 1f - a), 0f, 0.5f);
+            Ui.Text(dl, fonts.Label, seedOnly ? Units.Oz(0.1f, "0.0").ToUpperInvariant() : Units.Oz(1).ToUpperInvariant(), new Vector2(bmin.X + bw + 4, surface - 10 - a * 34), Theme.Alpha(Theme.SageDeep, 1f - a), 0f, 0.5f);
         }
 
         // Grade seal on the bottle's shoulder
-        var grade = G.CurrentGrade;
+        var grade = seedOnly ? G.SeedGrade : G.CurrentGrade;
         var sealC = new Vector2(bmin.X + bw + 6, bmin.Y + bh * 0.3f);
         Ui.Seal(dl, sealC, 28, Grades.Name(grade), Theme.GradeColor(grade));
-        if (ImGui.IsMouseHoveringRect(sealC - new Vector2(28, 28), sealC + new Vector2(28, 28)))
+        if (ImGui.IsMouseHoveringRect(sealC - new Vector2(28, 28), sealC + new Vector2(28, 28)) && seedOnly)
+            ImGui.SetTooltip(SeedGradeTip());
+        else if (ImGui.IsMouseHoveringRect(sealC - new Vector2(28, 28), sealC + new Vector2(28, 28)))
             ImGui.SetTooltip($"Grade {Grades.Name(grade)} ({Grades.All[grade].Blurb}) if you're milked now.\nHigher grades pay more, milk faster and give more milk.\nYour grade comes from your milk quality, and stays up as long as you're milked every few days." +
                 (G.GradeSlip > 0 ? $"\nSlipped {G.GradeSlip} grade{(G.GradeSlip > 1 ? "s" : "")}: it's been a while since you were milked. Get milked to bring it back." : "") +
                 (cow.Taint > 0 ? "\nOff taste from dumped milk: one grade lower until it wears off." : "") +
@@ -734,54 +791,54 @@ public sealed partial class MainWindow : Window
 
         var y = bmin.Y + bh + 6;
         var cx = min.X + w / 2;
-        Ui.Text(dl, fonts.Title, Units.NumLike(cow.Milk, cap), new Vector2(cx - 6, y), Theme.Ink, 1f);
-        Ui.Text(dl, fonts.Heading, $"/ {Units.Oz(cap, "0")}", new Vector2(cx, y + 14), Theme.InkSoft);
+        Ui.Text(dl, fonts.Title, Units.NumLike(target, cap, seedOnly ? "0.##" : "0.#"), new Vector2(cx - 6, y), Theme.Ink, 1f);
+        Ui.Text(dl, fonts.Heading, $"/ {Units.Oz(cap, seedOnly ? "0.#" : "0")}", new Vector2(cx, y + 14), Theme.InkSoft);
         y += 46;
 
         // Milk speed, with what goes into it on hover
         string line;
         Vector4 col = Theme.InkSoft;
-        if (G.Spoiled)
+        if (spoiled)
         {
             line = "Spoiled! Dump it";
             col = Theme.Warn;
         }
-        else if (G.Overfull)
+        else if (overfull)
         {
-            var left = G.SpoilsIn;
-            line = left.HasValue ? $"Full! Spoils in {Mins(left.Value)}" : count > 1 ? "All bottles full! Get milked" : "Full! Get milked soon";
+            var left = seedOnly ? G.SeedSpoilsIn : G.SpoilsIn;
+            line = left.HasValue ? $"Full! Spoils in {Mins(left.Value)}" : count > 1 ? (seedOnly ? "All vials full! Get milked" : "All bottles full! Get milked") : "Full! Get milked soon";
             col = Theme.Warn;
         }
         else if (milking) line = "Being milked";
-        else line = $"+{Units.Oz(G.ProductionPerMinute(), "0.00")} a minute";
+        else line = seedOnly ? $"+{Units.Oz(G.SeedPerMinute(), "0.000")} a minute" : $"+{Units.Oz(G.ProductionPerMinute(), "0.00")} a minute";
         var ls = Ui.Text(dl, fonts.Label, line.ToUpperInvariant(), new Vector2(cx, y), col, 0.5f);
         if (!milking && ImGui.IsMouseHoveringRect(new Vector2(cx - ls.X / 2, y), new Vector2(cx + ls.X / 2, y + ls.Y)))
         {
-            var tip = "Milk speed\n" + string.Join("\n", G.RateParts().Select(r => $"  {r.Name}: x{r.Multiplier:0.00}"));
+            var tip = (seedOnly ? "Seed speed\n" : "Milk speed\n") + string.Join("\n", (seedOnly ? G.SeedRateParts() : G.RateParts()).Select(r => $"  {r.Name}: x{r.Multiplier:0.00}"));
             tip += "\nFed, Watered, Comfy and Happy each add a bonus while their bar lasts; all four make you Contented. Level, treats and resting add more.";
             ImGui.SetTooltip(Units.Text(tip));
         }
 
         y += 24;
-        if (G.Spoiled)
+        if (spoiled)
         {
-            if (Ui.Button("##dumpmain", "Dump milk", new Vector2(150, 36), "rose", true,
-                    "Pour it all out. You get nothing for it, and your milk tastes off for a while.", new Vector2(cx - 75, y)))
-                G.DumpMilk();
+            if (Ui.Button("##dumpmain", seedOnly ? "Dump seed" : "Dump milk", new Vector2(150, 36), "rose", true,
+                    seedOnly ? "Pour it all out. You get nothing for it, and your seed grade is one lower for a while." : "Pour it all out. You get nothing for it, and your milk tastes off for a while.", new Vector2(cx - 75, y)))
+            {
+                if (seedOnly) G.DumpSeed();
+                else G.DumpMilk();
+            }
+
             return;
         }
 
-        var extras = new List<string>();
-        if (cow.Taint > 0) extras.Add("Off taste");
-        if (G.GradeSlip > 0) extras.Add($"Grade slipped {G.GradeSlip}");
-        if (G.Where.InDairy && G.Where.Seated && !milking) extras.Add("Resting");
-        if (G.Contented) extras.Add("Contented");
-        if (G.BoostLeft > TimeSpan.Zero) extras.Add($"Treat boost {Mins(G.BoostLeft)}");
-        if (extras.Count > 0) Ui.Text(dl, null, string.Join(" · ", extras), new Vector2(cx, y), Theme.SageDeep, 0.5f);
-        y += 22;
+        // (Resting, Contented, treat boost and the like show under "How you're doing")
+        y += 6;
 
         // Row of small bottles when you own more than one
-        var label = count > 1 ? $"{G.BottleName} · bottle {current + 1} of {count}" : $"{G.BottleName} bottle · {Units.Oz(size, "0")}";
+        var label = seedOnly
+            ? count > 1 ? $"Seed vial {current + 1} of {count}" : $"Seed vial · {Units.Oz(size, "0.#")}"
+            : count > 1 ? $"{G.BottleName} · bottle {current + 1} of {count}" : $"{G.BottleName} bottle · {Units.Oz(size, "0")}";
         if (count == 1)
         {
             Ui.Text(dl, null, label, new Vector2(cx, y), Theme.InkSoft, 0.5f);
@@ -795,17 +852,39 @@ public sealed partial class MainWindow : Window
         {
             var f = i < full ? 1f : i == full ? frac : 0f;
             var mmin = new Vector2(mx + i * (mw + gap), y);
-            Ui.Bottle(dl, mmin, new Vector2(mw, mh), f, Ui.Flow.Still, null, G.BottleTier);
+            Ui.Bottle(dl, mmin, new Vector2(mw, mh), f, Ui.Flow.Still, seedOnly ? SeedTint : (Vector4?)null, G.BottleTier);
             if (i == current) dl.AddLine(new Vector2(mmin.X + 2, y + mh + 3), new Vector2(mmin.X + mw - 2, y + mh + 3), Ui.U(Theme.RoseDeep), 2f);
         }
 
         Ui.Text(dl, fonts.Small, label, new Vector2(cx, y + mh + 8), Theme.InkSoft, 0.5f);
     }
 
+    /// <summary>What's going on with you right now, as one short green line: resting, contented, a treat boost, an off taste.</summary>
+    private string StatusLine()
+    {
+        var cow = F.Cow;
+        var seedOnly = !G.ProducesMilk && G.ProducesSeed;
+        var extras = new List<string>();
+        if (seedOnly ? cow.SeedTaint > 0 : cow.Taint > 0) extras.Add("Off taste");
+        var slip = seedOnly ? G.SeedSlip : G.GradeSlip;
+        if (slip > 0) extras.Add($"Grade slipped {slip}");
+        if (G.Where.InDairy && G.Where.Seated && G.Active == null) extras.Add("Resting");
+        if (G.Contented) extras.Add("Contented");
+        if (G.BoostLeft > TimeSpan.Zero) extras.Add($"Treat boost {Mins(G.BoostLeft)}");
+        return string.Join(" · ", extras);
+    }
+
     private void DrawNeeds(float width)
     {
         var dl = ImGui.GetWindowDrawList();
         var cow = F.Cow;
+        var status = StatusLine();
+        if (status.Length > 0)
+        {
+            Ui.Wrapped(status, Theme.SageDeep, width);
+            Gap(2);
+        }
+
         var p = ImGui.GetCursorScreenPos();
         var y = p.Y;
         var rows = new (string Icon, string Label, float Value, float Bonus, Vector4 Color, string Tip)[]
@@ -829,6 +908,14 @@ public sealed partial class MainWindow : Window
         var notes = new List<(string, Vector4)>();
         var where = G.Where;
         if (G.Paused) notes.Add(("The game is paused (Developer settings).", Theme.InkSoft));
+        // Breeding and pregnancy (from Corruption), with their milk bonus
+        if (G.BredLeft > TimeSpan.Zero)
+            notes.Add(($"Bred by {F.BredBy}: +{G.BredBonusNow * 100:0.#}% milk for {Mins(G.BredLeft)} more.", Theme.RoseDeep));
+        if (G.Pregnant && G.IsCow)
+            notes.Add(($"Pregnant ({DairyGame.StageName(G.Preg.Stage)}): +{G.PregnancyBonus * 100:0}% milk until the birth." + (G.Preg.FatherName.Length > 0 ? $" Sire: {G.Preg.FatherName}." : ""), Theme.RoseDeep));
+        if (G.InScene)
+            notes.Add(($"Corruption: {G.SceneLine}." + (G.BreedingAsBull ? " They're a cow of your dairy: when you finish, you breed them" + (G.ForcedCreampie ? " (always inside, so Corruption rolls for conception)." : ".")
+                : G.BredAsCow ? " They're a bull of your dairy: when they finish, you're bred" + (G.ConceiveChance > 0 ? $", with a {G.ConceiveChance * 100:0}% chance of conceiving (from Corruption)." : ".") : ""), Theme.RoseDeep));
         if (!where.InDairy) notes.Add((where.Why + " Care and milking wait until you're back.", Theme.RoseDeep));
         if (G.FreshHoldLeft > TimeSpan.Zero) notes.Add(($"Dry-off tonic: your grade won't slip for {DairyGame.Wait(G.FreshHoldLeft)}.", Theme.SageDeep));
         else if (G.GradeSlip > 0) notes.Add(($"Your grade slipped {G.GradeSlip} step{(G.GradeSlip > 1 ? "s" : "")} from going days without milking. One milking brings it back.", Theme.RoseDeep));
@@ -841,10 +928,120 @@ public sealed partial class MainWindow : Window
             notes.Add((left.HasValue ? $"You're full and it's getting uncomfortable. It spoils in {Mins(left.Value)} if you don't get milked." : "You're full and it's getting uncomfortable.", Theme.Warn));
         }
 
+        if (G.ProducesSeed)
+        {
+            if (G.SeedSpoiled) notes.Add(("Your seed spoiled from sitting too long. Dump it before you can be milked.", Theme.Warn));
+            else if (G.SeedFull)
+            {
+                var left = G.SeedSpoilsIn;
+                notes.Add((left.HasValue ? $"Your seed vials are full. They spoil in {Mins(left.Value)} if you don't get milked." : "Your seed vials are full.", Theme.Warn));
+            }
+
+            if (G.SeedSlip > 0 && G.FreshHoldLeft <= TimeSpan.Zero) notes.Add(($"Your seed grade slipped {G.SeedSlip} step{(G.SeedSlip > 1 ? "s" : "")} from going days without milking.", Theme.RoseDeep));
+            if (cow.SeedTaint > 0) notes.Add(("Your seed is one grade lower after the dump. Care tasks and milkings wear it off.", Theme.RoseDeep));
+        }
+
         if (cow.Taint > 0)
             notes.Add(("Your milk tastes off after the dump (one grade lower). Care tasks, milkings and creamery deliveries wear it off.", Theme.RoseDeep));
         if (notes.Count == 0) notes.Add((G.Contented ? "Contented! Every bonus is going." : "Each use adds 30 minutes to a bar (up to an hour), then it drains as the bonus wears off. Bars wait while you're asleep or away, and running out never hurts.", Theme.SageDeep));
         foreach (var (t, c) in notes) Ui.Wrapped(t, c, width);
+    }
+
+    /// <summary>Care as one slim row of cards: drink, rest, then what you have to eat. More than fits: a card to open the Pantry.</summary>
+    private void DrawCareRow(Vector2 min, Vector2 max)
+    {
+        var dl = ImGui.GetWindowDrawList();
+        Ui.Card(dl, min, max);
+        var inMin = min + new Vector2(22, 16);
+        var width = max.X - min.X - 44;
+        Ui.Eyebrow(dl, "Care", inMin, width, Theme.RoseDeep);
+        var problem = G.CareProblem();
+        if (problem != null)
+        {
+            var pw = Ui.Measure(fonts.Small, problem).X;
+            Ui.Text(dl, fonts.Small, FitText(problem, width * 0.6f), new Vector2(inMin.X + width - Math.Min(pw, width * 0.6f), inMin.Y + 1), Theme.RoseDeep);
+        }
+
+        var ok = problem == null;
+        var cells = new List<(string Id, string Icon, string Title, string Sub, string Btn, string Color, bool Enabled, string? Tip, Action Act)>();
+        var wcd = G.DrinkWait;
+        cells.Add(("##drink", "water", "Drink", wcd > TimeSpan.Zero ? $"Ready in {DairyGame.Wait(wcd)}" : $"Free · Watered +{Catalog.TroughBonus * 100:0}%",
+            "Drink", "blue", ok && wcd <= TimeSpan.Zero, problem ?? $"Free. Watered +{Catalog.TroughBonus * 100:0}%, +30 minutes.", () => G.Drink()));
+        var rcd = G.RestWait;
+        var restProblem = G.RestProblem();
+        var settle = G.RestSettleLeft;
+        cells.Add(("##rest", "cushion", "Rest",
+            settle > TimeSpan.Zero ? $"Stay seated {DairyGame.Wait(settle)}" : rcd > TimeSpan.Zero ? $"Ready in {DairyGame.Wait(rcd)}" : restProblem != null && ok ? "Sit on furniture first" : $"Free · Comfy +{G.ComfyNow * 100:0}%",
+            "Rest", "rose", restProblem == null && rcd <= TimeSpan.Zero, restProblem ?? $"Free. Comfy +{G.ComfyNow * 100:0}%, +30 minutes.", () => G.Rest()));
+        foreach (var item in Catalog.Feed)
+        {
+            if (G.ShopLevel < item.Unlock || F.HiddenFeed!.Contains(item.Id)) continue;
+            var have = G.Count(item.Id);
+            if (have <= 0) continue;
+            var wait = item.HoldDays > 0 ? TimeSpan.Zero : G.FeedWait(item);
+            var qwait = item.Quality > 0 ? G.QualityTreatWait : TimeSpan.Zero;
+            var qualityHeld = qwait > wait;
+            if (qualityHeld) wait = qwait;
+            var waiting = wait > TimeSpan.Zero;
+            var tip = problem ?? (qualityHeld ? $"Quality treats share a {Grades.QualityTreatHours:0}-hour cooldown." :
+                waiting ? $"Eating, drinking, resting and treats each wait {Catalog.NeedCooldownMinutes:0} minutes between uses." : $"{item.Desc}\n{Effects(item)}");
+            var id = item.Id;
+            cells.Add(($"##feed{id}", item.Icon, item.Name, waiting ? $"{have} left · ready in {DairyGame.Wait(wait)}" : $"{have} left · {Effects(item)}",
+                "Eat", "honey", ok && !waiting, tip, () => G.UseFeed(id)));
+        }
+
+        // Nothing to eat: the last card points at the Shop
+        if (cells.Count == 2)
+            cells.Add(("##careshop", "hay", "Pantry empty", "Buy feed in the Shop", "Shop", "cream", true, "Buy feed and treats.", () => tab = TabShop));
+
+        const float cellGap = 10f, cellH = 58f;
+        var fits = Math.Clamp((int)((width + cellGap) / (230 + cellGap)), 2, 6);
+        var more = cells.Count > fits ? cells.Count - (fits - 1) : 0;
+        var perRow = more > 0 ? fits : Math.Min(fits, Math.Max(cells.Count, 3));   // at least three across, so a short row doesn't stretch
+        var shown = more > 0 ? perRow - 1 : cells.Count;
+        var cellW = (width - cellGap * (perRow - 1)) / perRow;
+        var y = inMin.Y + 30;
+        for (var i = 0; i < perRow; i++)
+        {
+            var c0 = new Vector2(inMin.X + i * (cellW + cellGap), y);
+            var c1 = c0 + new Vector2(cellW, cellH);
+            if (i >= shown && more == 0) break;
+            dl.AddRectFilled(c0, c1, Ui.U(Theme.Paper, 0.95f), 8);
+            dl.AddRect(c0, c1, Ui.U(Theme.RoseDeep, 0.18f), 8, ImDrawFlags.None, 1f);
+            var midY = c0.Y + cellH / 2;
+            if (i < shown)
+            {
+                var c = cells[i];
+                Ui.Icon(dl, c.Icon, new Vector2(c0.X + 24, midY), 15, c.Enabled ? 1f : 0.65f);
+                var bw = Math.Max(62f, Ui.Measure(fonts.Label, c.Btn.ToUpperInvariant()).X + 26);
+                if (Ui.Button(c.Id, c.Btn, new Vector2(bw, 28), c.Color, c.Enabled, c.Tip, new Vector2(c1.X - bw - 10, midY - 14))) c.Act();
+                var tw = c1.X - bw - 18 - (c0.X + 46);
+                var titleH = Ui.Measure(fonts.Label, "A").Y;
+                var subH = Ui.Measure(fonts.Small, "Ag").Y;
+                var ty = midY - (titleH + subH + 2) / 2;
+                Ui.Text(dl, fonts.Label, FitText(c.Title.ToUpperInvariant(), tw, fonts.Label), new Vector2(c0.X + 46, ty), Theme.Ink);
+                Ui.Text(dl, fonts.Small, FitText(c.Sub, tw), new Vector2(c0.X + 46, ty + titleH + 2), Theme.InkSoft);
+            }
+            else
+            {
+                // More than fits: the rest are in the Pantry
+                Ui.Icon(dl, "hay", new Vector2(c0.X + 24, midY), 15);
+                var titleH = Ui.Measure(fonts.Label, "A").Y;
+                var ty = midY - (titleH + Ui.Measure(fonts.Small, "Ag").Y + 2) / 2;
+                Ui.Text(dl, fonts.Label, $"{more} MORE", new Vector2(c0.X + 46, ty), Theme.Ink);
+                Ui.Text(dl, fonts.Small, "in your pantry", new Vector2(c0.X + 46, ty + titleH + 2), Theme.InkSoft);
+                if (Ui.Button("##caremore", "Pantry", new Vector2(80, 28), "cream", true, "Everything you have to eat and drink.", new Vector2(c1.X - 90, midY - 14))) tab = TabPantry;
+            }
+        }
+    }
+
+    /// <summary>Shortens text with "..." to fit a width.</summary>
+    private string FitText(string text, float width, Dalamud.Interface.ManagedFontAtlas.IFontHandle? font = null)
+    {
+        font ??= fonts.Small;
+        if (width <= 10 || Ui.Measure(font, text).X <= width) return text;
+        while (text.Length > 4 && Ui.Measure(font, text + "...").X > width) text = text[..^1];
+        return text.TrimEnd(' ', '·') + "...";
     }
 
     private void DrawCare(float width)
@@ -872,7 +1069,7 @@ public sealed partial class MainWindow : Window
         var shown = 0;
         foreach (var item in Catalog.Feed)
         {
-            if (G.Level < item.Unlock || F.HiddenFeed!.Contains(item.Id)) continue;
+            if (G.ShopLevel < item.Unlock || F.HiddenFeed!.Contains(item.Id)) continue;
             var have = G.Count(item.Id);
             if (have <= 0) continue;   // Care only lists what you have right now (the Pantry can show the rest)
             shown++;
@@ -954,7 +1151,13 @@ public sealed partial class MainWindow : Window
                     ? $"The test farmhand milks you every few seconds. {s.Strokes} strokes so far."
                     : $"{s.Hand.Name} is milking you while they keep their Milk emote going (within {G.HandRange:0.#} y{(G.HandNeedsTarget ? ", targeting you" : "")}).";
             if (ListRow(Ico(s.Kind == SessionKind.Stall ? "bucket" : "ribbon"), who, Theme.Ink,
-                    new[] { new Line($"{Units.Oz(s.Extracted * s.Yield, "0.#")} collected · Grade {Grades.Name(s.Grade)} cow", Theme.GradeColor(s.Grade)), new Line(hint, Theme.InkSoft) },
+                    new[]
+                    {
+                        G.ProducesMilk
+                            ? new Line($"{Units.Oz(s.Extracted * s.Yield, "0.#")} collected · Grade {Grades.Name(s.Grade)} cow" + (G.ProducesSeed ? $" · {Units.Oz(s.ExtractedSeed * s.SeedYield, "0.##")} seed (Grade {Grades.Name(s.SeedGrade)})" : ""), Theme.GradeColor(s.Grade))
+                            : new Line($"{Units.Oz(s.ExtractedSeed * s.SeedYield, "0.##")} of seed collected · Grade {Grades.Name(s.SeedGrade)} bull", Theme.GradeColor(s.SeedGrade)),
+                        new Line(hint, Theme.InkSoft),
+                    },
                     new[] { new Btn("##stop", "Stop", "cream") }, width, s.Progress, Theme.BlueDeep) == 0)
                 G.Stop();
             return;
@@ -1169,7 +1372,7 @@ public sealed partial class MainWindow : Window
             if (hidden) hiddenCount++;
             if (hidden && !showHiddenFeed) continue;
 
-            var locked = G.Level < item.Unlock;
+            var locked = G.ShopLevel < item.Unlock;
             var have = G.Count(item.Id);
             var p1 = G.BuyFeedProblem(item, 1);
             var p5 = G.BuyFeedProblem(item, 5);
@@ -1258,7 +1461,7 @@ public sealed partial class MainWindow : Window
                 _ => u.Desc,
             };
             var sub = maxed ? "Owned · " + desc
-                : G.Level < u.Unlocks[have] ? $"Unlocks at level {u.Unlocks[have]} · {desc}"
+                : (u.Farmer ? G.FarmerLevel : G.ShopLevel) < u.Unlocks[have] ? $"Unlocks at level {u.Unlocks[have]} · {desc}"
                 : $"{u.Prices[have]} coins · {desc}";
             if (Row($"##up{u.Id}", u.Icon, u.Name + levelText + (u.Cosmetic ? "  ·  look" : ""), sub, maxed ? "Owned" : "Buy", "blue", problem == null,
                     maxed ? u.Desc : problem ?? u.Desc, width))
@@ -1492,10 +1695,12 @@ public sealed partial class MainWindow : Window
 
     private void DrawProgress(Vector2 min, Vector2 max)
     {
-        var third = (max.X - min.X - 28) / 3;
-        Panel("##level", min, new Vector2(min.X + third, max.Y), "Your levels", DrawLevelsSummary);
-        Panel("##daily", new Vector2(min.X + third + 14, min.Y), new Vector2(min.X + third * 2 + 14, max.Y), "Today", DrawDaily, true);
-        Panel("##awards", new Vector2(max.X - third, min.Y), max, "Awards", DrawAwards);
+        // Your levels down the left; Today and Awards wide on the right, one above the other, so their text fits on a line
+        var leftW = Math.Clamp((max.X - min.X) * 0.34f, 300f, 400f);
+        Panel("##level", min, new Vector2(min.X + leftW, max.Y), "Your levels", DrawLevelsSummary);
+        var midY = min.Y + (max.Y - min.Y) * 0.5f;
+        Panel("##daily", new Vector2(min.X + leftW + 14, min.Y), new Vector2(max.X, midY - 7), "Today", DrawDaily, true);
+        Panel("##awards", new Vector2(min.X + leftW + 14, midY + 7), max, "Awards", DrawAwards);
     }
 
     /// <summary>A small level line for one role (each role levels on its own).</summary>

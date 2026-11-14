@@ -2,7 +2,7 @@
 
 A dairy life game for FFXIV, played with friends. Be a **cow** who makes milk, a **farmer** who milks and delivers it, or the **owner** who runs the dairy, or any mix of these. Everyone levels up, earns coins and grows their dairy together.
 
-> **Work in progress.** Expect changes and new features in updates. The **Bull** role is coming in a later update.
+> **Work in progress.** Expect changes and new features in updates.
 
 **Join the community Discord (18+):** <https://discord.gg/yacq26rw4u>. Ask questions, find a dairy, and get update news and testing builds first.
 
@@ -30,7 +30,7 @@ You can hold several roles at once, and each role levels up on its own. Your pro
 | **Cow** | Make milk, get milked, earn pay for every ounce | Add it to yourself, or be invited |
 | **Farmer** | Hand milk cows, groom them, clean stalls, carry and deliver milk | Given by the owner or another farmer |
 | **Owner** | Run the dairy: place stalls, invite people, post buy orders | Start your own dairy |
-| **Bull** | Coming soon | Add it to yourself |
+| **Bull** | Make seed and get milked (like milk, but much less), breed your dairy's cows with the [Corruption](https://github.com/RaylaPetal/corruption) plugin. *Still in testing: details will change.* | Add it to yourself |
 
 Only the owner can take a role away from someone.
 
@@ -83,7 +83,7 @@ Only the owner can take a role away from someone.
 
 - **Hand milking:** press **Herd Care** on the HUD (or Roles → Farmer), stand near a cow, press **Target**, then **Milk**. Your character does the milking emote (/beesknees by default, or one you choose) until the cow is empty, then stops by itself. You earn 25% of what the cow is paid, on top of their pay.
 - **Your own animation:** if you use Penumbra, pick an animation mod and its options with **Animation…** in the Herd Care window. It switches on only while you milk.
-- **Chores:** **Groom** a cow (they get 30 minutes of Happy), **Feed** a cow or bull a treat from the dairy shelf (free, but not to yourself), and **Clean** an empty stall (cows milked there get a bonus for an hour). All earn farmer XP.
+- **Chores:** **Groom** a cow or bull (they get 30 minutes of Happy), **Feed** a cow or bull a treat from the dairy shelf (press Feed and pick which; free, but not to yourself), and **Clean** an empty stall (cows milked there get a bonus for an hour). All earn farmer XP.
 - **The Kitchen** (the Kitchen button on the HUD): bake with milk from your jugs. Recipes unlock with your farmer level:
   - **Butter** (level 1): 16 oz of milk → 1 butter.
   - **Butter cookies** (level 3): 1 butter + 8 oz of milk → 3 cookies, for the dairy shelf.

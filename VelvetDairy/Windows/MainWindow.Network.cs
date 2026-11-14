@@ -77,7 +77,7 @@ public sealed partial class MainWindow
 
         var online = net.Last?.Online ?? net.Directory?.Online ?? 0;
         using (fonts.For(fonts.Heading, $"{online}")!.Push()) ImGui.TextColored(Theme.SageDeep, $"{online:N0} online");
-        ImGui.TextColored(Theme.InkSoft, "Players with Eorzea Milkers running in the last few minutes.");
+        Ui.Wrapped("Players with Eorzea Milkers running in the last few minutes.", Theme.InkSoft, width);
         ImGui.TextColored(net.Connected ? Theme.SageDeep : Theme.Warn, net.Status);
 
         SubHeading("You", width);
@@ -145,9 +145,14 @@ public sealed partial class MainWindow
             return;
         }
 
-        ImGui.SetNextItemWidth(Math.Min(260, width - 200));
+        // The search box takes what's left after the filters; if that's too little, the filters go on the next line
+        var style = ImGui.GetStyle();
+        float CheckW(string label) => ImGui.GetFrameHeight() + style.ItemInnerSpacing.X + ImGui.CalcTextSize(label).X;
+        var filtersW = CheckW("Public only") + CheckW("Taking applications") + ImGui.CalcTextSize("Refresh").X + style.FramePadding.X * 2 + style.ItemSpacing.X * 3;
+        var oneLine = width - filtersW >= 200;
+        ImGui.SetNextItemWidth(oneLine ? Math.Min(300, width - filtersW - style.ItemSpacing.X) : width);
         ImGui.InputTextWithHint("##dirfilter", "Search by name, world or district", ref dirFilter, 40);
-        ImGui.SameLine();
+        if (oneLine) ImGui.SameLine();
         ImGui.Checkbox("Public only", ref dirPublicOnly);
         ImGui.SameLine();
         ImGui.Checkbox("Taking applications", ref dirApplying);
@@ -179,7 +184,7 @@ public sealed partial class MainWindow
         {
             var lines = new List<Line>
             {
-                new(d.IsPublic || d.Mine ? $"{d.Address} · {d.WorldName}{(d.DcName.Length > 0 ? $" ({d.DcName})" : "")}" : $"Private · {d.WorldName}", Theme.InkSoft),
+                new(d.IsPublic || d.Mine ? $"{d.Address} · {d.WorldName}{(DcOf(d) is { Length: > 0 } dc ? $" ({dc})" : "")}" : $"Private · {d.WorldName}", Theme.InkSoft),
                 new($"{d.Members} member{(d.Members == 1 ? "" : "s")}{(d.CowsHere > 0 ? $" · {d.CowsHere} there now" : "")}{(d.OpenOrders > 0 ? $" · {d.OpenOrders} buy order{(d.OpenOrders == 1 ? "" : "s")}" : "")}",
                     d.CowsHere > 0 ? Theme.SageDeep : Theme.InkSoft),
             };
@@ -445,19 +450,20 @@ public sealed partial class MainWindow
         if (crs.Count > 0)
         {
             var here = G.CreameryHere;
-            ImGui.TextColored(here != null ? Theme.SageDeep : Theme.RoseDeep,
-                here != null ? $"You're at {here.Name}." : crs.Count == 1 ? "Bring your jugs here to ship them." : "Bring your jugs to any of these to ship them.");
+            Ui.Wrapped(here != null ? $"You're at {here.Name}." : crs.Count == 1 ? "Bring your jugs here to ship them." : "Bring your jugs to any of these to ship them.",
+                here != null ? Theme.SageDeep : Theme.RoseDeep, width);
             foreach (var cr in crs)
             {
+                // The name with its Map button, and where it is underneath (so narrow panels don't cut it off)
                 var link = CreameryLink(cr);
                 ImGui.TextColored(Theme.Ink, cr.Name);
-                ImGui.SameLine();
-                ImGui.TextColored(Theme.InkSoft, link != null ? $"{cr.Zone} ( {link.XCoord:0.0} , {link.YCoord:0.0} )" : cr.Zone);
                 if (link != null)
                 {
                     ImGui.SameLine();
                     if (ImGui.SmallButton($"Map##creamerymap{cr.Slot}")) Plugin.GameGui.OpenMapWithMapLink(link);
                 }
+
+                Ui.Wrapped(link != null ? $"{cr.Zone} ({link.XCoord:0.0}, {link.YCoord:0.0})" : cr.Zone, Theme.InkSoft, width);
             }
 
             Gap(6);
@@ -517,6 +523,13 @@ public sealed partial class MainWindow
                     Ui.Wrapped("Top pumpers: " + string.Join(", ", p.Tank.Pumpers.Take(5).Select(x => $"{x.Name.Split(' ')[0]} {Units.Oz(x.Oz, "N0")}")), Theme.InkSoft, width);
             }
             else ImGui.TextColored(Theme.InkSoft, "Empty. It fills as cows are milked here.");
+
+            // Bulls' seed goes into its own tank (just stored for now)
+            ImGui.TextColored(Theme.BlueDeep, $"Dairy seed tank: {Units.Oz(p.Tank.Seed, "N2")}");
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip(Units.Text("Every time a bull is milked in this dairy (stalls and hand), their seed goes into this tank. Uses for it are coming in a later update."));
+            if (p.Tank.SeedPumpers.Count > 0)
+                Ui.Wrapped("Top bulls: " + string.Join(", ", p.Tank.SeedPumpers.Take(5).Select(x => $"{x.Name.Split(' ')[0]} {Units.Oz(x.Oz, "N1")}")), Theme.InkSoft, width);
         }
 
         Gap(4);
@@ -738,6 +751,8 @@ public sealed partial class MainWindow
 
         var full = all.Count(x => x.Has("cow") && x.Online && x.Status is { Cap: > 0 } st && (st.Spoiled || st.Milk >= st.Cap - 0.1f));
         if (full > 0) ImGui.TextColored(Theme.RoseDeep, $"{full} cow{(full == 1 ? "" : "s")} full and waiting to be milked");
+        var fullBulls = all.Count(x => x.Has("bull") && x.Online && x.Status is { SeedCap: > 0 } st && (st.SeedSpoiled || st.SeedOz >= st.SeedCap - 0.01f));
+        if (fullBulls > 0) ImGui.TextColored(Theme.RoseDeep, $"{fullBulls} bull{(fullBulls == 1 ? "" : "s")} full and waiting to be milked");
 
         if (inside.Count > 0)
         {
@@ -833,5 +848,25 @@ public sealed partial class MainWindow
         var problem = G.PostOrderProblem(orderOz, 0, orderCoins);
         if (Ui.Button("##postorder", "Post buy order", new Vector2(170, 32), "honey", problem == null, problem ?? "The coins are held until a cow delivers or you cancel."))
             G.PostBuyOrder(orderOz, 0, orderCoins);
+    }
+
+    private static readonly Dictionary<string, string> dcByWorld = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// A listing's data center, from the game's own world list (by its world), so it's right even when a listing was
+    /// saved with the wrong one by an older version. Falls back to what the listing says.
+    /// </summary>
+    private static string DcOf(DairyListing d)
+    {
+        if (d.WorldName.Length == 0) return d.DcName;
+        if (dcByWorld.Count == 0)
+            foreach (var w in Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.World>())
+            {
+                var name = w.Name.ExtractText();
+                var dc = w.DataCenter.ValueNullable?.Name.ExtractText() ?? "";
+                if (name.Length > 0 && dc.Length > 0 && w.IsPublic) dcByWorld[name] = dc;
+            }
+
+        return dcByWorld.TryGetValue(d.WorldName, out var found) ? found : d.DcName;
     }
 }

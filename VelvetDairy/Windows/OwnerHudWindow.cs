@@ -91,6 +91,16 @@ public sealed class OwnerHudWindow : Window
                     Ui.Text(dl, fonts.Small, Grades.Name(Math.Clamp(s.Grade, 0, Grades.Count - 1)), new Vector2(right, y), Theme.GradeColor(Math.Clamp(s.Grade, 0, Grades.Count - 1)), 1f);
                 }
             }
+            else if (m.Has("bull") && m.Online && m.Status is { SeedCap: > 0 } b)
+            {
+                if (b.SeedSpoiled) Ui.Text(dl, fonts.Small, "spoiled", new Vector2(right, y), Theme.Warn, 1f);
+                else
+                {
+                    var bx0 = right - 110;
+                    Ui.Bar(dl, new Vector2(bx0, y + 7), new Vector2(right - 34, y + 12), b.SeedOz / b.SeedCap, b.SeedOz >= b.SeedCap - 0.01f ? Theme.RoseDeep : MainWindow.SeedTint);
+                    Ui.Text(dl, fonts.Small, Grades.Name(Math.Clamp(b.SeedGrade, 0, Grades.Count - 1)), new Vector2(right, y), Theme.GradeColor(Math.Clamp(b.SeedGrade, 0, Grades.Count - 1)), 1f);
+                }
+            }
 
             y += 22;
         }
@@ -101,7 +111,8 @@ public sealed class OwnerHudWindow : Window
         if (con != null)
             Ui.Text(dl, fonts.Small, con.Completed ? "Contract done" : $"Contract {con.OzDone:0}/{con.OzNeed}", new Vector2(right, o.Y + 40), con.Completed ? Theme.SageDeep : Theme.InkSoft, 1f);
         var tankOz = mine.Progress?.Tank?.Total ?? 0;
-        var extra = (tankOz > 0 ? $"Tank {Units.Oz(tankOz, "N0")}" + (mine.Invites.Count > 0 || G.Net.MyOrders.Count > 0 ? " · " : "") : "") + (mine.Invites.Count > 0 ? $"{mine.Invites.Count} invite(s) waiting" : "") +
+        var seedOz = mine.Progress?.Tank?.Seed ?? 0;
+        var extra = (tankOz > 0 ? $"Tank {Units.Oz(tankOz, "N0")}" + (seedOz > 0 ? $" · seed {Units.Oz(seedOz, "N1")}" : "") + (mine.Invites.Count > 0 || G.Net.MyOrders.Count > 0 ? " · " : "") : "") + (mine.Invites.Count > 0 ? $"{mine.Invites.Count} invite(s) waiting" : "") +
                     (mine.Invites.Count > 0 && G.Net.MyOrders.Count > 0 ? " · " : "") +
                     (G.Net.MyOrders.Count > 0 ? $"{G.Net.MyOrders.Count} buy order(s) open" : "");
         if (extra.Length > 0) Ui.Text(dl, fonts.Small, extra, new Vector2(x, o.Y + size.Y - 34), Theme.InkSoft);

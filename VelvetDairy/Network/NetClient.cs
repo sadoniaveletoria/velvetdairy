@@ -374,20 +374,24 @@ public sealed class NetClient : IDisposable
             // Held until you're awake: the server only counts them then
             dairyXp = g.Wake == DairyGame.Wakefulness.Awake ? g.TakeDairyXp() : 0,
             pumped = g.Wake == DairyGame.Wakefulness.Awake ? g.TakePumped() : null,
+            seedPumped = g.Wake == DairyGame.Wakefulness.Awake ? g.TakeSeedPumped() : 0,
             atCreamery = g.AtCreamery,
             awake = g.Wake == DairyGame.Wakefulness.Awake,
             status = new MemberStatus
             {
                 Milk = (float)Math.Round(F.Cow.Milk, 1), Cap = g.Capacity, Grade = g.CurrentGrade, Spoiled = g.Spoiled,
                 InDairy = g.Where.InDairy, Level = g.Level, FarmerLevel = g.FarmerLevel, BullLevel = g.BullLevel, Crown = g.Crowned,
+                Seed = g.IsBull ? g.SeedNow : 0, Preg = g.Pregnant ? g.Preg.Stage : "", PregFather = g.Pregnant ? g.Preg.FatherName : "",
+                SeedOz = g.ProducesSeed ? (float)Math.Round(F.Cow.Seed, 2) : 0, SeedCap = g.ProducesSeed ? g.SeedCapacity : 0,
+                SeedGrade = g.ProducesSeed ? g.SeedGrade : 0, SeedSpoiled = g.ProducesSeed && g.SeedSpoiled,
                 Quality = (int)F.Quality, TotalOz = (int)F.Stats.TotalOz,
-                Emotes = g.IsCow ? g.MilkEmotesForFarmers() : new List<string>(),
+                Emotes = g.Producer ? g.MilkEmotesForFarmers() : new List<string>(),
                 HandBy = g.Active is { Kind: VelvetDairy.Game.SessionKind.Hand, Hand: { IsTest: false } h } ? h.Name : "",
                 AnyEmote = F.AnyLoopEmote,
                 Milking = g.MilkingCowName ?? "",
-                Ask = g.IsCow && !F.AutoHand,
+                Ask = g.Producer && !F.AutoHand,
                 Refused = g.RefusedFarmer,
-                TreatAt = g.IsCow && F.Cow.HappyReadyUtc > DateTime.UtcNow ? new DateTimeOffset(DateTime.SpecifyKind(F.Cow.HappyReadyUtc, DateTimeKind.Utc)).ToUnixTimeSeconds() : 0,
+                TreatAt = g.Producer && F.Cow.HappyReadyUtc > DateTime.UtcNow ? new DateTimeOffset(DateTime.SpecifyKind(F.Cow.HappyReadyUtc, DateTimeKind.Utc)).ToUnixTimeSeconds() : 0,
             },
         };
         Call<HeartbeatReply>("POST", "/v1/heartbeat", body, r =>
@@ -507,8 +511,8 @@ public sealed class NetClient : IDisposable
         }, failed);
 
     /// <summary>Tells the server a farmer hand milked you, so they get their share.</summary>
-    public void HandPay(string farmer, string world, float oz, int grade) =>
-        Call<HandPayReply>("POST", "/v1/handpay", new { farmer, world, oz = Math.Round(oz, 2), grade }, _ => { }, e => Plugin.Log.Debug($"Hand pay: {e}"));
+    public void HandPay(string farmer, string world, float oz, int grade, bool seed = false) =>
+        Call<HandPayReply>("POST", "/v1/handpay", new { farmer, world, oz = Math.Round(oz, 3), grade, seed }, _ => { }, e => Plugin.Log.Debug($"Hand pay: {e}"));
 
     public void Donate(int coins, Action<int> ok, Action<string> failed) =>
         Call<FundReply>("POST", "/v1/dairy/fund", new { coins }, r =>

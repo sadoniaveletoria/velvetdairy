@@ -37,6 +37,8 @@ public sealed class Plugin : IDalamudPlugin
     public MainWindow MainWindow { get; }
     public HudWindow Hud { get; }
     public Sounds Sounds { get; }
+    public CorruptionLink Corruption { get; }
+    public Companions Companions { get; }
     public NetClient Net { get; private set; }
     public OwnerHudWindow OwnerHud { get; }
     public MembersWindow Members { get; }
@@ -48,6 +50,7 @@ public sealed class Plugin : IDalamudPlugin
     public MilkingWindow Milking { get; }
     public MilkAskWindow MilkAskPopup { get; }
     public TutorialWindow Tutorial { get; }
+    public HelperNoticeWindow Helpers { get; }
     public CharacterClaimWindow Claim { get; }
 
     /// <summary>This build's version, sent to the network so old versions can be told to update.</summary>
@@ -93,6 +96,13 @@ public sealed class Plugin : IDalamudPlugin
         Net = new NetClient(this);
         Game = new DairyGame(this);
         Sounds = new Sounds(this);
+        // Breeding and pregnancy come from the Corruption plugin; its events go to whichever character is playing
+        Corruption = new CorruptionLink();
+        Companions = new Companions(this);
+        Corruption.PartnerClimax += (name, world) => Game.OnPartnerClimax(name, world);
+        Corruption.Climax += () => Game.OnClimax();
+        Corruption.Changed += () => Game.ReadPregnancySoon();
+        Corruption.Reloaded += () => Game.CorruptionReloaded();
         MainWindow = new MainWindow(this, art, fonts);
         Hud = new HudWindow(this, art, fonts);
         windowSystem.AddWindow(MainWindow);
@@ -117,6 +127,8 @@ public sealed class Plugin : IDalamudPlugin
         windowSystem.AddWindow(Changes);
         Tutorial = new TutorialWindow(this, fonts);
         windowSystem.AddWindow(Tutorial);
+        Helpers = new HelperNoticeWindow(this, fonts);
+        windowSystem.AddWindow(Helpers);
         Claim = new CharacterClaimWindow(this, fonts);
         claimSystem.AddWindow(Claim);
         contextMenu = new ContextMenuHandler(this);
@@ -157,6 +169,7 @@ public sealed class Plugin : IDalamudPlugin
         Net.Update();
         Tutorial.CheckFirstRun();
         if (!Tutorial.IsOpen) Changes.CheckAfterUpdate();
+        Helpers.Check(dt);
 
         // Needs and milk change every second; write them out now and then
         saveTimer += dt;
@@ -173,6 +186,8 @@ public sealed class Plugin : IDalamudPlugin
         Game.Stop("Plugin unloaded.");
         Game.EndMilkMod();
         Sounds.Dispose();
+        Game.StopForcedCreampie();
+        Corruption.Dispose();
         Net.Dispose();
         contextMenu.Dispose();
 
