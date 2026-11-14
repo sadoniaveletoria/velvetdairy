@@ -358,6 +358,15 @@ public sealed class MemberStatus
     public float SeedCap { get; set; }      // a bull: what his vials hold (0 = not a bull)
     public int SeedGrade { get; set; }
     public bool SeedSpoiled { get; set; }
+    // For a scan: what speeds them up now, their bred bonus, when a cow can be bred again, and who may scan them
+    public List<ScanBonus> Bonuses { get; set; } = new();
+    public float Speed { get; set; }
+    public string BredBy { get; set; } = "";
+    public float BredPct { get; set; }
+    public long BredUntil { get; set; }
+    public long BreedWait { get; set; }
+    public string Scan { get; set; } = "anyone";
+    public long W { get; set; }                         // when the server last stored this (unix seconds)
     public string Breeding { get; set; } = "";   // both cow and bull: the scene partner (Name@World) they chose to breed this scene
     public int Quality { get; set; }        // milk quality score (cows)
     public int TotalOz { get; set; }        // all the milk they've ever given
@@ -368,6 +377,29 @@ public sealed class MemberStatus
     public bool Ask { get; set; }                       // a cow who presses Allow before each hand milking
     public string Refused { get; set; } = "";           // a cow: the farmer they just told "Not now"
     public long TreatAt { get; set; }                   // a cow: when she can have her next treat (unix seconds)
+}
+
+public sealed class ScanBonus
+{
+    public string N { get; set; } = "";
+    public float P { get; set; }   // percent: +15 is 15% faster, -50 half speed
+}
+
+/// <summary>A scan of another player: their dairy and status, or why it can't be seen.</summary>
+public sealed class ScanReply
+{
+    public bool Found { get; set; }
+    public bool Hidden { get; set; }
+    public string Why { get; set; } = "";
+    public string Name { get; set; } = "";
+    public string World { get; set; } = "";
+    public string Dairy { get; set; } = "";
+    public string Role { get; set; } = "";
+    public List<string> Roles { get; set; } = new();
+    public bool Online { get; set; }
+    public string Version { get; set; } = "";
+    public long Now { get; set; }
+    public MemberStatus? Status { get; set; }
 }
 
 public sealed class StallInfo

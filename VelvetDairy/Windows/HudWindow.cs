@@ -23,6 +23,20 @@ public sealed class HudWindow : Window
     private bool ShowHandMilk => G.IsFarmer;
     private bool ShowKitchen => G.CanCarry;
 
+    /// <summary>Targeting another player close by (with the network on): a Scan button for them.</summary>
+    private Dalamud.Game.ClientState.Objects.SubKinds.IPlayerCharacter? ScanTarget
+    {
+        get
+        {
+            var me = Plugin.ObjectTable.LocalPlayer;
+            if (!G.Networked || me == null || Plugin.TargetManager.Target is not Dalamud.Game.ClientState.Objects.SubKinds.IPlayerCharacter pc) return null;
+            if (pc.GameObjectId == me.GameObjectId || Vector3.Distance(pc.Position, me.Position) > 15f) return null;
+            return pc;
+        }
+    }
+
+    private bool ShowButtons => ShowHandMilk || ShowKitchen || ScanTarget != null;
+
     public HudWindow(Plugin plugin, Art art, Fonts fonts)
         : base("Eorzea Milkers HUD##VelvetDairyHud",
             ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse |
@@ -44,7 +58,7 @@ public sealed class HudWindow : Window
 
     public override void PreDraw()
     {
-        Size = HudSize + new Vector2(0, ShowHandMilk || ShowKitchen ? ButtonRow : 0);
+        Size = HudSize + new Vector2(0, ShowButtons ? ButtonRow : 0);
         if (F.LockHud) Flags |= ImGuiWindowFlags.NoMove;
         else Flags &= ~ImGuiWindowFlags.NoMove;
         ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, Vector2.Zero);
@@ -271,12 +285,13 @@ public sealed class HudWindow : Window
             else G.DumpSeed();
         }
 
-        // Farmers: Herd Care and Kitchen, each opening its own window
-        if (ShowHandMilk || ShowKitchen)
+        // Herd Care and Kitchen (each opening its own window), and Scan while you target someone
+        var scan = ScanTarget;
+        if (ShowHandMilk || ShowKitchen || scan != null)
         {
             var by = o.Y + size.Y - 10;
-            var both = ShowHandMilk && ShowKitchen;
-            var bw2 = both ? (size.X - 50) / 2 : size.X - 40;
+            var count = (ShowHandMilk ? 1 : 0) + (ShowKitchen ? 1 : 0) + (scan != null ? 1 : 0);
+            var bw2 = (size.X - 40 - 10 * (count - 1)) / count;
             var bx = o.X + 20;
             if (ShowHandMilk)
             {
@@ -288,8 +303,17 @@ public sealed class HudWindow : Window
             if (ShowKitchen)
             {
                 var tip = G.Baking is { } bk ? $"{Catalog.Doing(bk.Recipe)} {Catalog.MadeName(bk.Recipe.Makes).ToLowerInvariant()} ({F.Bake!.Done + 1} of {F.Bake.Count})." : "Fill your jugs from the dairy tank and bake.";
-                if (Ui.Button("##hudkitchen", G.Baking is { } kb ? $"Kitchen ({Catalog.Doing(kb.Recipe).ToLowerInvariant()})" : "Kitchen", new Vector2(bw2, 30), "honey", true, tip, new Vector2(bx, by)))
+                if (Ui.Button("##hudkitchen", G.Baking is { } kb ? (count > 2 ? "Kitchen" : $"Kitchen ({Catalog.Doing(kb.Recipe).ToLowerInvariant()})") : "Kitchen", new Vector2(bw2, 30), "honey", true, tip, new Vector2(bx, by)))
                     plugin.Kitchen.Toggle();
+                bx += bw2 + 10;
+            }
+
+            if (scan != null)
+            {
+                var who = scan.Name.TextValue;
+                var label = count == 1 ? $"Scan {who}" : "Scan";
+                if (Ui.Button("##hudscan", label, new Vector2(bw2, 30), "sage", true, $"See {who}'s milk, bonuses, breeding and pregnancy (if they allow scans).", new Vector2(bx, by)))
+                    plugin.Scanner.Open(who, scan.HomeWorld.ValueNullable?.Name.ExtractText() ?? "");
             }
         }
 

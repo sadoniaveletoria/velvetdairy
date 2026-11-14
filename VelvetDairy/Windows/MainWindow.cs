@@ -1852,6 +1852,17 @@ public sealed partial class MainWindow : Window
         b = F.ShowOwnerHud;
         if (ImGui.Checkbox("Show the owner HUD when I own a dairy", ref b)) { F.ShowOwnerHud = b; changed = true; }
 
+        // Who can scan you (target you and press Scan): your milk, bonuses, breeding and pregnancy
+        ImGui.TextColored(Theme.Ink, "Who can scan me:");
+        foreach (var (key, label) in new[] { ("anyone", "Anyone"), ("dairy", "My dairy only"), ("nobody", "Nobody") })
+        {
+            ImGui.SameLine();
+            if (ImGui.RadioButton($"{label}##scan{key}", F.ScanAllow == key)) { F.ScanAllow = key; changed = true; G.Net.BeatWithin(1); }
+        }
+
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip(Units.Text("A scan shows your milk and seed, what's speeding them up, your bred bonus, pregnancy and when you can be bred again."));
+
         b = F.ShowStallMarkers;
         if (ImGui.Checkbox("Show stall markers (only you see them)", ref b)) { F.ShowStallMarkers = b; changed = true; }
         if (ImGui.IsItemHovered()) ImGui.SetTooltip(Units.Text("A small green dot above each of your dairy's stalls while you're in the dairy, so you can see which seats milk you."));

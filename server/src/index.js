@@ -261,6 +261,7 @@ async function route(request, env) {
     ["GET", /^\/v1\/whoami$/, () => ({ charHash: me.char_hash || null })],
     ["GET", /^\/v1\/dairies$/, () => listDairies(env, me)],
     ["GET", /^\/v1\/dairy\/mine$/, () => myDairy(env, me)],
+    ["GET", /^\/v1\/scan\/([^/]{1,80})\/([^/]{1,80})$/, m => scanPlayer(env, me, decodeURIComponent(m[1]), decodeURIComponent(m[2]))],
     ["PUT", /^\/v1\/dairy$/, () => putDairy(env, me, request)],
     ["DELETE", /^\/v1\/dairy$/, () => deleteDairy(env, me)],
     ["POST", /^\/v1\/invites$/, () => invite(env, me, request)],
@@ -324,6 +325,29 @@ async function membership(env, install) {
   return await env.DB.prepare(
     "SELECT m.*, d.owner = m.install AS is_owner, d.name AS dairy_name FROM members m JOIN dairies d ON d.id = m.dairy_id WHERE m.install = ?")
     .bind(install).first();
+}
+
+/**
+ * A scan: what a player's plugin shares about them (milk, seed, bonuses, breeding and pregnancy), for anyone targeting
+ * them in game. Only members of a dairy have a status. They choose who can scan them: anyone, their dairy, or nobody.
+ */
+async function scanPlayer(env, me, world, name) {
+  const t = now();
+  const m = await env.DB.prepare(`SELECT m.install, m.role, m.name, m.world_name, m.status, m.dairy_id, d.name AS dairy_name, i.last_seen, i.version
+      FROM members m JOIN dairies d ON d.id = m.dairy_id LEFT JOIN installs i ON i.id = m.install
+      WHERE m.name = ? COLLATE NOCASE AND m.world_name = ? COLLATE NOCASE LIMIT 1`).bind(clean(name, 40), clean(world, 40)).first();
+  if (!m) return { found: false, why: "They're not in a dairy, so there's nothing to scan." };
+  const st = safeParse(m.status) || {};
+  const allow = st.scan || "anyone";
+  if (m.install !== me.id && allow !== "anyone") {
+    const mine = await membership(env, me.id);
+    if (allow === "nobody" || !mine || mine.dairy_id !== m.dairy_id)
+      return { found: true, hidden: true, name: m.name, why: allow === "nobody" ? "They don't allow scans." : "They only allow scans from their own dairy." };
+  }
+  return {
+    found: true, hidden: false, name: m.name, world: m.world_name, dairy: m.dairy_name, role: primaryRole(m.role), roles: roleList(m.role),
+    online: (m.last_seen || 0) >= t - ONLINE_WINDOW, version: m.version || "", status: st, now: t,
+  };
 }
 
 async function ownedDairy(env, me) {
@@ -471,7 +495,7 @@ const notice = (env, install, note) => addInbox(env, install, "notice", 0, 0, 0,
 // Fields that change a little with almost every heartbeat (milk filling, xp, drains). A change in only these is
 // written at most every STATUS_REFRESH seconds; anything else (milking, a stall, asking, spoiled...) is written at once.
 // This keeps database writes down without making anything that matters slower.
-const STATUS_VOLATILE = ["milk", "seedOz", "quality", "totalOz", "drainLeft", "drainAt", "w"];
+const STATUS_VOLATILE = ["milk", "seedOz", "quality", "totalOz", "drainLeft", "drainAt", "w", "bonuses", "speed"];
 const STATUS_REFRESH = 90;
 
 function statusNeedsWrite(oldJson, newJson, t) {
@@ -538,6 +562,12 @@ async function heartbeat(env, me, request) {
       seedGrade: Math.max(0, Math.min(GRADES - 1, Math.floor(num(st.seedGrade)))), seedSpoiled: !!st.seedSpoiled,
       // Two players who are both cow and bull: the scene partner (Name@World) this player chose to breed this scene
       breeding: clean(st.breeding, 80),
+      // For a scan (anyone targeting them, if they allow it): what speeds their milk or seed up now, and breeding
+      bonuses: Array.isArray(st.bonuses) ? st.bonuses.slice(0, 16).map(x => ({ n: clean(x && x.n, 48), p: Math.max(-100, Math.min(1000, Math.round(num(x && x.p)))) })).filter(x => x.n) : [],
+      speed: Math.max(0, Math.min(50, Math.round(Number(st.speed) * 100 || 0) / 100)),
+      bredBy: clean(st.bredBy, 40), bredPct: Math.max(0, Math.min(100, num(st.bredPct))), bredUntil: Math.max(0, Math.floor(num(st.bredUntil))),
+      breedWait: Math.max(0, Math.floor(num(st.breedWait))),   // a cow: when she can be bred again (unix seconds)
+      scan: ["anyone", "dairy", "nobody"].includes(st.scan) ? st.scan : "anyone",   // who can scan them
     });
     if (statusNeedsWrite(mem.status, status, t))
       await env.DB.prepare("UPDATE members SET status = ? WHERE install = ?").bind(withWritten(status, t), me.id).run();

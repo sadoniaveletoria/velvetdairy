@@ -182,6 +182,30 @@ await test("breeding status: seed is kept within 0-100 and only real pregnancy s
   assert.equal((await call(bob, "GET", "/v1/dairy/mine")).data.members[2].status.pregFather, "", "no father without a pregnancy");
 });
 
+await test("scan: anyone can see a member's bonuses and breeding, unless they say no", async () => {
+  await beat(carl, { name: "Carl Bull", worldName: "Gilgamesh" });
+  const me = (await call(bob, "GET", "/v1/dairy/mine")).data.members.find(m => m.name === "Carl Bull");
+  assert.equal(me.world, "Gilgamesh");
+  await beat(carl, { status: { milk: 3, cap: 8, seed: 80, bonuses: [{ n: "Fed", p: 15 }, { n: "<b>x</b>", p: 99999 }], speed: 1.155, bredBy: "Bram", bredPct: 12, bredUntil: 9999999999 } });
+  let r = await call(dana, "GET", `/v1/scan/${encodeURIComponent(me.world)}/${encodeURIComponent("carl bull")}`);
+  assert.equal(r.status, 200, JSON.stringify(r.data) + " " + me.world);
+  assert.equal(r.data.found, true);
+  assert.equal(r.data.hidden, false, "anyone by default");
+  assert.equal(r.data.dairy, "Rose Hollow");
+  assert.deepEqual(r.data.status.bonuses, [{ n: "Fed", p: 15 }, { n: "<b>x</b>", p: 1000 }]);
+  assert.equal(r.data.status.speed, 1.16);
+  assert.equal(r.data.status.bredBy, "Bram");
+  await beat(carl, { status: { milk: 3, cap: 8, scan: "dairy" } });
+  r = await call(dana, "GET", `/v1/scan/${encodeURIComponent(me.world)}/Carl%20Bull`);
+  assert.equal(r.data.hidden, true, "dairy only: an outsider can't");
+  assert.equal(r.data.status, undefined);
+  assert.equal((await call(bob, "GET", `/v1/scan/${encodeURIComponent(me.world)}/Carl%20Bull`)).data.hidden, false, "dairy only: a dairy-mate can");
+  await beat(carl, { status: { milk: 3, cap: 8, scan: "nobody" } });
+  assert.equal((await call(bob, "GET", `/v1/scan/${encodeURIComponent(me.world)}/Carl%20Bull`)).data.hidden, true, "nobody");
+  assert.equal((await call(dana, "GET", "/v1/scan/Gilgamesh/Nobody%20Here")).data.found, false);
+  await beat(carl, { status: { milk: 3.5, cap: 8, seed: 60 } });
+});
+
 await test("several roles at once: self-add cow/bull, farmer is given, only the owner takes away", async () => {
   let r = await call(carl, "POST", `/v1/members/${carl.id}/roles`, { add: "cow" });
   assert.deepEqual(r.data.roles, ["cow", "bull"], "anyone can add cow to themselves");

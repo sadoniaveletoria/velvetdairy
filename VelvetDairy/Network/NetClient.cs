@@ -387,6 +387,11 @@ public sealed class NetClient : IDisposable
                 SeedOz = g.ProducesSeed ? (float)Math.Round(F.Cow.Seed, 2) : 0, SeedCap = g.ProducesSeed ? g.SeedCapacity : 0,
                 SeedGrade = g.ProducesSeed ? g.SeedGrade : 0, SeedSpoiled = g.ProducesSeed && g.SeedSpoiled,
                 Breeding = g.BreedingTarget,
+                Bonuses = g.ScanBonuses(out var speed), Speed = speed,
+                BredBy = g.BredLeft > TimeSpan.Zero ? F.BredBy : "", BredPct = g.BredLeft > TimeSpan.Zero ? (float)Math.Round(g.BredBonusNow * 100, 1) : 0,
+                BredUntil = g.BredLeft > TimeSpan.Zero ? new DateTimeOffset(F.BredUntilUtc, TimeSpan.Zero).ToUnixTimeSeconds() : 0,
+                BreedWait = g.IsCow && g.BreedCooldownLeft > TimeSpan.Zero ? DateTimeOffset.UtcNow.Add(g.BreedCooldownLeft).ToUnixTimeSeconds() : 0,
+                Scan = F.ScanAllow,
                 Quality = (int)F.Quality, TotalOz = (int)F.Stats.TotalOz,
                 Emotes = g.Producer ? g.MilkEmotesForFarmers() : new List<string>(),
                 HandBy = g.Active is { Kind: VelvetDairy.Game.SessionKind.Hand, Hand: { IsTest: false } h } ? h.Name : "",
@@ -461,6 +466,10 @@ public sealed class NetClient : IDisposable
     private bool WatchingDairy =>
         plugin.Game.Where.InDairy || plugin.MainWindow.IsOpen || plugin.Members.IsOpen || plugin.Kitchen.IsOpen ||
         plugin.Milking.IsOpen || (F.ShowHud && F.ShowOwnerHud && F.NetMember?.IsOwner == true);
+
+    /// <summary>Scan another player (anyone targeting them can, if they allow it).</summary>
+    public void Scan(string name, string world, Action<ScanReply> ok, Action<string> failed) =>
+        Call<ScanReply>("GET", $"/v1/scan/{Uri.EscapeDataString(world)}/{Uri.EscapeDataString(name)}", null, ok, failed);
 
     public void RefreshMine()
     {

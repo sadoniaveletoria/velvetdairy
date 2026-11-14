@@ -111,6 +111,7 @@ public class FarmSave
     public List<Farmhand>? Farmhands { get; set; }
     public List<string>? HandEmotes { get; set; }     // emote commands a farmhand uses to milk you
     public bool AutoHand { get; set; } = true;
+    public string ScanAllow { get; set; } = "anyone";   // who can scan you: anyone, dairy (your dairy only) or nobody
     public string MilkModDir { get; set; } = "";      // farmer: Penumbra mod switched on only while you milk (e.g. one that turns /beesknees into a massage)
     public bool MilkModRedraw { get; set; }
     public bool Metric { get; set; }                   // show milk in ml and litres instead of ounces

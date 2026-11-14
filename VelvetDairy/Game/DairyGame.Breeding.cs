@@ -421,6 +421,22 @@ public sealed partial class DairyGame
         plugin.SaveConfig();
     }
 
+    /// <summary>For a scan: each thing speeding your milk (or a bull-only player's seed) up or down now, and the total.</summary>
+    public List<Network.ScanBonus> ScanBonuses(out float total)
+    {
+        var parts = ProducesMilk ? RateParts() : ProducesSeed ? RateParts(true, true) : new List<RatePart>();
+        total = 1f;
+        var list = new List<Network.ScanBonus>();
+        foreach (var p in parts)
+        {
+            total *= p.Multiplier;
+            list.Add(new Network.ScanBonus { N = p.Name, P = (float)Math.Round((p.Multiplier - 1f) * 100f) });
+        }
+
+        total = (float)Math.Round(total, 2);
+        return list;
+    }
+
     private void AddBullXp(int amount)
     {
         var before = BullLevel;
