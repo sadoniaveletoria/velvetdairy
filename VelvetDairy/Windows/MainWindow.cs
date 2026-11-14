@@ -762,7 +762,7 @@ public sealed partial class MainWindow : Window
             : seedOnly ? SeedTint
             : milking && G.Active!.Kind == SessionKind.Hand ? new Vector4(1f, 0.97f, 0.96f, 1f) : (Vector4?)null;
         Ui.Bottle(dl, bmin, new Vector2(bw, bh), frac, seedOnly ? (milking ? Ui.Flow.Draining : G.SeedComing ? Ui.Flow.Filling : Ui.Flow.Still) : FlowNow(), tint, G.BottleTier);
-        if (both) DrawSeedVial(dl, new Vector2(min.X + 14, min.Y + 26), Math.Max(60f, bh * 0.4f));
+        if (both) DrawSeedVial(dl, new Vector2(min.X + 34, min.Y + 28), Math.Max(60f, bh * 0.4f));
 
         // "+1 oz" floats up from the surface each time another whole ounce comes in
         var whole = (int)MathF.Floor(target / unit);
