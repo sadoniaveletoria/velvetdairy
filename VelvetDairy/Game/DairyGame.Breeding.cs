@@ -163,17 +163,64 @@ public sealed partial class DairyGame
         return p != null && (p.Roles.Contains(role) || p.Role == role);
     }
 
+    // Each way on its own: you could breed them, they could breed you (roles in your dairy, and what the bodies can do)
+    private bool CouldBreedThem => IsBull && myBody.CanBreed && partnerBody.CanCarry && PartnerIs("cow");
+    private bool CouldBeBred => IsCow && myBody.CanCarry && partnerBody.CanBreed && PartnerIs("bull");
+
+    /// <summary>
+    /// Both of you are cow and bull and could go either way: it's not decided by who finishes. One of you chooses to
+    /// breed the other for this scene (a pop-up), and only that way counts. A new scene chooses again.
+    /// </summary>
+    public bool EitherWayScene => CouldBreedThem && CouldBeBred;
+
+    /// <summary>You chose to breed your partner this scene.</summary>
+    public bool IChoseToBreed => breedChoiceFor.Length > 0 && breedChoiceFor == sceneKey;
+
+    /// <summary>Your partner chose to breed you this scene (their status says so).</summary>
+    public bool PartnerChoseToBreed
+    {
+        get
+        {
+            if (!InScene || SceneNow.Solo) return false;
+            var p = DairyMember(SceneNow.PartnerName, SceneNow.PartnerWorld);
+            var me = Plugin.ObjectTable.LocalPlayer;
+            if (p?.Status == null || me == null) return false;
+            var mine = $"{me.Name.TextValue}@{me.HomeWorld.ValueNullable?.Name.ExtractText() ?? ""}";
+            return p.Status.Breeding.Equals(mine, StringComparison.OrdinalIgnoreCase);
+        }
+    }
+
+    /// <summary>For your status: who you chose to breed (Name@World), so their plugin knows; empty otherwise.</summary>
+    public string BreedingTarget => EitherWayScene && IChoseToBreed ? sceneKey : "";
+
+    /// <summary>You both chose to breed the other: neither counts until one of you lets the other.</summary>
+    public bool BothChoseToBreed => EitherWayScene && IChoseToBreed && PartnerChoseToBreed;
+
+    /// <summary>Choose who breeds this scene (true: you breed them; false: you don't, so they can).</summary>
+    public void ChooseToBreed(bool me)
+    {
+        breedChoiceFor = me ? sceneKey : "";
+        breedChoiceAsked = sceneKey;
+        Net.BeatWithin(1);
+        Diag.Info("breed", me ? $"Chose to breed {SceneNow.PartnerName} this scene" : "Chose not to breed this scene");
+    }
+
+    /// <summary>The pop-up asking who breeds: an either-way scene where neither of you has chosen yet.</summary>
+    public bool WantsBreedChoice => EitherWayScene && (BothChoseToBreed || (breedChoiceAsked != sceneKey && !PartnerChoseToBreed));
+
+    public void DismissBreedChoice() => breedChoiceAsked = sceneKey;
+
+    private string breedChoiceFor = "", breedChoiceAsked = "";
+
     /// <summary>You're a bull in a scene with a cow of your dairy: you're the one breeding.</summary>
-    public bool BreedingAsBull => IsBull && myBody.CanBreed && partnerBody.CanCarry && PartnerIs("cow");
+    public bool BreedingAsBull => CouldBreedThem && (!CouldBeBred || (IChoseToBreed && !PartnerChoseToBreed));
 
     /// <summary>You're a cow in a scene with a bull of your dairy: you're the one being bred.</summary>
-    public bool BredAsCow => IsCow && myBody.CanCarry && partnerBody.CanBreed && PartnerIs("bull");
+    public bool BredAsCow => CouldBeBred && (!CouldBreedThem || (PartnerChoseToBreed && !IChoseToBreed));
 
     // What each body can do in this scene (from Corruption: who can breed, who can carry). Two players who are both
     // cows and bulls can go either way; their bodies decide which way(s) a finish breeds.
     private (bool CanCarry, bool CanBreed) myBody = (true, true), partnerBody = (true, true);
-
-    private bool PartnerIsDairyCow => PartnerIs("cow");
 
     /// <summary>
     /// A bull in a scene with a cow of their dairy: every finish creampies the cow's pussy (Corruption 0.3.5: set on the
@@ -183,7 +230,7 @@ public sealed partial class DairyGame
     /// </summary>
     private void UpdateForcedCreampie()
     {
-        var want = CorruptionOn && IsBull && PartnerIsDairyCow;
+        var want = CorruptionOn && BreedingAsBull;   // an either-way scene: only when you chose to breed them
         if (want == forcedOn && (!want || ForceCreampieAnswer == "ok")) return;
         if (!want)
         {
@@ -299,6 +346,11 @@ public sealed partial class DairyGame
         ReadScene(true);   // up to date, so a scene that only just started is the one this breeding belongs to
         var bull = DairyMember(name, world);
         if (bull == null || !(bull.Roles.Contains("bull") || bull.Role == "bull")) return;
+        if (EitherWayScene && !BredAsCow)
+        {
+            Diag.Info("breed", $"{name} finished, but they didn't choose to breed you this scene");
+            return;
+        }
         if (!myBody.CanCarry || !partnerBody.CanBreed)
         {
             Diag.Info("breed", $"{name} finished, but your bodies don't breed that way (you can carry: {myBody.CanCarry}, they can breed: {partnerBody.CanBreed})");
@@ -343,6 +395,11 @@ public sealed partial class DairyGame
         if (!scene.Ready || scene.Solo || scene.PartnerName.Length == 0) return;
         var cow = DairyMember(scene.PartnerName, scene.PartnerWorld);
         if (cow == null || !(cow.Roles.Contains("cow") || cow.Role == "cow")) return;
+        if (EitherWayScene && !BreedingAsBull)
+        {
+            Diag.Info("breed", "You finished, but you didn't choose to breed them this scene");
+            return;
+        }
         if (!myBody.CanBreed || !partnerBody.CanCarry)
         {
             Diag.Info("breed", $"You finished, but your bodies don't breed that way (you can breed: {myBody.CanBreed}, they can carry: {partnerBody.CanCarry})");

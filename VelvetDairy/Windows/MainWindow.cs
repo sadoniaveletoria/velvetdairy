@@ -914,7 +914,8 @@ public sealed partial class MainWindow : Window
         if (G.Pregnant && G.IsCow)
             notes.Add(($"Pregnant ({DairyGame.StageName(G.Preg.Stage)}): +{G.PregnancyBonus * 100:0}% milk until the birth." + (G.Preg.FatherName.Length > 0 ? $" Sire: {G.Preg.FatherName}." : ""), Theme.RoseDeep));
         if (G.InScene)
-            notes.Add(($"Corruption: {G.SceneLine}." + (G.BreedingAsBull && G.BredAsCow ? " You can breed each other: when they finish, you're bred" + (G.ConceiveChance > 0 ? $" ({G.ConceiveChance * 100:0}% chance of conceiving)" : "") + "; when you finish, you breed them."
+            notes.Add(($"Corruption: {G.SceneLine}." + (G.BothChoseToBreed ? " You both chose to breed the other: one of you picks \"They breed me\" in the pop-up."
+                : G.EitherWayScene && !G.BreedingAsBull && !G.BredAsCow ? " You're both cow and bull: choose who breeds this scene (the pop-up). Until one of you does, finishing doesn't breed."
                 : G.BreedingAsBull ? " When you finish, you breed them" + (G.ForcedCreampie ? " (always inside, so Corruption rolls for conception)." : ".")
                 : G.BredAsCow ? " When they finish, you're bred" + (G.ConceiveChance > 0 ? $", with a {G.ConceiveChance * 100:0}% chance of conceiving (from Corruption)." : ".") : ""), Theme.RoseDeep));
         if (!where.InDairy) notes.Add((where.Why + " Care and milking wait until you're back.", Theme.RoseDeep));

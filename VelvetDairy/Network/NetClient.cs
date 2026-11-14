@@ -386,6 +386,7 @@ public sealed class NetClient : IDisposable
                 Seed = g.IsBull ? g.SeedNow : 0, Preg = g.Pregnant ? g.Preg.Stage : "", PregFather = g.Pregnant ? g.Preg.FatherName : "",
                 SeedOz = g.ProducesSeed ? (float)Math.Round(F.Cow.Seed, 2) : 0, SeedCap = g.ProducesSeed ? g.SeedCapacity : 0,
                 SeedGrade = g.ProducesSeed ? g.SeedGrade : 0, SeedSpoiled = g.ProducesSeed && g.SeedSpoiled,
+                Breeding = g.BreedingTarget,
                 Quality = (int)F.Quality, TotalOz = (int)F.Stats.TotalOz,
                 Emotes = g.Producer ? g.MilkEmotesForFarmers() : new List<string>(),
                 HandBy = g.Active is { Kind: VelvetDairy.Game.SessionKind.Hand, Hand: { IsTest: false } h } ? h.Name : "",
@@ -463,7 +464,8 @@ public sealed class NetClient : IDisposable
 
     public void RefreshMine()
     {
-        nextMine = Now + (WatchingDairy ? 60 : 300);
+        // A scene where you and your partner choose who breeds: their choice shows up quickly
+        nextMine = Now + (plugin.Game.EitherWayScene ? 10 : WatchingDairy ? 60 : 300);
         Call<MyDairyReply>("GET", "/v1/dairy/mine", null, r =>
         {
             Mine = r.Dairy == null ? null : r;

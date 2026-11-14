@@ -358,6 +358,7 @@ public sealed class MemberStatus
     public float SeedCap { get; set; }      // a bull: what his vials hold (0 = not a bull)
     public int SeedGrade { get; set; }
     public bool SeedSpoiled { get; set; }
+    public string Breeding { get; set; } = "";   // both cow and bull: the scene partner (Name@World) they chose to breed this scene
     public int Quality { get; set; }        // milk quality score (cows)
     public int TotalOz { get; set; }        // all the milk they've ever given
     public List<string> Emotes { get; set; } = new();   // the emotes this cow's farmers milk her with

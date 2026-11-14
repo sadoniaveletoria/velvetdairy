@@ -536,6 +536,8 @@ async function heartbeat(env, me, request) {
       // A bull's seed vials, like a cow's milk and cap
       seedOz: Math.max(0, Math.min(100, Math.round(num(st.seedOz) * 100) / 100)), seedCap: Math.max(0, Math.min(100, num(st.seedCap))),
       seedGrade: Math.max(0, Math.min(GRADES - 1, Math.floor(num(st.seedGrade)))), seedSpoiled: !!st.seedSpoiled,
+      // Two players who are both cow and bull: the scene partner (Name@World) this player chose to breed this scene
+      breeding: clean(st.breeding, 80),
     });
     if (statusNeedsWrite(mem.status, status, t))
       await env.DB.prepare("UPDATE members SET status = ? WHERE install = ?").bind(withWritten(status, t), me.id).run();
