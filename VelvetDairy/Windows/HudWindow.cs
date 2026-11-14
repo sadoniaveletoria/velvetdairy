@@ -243,6 +243,11 @@ public sealed class HudWindow : Window
             status = G.Preg.Stage switch { "first" => "Pregnant · 1st trimester", "second" => "Pregnant · 2nd trimester", "third" => "Pregnant · 3rd trimester", _ => "Pregnant" };
             col = Theme.RoseDeep;
         }
+        else if (G.Where.Guest)
+        {
+            status = $"Visiting {G.GuestHere?.Name ?? "a dairy"}" + (G.Where.Seated ? " · resting" : "");
+            col = Theme.SageDeep;
+        }
         else if (G.Where.InDairy)
         {
             status = G.Where.Seated ? (G.RestSettleLeft > TimeSpan.Zero ? $"Getting comfy · {Math.Max(1, (int)Math.Ceiling(G.RestSettleLeft.TotalMinutes))}m" : "Sitting in the dairy") : "In the dairy";

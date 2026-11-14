@@ -319,6 +319,7 @@ async function route(request, env) {
     ["POST", /^\/v1\/dairy\/tank\/take$/, () => takeFromTank(env, me, request)],
     ["POST", /^\/v1\/handpay$/, () => handPay(env, me, request)],
     ["POST", /^\/v1\/dairy\/notice$/, () => postNotice(env, me, request)],
+    ["GET", /^\/v1\/player$/, () => lookupPlayer(env, new URL(request.url))],
     ["POST", /^\/v1\/dairy\/contract\/ship$/, () => shipToContract(env, me, request)],
     ["POST", /^\/v1\/carry\/use$/, () => useCarried(env, me, request)],
     ["PUT", /^\/v1\/dev\/creamery$/, () => setCreamery(env, request)],
@@ -572,6 +573,46 @@ function statusNeedsWrite(oldJson, newJson, t) {
 /** The status as stored: with when it was written (for the refresh above). */
 const withWritten = (json, t) => JSON.stringify({ ...(safeParse(json) || {}), w: t });
 
+/**
+ * What a guest's plugin needs about the public dairy they're visiting: its area (to know when they're inside),
+ * its stalls (to be milked on them) and its farmers who are online, with who each pressed Milk on (hand milking).
+ */
+async function guestInfo(env, d, t) {
+  const stalls = (await env.DB.prepare(
+    "SELECT s.*, COALESCE(c.until, 0) AS clean_until FROM stalls s LEFT JOIN stall_clean c ON c.stall_id = s.id WHERE s.dairy_id = ? ORDER BY s.created")
+    .bind(d.id).all()).results;
+  const farmers = (await env.DB.prepare(`
+      SELECT m.name, m.world_name, m.status FROM memberships m JOIN installs i ON i.id = m.install
+      WHERE m.dairy_id = ? AND ${ROLE_SQL} AND i.last_seen >= ?`).bind(d.id, "farmer", t - ONLINE_WINDOW).all()).results;
+  return {
+    guest: true,
+    houseId: d.house_id || "",
+    area: areaRow(await env.DB.prepare("SELECT * FROM dairy_area WHERE dairy_id = ?").bind(d.id).first()),
+    stalls: stalls.map(s => ({ id: s.id, name: s.name, x: s.x, y: s.y, z: s.z, tier: s.tier, cleanUntil: s.clean_until > t ? s.clean_until : 0 })),
+    farmers: farmers.map(f => {
+      const st = safeParse(f.status) || {};
+      return { name: f.name, world: f.world_name, milking: st.milking || "", refused: st.refused || "" };
+    }),
+  };
+}
+
+/**
+ * Another player's roles in their dairy, and whom (if anyone) they've allowed to breed them as a guest, by name and
+ * world. For breeding across dairies: a cow's plugin asks whether a scene partner is a bull, and a bull's plugin
+ * whether the cow said yes. Only players on the network, and only these few fields.
+ */
+async function lookupPlayer(env, url) {
+  const name = clean(url.searchParams.get("name"), 40), world = clean(url.searchParams.get("world"), 30);
+  if (!name) fail(400, "Name?");
+  const who = await env.DB.prepare(`SELECT install FROM memberships WHERE name = ? ${world ? "AND world_name = ?" : ""} LIMIT 1`)
+    .bind(...(world ? [name, world] : [name])).first();
+  const m = who && await membership(env, who.install);   // the dairy they're playing in (cow and bull are the same in all)
+  if (!m) return { found: false };
+  m.dairy = m.dairy_name;
+  const st = safeParse(m.status) || {};
+  return { found: true, roles: roleList(m.role), dairyId: m.dairy_id, dairy: m.dairy, breedOk: st.breedOk || "" };
+}
+
 async function heartbeat(env, me, request) {
   const b = await body(request);
   const t = now();
@@ -635,6 +676,8 @@ async function heartbeat(env, me, request) {
       bredBy: clean(st.bredBy, 40), bredPct: Math.max(0, Math.min(100, num(st.bredPct))), bredUntil: Math.max(0, Math.floor(num(st.bredUntil))),
       breedWait: Math.max(0, Math.floor(num(st.breedWait))),   // a cow: when she can be bred again (unix seconds)
       scan: ["anyone", "dairy", "nobody"].includes(st.scan) ? st.scan : "anyone",   // who can scan them
+      breedOk: clean(st.breedOk, 40),    // a cow: the bull from another dairy she allowed to breed her this scene
+      guestAt: clean(st.guestAt, 24),    // a guest: the public dairy they're visiting (so its farmers can see them)
     });
     if (statusNeedsWrite(mem.status, status, t))
       await env.DB.prepare("UPDATE memberships SET status = ? WHERE install = ?").bind(withWritten(status, t), me.id).run();
@@ -646,6 +689,11 @@ async function heartbeat(env, me, request) {
   const asked = Math.max(0, Math.min(XP_PER_BEAT, Math.floor(Number(b.dairyXp) || 0)));
   const atHome = mem && here && here.id === mem.dairy_id;
   const visiting = mem && here && here.id !== mem.dairy_id && here.is_public;
+  // A guest: in someone else's public dairy (its public area, not a private place). Guests are milked and cared for
+  // there like at home, and their milk goes into that dairy's tank.
+  const guest = !!(here && here.is_public && !here.in_private && (!mem || here.id !== mem.dairy_id));
+  const tankDairy = atHome ? mem.dairy_id : guest ? here.id : null;
+  const contribName = mem?.name || clean(b.name, 40) || "";
   if (asked > 0 && b.awake === true && (atHome || visiting)) {
     const day = today();
     const used = (await env.DB.prepare("SELECT xp FROM member_xp WHERE install = ? AND day = ?").bind(me.id, day).first())?.xp || 0;
@@ -663,7 +711,7 @@ async function heartbeat(env, me, request) {
   let pumped = 0;
   const pump = Array.isArray(b.pumped) ? b.pumped.slice(0, 5).map(v => Math.max(0, Math.min(PUMP_PER_BEAT, Number(v) || 0))) : [];
   const asking = pump.reduce((a, v) => a + v, 0);
-  if (asking > 0 && b.awake === true && atHome) {
+  if (asking > 0 && b.awake === true && tankDairy) {
     const day = today();
     const used = (await env.DB.prepare("SELECT oz FROM member_pump WHERE install = ? AND day = ?").bind(me.id, day).first())?.oz || 0;
     const room = Math.max(0, Math.min(PUMP_PER_BEAT, MEMBER_DAILY_PUMP - used));
@@ -674,13 +722,13 @@ async function heartbeat(env, me, request) {
     if (add > 0) {
       pumped = add;
       stmts.push(env.DB.prepare(`INSERT INTO dairy_tank (dairy_id, grade, oz) VALUES (?, 0, ?)
-        ON CONFLICT(dairy_id, grade) DO UPDATE SET oz = oz + excluded.oz`).bind(mem.dairy_id, add));
+        ON CONFLICT(dairy_id, grade) DO UPDATE SET oz = oz + excluded.oz`).bind(tankDairy, add));
     }
     if (pumped > 0) {
       stmts.push(env.DB.prepare(`INSERT INTO member_pump (install, day, oz) VALUES (?, ?, ?)
         ON CONFLICT(install, day) DO UPDATE SET oz = oz + excluded.oz`).bind(me.id, day, pumped));
       stmts.push(env.DB.prepare(`INSERT INTO tank_contrib (dairy_id, install, name, oz) VALUES (?, ?, ?, ?)
-        ON CONFLICT(dairy_id, install) DO UPDATE SET oz = oz + excluded.oz, name = excluded.name`).bind(mem.dairy_id, me.id, mem.name || "", pumped));
+        ON CONFLICT(dairy_id, install) DO UPDATE SET oz = oz + excluded.oz, name = excluded.name`).bind(tankDairy, me.id, contribName, pumped));
       await env.DB.batch(stmts);
     }
   }
@@ -688,18 +736,18 @@ async function heartbeat(env, me, request) {
   // A bull's seed goes into the dairy's seed tank the same way
   let seedPumped = 0;
   const seedAsk = Math.max(0, Math.min(SEED_PER_BEAT, Number(b.seedPumped) || 0));
-  if (seedAsk > 0 && b.awake === true && atHome && hasRole(mem, "bull")) {
+  if (seedAsk > 0 && b.awake === true && tankDairy && (mem ? hasRole(mem, "bull") : guest)) {
     const day = today(), key = `seed:${me.id}`;
     const used = (await env.DB.prepare("SELECT oz FROM member_pump WHERE install = ? AND day = ?").bind(key, day).first())?.oz || 0;
     seedPumped = Math.round(Math.min(seedAsk, Math.max(0, MEMBER_DAILY_SEED - used)) * 1000) / 1000;
     if (seedPumped > 0)
       await env.DB.batch([
         env.DB.prepare(`INSERT INTO dairy_tank (dairy_id, grade, oz) VALUES (?, ?, ?)
-          ON CONFLICT(dairy_id, grade) DO UPDATE SET oz = oz + excluded.oz`).bind(mem.dairy_id, SEED_TANK_GRADE, seedPumped),
+          ON CONFLICT(dairy_id, grade) DO UPDATE SET oz = oz + excluded.oz`).bind(tankDairy, SEED_TANK_GRADE, seedPumped),
         env.DB.prepare(`INSERT INTO member_pump (install, day, oz) VALUES (?, ?, ?)
           ON CONFLICT(install, day) DO UPDATE SET oz = oz + excluded.oz`).bind(key, day, seedPumped),
         env.DB.prepare(`INSERT INTO tank_contrib (dairy_id, install, name, oz) VALUES (?, ?, ?, ?)
-          ON CONFLICT(dairy_id, install) DO UPDATE SET oz = oz + excluded.oz, name = excluded.name`).bind(mem.dairy_id, key, mem.name || "", seedPumped),
+          ON CONFLICT(dairy_id, install) DO UPDATE SET oz = oz + excluded.oz, name = excluded.name`).bind(tankDairy, key, contribName, seedPumped),
       ]);
   }
 
@@ -724,7 +772,8 @@ async function heartbeat(env, me, request) {
       WHERE i.to_hash = ? AND i.status = 'pending' AND i.expires >= ?`).bind(charHash, t).all()).results : [];
   return {
     online: await onlineCount(env),
-    here: here ? { id: here.id, name: here.name, isPublic: !!here.is_public && !here.in_private, mine: !!mem && mem.dairy_id === here.id, private: !!here.in_private } : null,
+    here: here ? { id: here.id, name: here.name, isPublic: !!here.is_public && !here.in_private, mine: !!mem && mem.dairy_id === here.id, private: !!here.in_private,
+      ...(guest ? await guestInfo(env, here, t) : {}) } : null,
     membership: mem ? { dairyId: mem.dairy_id, dairy: mem.dairy_name, role: primaryRole(mem.role), roles: roleList(mem.role), isOwner: !!mem.is_owner, level: (await progressOf(env, mem.dairy_id)).level } : null,
     dairies: mine.length > 1 || (mem && mine.length) ? await myDairies(env, me.id) : [],
     dairyXp,
@@ -965,6 +1014,15 @@ async function myDairy(env, me) {
     progress: await progressOut(env, d.id, stalls.length),
     invites: invites.map(i => ({ id: i.id, name: i.to_name, role: i.role, expires: i.expires })),
     applying: await applyingOut(env, d.id, mem),
+    // Players from other dairies visiting this (public) dairy right now: its farmers can hand milk them (with an Allow)
+    guests: d.is_public ? (await env.DB.prepare(`
+        SELECT m.install, m.role, m.name, m.world_name, m.status, i.last_seen, i.version
+        FROM installs i JOIN memberships m ON m.install = i.id
+        WHERE i.at_dairy = ? AND i.last_seen >= ? AND m.dairy_id != ?`).bind(d.id, t - ONLINE_WINDOW, d.id).all()).results
+      .map(m => ({
+        id: m.install, name: m.name, world: m.world_name, role: primaryRole(m.role), roles: roleList(m.role), isOwner: false,
+        online: true, lastSeen: m.last_seen || 0, version: m.version || "", status: safeParse(m.status), guest: true,
+      })) : [],
   };
 }
 
@@ -1386,9 +1444,12 @@ async function groom(env, me, request) {
   const cowId = String(b.cow || "");
   if (cowId === me.id) fail(400, "You can't groom yourself.");
   // Cows and bulls (bulls make seed with the same needs, so grooming helps them the same way)
-  const cow = await env.DB.prepare(`SELECT install, name FROM memberships WHERE install = ? AND dairy_id = ? AND (${ROLE_SQL} OR ${ROLE_SQL})`)
-    .bind(cowId, mem.dairy_id, "cow", "bull").first();
-  if (!cow) fail(400, "They aren't a cow or bull in your dairy.");
+  // (or a guest visiting your public dairy)
+  const cow = await env.DB.prepare(`SELECT install, name FROM memberships WHERE install = ? AND (${ROLE_SQL} OR ${ROLE_SQL})
+      AND (dairy_id = ? OR (install IN (SELECT id FROM installs WHERE at_dairy = ? AND last_seen >= ?)
+        AND EXISTS (SELECT 1 FROM dairies WHERE id = ? AND is_public = 1)))`)
+    .bind(cowId, "cow", "bull", mem.dairy_id, mem.dairy_id, now() - ONLINE_WINDOW, mem.dairy_id).first();
+  if (!cow) fail(400, "They aren't a cow or bull in your dairy (or visiting it).");
   const t = now();
   const last = await env.DB.prepare("SELECT at FROM grooms WHERE farmer = ? AND cow = ?").bind(me.id, cow.install).first();
   if (last && t - last.at < GROOM_COOLDOWN) fail(400, `You can groom ${cow.name} again in ${Math.ceil((GROOM_COOLDOWN - (t - last.at)) / 60)} min.`);
@@ -1526,8 +1587,12 @@ async function shelfFeed(env, me, request) {
   if (!inOwnDairy(me, mem)) fail(400, "Go to your dairy to feed from its shelf.");
   const toId = String(b.to || "");
   if (toId === me.id) fail(400, "You can't feed yourself for free. Buy it from the shelf instead.");
-  const to = await env.DB.prepare("SELECT install, name, role, status FROM memberships WHERE install = ? AND dairy_id = ?").bind(toId, mem.dairy_id).first();
-  if (!to || !(hasRole(to, "cow") || hasRole(to, "bull"))) fail(400, "You can feed your dairy's cows and bulls.");
+  // Your dairy's cows and bulls, or guests visiting your public dairy
+  const to = await env.DB.prepare(`SELECT install, name, role, status FROM memberships WHERE install = ?
+      AND (dairy_id = ? OR (install IN (SELECT id FROM installs WHERE at_dairy = ? AND last_seen >= ?)
+        AND EXISTS (SELECT 1 FROM dairies WHERE id = ? AND is_public = 1)))`)
+    .bind(toId, mem.dairy_id, mem.dairy_id, now() - ONLINE_WINDOW, mem.dairy_id).first();
+  if (!to || !(hasRole(to, "cow") || hasRole(to, "bull"))) fail(400, "You can feed your dairy's cows and bulls (and guests visiting it).");
   const t = now();
   // One treat per cow or bull every 15 minutes, whoever gives it (and a cow's own treat counts too)
   const last = await env.DB.prepare("SELECT MAX(at) AS at FROM feeds WHERE member = ?").bind(to.install).first();
@@ -1573,6 +1638,13 @@ function inOwnDairy(me, mem) {
   return !!mem && me.at_dairy === mem.dairy_id && me.last_seen >= now() - ONLINE_WINDOW;
 }
 
+/** The public dairy this player is visiting as a guest right now (the server saw them in its area), or null. */
+async function guestDairyOf(env, me, mem) {
+  if (!me.at_dairy || me.last_seen < now() - ONLINE_WINDOW || (mem && me.at_dairy === mem.dairy_id)) return null;
+  const d = await env.DB.prepare("SELECT * FROM dairies WHERE id = ? AND is_public = 1").bind(me.at_dairy).first();
+  return d || null;
+}
+
 /** Farmers and owners fill jugs from the dairy's tank to deliver to orders. */
 async function takeFromTank(env, me, request) {
   const b = await body(request);
@@ -1607,14 +1679,17 @@ async function handPay(env, me, request) {
   const mem = await membership(env, me.id);
   const seed = b.seed === true;   // a bull's seed: a tenth as much, ten times the price
   if (!mem || !hasRole(mem, seed ? "bull" : "cow")) fail(400, seed ? "Only bulls report seed milkings." : "Only cows report hand milkings.");
-  if (!inOwnDairy(me, mem)) fail(400, "Hand milkings count inside your dairy.");
+  // At home, or a guest in someone else's public dairy (then the farmer is one of that dairy's)
+  const host = inOwnDairy(me, mem) ? null : await guestDairyOf(env, me, mem);
+  if (!inOwnDairy(me, mem) && !host) fail(400, "Hand milkings count inside your dairy (or a public dairy you're visiting).");
+  const farmDairy = host ? host.id : mem.dairy_id;
   const grade = int(b.grade, 0, GRADES - 1, "grade");
   const oz = Math.max(0, Math.min(seed ? 40 : 200, Number(b.oz) || 0));
   if (oz <= 0) fail(400, "No milk.");
   const name = clean(b.farmer, 40), world = clean(b.world, 30);
   const farmer = await env.DB.prepare(
-    `SELECT install, name, status FROM memberships WHERE dairy_id = ? AND ${ROLE_SQL} AND name = ? AND world_name = ?`).bind(mem.dairy_id, "farmer", name, world).first();
-  if (!farmer || farmer.install === me.id) fail(400, "That farmer isn't in your dairy.");
+    `SELECT install, name, status FROM memberships WHERE dairy_id = ? AND ${ROLE_SQL} AND name = ? AND world_name = ?`).bind(farmDairy, "farmer", name, world).first();
+  if (!farmer || farmer.install === me.id) fail(400, host ? "That farmer isn't in this dairy." : "That farmer isn't in your dairy.");
 
   const day = today();
   const cowKey = `${seed ? "handseed" : "hand"}:${me.id}`, farmKey = `farm:${farmer.install}`;
@@ -1622,7 +1697,7 @@ async function handPay(env, me, request) {
   const farmUsed = (await env.DB.prepare("SELECT oz FROM member_pump WHERE install = ? AND day = ?").bind(farmKey, day).first())?.oz || 0;
   const counted = Math.min(oz, (seed ? SEED_DAILY_HAND_OZ : COW_DAILY_HAND_OZ) - cowUsed);
   if (counted <= 0) return { ok: true, coins: 0 };
-  const p = await progressOf(env, mem.dairy_id);
+  const p = await progressOf(env, farmDairy);
   // Farmer level 45 and up get a bigger share (the farmer's plugin shares its level with the dairy)
   // A prized cow (Champion's ribbon) earns her farmer 10% more
   const cut = ((safeParse(farmer.status)?.farmerLevel || 0) >= FARMER_CUT_BIG_LEVEL ? FARMER_CUT_BIG : FARMER_CUT) * (b.prized === true ? 1.1 : 1);

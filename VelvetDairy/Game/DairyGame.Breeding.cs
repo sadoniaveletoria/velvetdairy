@@ -187,8 +187,9 @@ public sealed partial class DairyGame
     // Each way on its own: you could breed them, they could breed you
     // Your dairy roles decide who can breed whom in Eorzea Milkers (the bred bonus, bull xp, the "who breeds" pop-up).
     // What Corruption says each body can do only decides whether Corruption can make it a pregnancy.
-    private bool CouldBreedThem => IsBull && PartnerIs("cow");
-    private bool CouldBeBred => IsCow && PartnerIs("bull");
+    // ...or a partner from another dairy who said yes (the cow pressed Allow for this bull)
+    private bool CouldBreedThem => IsBull && (PartnerIs("cow") || OutsideCowSaidYes);
+    private bool CouldBeBred => IsCow && (PartnerIs("bull") || OutsideBullAllowed(SceneNow.PartnerName));
 
     /// <summary>Corruption can make a pregnancy of the way this scene breeds (both bodies allow it).</summary>
     private bool CorruptionCanBreedThem => myBody.CanBreed && partnerBody.CanCarry;
@@ -445,6 +446,7 @@ public sealed partial class DairyGame
             sceneLogged = true;
         }
 
+        UpdateOutsidePartner();
         UpdateForcedCreampie();
         ResetBreederArousal();
     }
@@ -518,12 +520,21 @@ public sealed partial class DairyGame
         }
 
         ReadScene(true);   // up to date, so a scene that only just started is the one this breeding belongs to
+        // A bull of your dairy, or a bull from another dairy you pressed Allow for in this scene
         var bull = DairyMember(name, world);
-        if (bull == null || !bull.Has("bull"))
+        if (bull != null && !bull.Has("bull"))
         {
-            Diag.Info("breed", bull == null ? $"{name}@{world} finished, but they aren't in your dairy" : $"{name} finished, but they aren't a bull in your dairy");
+            Diag.Info("breed", $"{name} finished, but they aren't a bull in your dairy");
             return;
         }
+
+        if (bull == null && !OutsideBullAllowed(name))
+        {
+            Diag.Info("breed", $"{name}@{world} finished, but they aren't in your dairy and you didn't allow them to breed you");
+            return;
+        }
+
+        var bullName = bull?.Name ?? name;
         if (EitherWayScene && !BredAsCow)
         {
             Diag.Info("breed", $"{name} finished, but they didn't choose to breed you this scene");
@@ -550,14 +561,14 @@ public sealed partial class DairyGame
             return;
         }
 
-        var seed = bull.Status?.Seed is > 0 and var s ? s : 100;
-        var stud = bull.Status?.StudTonic == true;   // the bull had a Stud draught: half again as strong, 15 minutes longer
+        var seed = bull?.Status?.Seed is > 0 and var s ? s : 100;
+        var stud = bull?.Status?.StudTonic == true;   // the bull had a Stud draught: half again as strong, 15 minutes longer
         wasBredThisScene = true;
         F.BredAtUtc = DateTime.UtcNow;
         F.BredUntilUtc = DateTime.UtcNow.AddMinutes(BredMinutesNow + (stud ? 15 : 0));
         F.BredStrength = Math.Clamp(seed / 100f, 0.2f, 1f) * (stud ? 1.5f : 1f);
-        F.BredBy = bull.Name;
-        Say($"{bull.Name} bred you: +{BredBonusNow * 100:0.#}% milk for {BredMinutesNow + (stud ? 15 : 0)} minutes{(stud ? " (they had a Stud draught)" : "")}{(seed < 100 ? $" (their breeding output is at {seed}% today)" : "")}.", 1);
+        F.BredBy = bullName;
+        Say($"{bullName} bred you: +{BredBonusNow * 100:0.#}% milk for {BredMinutesNow + (stud ? 15 : 0)} minutes{(stud ? " (they had a Stud draught)" : "")}{(seed < 100 ? $" (their breeding output is at {seed}% today)" : "")}.", 1);
         plugin.SaveConfig();
     }
 
@@ -599,12 +610,21 @@ public sealed partial class DairyGame
             return;
         }
 
+        // A cow of your dairy, or a cow from another dairy who pressed Allow for you
         var cow = DairyMember(scene.PartnerName, scene.PartnerWorld);
-        if (cow == null || !cow.Has("cow"))
+        if (cow != null && !cow.Has("cow"))
         {
-            Diag.Info("breed", cow == null ? $"You finished with {scene.PartnerName}@{scene.PartnerWorld}, but they aren't in your dairy" : $"You finished with {cow.Name}, but they aren't a cow in your dairy");
+            Diag.Info("breed", $"You finished with {cow.Name}, but they aren't a cow in your dairy");
             return;
         }
+
+        if (cow == null && !OutsideCowSaidYes)
+        {
+            Diag.Info("breed", $"You finished with {scene.PartnerName}@{scene.PartnerWorld}, but they aren't in your dairy and didn't allow you to breed them");
+            return;
+        }
+
+        var cowName = cow?.Name ?? scene.PartnerName;
         if (EitherWayScene && !BreedingAsBull)
         {
             Diag.Info("breed", "You finished, but you didn't choose to breed them this scene");
@@ -621,7 +641,7 @@ public sealed partial class DairyGame
 
         if (bredThemThisScene)
         {
-            Diag.Info("breed", $"Finished again with {cow.Name} in the same scene; only the first counts");
+            Diag.Info("breed", $"Finished again with {cowName} in the same scene; only the first counts");
             return;
         }
 
@@ -633,7 +653,7 @@ public sealed partial class DairyGame
         if (Owned("breedpen") > 0) EarnDairyXp(BreedPenDairyXp);   // the dairy only counts it while you're in it
         AddBullXp(xp);
         var next = SeedNow;
-        Say($"You bred {cow.Name}. +{xp} bull xp" + (next < 100 ? $". You're getting tired: seed output {next}% for the next one (resets at midnight UTC)." : "."), 1);
+        Say($"You bred {cowName}. +{xp} bull xp" + (next < 100 ? $". You're getting tired: seed output {next}% for the next one (resets at midnight UTC)." : "."), 1);
         plugin.SaveConfig();
     }
 

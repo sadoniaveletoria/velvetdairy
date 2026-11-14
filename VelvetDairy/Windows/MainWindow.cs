@@ -294,9 +294,11 @@ public sealed partial class MainWindow : Window
         // Where you are: in the dairy (or its private place) or away from it
         if (member != null || F.Dairy != null)
         {
-            if (G.Where.InDairy)
+            if (G.AtHome)
                 Pill(G.InPrivatePlace ? "PRIVATE" : G.Where.Seated ? "RESTING" : "HERE", Theme.SageDeep,
                     (G.InPrivatePlace ? "In your dairy's private place. " : G.Where.Seated ? "Sitting in your dairy. " : "In your dairy. ") + G.Where.Why);
+            else if (G.Where.Guest)
+                Pill("VISITING", Theme.SageDeep, $"{G.Where.Why} You're a guest: you can be milked on its stalls and cared for here like at home, and your milk goes into its tank. Its farmers can hand milk you (you'll get an Allow first).");
             else if (G.CreameryHere is { } cr)
                 Pill("CREAMERY", Theme.BlueDeep, $"At {cr.Name}: ship your contract milk on Dairy > Contract. Milking, care and chores only work inside your dairy.");
             else Pill("AWAY", Theme.InkSoft, G.Where.Why + " Milking, care and chores only work inside the dairy.");
@@ -1893,7 +1895,7 @@ public sealed partial class MainWindow : Window
         {
             var here = G.StallsHere().Count();
             ImGui.Indent();
-            ImGui.TextColored(Theme.InkSoft, !G.Where.InDairy ? "Markers show once you're in your dairy."
+            ImGui.TextColored(Theme.InkSoft, !G.AtHome ? "Markers show once you're in your dairy."
                 : here > 0 ? $"Marking {here} stall{(here == 1 ? "" : "s")} here{(G.InPrivatePlace ? " (private place)" : "")}."
                 : G.Stalls.Count == 0 ? "Your dairy has no stalls yet." : $"None of your {G.Stalls.Count} stall(s) are in this part of the dairy.");
             ImGui.Unindent();

@@ -220,7 +220,7 @@ public sealed partial class DairyGame
         F.Stats.TotalSeedOz += collected;
         F.DaySeedOz += collected;
         EarnDairyXp(milkEquivalent * (hand ? 1.5f : 1f));
-        if (Networked && F.NetMember != null && Where.InDairy) pendingSeedPump += collected;
+        if (Networked && (F.NetMember != null || Where.Guest) && Where.InDairy) pendingSeedPump += collected;
         Cow.SeedLastMilkedUtc = DateTime.UtcNow;
 
         int xp;

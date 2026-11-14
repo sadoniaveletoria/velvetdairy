@@ -173,7 +173,7 @@ public sealed partial class MainWindow
         }
 
         if (G.Baking is { } b)
-            ImGui.TextColored(Theme.InkSoft, $"{Catalog.Doing(b.Recipe)} {Catalog.MadeName(b.Recipe.Makes).ToLowerInvariant()} · {F.Bake!.Done + 1} of {F.Bake.Count} · {(G.Where.InDairy ? $"{DairyGame.Wait(b.Left)} left" : "paused")}");
+            ImGui.TextColored(Theme.InkSoft, $"{Catalog.Doing(b.Recipe)} {Catalog.MadeName(b.Recipe.Makes).ToLowerInvariant()} · {F.Bake!.Done + 1} of {F.Bake.Count} · {(G.AtHome ? $"{DairyGame.Wait(b.Left)} left" : "paused")}");
         ImGui.TextColored(Theme.InkSoft, $"Jugs: {Units.Num(G.Carried, "0.#")} / {Units.Num(G.MaxCarry)} {Units.Unit}");
         Gap(4);
     }
@@ -225,7 +225,8 @@ public sealed partial class MainWindow
         var mine = G.Net.Mine;
         var me = Plugin.ObjectTable.LocalPlayer;
         var myName = me?.Name.TextValue ?? "";
-        var cows = mine?.Members.Where(m => (m.Has("cow") || m.Has("bull")) && !m.Name.Equals(myName, StringComparison.OrdinalIgnoreCase)).ToList() ?? new();
+        // Your dairy's cows and bulls, and guests from other dairies visiting it (a public dairy)
+        var cows = mine?.Members.Concat(mine.Guests).Where(m => (m.Has("cow") || m.Has("bull")) && !m.Name.Equals(myName, StringComparison.OrdinalIgnoreCase)).ToList() ?? new();
         if (cows.Count == 0)
         {
             ImGui.TextColored(Theme.InkSoft, "No other cows or bulls in your dairy yet.");
@@ -245,6 +246,7 @@ public sealed partial class MainWindow
 
             var st = c.Status;
             var lines = new System.Collections.Generic.List<Line>();
+            if (c.Guest) lines.Add(new Line("Guest: visiting from another dairy (they press Allow before you milk them)", Theme.BlueDeep));
             if (!c.Online) lines.Add(new Line("Offline", Theme.InkSoft));
             else
             {

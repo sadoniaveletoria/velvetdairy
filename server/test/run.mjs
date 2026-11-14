@@ -723,4 +723,48 @@ await test("weekly contract: an unfinished week still pays for the share deliver
   assert.equal(again.fund, after.fund);
 });
 
+await test("guests: milked in someone else's public dairy, their milk goes into that dairy's tank", async () => {
+  const hana = player("Hana Host"), gus = player("Gus Guest");
+  const H3 = "1234567890333", H4 = "1234567890444";
+  await beat(hana, { name: "Hana Host", worldName: "Gilgamesh" });
+  await beat(gus, { name: "Gus Guest", worldName: "Gilgamesh" });
+  assert.equal((await call(hana, "PUT", "/v1/dairy", dairyBody({ houseId: H3, name: "Open Barn", isPublic: true, ownerName: "Hana Host", role: "farmer" }))).status, 200);
+  assert.equal((await call(gus, "PUT", "/v1/dairy", dairyBody({ houseId: H4, name: "Gus Farm", isPublic: false, ownerName: "Gus Guest", role: "cow" }))).status, 200);
+  await call(hana, "POST", "/v1/stalls", { name: "Seat", x: 1, y: 2, z: 3 });
+
+  // Gus visits Hana's public dairy: he's a guest, with its stalls and online farmers, and his milk fills Hana's tank
+  await beat(hana, { houseId: H3, status: { milking: "Gus Guest" } });
+  const r = (await beat(gus, { houseId: H3, pumped: [6], awake: true })).data;
+  assert.equal(r.here.guest, true);
+  assert.equal(r.here.stalls.length, 1);
+  assert.equal(r.here.farmers[0].name, "Hana Host");
+  assert.equal(r.here.farmers[0].milking, "Gus Guest");
+  assert.equal(r.pumped, 6);
+  assert.equal((await call(hana, "GET", "/v1/dairy/mine")).data.progress.tank.total, 6);
+  assert.equal((await call(gus, "GET", "/v1/dairy/mine")).data.progress.tank.total, 0, "not his own dairy's tank");
+  assert.ok((await call(hana, "GET", "/v1/dairy/mine")).data.guests.some(g => g.name === "Gus Guest"), "the host's farmers see the guest");
+
+  // Hana's farmers can hand milk the guest: the farmer's share is paid as usual
+  const pay = await call(gus, "POST", "/v1/handpay", { farmer: "Hana Host", world: "Gilgamesh", oz: 10, grade: 0 });
+  assert.equal(pay.status, 200, JSON.stringify(pay.data));
+  assert.ok(pay.data.coins > 0);
+
+  // Hana (a farmer) can groom the guest too
+  assert.equal((await call(hana, "POST", "/v1/groom", { cow: gus.id })).status, 200);
+
+  // A private dairy has no guests
+  await call(hana, "PUT", "/v1/dairy", dairyBody({ houseId: H3, name: "Open Barn", isPublic: false, ownerName: "Hana Host", role: "farmer" }));
+  const r2 = (await beat(gus, { houseId: H3, pumped: [6], awake: true })).data;
+  assert.ok(!r2.here?.guest);
+  assert.equal(r2.pumped, 0);
+
+  // Looking a player up: their roles, and whom they allowed to breed them
+  await beat(gus, { status: { milk: 1, cap: 8, breedOk: "Bram Bull" } });
+  const look = (await call(hana, "GET", "/v1/player?name=Gus%20Guest&world=Gilgamesh")).data;
+  assert.equal(look.found, true);
+  assert.deepEqual(look.roles, ["cow"]);
+  assert.equal(look.breedOk, "Bram Bull");
+  assert.equal((await call(hana, "GET", "/v1/player?name=Nobody%20Here&world=Gilgamesh")).data.found, false);
+});
+
 console.log(`\n${passed} passed`);

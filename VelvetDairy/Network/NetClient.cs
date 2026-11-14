@@ -384,6 +384,7 @@ public sealed class NetClient : IDisposable
                 Milk = (float)Math.Round(F.Cow.Milk, 1), Cap = g.Capacity, Grade = g.CurrentGrade, Spoiled = g.Spoiled,
                 InDairy = g.Where.InDairy, Level = g.Level, FarmerLevel = g.FarmerLevel, BullLevel = g.BullLevel, Crown = g.Crowned,
                 Seed = g.IsBull ? g.SeedNow : 0, Preg = g.Pregnant ? g.Preg.Stage : "", PregFather = g.Pregnant ? g.Preg.FatherName : "",
+                BreedOk = g.BreedOkFor, GuestAt = g.Where.Guest ? g.GuestHere?.Id ?? "" : "",
                 SeedOz = g.ProducesSeed ? (float)Math.Round(F.Cow.Seed, 2) : 0, SeedCap = g.ProducesSeed ? g.SeedCapacity : 0,
                 SeedGrade = g.ProducesSeed ? g.SeedGrade : 0, SeedSpoiled = g.ProducesSeed && g.SeedSpoiled,
                 Breeding = g.BreedingTarget,
@@ -398,7 +399,7 @@ public sealed class NetClient : IDisposable
                 HandBy = g.Active is { Kind: VelvetDairy.Game.SessionKind.Hand, Hand: { IsTest: false } h } ? h.Name : "",
                 AnyEmote = F.AnyLoopEmote,
                 Milking = g.MilkingCowName ?? "",
-                Ask = g.Producer && !F.AutoHand,
+                Ask = g.Producer && (!F.AutoHand || g.Where.Guest),
                 Refused = g.RefusedFarmer,
                 TreatAt = g.Producer && F.Cow.HappyReadyUtc > DateTime.UtcNow ? new DateTimeOffset(DateTime.SpecifyKind(F.Cow.HappyReadyUtc, DateTimeKind.Utc)).ToUnixTimeSeconds() : 0,
             },
@@ -471,6 +472,10 @@ public sealed class NetClient : IDisposable
     /// <summary>Scan another player (anyone targeting them can, if they allow it).</summary>
     public void Scan(string name, string world, Action<ScanReply> ok, Action<string> failed) =>
         Call<ScanReply>("GET", $"/v1/scan/{Uri.EscapeDataString(world)}/{Uri.EscapeDataString(name)}", null, ok, failed);
+
+    /// <summary>Another player's roles, and whom they allowed to breed them (breeding across dairies).</summary>
+    public void LookupPlayer(string name, string world, Action<PlayerLookup> done) =>
+        Call<PlayerLookup>("GET", $"/v1/player?name={Uri.EscapeDataString(name)}&world={Uri.EscapeDataString(world)}", null, done, _ => done(new PlayerLookup()));
 
     public void RefreshMine()
     {

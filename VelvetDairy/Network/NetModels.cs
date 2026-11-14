@@ -77,6 +77,32 @@ public sealed class HereInfo
     public bool IsPublic { get; set; }
     public bool Mine { get; set; }
     public bool Private { get; set; }   // you're in your dairy's private place
+
+    // A guest in someone else's public dairy: what your plugin needs to be milked and cared for there
+    public bool Guest { get; set; }
+    public string HouseId { get; set; } = "";
+    public VelvetDairy.Game.DairyArea? Area { get; set; }
+    public List<StallInfo> Stalls { get; set; } = new();
+    public List<GuestFarmer> Farmers { get; set; } = new();
+}
+
+/// <summary>A farmer of the public dairy you're visiting, and whom they pressed Milk on.</summary>
+public sealed class GuestFarmer
+{
+    public string Name { get; set; } = "";
+    public string World { get; set; } = "";
+    public string Milking { get; set; } = "";
+    public string Refused { get; set; } = "";
+}
+
+/// <summary>Another player's roles and whom they've allowed to breed them (for breeding across dairies).</summary>
+public sealed class PlayerLookup
+{
+    public bool Found { get; set; }
+    public List<string> Roles { get; set; } = new();
+    public string DairyId { get; set; } = "";
+    public string Dairy { get; set; } = "";
+    public string BreedOk { get; set; } = "";
 }
 
 public sealed class MembershipInfo
@@ -191,6 +217,7 @@ public sealed class MyDairyReply
     public YouInfo? You { get; set; }
     public List<MemberInfo> Members { get; set; } = new();
     public List<StallInfo> Stalls { get; set; } = new();
+    public List<MemberInfo> Guests { get; set; } = new();   // players from other dairies visiting this public dairy now
     public List<SentInvite> Invites { get; set; } = new();
     public DairyProgress? Progress { get; set; }
     public ApplyingInfo? Applying { get; set; }
@@ -344,6 +371,7 @@ public sealed class MemberInfo
     public bool Online { get; set; }
     public long LastSeen { get; set; }      // unix seconds their plugin last checked in (0 = never)
     public string Version { get; set; } = "";   // their plugin version, as of their last check-in
+    public bool Guest { get; set; }             // visiting from another dairy (not a member)
 
     public List<string> AllRoles => VelvetDairy.Game.Roles.From(Roles, Role);
     public bool Has(string role) => AllRoles.Contains(role);
@@ -365,7 +393,9 @@ public sealed class MemberStatus
     public bool Crown { get; set; }         // a crown next to their name in the member list
     public int Seed { get; set; }           // a bull: seed output for his next breeding (20 to 100; 0 = not a bull)
     public string Preg { get; set; } = "";  // a cow: pregnancy stage from Corruption (first, second, third), or empty
-    public string PregFather { get; set; } = "";   // a pregnant cow: the father's name (from Corruption), so he can see it
+    public string PregFather { get; set; } = "";
+    public string BreedOk { get; set; } = "";      // a cow: the bull from another dairy she allowed to breed her this scene
+    public string GuestAt { get; set; } = "";      // a guest: the public dairy they're visiting   // a pregnant cow: the father's name (from Corruption), so he can see it
     public float SeedOz { get; set; }       // a bull: seed waiting to be milked
     public float SeedCap { get; set; }      // a bull: what his vials hold (0 = not a bull)
     public int SeedGrade { get; set; }

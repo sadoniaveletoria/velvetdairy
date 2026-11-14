@@ -32,7 +32,8 @@ public sealed class Session
 }
 
 /// <summary>Where you are right now, refreshed every frame.</summary>
-public readonly record struct Whereabouts(bool LoggedIn, bool InHouse, bool InDairy, bool Seated, Stall? AtStall, string Why);
+/// <summary>Where you are. InDairy is your own dairy, or (Guest) a public dairy you're visiting.</summary>
+public readonly record struct Whereabouts(bool LoggedIn, bool InHouse, bool InDairy, bool Seated, Stall? AtStall, string Why, bool Guest = false);
 
 /// <summary>Live readout of a farmhand for the Dairy tab (so you can see what the plugin sees).</summary>
 public readonly record struct FarmhandSight(bool Present, float Distance, ushort Emote, bool TargetingYou);
@@ -133,7 +134,7 @@ public sealed partial class DairyGame
     public List<Stall> Stalls => Networked ? netStalls : F.Stalls!;
 
     /// <summary>Who can hand milk you: your dairy's farmers on the network, your registered farmhands locally. Plus the dev test farmhand.</summary>
-    public List<Farmhand> Farmhands => Networked ? netFarmers : F.Farmhands!;
+    public List<Farmhand> Farmhands => Networked ? (Where.Guest ? GuestFarmhands : netFarmers) : F.Farmhands!;
 
     /// <summary>Server told us our membership (every heartbeat).</summary>
     public void OnMembership(MembershipInfo? m)
@@ -348,7 +349,7 @@ public sealed partial class DairyGame
     {
         if (Blocked() != null) return Blocked();
         if (!CanCarry) return "Only farmers and the owner fill jugs from the dairy tank.";
-        if (!Where.InDairy) return "Go to your dairy to fill jugs from its tank.";
+        if (!AtHome) return "Go to your dairy to fill jugs from its tank.";
         if (Carried + oz > MaxCarry) return $"Your {FarmerTankName.ToLowerInvariant()} holds {Units.Oz(MaxCarry)}. Buy a bigger farmer tank in the Shop.";
         var inTank = Net.Progress?.Tank?.Total ?? 0;
         if (inTank < oz) return $"The tank has {Units.Oz(inTank, "0.#")}.";
@@ -430,7 +431,7 @@ public sealed partial class DairyGame
             if (!AtCreamery)
                 return crs.Count == 1 ? $"Bring your jugs to {crs[0].Name} ({crs[0].Zone}) to ship them." : "Bring your jugs to a Grand Creamery to ship them: " + string.Join(", ", crs.Select(c => $"{c.Name} ({c.Zone})")) + ".";
         }
-        else if (!Where.InDairy) return "Go to your dairy to ship milk.";
+        else if (!AtHome) return "Go to your dairy to ship milk.";
         if (oz < 1) return "Nothing left to ship.";
         if (Carried < oz - 0.01f) return $"You carry {Units.Oz(Carried, "0.#")}. Fill jugs at your dairy (Roles > Farmer > Kitchen).";
         return null;
@@ -732,10 +733,18 @@ public sealed partial class DairyGame
             why = $"In {d.Name}.";
         }
 
+        // Not in your own dairy: maybe a guest in someone else's public dairy (the server tells us its area and stalls)
+        var guest = false;
+        if (!inDairy && Networked && GuestInside(me))
+        {
+            inDairy = guest = true;
+            why = $"Visiting {GuestHere!.Name}.";
+        }
+
         Stall? at = null;
         if (inDairy && seated)
         {
-            at = Stalls
+            at = (guest ? GuestStalls : Stalls)
                 .Select(s => (s, dist: Vector3.Distance(me.Position, new Vector3(s.X, s.Y, s.Z))))
                 .Where(x => x.dist <= StallRange)
                 .OrderBy(x => x.dist)
@@ -744,7 +753,7 @@ public sealed partial class DairyGame
         }
 
         InPrivatePlace = inPrivate;
-        return new Whereabouts(true, inHouse, inDairy, seated, at, why);
+        return new Whereabouts(true, inHouse, inDairy, seated, at, why, guest);
     }
 
     /// <summary>
@@ -1126,8 +1135,9 @@ public sealed partial class DairyGame
         if (p != null) return p.Replace("Care is", "Milking is");
         if (!Producer) return $"Only cows and bulls are milked. You're a {Role} here.";
         if (SpoiledProblem is { } sp) return sp;
-        if (Stalls.Count == 0) return Networked && !IsOwner ? "Your dairy's owner hasn't set up any stalls yet." : "Register a stall first (Dairy tab).";
-        if (!Where.Seated) return "Sit down in one of your stalls.";
+        if (Where.Guest ? GuestStalls.Count == 0 : Stalls.Count == 0)
+            return Where.Guest ? "This dairy has no stalls." : Networked && !IsOwner ? "Your dairy's owner hasn't set up any stalls yet." : "Register a stall first (Dairy tab).";
+        if (!Where.Seated) return Where.Guest ? "Sit down in one of this dairy's stalls." : "Sit down in one of your stalls.";
         if (Wake == Wakefulness.Asleep) return "You're asleep. Move, emote or click anything to wake up.";
         if (Where.AtStall == null) return Where.Seated ? "Sit on a stall's own seat to be milked (you're sitting somewhere else)." : "Sit on one of the dairy's stalls to be milked.";
         if (!HasEnoughToMilk) return ProducesMilk ? "You don't have enough milk yet." : "You don't have enough seed yet.";
@@ -1340,7 +1350,7 @@ public sealed partial class DairyGame
         F.DayOz += collected;
         F.Stats.BestGrade = Math.Max(F.Stats.BestGrade, s.Grade);
         EarnDairyXp(collected * (s.Kind == SessionKind.Hand ? 1.5f : 1f));
-        if (Networked && F.NetMember != null && Where.InDairy) pendingPump[Math.Clamp(s.Grade, 0, 4)] += collected;
+        if (Networked && (F.NetMember != null || Where.Guest) && Where.InDairy) pendingPump[Math.Clamp(s.Grade, 0, 4)] += collected;
         F.Stats.BestSessionOz = Math.Max(F.Stats.BestSessionOz, collected);
 
         // Being milked keeps your milk fresh
@@ -1375,7 +1385,7 @@ public sealed partial class DairyGame
         if (Blocked() != null) return Blocked();
         if (Networked) return "On the network, farmers join by invite (Dairy tab or right-click them).";
         if (F.Dairy == null) return "Register your dairy first.";
-        if (!Where.InDairy) return "Farmhands are signed on inside your dairy. " + Where.Why;
+        if (!AtHome) return "Farmhands are signed on inside your dairy. " + Where.Why;
         return null;
     }
 
@@ -1623,7 +1633,7 @@ public sealed partial class DairyGame
             if (now < nextMilkingCheck) return;
             nextMilkingCheck = now + 3;
             Net.RefreshMine();
-            var cst = Net.Mine?.Members.FirstOrDefault(m => m.Name.Equals(milkingCow, StringComparison.OrdinalIgnoreCase))?.Status;
+            var cst = HerdMember(milkingCow)?.Status;
             var mine = me.Name.TextValue;
             if (cst != null && cst.HandBy.Equals(mine, StringComparison.OrdinalIgnoreCase))
             {
@@ -1691,7 +1701,7 @@ public sealed partial class DairyGame
         {
             nextMilkingCheck = now + 5;
             Net.RefreshMine();
-            var st = Net.Mine?.Members.FirstOrDefault(m => m.Name.Equals(milkingCow, StringComparison.OrdinalIgnoreCase))?.Status;
+            var st = HerdMember(milkingCow)?.Status;
             var myName = me.Name.TextValue;
             // Their plugin reports right away when a hand milking starts and ends. Only an end counts:
             // until they've reported you milking them, an old "nobody's milking" means nothing.
@@ -1751,7 +1761,7 @@ public sealed partial class DairyGame
         if (b != null) return b;
         if (!Networked || F.NetMember == null) return "Cleaning stalls is for networked dairies.";
         if (!F.NetMember.IsOwner && !IsFarmer) return "Only farmers and the owner clean stalls.";
-        if (!Where.InDairy) return "Go to your dairy first.";
+        if (!AtHome) return "Go to your dairy first.";
         var d = DistanceTo(s);
         if (d < 0 || d > HandRange) return $"Walk up to {s.Name} first (within {HandRange:0} yalms).";
         if (StallTaken(s)) return "Someone is sitting on it. Clean it when it's free.";
@@ -1799,7 +1809,7 @@ public sealed partial class DairyGame
         var b = Blocked();
         if (b != null) return b;
         if (!IsFarmer) return "Only farmers groom cows.";
-        if (!Where.InDairy) return "Go to your dairy first.";
+        if (!AtHome) return "Go to your dairy first.";
         if (distance < 0 || distance > HandRange) return $"Get within {HandRange:0} yalms of {cowName} first.";
         var w = GroomWait(cowId);
         if (w > 0) return $"You can groom {cowName} again in {Wait(TimeSpan.FromSeconds(w))}.";
@@ -1830,12 +1840,12 @@ public sealed partial class DairyGame
         var b = Blocked();
         if (b != null) return b;
         if (!IsFarmer) return "Only farmers feed from the shelf.";
-        if (!Where.InDairy) return "Go to your dairy first.";
+        if (!AtHome) return "Go to your dairy first.";
         Net.RefreshShelf();
         if (FeedStock == null) return "The dairy shelf is empty. Bake some in the Kitchen.";
         if (distance < 0 || distance > HandRange) return $"Get within {HandRange:0} yalms of {name} first.";
         if (feedReady.TryGetValue(id, out var t) && t > now) return $"{name} can have another treat in {Wait(TimeSpan.FromSeconds(t - now))}.";
-        var treatAt = Net.Mine?.Members.FirstOrDefault(m => m.Id == id)?.Status?.TreatAt ?? 0;
+        var treatAt = Net.Mine?.Members.Concat(Net.Mine.Guests).FirstOrDefault(m => m.Id == id)?.Status?.TreatAt ?? 0;
         var nowUnix = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         if (treatAt > nowUnix) return $"{name} can have another treat in {Wait(TimeSpan.FromSeconds(treatAt - nowUnix))}.";
         return null;
@@ -1952,6 +1962,15 @@ public sealed partial class DairyGame
         // Test farmhands, and farmhands in a dairy that isn't on the network (you start those yourself)
         if (f.IsTest || !Networked) return true;
         var myName = Plugin.ObjectTable.LocalPlayer?.Name.TextValue ?? "";
+        if (Where.Guest)
+        {
+            // A farmer of the dairy you're visiting: the server sends who each pressed Milk on with every heartbeat
+            var gf = GuestHere?.Farmers.FirstOrDefault(x => x.Name.Equals(f.Name, StringComparison.OrdinalIgnoreCase));
+            if (gf != null && myName.Length > 0 && gf.Milking.Equals(myName, StringComparison.OrdinalIgnoreCase)) return true;
+            Net.BeatWithin(5);
+            return false;
+        }
+
         var st = Net.Mine?.Members.FirstOrDefault(m => m.Name.Equals(f.Name, StringComparison.OrdinalIgnoreCase))?.Status;
         if (st != null && myName.Length > 0 && st.Milking.Equals(myName, StringComparison.OrdinalIgnoreCase)) return true;
         if (now >= nextIntentCheck)
@@ -2014,7 +2033,8 @@ public sealed partial class DairyGame
 
         // "Farmers can start milking me without asking" is off: a farmer pressing Milk on you asks first (a pop-up)
         if (MilkAsk is { } asking && (Active != null || !AskingMe(asking) || HandProblem(asking) != null)) MilkAsk = null;
-        if (Active == null && !F.AutoHand && Networked && Producer && MilkAsk == null)
+        // A guest always gets asked first (farmers of another dairy)
+        if (Active == null && (!F.AutoHand || Where.Guest) && Networked && Producer && MilkAsk == null)
             foreach (var f in Farmhands.Where(f => !f.IsTest))
             {
                 if (declinedUntil.TryGetValue(Key(f), out var until) && now < until) continue;
@@ -2025,7 +2045,7 @@ public sealed partial class DairyGame
             }
 
         // A farmer of your dairy can start milking you just by targeting you and using one of your milking emotes
-        if (Active == null && F.AutoHand && Networked && Producer)
+        if (Active == null && F.AutoHand && !Where.Guest && Networked && Producer)
         {
             foreach (var f in Farmhands.Where(f => !f.IsTest))
             {
@@ -2374,7 +2394,7 @@ public sealed partial class DairyGame
             if (!F.NetMember.IsOwner) return "Only the dairy's owner sets up stalls.";
         }
         else if (F.Dairy == null) return "Register your dairy first.";
-        if (!Where.InDairy) return "Stalls go inside your dairy. " + Where.Why;
+        if (!AtHome) return "Stalls go inside your dairy. " + Where.Why;
         if (!Where.Seated) return "Sit on the furniture you want to use as a stall.";
         if (Where.AtStall != null) return $"That's already {Where.AtStall.Name}.";
         if (Networked)
@@ -2411,7 +2431,7 @@ public sealed partial class DairyGame
     {
         if (Blocked() != null) return Blocked();
         if (Networked && !IsOwner) return "Only the dairy's owner moves stalls.";
-        if (!Where.InDairy) return "Stalls go inside your dairy. " + Where.Why;
+        if (!AtHome) return "Stalls go inside your dairy. " + Where.Why;
         if (!Where.Seated) return "Sit on the seat you want this stall to move to.";
         if (Where.AtStall == s) return "It's already here.";
         if (Where.AtStall != null) return $"That seat is already {Where.AtStall.Name}.";
@@ -2452,7 +2472,7 @@ public sealed partial class DairyGame
     public IEnumerable<Stall> StallsHere()
     {
         var me = Plugin.ObjectTable.LocalPlayer;
-        if (!Where.InDairy || me == null) return Enumerable.Empty<Stall>();
+        if (!AtHome || me == null) return Enumerable.Empty<Stall>();
         var pos = me.Position;
         static Vector3 P(Stall s) => new(s.X, s.Y, s.Z);
         bool Near(Stall s, float range) => Vector3.Distance(P(s), pos) <= range;
@@ -2653,7 +2673,7 @@ public sealed partial class DairyGame
         if (b != null) return b;
         if (!CanCarry) return "Only farmers bake.";
         if (F.Bake != null) return "You're already baking something. Wait for it or cancel it.";
-        if (!Where.InDairy) return "Go to your dairy to use its kitchen.";
+        if (!AtHome) return "Go to your dairy to use its kitchen.";
         if (FarmerLevel < r.FarmerLevel) return $"Unlocks at farmer level {r.FarmerLevel} (you're {FarmerLevel}).";
         if (count < 1) return "Pick how many to make.";
         if (r.ToShelf && (!Networked || F.NetMember == null)) return "Baking for the shelf needs your dairy on the network.";
@@ -2674,7 +2694,7 @@ public sealed partial class DairyGame
         var b = Blocked();
         if (b != null) return b;
         if (s.Qty <= 0) return "Sold out. Ask a farmer to bake more.";
-        if (!Where.InDairy) return "Go to your dairy to buy from its shelf.";
+        if (!AtHome) return "Go to your dairy to buy from its shelf.";
         if (F.Coins < s.Price) return $"You need {s.Price} coins.";
         return null;
     }
@@ -2863,7 +2883,7 @@ public sealed partial class DairyGame
         if (CanCarry && Networked && F.NetMember != null)
         {
             ShareOldIngredients();
-            if (Where.InDairy) Net.RefreshPantry();
+            if (AtHome) Net.RefreshPantry();
         }
 
         if (F.Bake is not { } j) return;
@@ -2874,7 +2894,7 @@ public sealed partial class DairyGame
             return;
         }
 
-        if (!Where.InDairy || Blocked() != null) return;
+        if (!AtHome || Blocked() != null) return;
         j.Elapsed += dt;
         if (j.Elapsed < Catalog.BatchSeconds(r, j.Done) * BakeFactor) return;
 
