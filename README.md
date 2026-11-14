@@ -107,6 +107,12 @@ Only the owner can take a role away from someone.
 
 ---
 
+## Scanning other players
+
+Target someone with Eorzea Milkers and press **Scan** on the HUD (or right-click them → Eorzea Milkers → Scan) to see their milk, bonuses, bred bonus, pregnancy and when they can be bred again. Anyone can scan; each player chooses in Settings who can scan them (anyone, their dairy only, or nobody).
+
+---
+
 ## Running a dairy (owners)
 
 - Invite people with **right-click → Eorzea Milkers**, or on **Dairy → Overview**.
