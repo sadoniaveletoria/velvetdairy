@@ -104,7 +104,9 @@ public sealed partial class DairyGame
     public CorruptionLink.Arousal ArousalNow { get; private set; } = CorruptionLink.NoArousal;
     private double nextSceneRead;
     private string sceneKey = "";
-    private bool bredThisScene;   // one breeding per scene: climaxing again in the same scene doesn't count again
+    // One breeding each way per scene: climaxing again in the same scene doesn't count again. Kept apart, so two players
+    // who are both cow and bull can each breed the other in one scene.
+    private bool wasBredThisScene, bredThemThisScene;
 
     /// <summary>In a Corruption scene (solo or with a partner) right now.</summary>
     public bool InScene => SceneNow.Ready && SceneNow.State != "idle";
@@ -231,7 +233,7 @@ public sealed partial class DairyGame
         if (key != sceneKey)
         {
             sceneKey = key;
-            bredThisScene = false;
+            wasBredThisScene = bredThemThisScene = false;
         }
 
         UpdateForcedCreampie();
@@ -302,7 +304,7 @@ public sealed partial class DairyGame
             Diag.Info("breed", $"{name} finished, but your bodies don't breed that way (you can carry: {myBody.CanCarry}, they can breed: {partnerBody.CanBreed})");
             return;
         }
-        if (bredThisScene)
+        if (wasBredThisScene)
         {
             Diag.Info("breed", $"{name} finished again in the same scene; only the first counts");
             return;
@@ -315,7 +317,7 @@ public sealed partial class DairyGame
         }
 
         var seed = bull.Status?.Seed is > 0 and var s ? s : 100;
-        bredThisScene = true;
+        wasBredThisScene = true;
         F.BredAtUtc = DateTime.UtcNow;
         F.BredUntilUtc = DateTime.UtcNow.AddMinutes(BredMinutes);
         F.BredStrength = Math.Clamp(seed / 100f, 0.2f, 1f);
@@ -346,13 +348,13 @@ public sealed partial class DairyGame
             Diag.Info("breed", $"You finished, but your bodies don't breed that way (you can breed: {myBody.CanBreed}, they can carry: {partnerBody.CanCarry})");
             return;
         }
-        if (bredThisScene)
+        if (bredThemThisScene)
         {
             Diag.Info("breed", $"Finished again with {cow.Name} in the same scene; only the first counts");
             return;
         }
 
-        bredThisScene = true;
+        bredThemThisScene = true;
         var output = SeedFor(F.DayBreeds);
         F.DayBreeds++;
         var xp = Math.Max(1, (int)Math.Round(BreedXp * output));
