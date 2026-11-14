@@ -373,6 +373,7 @@ public sealed class NetClient : IDisposable
             pos = g.Position(),
             // Held until you're awake: the server only counts them then
             dairyXp = g.Wake == DairyGame.Wakefulness.Awake ? g.TakeDairyXp() : 0,
+            noticeAfter = lastNotice,
             pumped = g.Wake == DairyGame.Wakefulness.Awake ? g.TakePumped() : null,
             seedPumped = g.Wake == DairyGame.Wakefulness.Awake ? g.TakeSeedPumped() : 0,
             atCreamery = g.AtCreamery,
@@ -401,6 +402,15 @@ public sealed class NetClient : IDisposable
             var before = Last?.Membership?.DairyId;
             Last = r;
             Status = $"{r.Online} online";
+
+            // Notices to your dairy (one pop-up each). The first check-in only catches up, so logging in doesn't replay old ones.
+            foreach (var n in r.Notices.Where(n => n.Id > lastNotice))
+            {
+                if (lastNotice >= 0) plugin.Game.OnNotice(n);
+                lastNotice = Math.Max(lastNotice, n.Id);
+            }
+
+            if (lastNotice < 0) lastNotice = 0;
             plugin.Game.OnMembership(r.Membership);
             if (r.Membership?.DairyId != before) nextMine = 0;
 
@@ -604,6 +614,10 @@ public sealed class NetClient : IDisposable
 
     // ----- Applications -----
     private int announcedApplications;
+    private long lastNotice = -1;   // -1: not caught up yet (the first check-in)
+
+    /// <summary>Tells everyone in your dairy something (a pop-up on their screen), e.g. "breedReady".</summary>
+    public void PostNotice(string kind) => Call<object>("POST", "/v1/dairy/notice", new { kind }, _ => { }, _ => { });
     private DateTime lastApplications = DateTime.MinValue;
 
     /// <summary>Applications to your dairy (for the owner, or farmers if the owner allows it).</summary>

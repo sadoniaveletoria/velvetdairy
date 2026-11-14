@@ -5,8 +5,17 @@ namespace VelvetDairy.Network;
 
 // Shapes of what the Eorzea Milkers Network server sends back (see server/src/index.js). JSON is camelCase.
 
+/// <summary>A short notice to everyone in your dairy (like a cow ready to be bred again).</summary>
+public sealed class DairyNotice
+{
+    public long Id { get; set; }
+    public string Kind { get; set; } = "";
+    public string Name { get; set; } = "";
+}
+
 public sealed class HeartbeatReply
 {
+    public List<DairyNotice> Notices { get; set; } = new();
     public int Online { get; set; }
     public HereInfo? Here { get; set; }
     public MembershipInfo? Membership { get; set; }

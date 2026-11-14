@@ -227,9 +227,33 @@ public sealed partial class DairyGame
         UpdateForcedCreampie();
     }
 
+    /// <summary>A notice to your dairy: show it as a pop-up (with a little bell).</summary>
+    public void OnNotice(DairyNotice n)
+    {
+        if (n.Kind == "breedReady")
+            plugin.Notices.Show("Ready to be bred", $"{n.Name} can be bred again.");
+    }
+
+    private DateTime? readyToldFor;
+
+    /// <summary>
+    /// A cow's 20 minutes after a breeding are up: tell her, and let the rest of her dairy know (a pop-up with a bell).
+    /// Only right after it happens (not for an old breeding after a restart).
+    /// </summary>
+    private void AnnounceReadyAgain()
+    {
+        var at = F.BredAtUtc;
+        if (!IsCow || at <= DateTime.MinValue || readyToldFor == at || BreedCooldownLeft > TimeSpan.Zero) return;
+        readyToldFor = at;
+        if (DateTime.UtcNow - at > TimeSpan.FromMinutes(BredCooldownMinutes + 5)) return;
+        plugin.Notices.Show("Ready to be bred", "You can be bred again.");
+        if (Networked && F.NetMember != null) Net.PostNotice("breedReady");
+    }
+
     private void BreedingUpdate()
     {
         ReadScene();
+        AnnounceReadyAgain();
         if (now < nextPregRead || Plugin.ObjectTable.LocalPlayer == null) return;
         nextPregRead = now + 30;
         var p = CorruptionOn ? plugin.Corruption.GetPregnancy() : CorruptionLink.NoPregnancy;

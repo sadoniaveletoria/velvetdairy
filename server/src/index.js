@@ -302,6 +302,7 @@ async function route(request, env) {
     ["POST", /^\/v1\/dairy\/fund$/, () => donate(env, me, request)],
     ["POST", /^\/v1\/dairy\/tank\/take$/, () => takeFromTank(env, me, request)],
     ["POST", /^\/v1\/handpay$/, () => handPay(env, me, request)],
+    ["POST", /^\/v1\/dairy\/notice$/, () => postNotice(env, me, request)],
     ["POST", /^\/v1\/dairy\/contract\/ship$/, () => shipToContract(env, me, request)],
     ["POST", /^\/v1\/carry\/use$/, () => useCarried(env, me, request)],
     ["PUT", /^\/v1\/dev\/creamery$/, () => setCreamery(env, request)],
@@ -630,6 +631,10 @@ async function heartbeat(env, me, request) {
     pumped,
     seedPumped,
     creameryHere,
+    // Notices to the dairy since the last one this plugin saw (older plugins don't ask, and get none)
+    notices: mem && Number.isFinite(Number(b.noticeAfter)) ? (await env.DB.prepare(
+      "SELECT id, kind, name FROM dairy_notice WHERE dairy_id = ? AND id > ? AND created >= ? AND install != ? ORDER BY id LIMIT 5")
+      .bind(mem.dairy_id, Math.floor(Number(b.noticeAfter)), t - NOTICE_FRESH, me.id).all()).results : [],
     creamery: await creameryOf(env),          // the first one, for plugins before there were several
     creameries: await creameriesOf(env),
     carried: await carriedOf(env, me.id),
@@ -1640,6 +1645,28 @@ async function creameryNow(env, slot, myId, t) {
     todayOz: Math.round(shipped?.oz || 0),
     todayDairies: shipped?.dairies || 0,
   };
+}
+
+const NOTICE_KINDS = ["breedReady"];
+const NOTICE_FRESH = 300;          // seconds a notice is still shown to someone checking in
+const NOTICE_GAP = 15 * 60;        // one notice of a kind per player this often
+
+/** A short notice to everyone in your dairy, e.g. a cow ready to be bred again. Shown as a pop-up with a sound. */
+async function postNotice(env, me, request) {
+  const b = await body(request);
+  const mem = await membership(env, me.id);
+  if (!mem) fail(400, "Join a dairy first.");
+  const kind = String(b.kind || "");
+  if (!NOTICE_KINDS.includes(kind)) fail(400, "Unknown notice.");
+  if (kind === "breedReady" && !hasRole(mem, "cow")) fail(400, "Only cows can say they're ready to be bred.");
+  const t = now();
+  const last = await env.DB.prepare("SELECT created FROM dairy_notice WHERE install = ? AND kind = ? ORDER BY id DESC LIMIT 1").bind(me.id, kind).first();
+  if (last && t - last.created < NOTICE_GAP) return { ok: true, sent: false };
+  await env.DB.batch([
+    env.DB.prepare("INSERT INTO dairy_notice (dairy_id, install, kind, name, created) VALUES (?, ?, ?, ?, ?)").bind(mem.dairy_id, me.id, kind, mem.name || "", t),
+    env.DB.prepare("DELETE FROM dairy_notice WHERE created < ?").bind(t - 86400),
+  ]);
+  return { ok: true, sent: true };
 }
 
 async function carriedOf(env, install) {

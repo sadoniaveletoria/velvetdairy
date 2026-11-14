@@ -51,6 +51,7 @@ public sealed class Plugin : IDalamudPlugin
     public MilkAskWindow MilkAskPopup { get; }
     public TutorialWindow Tutorial { get; }
     public HelperNoticeWindow Helpers { get; }
+    public NoticeWindow Notices { get; }
     public CharacterClaimWindow Claim { get; }
 
     /// <summary>This build's version, sent to the network so old versions can be told to update.</summary>
@@ -129,6 +130,8 @@ public sealed class Plugin : IDalamudPlugin
         windowSystem.AddWindow(Tutorial);
         Helpers = new HelperNoticeWindow(this, fonts);
         windowSystem.AddWindow(Helpers);
+        Notices = new NoticeWindow(this, fonts);
+        windowSystem.AddWindow(Notices);
         Claim = new CharacterClaimWindow(this, fonts);
         claimSystem.AddWindow(Claim);
         contextMenu = new ContextMenuHandler(this);
