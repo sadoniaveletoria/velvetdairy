@@ -23,6 +23,10 @@ public sealed class ChangelogWindow : Window
     /// <summary>Newest first. Write these for players: what changed for them, not how.</summary>
     private static readonly Entry[] Entries =
     {
+        new("0.9.53", "Data center fix", new[]
+        {
+            "The Dairies list shows each dairy's real data center again (Lich on Light, Lamia on Primal). The game's own world list gave the one next to it.",
+        }),
         new("0.9.52", "The Bull role and breeding", new[]
         {
             "# Bulls and breeding (in testing)",
