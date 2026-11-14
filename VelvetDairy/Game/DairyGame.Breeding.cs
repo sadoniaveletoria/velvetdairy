@@ -296,15 +296,15 @@ public sealed partial class DairyGame
     private DateTime? readyToldFor;
 
     /// <summary>
-    /// A cow's 20 minutes after a breeding are up: tell her, and let the rest of her dairy know (a pop-up with a bell).
+    /// A cow's breeding bonus has run out (30 minutes after she was bred): tell her, and let the rest of her dairy know (a pop-up with a bell).
     /// Only right after it happens (not for an old breeding after a restart).
     /// </summary>
     private void AnnounceReadyAgain()
     {
         var at = F.BredAtUtc;
-        if (!IsCow || at <= DateTime.MinValue || readyToldFor == at || BreedCooldownLeft > TimeSpan.Zero) return;
+        if (!IsCow || at <= DateTime.MinValue || readyToldFor == at || BredLeft > TimeSpan.Zero) return;
         readyToldFor = at;
-        if (DateTime.UtcNow - at > TimeSpan.FromMinutes(BredCooldownMinutes + 5)) return;
+        if (DateTime.UtcNow - at > TimeSpan.FromMinutes(BredMinutes + 5)) return;
         plugin.Notices.Show("Ready to be bred", "You can be bred again.");
         if (Networked && F.NetMember != null) Net.PostNotice("breedReady");
     }
