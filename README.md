@@ -30,7 +30,7 @@ You can hold several roles at once, and each role levels up on its own. Your pro
 | **Cow** | Make milk, get milked, earn pay for every ounce | Add it to yourself, or be invited |
 | **Farmer** | Hand milk cows, groom them, clean stalls, carry and deliver milk | Given by the owner or another farmer |
 | **Owner** | Run the dairy: place stalls, invite people, post buy orders | Start your own dairy |
-| **Bull** | Make seed and get milked (like milk, but much less), breed your dairy's cows with the [Corruption](https://github.com/RaylaPetal/corruption) plugin | Add it to yourself |
+| **Bull** | Make seed and get milked (like milk, but much less), breed your dairy's cows with the [Corruption](https://github.com/RaylaPetal/corruption) plugin. *Still in testing: details will change.* | Add it to yourself |
 
 Only the owner can take a role away from someone.
 
