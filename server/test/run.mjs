@@ -151,19 +151,21 @@ await test("members see the roster with roles and shared status", async () => {
 });
 
 await test("notices: a cow ready to be bred again pops up for the rest of her dairy", async () => {
-  const before = (await beat(bob, { noticeAfter: 0 })).data.notices.length;
+  await beat(alice, { houseId: HOUSE });
+  const before = (await beat(bob, { houseId: HOUSE, noticeAfter: 0 })).data.notices.length;
   const sent = await call(alice, "POST", "/v1/dairy/notice", { kind: "breedReady" });
   assert.equal(sent.data.sent, true, JSON.stringify(sent.data));
   assert.equal((await call(alice, "POST", "/v1/dairy/notice", { kind: "breedReady" })).data.sent, false, "once every 15 minutes");
   assert.equal((await call(alice, "POST", "/v1/dairy/notice", { kind: "anything" })).status, 400);
-  const n = (await beat(bob, { noticeAfter: 0 })).data.notices;
+  const n = (await beat(bob, { houseId: HOUSE, noticeAfter: 0 })).data.notices;
   assert.equal(n.length, before + 1);
   const mine = n[n.length - 1];
   assert.equal(mine.kind, "breedReady");
   assert.equal(mine.name, "Alice Cow");
-  assert.equal((await beat(bob, { noticeAfter: mine.id })).data.notices.length, 0, "only new ones");
-  assert.equal((await beat(alice, { noticeAfter: 0 })).data.notices.length, 0, "not your own");
-  assert.equal((await beat(bob, {})).data.notices.length, 0, "older plugins don't ask");
+  assert.equal((await beat(bob, { houseId: HOUSE, noticeAfter: mine.id })).data.notices.length, 0, "only new ones");
+  assert.equal((await beat(bob, { noticeAfter: 0 })).data.notices.length, 0, "only to those standing in that dairy");
+  assert.equal((await beat(alice, { houseId: HOUSE, noticeAfter: 0 })).data.notices.length, 0, "not your own");
+  assert.equal((await beat(bob, { houseId: HOUSE })).data.notices.length, 0, "older plugins don't ask");
 });
 
 await test("breeding status: seed is kept within 0-100 and only real pregnancy stages pass", async () => {

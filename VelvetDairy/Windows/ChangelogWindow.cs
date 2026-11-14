@@ -25,7 +25,7 @@ public sealed class ChangelogWindow : Window
     {
         new("0.9.55", "Ready to be bred", new[]
         {
-            "20 minutes after a cow is bred, when she can be bred again, everyone in her dairy with the HUD on gets a small pop-up with a soft bell: \"Rayla can be bred again.\" The cow gets one too.",
+            "20 minutes after a cow is bred, when she can be bred again, everyone standing in the same dairy as her (hers, or a public one she's visiting) with the HUD on gets a small pop-up with a soft bell: \"Rayla can be bred again.\" The cow gets one too.",
             "The plugin and server write less to the database: milk levels on member lists refresh about every 90 seconds, while everything you act on (milking, Allow, stalls) stays instant.",
         }),
         new("0.9.54", "Busier Grand Creameries", new[]

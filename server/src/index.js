@@ -631,10 +631,11 @@ async function heartbeat(env, me, request) {
     pumped,
     seedPumped,
     creameryHere,
-    // Notices to the dairy since the last one this plugin saw (older plugins don't ask, and get none)
-    notices: mem && Number.isFinite(Number(b.noticeAfter)) ? (await env.DB.prepare(
+    // Notices to the dairy you're standing in (yours, or a public one you're visiting) since the last one this plugin
+    // saw. Not in a dairy: none. Older plugins don't ask, and get none.
+    notices: here && Number.isFinite(Number(b.noticeAfter)) ? (await env.DB.prepare(
       "SELECT id, kind, name FROM dairy_notice WHERE dairy_id = ? AND id > ? AND created >= ? AND install != ? ORDER BY id LIMIT 5")
-      .bind(mem.dairy_id, Math.floor(Number(b.noticeAfter)), t - NOTICE_FRESH, me.id).all()).results : [],
+      .bind(here.id, Math.floor(Number(b.noticeAfter)), t - NOTICE_FRESH, me.id).all()).results : [],
     creamery: await creameryOf(env),          // the first one, for plugins before there were several
     creameries: await creameriesOf(env),
     carried: await carriedOf(env, me.id),
@@ -1651,7 +1652,10 @@ const NOTICE_KINDS = ["breedReady"];
 const NOTICE_FRESH = 300;          // seconds a notice is still shown to someone checking in
 const NOTICE_GAP = 15 * 60;        // one notice of a kind per player this often
 
-/** A short notice to everyone in your dairy, e.g. a cow ready to be bred again. Shown as a pop-up with a sound. */
+/**
+ * A short notice to everyone standing in the dairy you're in (yours, or a public one you're visiting), e.g. a cow ready
+ * to be bred again. Shown to them as a pop-up with a sound.
+ */
 async function postNotice(env, me, request) {
   const b = await body(request);
   const mem = await membership(env, me.id);
@@ -1662,8 +1666,10 @@ async function postNotice(env, me, request) {
   const t = now();
   const last = await env.DB.prepare("SELECT created FROM dairy_notice WHERE install = ? AND kind = ? ORDER BY id DESC LIMIT 1").bind(me.id, kind).first();
   if (last && t - last.created < NOTICE_GAP) return { ok: true, sent: false };
+  // To the dairy you're standing in (yours, or a public one you're visiting); not in one: your own dairy
+  const at = me.at_dairy && me.last_seen >= t - ONLINE_WINDOW ? me.at_dairy : mem.dairy_id;
   await env.DB.batch([
-    env.DB.prepare("INSERT INTO dairy_notice (dairy_id, install, kind, name, created) VALUES (?, ?, ?, ?, ?)").bind(mem.dairy_id, me.id, kind, mem.name || "", t),
+    env.DB.prepare("INSERT INTO dairy_notice (dairy_id, install, kind, name, created) VALUES (?, ?, ?, ?, ?)").bind(at, me.id, kind, mem.name || "", t),
     env.DB.prepare("DELETE FROM dairy_notice WHERE created < ?").bind(t - 86400),
   ]);
   return { ok: true, sent: true };
