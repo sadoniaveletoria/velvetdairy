@@ -31,7 +31,7 @@ public sealed class ChangelogWindow : Window
             "# A tidier HUD",
             "The mini HUD now only shows while you're in a dairy (yours or one you're visiting), or while you're being milked or in a breeding scene. Want it everywhere? Untick \"Only while I'm in a dairy\" in Settings.",
             "# Breeding (still in testing)",
-            "Breeding follows what Corruption says your bodies can do: who can breed, and who can carry.",
+            "Pregnancy follows what Corruption says your bodies can do (who can breed, who can carry); the scene note tells you when Corruption won't roll one.",
             "If you and your partner are both cow and bull, a pop-up asks \"Who breeds this scene?\" before you start, and only that way counts. Each new scene asks again.",
             "When a cow's 30-minute bred bonus runs out, everyone in the dairy she's in gets a small pop-up with a soft bell: \"Rayla can be bred again.\" She gets one too.",
             "# Grand Creameries",

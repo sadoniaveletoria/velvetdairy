@@ -163,9 +163,15 @@ public sealed partial class DairyGame
         return p != null && p.Has(role);
     }
 
-    // Each way on its own: you could breed them, they could breed you (roles in your dairy, and what the bodies can do)
-    private bool CouldBreedThem => IsBull && myBody.CanBreed && partnerBody.CanCarry && PartnerIs("cow");
-    private bool CouldBeBred => IsCow && myBody.CanCarry && partnerBody.CanBreed && PartnerIs("bull");
+    // Each way on its own: you could breed them, they could breed you
+    // Your dairy roles decide who can breed whom in Eorzea Milkers (the bred bonus, bull xp, the "who breeds" pop-up).
+    // What Corruption says each body can do only decides whether Corruption can make it a pregnancy.
+    private bool CouldBreedThem => IsBull && PartnerIs("cow");
+    private bool CouldBeBred => IsCow && PartnerIs("bull");
+
+    /// <summary>Corruption can make a pregnancy of the way this scene breeds (both bodies allow it).</summary>
+    private bool CorruptionCanBreedThem => myBody.CanBreed && partnerBody.CanCarry;
+    private bool CorruptionCanBreedMe => myBody.CanCarry && partnerBody.CanBreed;
 
     /// <summary>
     /// Both of you are cow and bull and could go either way: it's not decided by who finishes. One of you chooses to
@@ -215,8 +221,8 @@ public sealed partial class DairyGame
     private string lastSceneLine = "";
 
     /// <summary>
-    /// Why only one way (or no way) breeds in this scene when your roles would allow more: what Corruption says a body
-    /// can't do, or a missing role in your dairy. Empty when nothing is ruled out.
+    /// For the scene note: a missing role in your dairy that rules a way out, and when Corruption can't make a breeding
+    /// a pregnancy (a body set to carry only or breed only). Empty when there's nothing to say.
     /// </summary>
     public string BreedOneWayWhy
     {
@@ -225,14 +231,14 @@ public sealed partial class DairyGame
             if (!InScene || SceneNow.Solo || SceneNow.PartnerName.Length == 0) return "";
             var name = SceneNow.PartnerName.Split(' ')[0];
             var why = new List<string>();
-            if (IsCow && PartnerIs("bull") && !CouldBeBred)
-                why.Add(!myBody.CanCarry ? $"your Corruption body is set so you can't carry, so {name} can't breed you"
-                    : $"{name}'s Corruption body is set so they can't breed, so they can't breed you");
-            if (IsBull && PartnerIs("cow") && !CouldBreedThem)
-                why.Add(!myBody.CanBreed ? $"your Corruption body is set so you can't breed, so you can't breed {name}"
-                    : $"{name}'s Corruption body is set so they can't carry, so you can't breed them");
-            if (IsCow && !PartnerIs("bull") && PartnerIs("cow") && IsBull) why.Add($"{name} isn't a bull in your dairy, so they can't breed you");
-            if (IsBull && !PartnerIs("cow") && PartnerIs("bull") && IsCow) why.Add($"{name} isn't a cow in your dairy, so you can't breed them");
+            if (IsCow && IsBull && PartnerIs("cow") && !PartnerIs("bull")) why.Add($"{name} isn't a bull in your dairy, so they can't breed you");
+            if (IsCow && IsBull && PartnerIs("bull") && !PartnerIs("cow")) why.Add($"{name} isn't a cow in your dairy, so you can't breed them");
+            if (BredAsCow && !CorruptionCanBreedMe)
+                why.Add(!myBody.CanCarry ? "your Corruption body is set so you can't carry, so Corruption won't roll a pregnancy"
+                    : $"{name}'s Corruption body is set so they can't breed, so Corruption won't roll a pregnancy from them (the bred bonus still counts)");
+            if (BreedingAsBull && !CorruptionCanBreedThem)
+                why.Add(!myBody.CanBreed ? $"your Corruption body is set so you can't breed, so Corruption won't roll a pregnancy for {name} (the bred bonus still counts)"
+                    : $"{name}'s Corruption body is set so they can't carry, so Corruption won't roll a pregnancy");
             return why.Count == 0 ? "" : char.ToUpperInvariant(why[0][0]) + string.Join("; ", why)[1..] + ".";
         }
     }
@@ -255,7 +261,8 @@ public sealed partial class DairyGame
     /// </summary>
     private void UpdateForcedCreampie()
     {
-        var want = CorruptionOn && BreedingAsBull;   // an either-way scene: only when you chose to breed them
+        // Breeding them (an either-way scene: only when you chose to), and Corruption can make it a pregnancy
+        var want = CorruptionOn && BreedingAsBull && CorruptionCanBreedThem;
         if (want == forcedOn && (!want || ForceCreampieAnswer == "ok")) return;
         if (!want)
         {
@@ -302,7 +309,7 @@ public sealed partial class DairyGame
             partnerBody = theirs;
         }
         else myBody = partnerBody = (true, true);
-        ConceiveChance = BredAsCow && !Pregnant ? Math.Clamp(plugin.Corruption.BreedChance(SceneNow.PartnerName, SceneNow.PartnerWorld), 0, 1) : 0;
+        ConceiveChance = BredAsCow && CorruptionCanBreedMe && !Pregnant ? Math.Clamp(plugin.Corruption.BreedChance(SceneNow.PartnerName, SceneNow.PartnerWorld), 0, 1) : 0;
 
         // A new scene (or a new partner) allows one more breeding; the same scene going on doesn't
         var key = InScene ? $"{SceneNow.PartnerName}@{SceneNow.PartnerWorld}" : "";
@@ -419,11 +426,8 @@ public sealed partial class DairyGame
             Diag.Info("breed", $"{name} finished, but they didn't choose to breed you this scene");
             return;
         }
-        if (!myBody.CanCarry || !partnerBody.CanBreed)
-        {
-            Diag.Info("breed", $"{name} finished, but your bodies don't breed that way (you can carry: {myBody.CanCarry}, they can breed: {partnerBody.CanBreed})");
-            return;
-        }
+        if (!CorruptionCanBreedMe)
+            Diag.Info("breed", $"{name} breeds you in the dairy; Corruption won't roll a pregnancy (you can carry: {myBody.CanCarry}, they can breed: {partnerBody.CanBreed})");
         if (wasBredThisScene)
         {
             Diag.Info("breed", $"{name} finished again in the same scene; only the first counts");
@@ -488,11 +492,8 @@ public sealed partial class DairyGame
             Diag.Info("breed", "You finished, but you didn't choose to breed them this scene");
             return;
         }
-        if (!myBody.CanBreed || !partnerBody.CanCarry)
-        {
-            Diag.Info("breed", $"You finished, but your bodies don't breed that way (you can breed: {myBody.CanBreed}, they can carry: {partnerBody.CanCarry})");
-            return;
-        }
+        if (!CorruptionCanBreedThem)
+            Diag.Info("breed", $"You breed them in the dairy; Corruption won't roll a pregnancy (you can breed: {myBody.CanBreed}, they can carry: {partnerBody.CanCarry})");
         if (bredThemThisScene)
         {
             Diag.Info("breed", $"Finished again with {cow.Name} in the same scene; only the first counts");
