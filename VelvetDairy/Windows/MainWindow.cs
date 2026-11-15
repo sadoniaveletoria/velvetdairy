@@ -1000,7 +1000,7 @@ public sealed partial class MainWindow : Window
             if (qualityHeld) wait = qwait;
             var waiting = wait > TimeSpan.Zero;
             var tip = problem ?? (qualityHeld ? $"Quality treats share a {Grades.QualityTreatHours:0}-hour cooldown." :
-                waiting ? $"Eating, drinking, resting and treats each wait {Catalog.NeedCooldownMinutes:0} minutes between uses." : $"{item.Desc}\n{Effects(item)}");
+                waiting ? $"Eating, drinking and treats each wait {Catalog.NeedCooldownMinutes:0} minutes between uses." : $"{item.Desc}\n{Effects(item)}");
             var id = item.Id;
             cells.Add(($"##feed{id}", item.Icon, item.Name, waiting ? $"{have} left · ready in {DairyGame.Wait(wait)}" : $"{have} left · {Effects(item, true)}",
                 "Eat", "honey", ok && !waiting, tip, () => G.UseFeed(id)));
@@ -1089,7 +1089,7 @@ public sealed partial class MainWindow : Window
             if (qualityHeld) wait = qwait;
             var waiting = wait > TimeSpan.Zero;
             var tip = problem ?? (have <= 0 ? "Buy more in the Shop." : qualityHeld ? $"Quality treats share a {Grades.QualityTreatHours:0}-hour cooldown." :
-                waiting ? $"Eating, drinking, resting and treats each wait {Catalog.NeedCooldownMinutes:0} minutes between uses." : item.Desc);
+                waiting ? $"Eating, drinking and treats each wait {Catalog.NeedCooldownMinutes:0} minutes between uses." : item.Desc);
             var sub = waiting ? $"{have} left · ready in {DairyGame.Wait(wait)}" : $"{have} left · {Effects(item)}";
             if (Row($"##feed{item.Id}", item.Icon, item.Name, sub, "Eat", "honey", ok && have > 0 && !waiting, tip, width))
                 G.UseFeed(item.Id);
