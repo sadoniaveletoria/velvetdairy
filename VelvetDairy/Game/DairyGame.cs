@@ -2159,6 +2159,9 @@ public sealed partial class DairyGame
             role = F.OwnerRoles!.FirstOrDefault() ?? "none",
             roles = F.OwnerRoles,
             area,
+            // An outdoor box in a residential district: its ward (for the Dairies list and Visit)
+            outdoorWard = area is { House.Length: 0 } && Estate.DistrictKind(area.Territory) > 0 ? Housing.OutdoorWard() : 0,
+            districtKind = area is { House.Length: 0 } ? Estate.DistrictKind(area.Territory) : 0,
         };
         var isNew = F.NetMember?.IsOwner != true;
         Net.PutDairy(body, _ =>

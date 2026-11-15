@@ -199,12 +199,15 @@ public sealed class DairyListing
     /// Where it is, for the list: a box inside a house or apartment shows that home's district, ward and plot (from the
     /// house's id, which always says the right one); outdoors, the zone.
     /// </summary>
-    public string Address => Area != null ? AreaAddress(Area)
+    public string Address => Area != null ? AreaAddress(Area, Ward ?? 0)
         : HouseId != null && ulong.TryParse(HouseId, out var hid) && VelvetDairy.Game.Estate.FromId(hid) is { Ward: > 0 } home ? home.Describe
         : Ward is null ? "Private" : Room is > 0 && Plot is null ? $"{District}, Ward {Ward}, apartment {Room}" : $"{District}, Ward {Ward}, Plot {Plot}";
 
-    private static string AreaAddress(VelvetDairy.Game.DairyArea a)
+    private static string AreaAddress(VelvetDairy.Game.DairyArea a, int ward)
     {
+        // Outdoors in a residential district: the district and ward
+        if (a.House.Length == 0 && ward > 0 && VelvetDairy.Game.Estate.DistrictKind(a.Territory) > 0)
+            return $"{VelvetDairy.Game.Estate.DistrictName(a.Territory)}, Ward {ward} (outside)";
         if (a.House.Length == 0 || VelvetDairy.Game.Estate.SoloPlace(a.Territory) || VelvetDairy.Game.Estate.Island(a.Territory) || !ulong.TryParse(a.House, out var id)) return a.Zone;
         var addr = VelvetDairy.Game.Estate.FromId(id);
         return addr.Ward > 0 ? addr.Describe : a.Zone;

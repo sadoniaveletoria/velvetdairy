@@ -1091,7 +1091,10 @@ async function putDairy(env, me, request) {
     const others = await boxesAt(env, area, existing ? existing.id : null);
     if (others.some(r => overlaps(r, area))) fail(409, "That overlaps another dairy. Move or shrink your box.");
     hid = `area:${me.id}`;
-    world = area.world; ward = 0; plot = 0; room = 0; districtKind = 0;
+    world = area.world; plot = 0; room = 0;
+    // Outdoors in a residential district: which ward (the zone alone doesn't say), so the list and Visit can use it
+    ward = area.house ? 0 : Math.max(0, Math.min(60, Math.floor(Number(b.outdoorWard) || 0)));
+    districtKind = ward > 0 ? Math.max(0, Math.min(1000, Math.floor(Number(b.districtKind) || 0))) : 0;
   } else if (existing) {
     if (b.houseId != null && String(b.houseId) !== existing.house_id) fail(409, `You already own ${existing.name}. Remove it before registering another.`);
     // Just updating the name, listing or role

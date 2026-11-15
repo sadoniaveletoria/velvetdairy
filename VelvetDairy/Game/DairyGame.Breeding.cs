@@ -464,6 +464,22 @@ public sealed partial class DairyGame
     /// A cow's breeding bonus has run out (30 minutes after she was bred): tell her, and let the rest of her dairy know (a pop-up with a bell).
     /// Only right after it happens (not for an old breeding after a restart).
     /// </summary>
+    private bool wardFilled;
+
+    /// <summary>
+    /// An owner whose dairy is an outdoor box in a residential district, saved before the ward was kept: the next time
+    /// they stand in it, the ward is added (so the Dairies list shows it and Visit can take people there).
+    /// </summary>
+    private void FillOutdoorWard()
+    {
+        if (wardFilled || !Networked || F.NetMember is not { IsOwner: true } m || !Where.InDairy || Where.Guest) return;
+        if (Net.Mine?.Dairy is not { } d || d.Ward > 0 || d.Area is not { House.Length: 0 } area || Estate.DistrictKind(area.Territory) == 0) return;
+        if (Plugin.ClientState.TerritoryType != area.Territory || Housing.OutdoorWard() == 0) return;
+        wardFilled = true;
+        Diag.Info("net", $"Adding ward {Housing.OutdoorWard()} to {d.Name}'s outdoor area");
+        PublishDairy(d.Name, area);
+    }
+
     private void AnnounceReadyAgain()
     {
         var at = F.BredAtUtc;
@@ -477,6 +493,7 @@ public sealed partial class DairyGame
     private void BreedingUpdate()
     {
         ReadScene();
+        FillOutdoorWard();
         AnnounceReadyAgain();
         if (now < nextPregRead || Plugin.ObjectTable.LocalPlayer == null) return;
         nextPregRead = now + 30;

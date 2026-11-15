@@ -246,6 +246,15 @@ public sealed partial class MainWindow
             return;
         }
 
+        if (d.Area is { House.Length: 0 } yard && d.Ward is > 0 && Estate.DistrictKind(yard.Territory) > 0 && Lifestream.Installed)
+        {
+            // Outdoors in a residential ward: Lifestream takes you to the ward, and the spot is flagged on your map
+            var why = Lifestream.GoTo(d.Name, yard.World, Estate.DistrictKind(yard.Territory), d.Ward.Value, 1, 0, false);
+            FlagArea(d, yard);
+            G.Notify(why ?? $"Lifestream is taking you to {Estate.DistrictName(yard.Territory)}, Ward {d.Ward}; {d.Name} is flagged on your map.", why != null ? 2 : 0);
+            return;
+        }
+
         if (d.Area is { } ar && ar.House.Length == 0)
         {
             // Outdoors: flag it on the map and copy where it is
@@ -293,6 +302,21 @@ public sealed partial class MainWindow
     // =====================================================================
     // Dairy tab on the network: your dairy, its stalls and its people
     // =====================================================================
+
+    /// <summary>Flag a dairy's outdoor box on the map (quietly; nothing if the map can't be opened).</summary>
+    private static void FlagArea(DairyListing d, DairyArea ar)
+    {
+        try
+        {
+            if (ar.MapId == 0) return;
+            var link = new Dalamud.Game.Text.SeStringHandling.Payloads.MapLinkPayload(ar.Territory, ar.MapId, (int)(ar.X * 1000), (int)(ar.Z * 1000));
+            Plugin.GameGui.OpenMapWithMapLink(link);
+        }
+        catch
+        {
+            // the travel still happens
+        }
+    }
 
     private void DrawNetDairy(Vector2 min, Vector2 max)
     {
