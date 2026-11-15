@@ -23,11 +23,15 @@ public sealed class ChangelogWindow : Window
     /// <summary>Newest first. Write these for players: what changed for them, not how.</summary>
     private static readonly Entry[] Entries =
     {
-        new("0.9.70", "Several dairies, bull items and a fairer Shop", new[]
+        new("0.9.71", "Several dairies, guests, bull items and a fairer Shop", new[]
         {
             "# Several dairies",
             "You can belong to several dairies at once, and own one of your own as well. Joining another keeps the ones you're in. In someone else's dairy and want your own? Press Start my own dairy on the Dairy tab.",
-            "Everything you do counts for the dairy you're playing in: walking into another of yours switches to it, or press Play here under Your dairies. Your levels and progress go with you everywhere; roles are per dairy.",
+            "Everything you do counts for the dairy you're playing in: walking into another of yours switches to it, or press Play here under Your dairies. Your levels and progress go with you everywhere.",
+            "Cow and bull are yours: they hold in every dairy you're in, and only you add or drop them. Farmer is given by each dairy.",
+            "# Visiting public dairies",
+            "In someone else's public dairy you're a guest: you can be milked on its stalls and cared for like at home (your milk goes into their tank). Its farmers can hand milk you after you press Allow.",
+            "A bull from another dairy can breed you in a Corruption scene once you press Allow on the pop-up.",
             "# Bulls",
             "Bull-only Shop items by bull level: Nose ring (5), Stud book (10, 25 breedings a day at full output), Brass horn caps (20), Prize stud (25, +25% bull xp from breeding), Breeding pen (35, breedings give your dairy xp), Herd sire (50, seed 15% faster), Champion bull sash (75), Legendary stud (100, 30 breedings a day).",
             "Bull foods: Iron oats (Fed and Watered at once), Bull's salt lick (+25% bull xp for 30 min), Seed tea (next seed milking +25%), Stud draught (your next breeding is half again as strong and lasts 15 minutes longer).",

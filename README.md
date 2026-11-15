@@ -132,6 +132,16 @@ Breeding is new and still being tuned: numbers and details will change.
 - **One dairy at a time is the one you're playing in:** milking, stalls, the contract, the tank and dairy XP all count for it. Walking into another of your dairies switches to it, or press **Play here** under **Your dairies** on the Dairy tab.
 - **Your levels are yours:** cow, bull and farmer levels and your progress go with you to every dairy. Roles are per dairy (you can be a cow in one and a farmer in another).
 - In someone else's dairy and want your own? Press **Start my own dairy** on the Dairy tab. **Leave dairy** only leaves the one you're playing in.
+- **Roles across dairies:** cow and bull are **yours**: you add or drop them yourself (Roles tab), and they hold in every dairy you're in. An owner can't take them away (they can remove you from their dairy instead). **Farmer** is a job each dairy gives you, so you're only a farmer where you've been made one.
+
+---
+
+## Visiting public dairies (guests)
+
+- In someone else's **public** dairy you're a **guest**. You need to be a cow or bull (in any dairy of yours).
+- You can be **milked on its stalls** and cared for there (eat, drink, Comfy, treats) like at home, with your own grade, pay and XP. Your milk (or seed) goes into **that dairy's tank**.
+- Its farmers can hand milk, groom and feed you. **Hand milking always asks you to Allow first.**
+- **Breeding with a bull from another dairy:** when one is in a Corruption scene with you, you get a pop-up. If you **Allow**, their finish counts as a breeding (after the usual 10 minutes in the scene); if not, it doesn't.
 - If a dairy says no, you can apply to it again after 3 days.
 
 ---
