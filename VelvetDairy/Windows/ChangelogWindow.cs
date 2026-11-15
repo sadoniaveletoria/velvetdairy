@@ -30,8 +30,9 @@ public sealed class ChangelogWindow : Window
             "A dairy outdoors in a plot's yard shows its plot too (\"Empyreum, Ward 30, Plot 10 (outside)\"), and Visit takes you to that plot. It's added the next time the owner stands in their dairy.",
             "Breeding no longer waits 10 minutes into a scene: Corruption's arousal and climax decide when a breeding happens.",
             "A bar with more than an hour left is full enough: you can't eat, drink, be groomed or pick it at the feeding bell until it's under an hour.",
-                        "Weekly contracts are bigger: 1,500 oz at dairy level 1, growing 250 oz a level up to 6,000 oz (this week's grows to match).",
+            "Weekly contracts are bigger: 1,500 oz at dairy level 1, growing 250 oz a level up to 6,000 oz (this week's grows to match).",
             "While you're in a dairy (yours, or a public one you're visiting), your Fed, Watered, Comfy and Happy bars drain half as fast, so your bonuses last twice as long while you stay.",
+            "Herd Care lists each cow and bull once (even if they're in several dairies), and only those who are online. Guests at a public dairy see its stall markers.",
             "The version under the plugins list always fits, and the HUD just says Update needed when there's a new version.",
         }),
         new("0.9.73", "Several dairies, guests, bull items and a fairer Shop", new[]
