@@ -225,11 +225,12 @@ public sealed partial class MainWindow
         var mine = G.Net.Mine;
         var me = Plugin.ObjectTable.LocalPlayer;
         var myName = me?.Name.TextValue ?? "";
-        // Your dairy's cows and bulls, and guests from other dairies visiting it (a public dairy)
-        var cows = mine?.Members.Concat(mine.Guests.Where(g => mine.Members.All(x => x.Id != g.Id))).Where(m => (m.Has("cow") || m.Has("bull")) && !m.Name.Equals(myName, StringComparison.OrdinalIgnoreCase)).ToList() ?? new();
+        // Your dairy's cows and bulls who are online, and guests from other dairies visiting it (a public dairy); each once
+        var cows = mine?.Members.Concat(mine.Guests.Where(g => mine.Members.All(x => x.Id != g.Id)))
+            .Where(m => m.Online && (m.Has("cow") || m.Has("bull")) && !m.Name.Equals(myName, StringComparison.OrdinalIgnoreCase)).ToList() ?? new();
         if (cows.Count == 0)
         {
-            ImGui.TextColored(Theme.InkSoft, "No other cows or bulls in your dairy yet.");
+            ImGui.TextColored(Theme.InkSoft, "No other cows or bulls are online right now.");
             return;
         }
 
