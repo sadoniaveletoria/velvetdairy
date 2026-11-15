@@ -27,7 +27,8 @@ public sealed class ChangelogWindow : Window
         {
             "The feeding bell: farmers and the owner ring it from Herd Care (once an hour). Everyone in the dairy hears it, and each cow and bull picks a bar to fill right up, plus a 20 minute boost.",
             "Weekend milk contest, every Saturday and Sunday (UTC): milk pumped into your dairy's tank also fills the weekly contract. The Contract card shows the top pumpers and last weekend's champion.",
-            "Weekly contracts are bigger: 1,500 oz at dairy level 1, growing 250 oz a level up to 6,000 oz (this week's grows to match).",
+            "A bar with more than an hour left is full enough: you can't eat, drink, be groomed or pick it at the feeding bell until it's under an hour.",
+                        "Weekly contracts are bigger: 1,500 oz at dairy level 1, growing 250 oz a level up to 6,000 oz (this week's grows to match).",
             "While you're in a dairy (yours, or a public one you're visiting), your Fed, Watered, Comfy and Happy bars drain half as fast, so your bonuses last twice as long while you stay.",
             "The version under the plugins list always fits, and the HUD just says Update needed when there's a new version.",
         }),
