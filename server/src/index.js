@@ -73,6 +73,7 @@ const SEED_PER_BEAT = 24;
 const MEMBER_DAILY_SEED = 300;
 const SEED_PRICE_MULT = 10;
 const SEED_DAILY_HAND_OZ = 160;
+const CREAMERY_HERE_WINDOW = 120;  // seconds: someone counts as "at the creamery" this long after their last check-in there
 const SEED_TANK_GRADE = -1;         // the dairy's seed tank is its own dairy_tank row
 
 // Each public world's data center, so a listing shows the right one even if an older plugin saved the wrong one
@@ -260,6 +261,7 @@ async function route(request, env) {
     ["GET", /^\/v1\/whoami$/, () => ({ charHash: me.char_hash || null })],
     ["GET", /^\/v1\/dairies$/, () => listDairies(env, me)],
     ["GET", /^\/v1\/dairy\/mine$/, () => myDairy(env, me)],
+    ["GET", /^\/v1\/scan\/([^/]{1,80})\/([^/]{1,80})$/, m => scanPlayer(env, me, decodeURIComponent(m[1]), decodeURIComponent(m[2]))],
     ["PUT", /^\/v1\/dairy$/, () => putDairy(env, me, request)],
     ["DELETE", /^\/v1\/dairy$/, () => deleteDairy(env, me)],
     ["POST", /^\/v1\/invites$/, () => invite(env, me, request)],
@@ -301,6 +303,7 @@ async function route(request, env) {
     ["POST", /^\/v1\/dairy\/fund$/, () => donate(env, me, request)],
     ["POST", /^\/v1\/dairy\/tank\/take$/, () => takeFromTank(env, me, request)],
     ["POST", /^\/v1\/handpay$/, () => handPay(env, me, request)],
+    ["POST", /^\/v1\/dairy\/notice$/, () => postNotice(env, me, request)],
     ["POST", /^\/v1\/dairy\/contract\/ship$/, () => shipToContract(env, me, request)],
     ["POST", /^\/v1\/carry\/use$/, () => useCarried(env, me, request)],
     ["PUT", /^\/v1\/dev\/creamery$/, () => setCreamery(env, request)],
@@ -322,6 +325,29 @@ async function membership(env, install) {
   return await env.DB.prepare(
     "SELECT m.*, d.owner = m.install AS is_owner, d.name AS dairy_name FROM members m JOIN dairies d ON d.id = m.dairy_id WHERE m.install = ?")
     .bind(install).first();
+}
+
+/**
+ * A scan: what a player's plugin shares about them (milk, seed, bonuses, breeding and pregnancy), for anyone targeting
+ * them in game. Only members of a dairy have a status. They choose who can scan them: anyone, their dairy, or nobody.
+ */
+async function scanPlayer(env, me, world, name) {
+  const t = now();
+  const m = await env.DB.prepare(`SELECT m.install, m.role, m.name, m.world_name, m.status, m.dairy_id, d.name AS dairy_name, i.last_seen, i.version
+      FROM members m JOIN dairies d ON d.id = m.dairy_id LEFT JOIN installs i ON i.id = m.install
+      WHERE m.name = ? COLLATE NOCASE AND m.world_name = ? COLLATE NOCASE LIMIT 1`).bind(clean(name, 40), clean(world, 40)).first();
+  if (!m) return { found: false, why: "They're not in a dairy, so there's nothing to scan." };
+  const st = safeParse(m.status) || {};
+  const allow = st.scan || "anyone";
+  if (m.install !== me.id && allow !== "anyone") {
+    const mine = await membership(env, me.id);
+    if (allow === "nobody" || !mine || mine.dairy_id !== m.dairy_id)
+      return { found: true, hidden: true, name: m.name, why: allow === "nobody" ? "They don't allow scans." : "They only allow scans from their own dairy." };
+  }
+  return {
+    found: true, hidden: false, name: m.name, world: m.world_name, dairy: m.dairy_name, role: primaryRole(m.role), roles: roleList(m.role),
+    online: (m.last_seen || 0) >= t - ONLINE_WINDOW, version: m.version || "", status: st, now: t,
+  };
 }
 
 async function ownedDairy(env, me) {
@@ -466,6 +492,24 @@ const notice = (env, install, note) => addInbox(env, install, "notice", 0, 0, 0,
 
 // ---------------------------------------------------------------- presence
 
+// Fields that change a little with almost every heartbeat (milk filling, xp, drains). A change in only these is
+// written at most every STATUS_REFRESH seconds; anything else (milking, a stall, asking, spoiled...) is written at once.
+// This keeps database writes down without making anything that matters slower.
+const STATUS_VOLATILE = ["milk", "seedOz", "quality", "totalOz", "drainLeft", "drainAt", "w", "bonuses", "speed"];
+const STATUS_REFRESH = 90;
+
+function statusNeedsWrite(oldJson, newJson, t) {
+  if (!oldJson) return true;
+  const old = safeParse(oldJson) || {}, now_ = safeParse(newJson) || {};
+  const strip = o => JSON.stringify(Object.fromEntries(Object.entries(o).filter(([k]) => !STATUS_VOLATILE.includes(k))));
+  if (strip(old) !== strip(now_)) return true;                 // something that matters changed
+  const same = JSON.stringify({ ...old, w: 0 }) === JSON.stringify({ ...now_, w: 0 });
+  return !same && t - (Number(old.w) || 0) >= STATUS_REFRESH;  // only numbers moved: refresh now and then
+}
+
+/** The status as stored: with when it was written (for the refresh above). */
+const withWritten = (json, t) => JSON.stringify({ ...(safeParse(json) || {}), w: t });
+
 async function heartbeat(env, me, request) {
   const b = await body(request);
   const t = now();
@@ -516,8 +560,17 @@ async function heartbeat(env, me, request) {
       // A bull's seed vials, like a cow's milk and cap
       seedOz: Math.max(0, Math.min(100, Math.round(num(st.seedOz) * 100) / 100)), seedCap: Math.max(0, Math.min(100, num(st.seedCap))),
       seedGrade: Math.max(0, Math.min(GRADES - 1, Math.floor(num(st.seedGrade)))), seedSpoiled: !!st.seedSpoiled,
+      // Two players who are both cow and bull: the scene partner (Name@World) this player chose to breed this scene
+      breeding: clean(st.breeding, 80),
+      // For a scan (anyone targeting them, if they allow it): what speeds their milk or seed up now, and breeding
+      bonuses: Array.isArray(st.bonuses) ? st.bonuses.slice(0, 16).map(x => ({ n: clean(x && x.n, 48), p: Math.max(-100, Math.min(1000, Math.round(num(x && x.p)))) })).filter(x => x.n) : [],
+      speed: Math.max(0, Math.min(50, Math.round(Number(st.speed) * 100 || 0) / 100)),
+      bredBy: clean(st.bredBy, 40), bredPct: Math.max(0, Math.min(100, num(st.bredPct))), bredUntil: Math.max(0, Math.floor(num(st.bredUntil))),
+      breedWait: Math.max(0, Math.floor(num(st.breedWait))),   // a cow: when she can be bred again (unix seconds)
+      scan: ["anyone", "dairy", "nobody"].includes(st.scan) ? st.scan : "anyone",   // who can scan them
     });
-    if (status !== mem.status) await env.DB.prepare("UPDATE members SET status = ? WHERE install = ?").bind(status, me.id).run();
+    if (statusNeedsWrite(mem.status, status, t))
+      await env.DB.prepare("UPDATE members SET status = ? WHERE install = ?").bind(withWritten(status, t), me.id).run();
   }
 
   // Dairy XP from what the member did since the last heartbeat. It only counts while the server sees them
@@ -583,9 +636,19 @@ async function heartbeat(env, me, request) {
       ]);
   }
 
-  if (b.atCreamery === true)
-    await env.DB.prepare(`INSERT INTO creamery_presence (install, at) VALUES (?, ?)
-      ON CONFLICT(install) DO UPDATE SET at = excluded.at`).bind(me.id, t).run();
+  // At a Grand Creamery: note which one, so everyone there (on any world) sees each other and the day's deliveries
+  let creameryHere = null;
+  if (b.atCreamery === true) {
+    const slot = Math.max(0, Math.min(2, Math.floor(Number(b.creamerySlot) || 0)));
+    await env.DB.batch([
+      env.DB.prepare(`INSERT INTO creamery_presence (install, at) VALUES (?, ?)
+        ON CONFLICT(install) DO UPDATE SET at = excluded.at`).bind(me.id, t),
+      env.DB.prepare(`INSERT INTO creamery_here (install, slot, name, world, at) VALUES (?, ?, ?, ?, ?)
+        ON CONFLICT(install) DO UPDATE SET slot = excluded.slot, name = excluded.name, world = excluded.world, at = excluded.at`)
+        .bind(me.id, slot, clean(b.name, 40) || mem?.name || "", clean(b.worldName, 30), t),
+    ]);
+    creameryHere = await creameryNow(env, slot, me.id, t);
+  }
 
   const waiting = await env.DB.prepare("SELECT COUNT(*) AS n FROM inbox WHERE install = ? AND claimed IS NULL").bind(me.id).first();
   const invites = charHash ? (await env.DB.prepare(`
@@ -599,6 +662,12 @@ async function heartbeat(env, me, request) {
     dairyXp,
     pumped,
     seedPumped,
+    creameryHere,
+    // Notices to the dairy you're standing in (yours, or a public one you're visiting) since the last one this plugin
+    // saw. Not in a dairy: none. Older plugins don't ask, and get none.
+    notices: here && Number.isFinite(Number(b.noticeAfter)) ? (await env.DB.prepare(
+      "SELECT id, kind, name FROM dairy_notice WHERE dairy_id = ? AND id > ? AND created >= ? AND install != ? ORDER BY id LIMIT 5")
+      .bind(here.id, Math.floor(Number(b.noticeAfter)), t - NOTICE_FRESH, me.id).all()).results : [],
     creamery: await creameryOf(env),          // the first one, for plugins before there were several
     creameries: await creameriesOf(env),
     carried: await carriedOf(env, me.id),
@@ -1568,6 +1637,12 @@ async function shipToContract(env, me, request) {
     ON CONFLICT(dairy_id, week, install) DO UPDATE SET oz = oz + excluded.oz, name = excluded.name`)
     .bind(mem.dairy_id, c.week, me.id, mem.name || "", want).run();
 
+  // Count it toward this Grand Creamery's "delivered here today"
+  const at = await env.DB.prepare("SELECT slot FROM creamery_here WHERE install = ? AND at >= ?").bind(me.id, now() - CREAMERY_HERE_WINDOW).first();
+  if (at)
+    await env.DB.prepare(`INSERT INTO creamery_ship (day, slot, dairy_id, oz) VALUES (?, ?, ?, ?)
+      ON CONFLICT(day, slot, dairy_id) DO UPDATE SET oz = oz + excluded.oz`).bind(today(), at.slot, mem.dairy_id, want).run();
+
   let finished = false;
   if (done.oz_done >= done.oz_need) {
     // Only one shipment can mark it finished, so the reward is paid once
@@ -1590,6 +1665,47 @@ async function shipToContract(env, me, request) {
 }
 
 // ---------------------------------------------------------------- carried milk and the Grand Creamery
+
+/** Who else is at this Grand Creamery right now (any world), and what's been shipped to contracts here today. */
+async function creameryNow(env, slot, myId, t) {
+  const here = (await env.DB.prepare(`SELECT name, world FROM creamery_here WHERE slot = ? AND at >= ? AND install != ? ORDER BY at DESC LIMIT 30`)
+    .bind(slot, t - CREAMERY_HERE_WINDOW, myId).all()).results;
+  const shipped = await env.DB.prepare("SELECT COALESCE(SUM(oz), 0) AS oz, COUNT(*) AS dairies FROM creamery_ship WHERE day = ? AND slot = ?")
+    .bind(today(), slot).first();
+  return {
+    slot,
+    here: here.filter(x => x.name).map(x => ({ name: x.name, world: x.world })),
+    todayOz: Math.round(shipped?.oz || 0),
+    todayDairies: shipped?.dairies || 0,
+  };
+}
+
+const NOTICE_KINDS = ["breedReady"];
+const NOTICE_FRESH = 300;          // seconds a notice is still shown to someone checking in
+const NOTICE_GAP = 15 * 60;        // one notice of a kind per player this often
+
+/**
+ * A short notice to everyone standing in the dairy you're in (yours, or a public one you're visiting), e.g. a cow ready
+ * to be bred again. Shown to them as a pop-up with a sound.
+ */
+async function postNotice(env, me, request) {
+  const b = await body(request);
+  const mem = await membership(env, me.id);
+  if (!mem) fail(400, "Join a dairy first.");
+  const kind = String(b.kind || "");
+  if (!NOTICE_KINDS.includes(kind)) fail(400, "Unknown notice.");
+  if (kind === "breedReady" && !hasRole(mem, "cow")) fail(400, "Only cows can say they're ready to be bred.");
+  const t = now();
+  const last = await env.DB.prepare("SELECT created FROM dairy_notice WHERE install = ? AND kind = ? ORDER BY id DESC LIMIT 1").bind(me.id, kind).first();
+  if (last && t - last.created < NOTICE_GAP) return { ok: true, sent: false };
+  // To the dairy you're standing in (yours, or a public one you're visiting); not in one: your own dairy
+  const at = me.at_dairy && me.last_seen >= t - ONLINE_WINDOW ? me.at_dairy : mem.dairy_id;
+  await env.DB.batch([
+    env.DB.prepare("INSERT INTO dairy_notice (dairy_id, install, kind, name, created) VALUES (?, ?, ?, ?, ?)").bind(at, me.id, kind, mem.name || "", t),
+    env.DB.prepare("DELETE FROM dairy_notice WHERE created < ?").bind(t - 86400),
+  ]);
+  return { ok: true, sent: true };
+}
 
 async function carriedOf(env, install) {
   const r = await env.DB.prepare("SELECT oz FROM carried WHERE install = ?").bind(install).first();

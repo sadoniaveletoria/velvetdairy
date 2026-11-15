@@ -23,6 +23,26 @@ public sealed class ChangelogWindow : Window
     /// <summary>Newest first. Write these for players: what changed for them, not how.</summary>
     private static readonly Entry[] Entries =
     {
+        new("0.9.60", "Scanning, breeding choices and a tidier HUD", new[]
+        {
+            "# Scan other players",
+            "Target another player with Eorzea Milkers (within 15 yalms) and press Scan on the HUD, or right-click them > Eorzea Milkers > Scan. You don't need to be a farmer or owner. You see their milk and seed, every bonus speeding them up and the total, their bred bonus (who, how much, how long), pregnancy and Sire, when a cow can be bred again, and a bull's seed output.",
+            "Choose who can scan you in Settings: anyone (the default), your dairy only, or nobody. The player you scan needs this version for their bonuses to show.",
+            "# A tidier HUD",
+            "The mini HUD now only shows while you're in a dairy (yours or one you're visiting), or while you're being milked or in a breeding scene. Want it everywhere? Untick \"Only while I'm in a dairy\" in Settings.",
+            "# Breeding (still in testing)",
+            "Breeding follows what Corruption says your bodies can do: who can breed, and who can carry.",
+            "If you and your partner are both cow and bull, a pop-up asks \"Who breeds this scene?\" before you start, and only that way counts. Each new scene asks again.",
+            "When a cow's 30-minute bred bonus runs out, everyone in the dairy she's in gets a small pop-up with a soft bell: \"Rayla can be bred again.\" She gets one too.",
+            "# Grand Creameries",
+            "At a Grand Creamery you see everyone else standing there on any world and data center, on Dairy > Contract, and the HUD says how many are there.",
+            "Each Grand Creamery counts what's been shipped there today: \"Delivered here today: 1,240 oz by 9 dairies.\"",
+            "# Also",
+            "Comfy has no Rest button any more: sit on furniture in your dairy (a stall seat counts) and you get comfy by yourself after a few seconds. Stay seated 15 minutes for it to take effect; the Care row shows how long is left.",
+            "Bulls who aren't cows get the hand milking settings (milking emotes, ask first) on the Bull tab.",
+            "The Dairies list shows each dairy's real data center (Lich on Light, Lamia on Primal).",
+            "Milk levels on member lists refresh about every 90 seconds, so the server writes less. Everything you act on stays instant.",
+        }),
         new("0.9.52", "The Bull role and breeding", new[]
         {
             "# Bulls and breeding (in testing)",

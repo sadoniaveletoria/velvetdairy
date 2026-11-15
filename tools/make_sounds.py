@@ -8,6 +8,7 @@ pump_loop.wav   milking machine: soft vacuum-pump drone, a rhythmic suction "who
 pump_start.wav  pump spinning up
 pump_stop.wav   pump winding down with an air release
 squirt.wav      a hand-milking squirt into a pail
+ready.wav       a soft two-note bell: a cow in your dairy is ready to be bred again
 """
 import os
 import sys
@@ -202,12 +203,36 @@ def squirt():
     return norm(highpass(x, 120), 0.5)
 
 
+def ready():
+    """A soft two-note bell (a little cowbell-ish chime), rising, with a gentle ring-out."""
+    n = int(SR * 1.4)
+    t = np.arange(n) / SR
+    x = np.zeros(n)
+
+    def bell(f0, start, amp):
+        tt = t - start
+        on = tt >= 0
+        tone = np.zeros(n)
+        # Bell partials (slightly inharmonic) with their own decays
+        for ratio, a, decay in ((1.0, 1.0, 1.6), (2.0, 0.35, 2.4), (2.76, 0.22, 3.4), (5.4, 0.08, 6.0)):
+            tone[on] += a * np.sin(2 * np.pi * f0 * ratio * tt[on]) * np.exp(-decay * tt[on])
+        attack = np.clip(tt / 0.006, 0, 1)
+        return tone * attack * amp
+
+    x += bell(784.0, 0.0, 0.8)    # G5
+    x += bell(1046.5, 0.16, 0.7)  # C6
+    fade = np.ones(n)
+    fade[-int(SR * 0.2):] = np.linspace(1, 0, int(SR * 0.2))
+    return norm(lowpass(x * fade, 6000), 0.45)
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
     save("pump_loop.wav", pump_loop())
     save("pump_start.wav", pump_start())
     save("pump_stop.wav", pump_stop())
     save("squirt.wav", squirt())
+    save("ready.wav", ready())
     print("done")
 
 

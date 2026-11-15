@@ -36,6 +36,14 @@ Only the owner can take a role away from someone.
 
 ---
 
+## The HUD
+
+- The small HUD shows your bottle (and seed vials for bulls), your grade and what's happening now. Double-click or right-click it to open the main window.
+- Its buttons: **Herd Care** (farmers), **Kitchen** (farmers), and **Scan** while you target another player close by.
+- **It only shows while you're in a dairy** (yours, or one you're visiting), or while you're being milked or in a breeding scene. Elsewhere it hides to keep your screen clear. Want it everywhere? Untick **Only while I'm in a dairy** in Settings. `/milkers hud` (or the Settings box) hides it completely.
+
+---
+
 ## Your dairy
 
 - **The public area** is a box you mark out anywhere: a field, a corner of a city, or a room in a house. Visitors can find it and deliver to it in person.
@@ -71,7 +79,7 @@ Only the owner can take a role away from someone.
 **Bonuses** (the Barn tab)
 - **Fed** (food), **Watered** (drink), **Comfy** (rest) and **Happy** (treats) each make milk come faster.
 - Each use adds 30 minutes to that bar, up to an hour, and each has a 15-minute cooldown. Better food and treats give bigger bonuses.
-- **Comfy:** sit on furniture in your dairy, press **Rest**, then stay seated for 15 minutes or it doesn't stick.
+- **Comfy:** sit on furniture in your dairy (a stall seat counts) and you get comfy by yourself after a few seconds; there's no button. Stay seated for 15 minutes or it doesn't stick. The Care row shows how long is left.
 - **All four at once** makes you **Contented**, a bit faster still.
 - Bars only drain while you're awake and playing. Running out never hurts you; you're just back to normal speed.
 
@@ -99,11 +107,31 @@ Only the owner can take a role away from someone.
 
 ---
 
+## Bulls and breeding (still in testing)
+
+Breeding is new and still being tuned: numbers and details will change.
+- **Bulls** make seed and get milked, the way cows make milk, with the same four bonuses. Seed fills small vials and pays ten times milk's price per ounce. Add the Bull role to yourself on the Roles tab.
+- **Breeding needs** the [Corruption](https://github.com/RaylaPetal/corruption) plugin (0.3.5 or newer) and Cummy, for both of you. The bull's Corruption needs **Let other plugins control Corruption** turned on (Settings → Other plugins). The cow's Cummy blocks always apply.
+- **When a bull of your dairy finishes in a Corruption scene with a cow of your dairy, she's bred:** +5% milk for 30 minutes (less if the bull's seed output is low that day). Once per scene, and a cow can be bred again 20 minutes after the last time. The bull gets up to 40 bull xp; after 20 breedings in a day his seed output (and xp) drops, resetting at midnight UTC.
+- **Who breeds whom** follows what Corruption says your bodies can do (who can breed, who can carry).
+- **Both cow and bull?** With a partner who's also both, a pop-up asks **Who breeds this scene?** before you start: pick **I breed them**, **They breed me**, or **Not now**. Only that way counts, and finishing doesn't breed anyone until one of you picks. Each new scene asks again.
+- **Ready again:** when a cow's 30-minute bred bonus runs out, everyone with the HUD in the dairy she's standing in gets a small pop-up with a soft bell, and so does she.
+- **Pregnancy** comes from Corruption (a bull always finishes inside, so it rolls for conception). Once it's confirmed, a pregnant cow gives +5%, +10% and +15% milk by trimester until the birth. Roles → Cow shows the trimester, due date, Sire and past births.
+- During a scene the HUD shows who you're with and your arousal; the main window says who breeds whom.
+
+---
+
 ## Joining a dairy
 
 - Get **invited** by the owner or a farmer, or **apply**: on the **Dairies** tab, dairies that are looking for members show what they want (Cows, Farmers, Bulls) and an **Apply** button. Pick your roles, add a short note and send it.
 - **You can only be in one dairy at a time.** You can apply to several, but when one accepts you, your other applications are withdrawn. To move to another dairy, leave yours first (**Dairy** tab).
 - If a dairy says no, you can apply to it again after 3 days.
+
+---
+
+## Scanning other players
+
+Target someone with Eorzea Milkers and press **Scan** on the HUD (or right-click them → Eorzea Milkers → Scan) to see their milk, bonuses, bred bonus, pregnancy and when they can be bred again. Anyone can scan; each player chooses in Settings who can scan them (anyone, their dairy only, or nobody).
 
 ---
 

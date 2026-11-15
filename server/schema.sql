@@ -197,6 +197,35 @@ CREATE TABLE IF NOT EXISTS creamery_presence (
   at      INTEGER NOT NULL
 );
 
+-- Who is standing at which Grand Creamery (slot), on any world: shown to everyone else there.
+CREATE TABLE IF NOT EXISTS creamery_here (
+  install TEXT PRIMARY KEY,
+  slot    INTEGER NOT NULL,
+  name    TEXT NOT NULL DEFAULT '',
+  world   TEXT NOT NULL DEFAULT '',
+  at      INTEGER NOT NULL
+);
+
+-- Short notices to everyone in a dairy (like "Rayla is ready to be bred again"), shown as a pop-up for a few minutes.
+CREATE TABLE IF NOT EXISTS dairy_notice (
+  id       INTEGER PRIMARY KEY AUTOINCREMENT,
+  dairy_id TEXT NOT NULL,
+  install  TEXT NOT NULL,
+  kind     TEXT NOT NULL,
+  name     TEXT NOT NULL DEFAULT '',
+  created  INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS notice_dairy ON dairy_notice(dairy_id, id);
+
+-- Milk shipped to the contract at each Grand Creamery, per day and dairy (the "delivered here today" counter).
+CREATE TABLE IF NOT EXISTS creamery_ship (
+  day      TEXT NOT NULL,
+  slot     INTEGER NOT NULL,
+  dairy_id TEXT NOT NULL,
+  oz       REAL NOT NULL DEFAULT 0,
+  PRIMARY KEY (day, slot, dairy_id)
+);
+
 -- Where a dairy is: a box anywhere in the world (open world, city, or inside a specific house).
 CREATE TABLE IF NOT EXISTS dairy_area (
   dairy_id  TEXT PRIMARY KEY,

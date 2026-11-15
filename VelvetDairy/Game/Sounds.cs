@@ -20,7 +20,7 @@ public sealed class Sounds : IDisposable
     /// </summary>
     public string CustomDir { get; }
 
-    public static readonly string[] Names = { "pump_start", "pump_loop", "pump_stop", "squirt" };
+    public static readonly string[] Names = { "pump_start", "pump_loop", "pump_stop", "squirt", "ready" };
     private WaveOutEvent? loopOut;
     private AudioFileReader? loopReader;
     private bool wasStall;

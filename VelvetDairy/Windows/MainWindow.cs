@@ -598,6 +598,15 @@ public sealed partial class MainWindow : Window
     }
 
     /// <summary>Simple list row with one button.</summary>
+    /// <summary>What the Comfy care cell says: resting happens by itself when you sit on furniture in your dairy.</summary>
+    private string RestLine(TimeSpan settle, TimeSpan cooldown, string? restProblem, bool careOk) =>
+        settle > TimeSpan.Zero ? $"Comfy +{G.ComfyNow * 100:0}% · stay seated {DairyGame.Wait(settle)} for it to take effect"
+        : cooldown > TimeSpan.Zero ? $"Rested · again in {DairyGame.Wait(cooldown)}"
+        : !careOk ? "Sit on furniture in your dairy"
+        : restProblem != null ? "Sit on furniture in your dairy to get comfy"
+        : F.Cow.Comfort >= 99.5f ? "Fully comfy"
+        : "Settling in...";
+
     private bool Row(string id, string icon, string title, string sub, string button, string color, bool enabled, string? tip, float width)
     {
         var buttons = button.Length > 0 ? new[] { new Btn(id, button, color, enabled, tip) } : Array.Empty<Btn>();
@@ -891,7 +900,7 @@ public sealed partial class MainWindow : Window
         {
             ("hay", "Fed", cow.Hunger, cow.FedBonus, Theme.HoneyDeep, "Eat feed from your pantry. Better food gives a bigger bonus (wheat grain +4% up to Golden mash +15%)."),
             ("water", "Watered", cow.Thirst, cow.WaterBonus, Theme.BlueDeep, "Drink at the trough (free, +4%) or have a Mineral block (+8%)."),
-            ("cushion", "Comfy", cow.Comfort, cow.ComfortBonus, Theme.RoseDeep, "Sit on furniture in your dairy and press Rest, then stay seated 15 minutes: get up sooner and that rest doesn't count. Bedding upgrades make it bigger and last longer."),
+            ("cushion", "Comfy", cow.Comfort, cow.ComfortBonus, Theme.RoseDeep, "Sit on furniture in your dairy and you get comfy by yourself; stay seated 15 minutes: get up sooner and that rest doesn't count. Bedding upgrades make it bigger and last longer."),
             ("clover", "Happy", cow.Mood, cow.HappyBonus, Theme.SageDeep, "Have a treat: clover, salt lick, cream clover or a quality treat."),
         };
 
@@ -914,8 +923,10 @@ public sealed partial class MainWindow : Window
         if (G.Pregnant && G.IsCow)
             notes.Add(($"Pregnant ({DairyGame.StageName(G.Preg.Stage)}): +{G.PregnancyBonus * 100:0}% milk until the birth." + (G.Preg.FatherName.Length > 0 ? $" Sire: {G.Preg.FatherName}." : ""), Theme.RoseDeep));
         if (G.InScene)
-            notes.Add(($"Corruption: {G.SceneLine}." + (G.BreedingAsBull ? " They're a cow of your dairy: when you finish, you breed them" + (G.ForcedCreampie ? " (always inside, so Corruption rolls for conception)." : ".")
-                : G.BredAsCow ? " They're a bull of your dairy: when they finish, you're bred" + (G.ConceiveChance > 0 ? $", with a {G.ConceiveChance * 100:0}% chance of conceiving (from Corruption)." : ".") : ""), Theme.RoseDeep));
+            notes.Add(($"Corruption: {G.SceneLine}." + (G.BothChoseToBreed ? " You both chose to breed the other: one of you picks \"They breed me\" in the pop-up."
+                : G.EitherWayScene && !G.BreedingAsBull && !G.BredAsCow ? " You're both cow and bull: choose who breeds this scene (the pop-up). Until one of you does, finishing doesn't breed."
+                : G.BreedingAsBull ? " When you finish, you breed them" + (G.ForcedCreampie ? " (always inside, so Corruption rolls for conception)." : ".")
+                : G.BredAsCow ? " When they finish, you're bred" + (G.ConceiveChance > 0 ? $", with a {G.ConceiveChance * 100:0}% chance of conceiving (from Corruption)." : ".") : ""), Theme.RoseDeep));
         if (!where.InDairy) notes.Add((where.Why + " Care and milking wait until you're back.", Theme.RoseDeep));
         if (G.FreshHoldLeft > TimeSpan.Zero) notes.Add(($"Dry-off tonic: your grade won't slip for {DairyGame.Wait(G.FreshHoldLeft)}.", Theme.SageDeep));
         else if (G.GradeSlip > 0) notes.Add(($"Your grade slipped {G.GradeSlip} step{(G.GradeSlip > 1 ? "s" : "")} from going days without milking. One milking brings it back.", Theme.RoseDeep));
@@ -970,9 +981,9 @@ public sealed partial class MainWindow : Window
         var rcd = G.RestWait;
         var restProblem = G.RestProblem();
         var settle = G.RestSettleLeft;
-        cells.Add(("##rest", "cushion", "Rest",
-            settle > TimeSpan.Zero ? $"Stay seated {DairyGame.Wait(settle)}" : rcd > TimeSpan.Zero ? $"Ready in {DairyGame.Wait(rcd)}" : restProblem != null && ok ? "Sit on furniture first" : $"Free · Comfy +{G.ComfyNow * 100:0}%",
-            "Rest", "rose", restProblem == null && rcd <= TimeSpan.Zero, restProblem ?? $"Free. Comfy +{G.ComfyNow * 100:0}%, +30 minutes.", () => G.Rest()));
+        // Comfy: no button, sitting on furniture in your dairy rests you by itself
+        cells.Add(("##rest", "cushion", "Comfy", RestLine(settle, rcd, restProblem, ok),
+            "", "rose", true, null, () => { }));
         foreach (var item in Catalog.Feed)
         {
             if (G.ShopLevel < item.Unlock || F.HiddenFeed!.Contains(item.Id)) continue;
@@ -1013,9 +1024,10 @@ public sealed partial class MainWindow : Window
             {
                 var c = cells[i];
                 Ui.Icon(dl, c.Icon, new Vector2(c0.X + 24, midY), 15, c.Enabled ? 1f : 0.65f);
-                var bw = Math.Max(62f, Ui.Measure(fonts.Label, c.Btn.ToUpperInvariant()).X + 26);
-                if (Ui.Button(c.Id, c.Btn, new Vector2(bw, 28), c.Color, c.Enabled, c.Tip, new Vector2(c1.X - bw - 10, midY - 14))) c.Act();
-                var tw = c1.X - bw - 18 - (c0.X + 46);
+                // A cell with no button (Comfy: it happens by itself) uses the whole width for its text
+                var bw = c.Btn.Length > 0 ? Math.Max(62f, Ui.Measure(fonts.Label, c.Btn.ToUpperInvariant()).X + 26) : 0f;
+                if (bw > 0 && Ui.Button(c.Id, c.Btn, new Vector2(bw, 28), c.Color, c.Enabled, c.Tip, new Vector2(c1.X - bw - 10, midY - 14))) c.Act();
+                var tw = c1.X - (bw > 0 ? bw + 18 : 12) - (c0.X + 46);
                 var titleH = Ui.Measure(fonts.Label, "A").Y;
                 var subH = Ui.Measure(fonts.Small, "Ag").Y;
                 var ty = midY - (titleH + subH + 2) / 2;
@@ -1062,9 +1074,7 @@ public sealed partial class MainWindow : Window
         var rcd = G.RestWait;
         var restProblem = G.RestProblem();
         var settle = G.RestSettleLeft;
-        if (Row("##rest", "cushion", "Rest", settle > TimeSpan.Zero ? $"Stay seated {DairyGame.Wait(settle)} to keep it" : rcd > TimeSpan.Zero ? $"Ready in {DairyGame.Wait(rcd)}" : restProblem != null && ok ? "Sit on furniture first" : $"Free · Comfy +{G.ComfyNow * 100:0}%, +30m", "Rest", "rose",
-                restProblem == null && rcd <= TimeSpan.Zero, restProblem, width))
-            G.Rest();
+        Row("##rest", "cushion", "Comfy", RestLine(settle, rcd, restProblem, ok), "", "rose", true, null, width);
 
         var shown = 0;
         foreach (var item in Catalog.Feed)
@@ -1839,6 +1849,15 @@ public sealed partial class MainWindow : Window
         var changed = false;
         var b = F.ShowHud;
         if (ImGui.Checkbox("Show the milk bottle HUD (/milkers hud)", ref b)) { F.ShowHud = b; changed = true; }
+        if (F.ShowHud)
+        {
+            ImGui.Indent();
+            b = F.HudOnlyInDairy;
+            if (ImGui.Checkbox("Only while I'm in a dairy", ref b)) { F.HudOnlyInDairy = b; changed = true; }
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip(Units.Text("Hides the HUD everywhere else: it shows in your dairy, in a dairy you're visiting, and while you're being milked or in a breeding scene."));
+            ImGui.Unindent();
+        }
         b = F.LockHud;
         if (ImGui.Checkbox("Lock the HUD in place", ref b)) { F.LockHud = b; changed = true; }
         b = F.ChatEcho;
@@ -1849,6 +1868,17 @@ public sealed partial class MainWindow : Window
             ImGui.SetTooltip(Units.Text("Shares only what the network needs: a random id for this install, your dairy's listing, and your character name with the dairy you join."));
         b = F.ShowOwnerHud;
         if (ImGui.Checkbox("Show the owner HUD when I own a dairy", ref b)) { F.ShowOwnerHud = b; changed = true; }
+
+        // Who can scan you (target you and press Scan): your milk, bonuses, breeding and pregnancy
+        ImGui.TextColored(Theme.Ink, "Who can scan me:");
+        foreach (var (key, label) in new[] { ("anyone", "Anyone"), ("dairy", "My dairy only"), ("nobody", "Nobody") })
+        {
+            ImGui.SameLine();
+            if (ImGui.RadioButton($"{label}##scan{key}", F.ScanAllow == key)) { F.ScanAllow = key; changed = true; G.Net.BeatWithin(1); }
+        }
+
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip(Units.Text("A scan shows your milk and seed, what's speeding them up, your bred bonus, pregnancy and when you can be bred again."));
 
         b = F.ShowStallMarkers;
         if (ImGui.Checkbox("Show stall markers (only you see them)", ref b)) { F.ShowStallMarkers = b; changed = true; }

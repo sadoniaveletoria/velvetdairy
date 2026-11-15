@@ -37,6 +37,8 @@ public sealed class CorruptionLink : IDisposable
 
     private readonly ICallGateSubscriber<int> apiVersion;
     private readonly ICallGateSubscriber<(bool, string, bool, string, string, int, double)> getScene;
+    private readonly ICallGateSubscriber<(bool, bool, bool, bool, bool, int, string, double, bool, DateTime)> getCycle;
+    private readonly ICallGateSubscriber<List<(string, string, double, int, int, bool, int, bool, bool, bool, bool, string, string)>> getNearby;
     private readonly ICallGateSubscriber<(bool, int, double, bool, string)> getArousal;
     private readonly ICallGateSubscriber<string, string, double> breedChanceV1;          // Corruption API 1
     private readonly ICallGateSubscriber<string, string, double, double> breedChance;    // API 2 adds a chance factor
@@ -65,6 +67,8 @@ public sealed class CorruptionLink : IDisposable
         var pi = Plugin.PluginInterface;
         apiVersion = pi.GetIpcSubscriber<int>("Corruption.ApiVersion");
         getScene = pi.GetIpcSubscriber<(bool, string, bool, string, string, int, double)>("Corruption.GetScene");
+        getCycle = pi.GetIpcSubscriber<(bool, bool, bool, bool, bool, int, string, double, bool, DateTime)>("Corruption.GetCycle");
+        getNearby = pi.GetIpcSubscriber<List<(string, string, double, int, int, bool, int, bool, bool, bool, bool, string, string)>>("Corruption.GetNearby");
         getArousal = pi.GetIpcSubscriber<(bool, int, double, bool, string)>("Corruption.GetArousal");
         breedChanceV1 = pi.GetIpcSubscriber<string, string, double>("Corruption.BreedChance");
         breedChance = pi.GetIpcSubscriber<string, string, double, double>("Corruption.BreedChance");
@@ -132,6 +136,25 @@ public sealed class CorruptionLink : IDisposable
     public double BreedChance(string name, string world) => ApiVersion >= 2
         ? Try(() => breedChance.InvokeFunc(name, world, 1.0), 0)
         : Try(() => breedChanceV1.InvokeFunc(name, world), 0);
+
+    /// <summary>What your own body can do in Corruption: carry (be bred) and breed. Both true when it can't be read.</summary>
+    public (bool CanCarry, bool CanBreed) GetBody() => Try(() =>
+    {
+        var c = getCycle.InvokeFunc();
+        return c.Item1 ? (c.Item3, c.Item4) : (true, true);
+    }, (true, true));
+
+    /// <summary>
+    /// What a nearby player's body can do, from what their Corruption publishes (their body tag). Both true when they
+    /// aren't nearby or don't publish it, so nothing is ruled out on a guess.
+    /// </summary>
+    public (bool CanCarry, bool CanBreed) GetBodyOf(string name, string world) => Try(() =>
+    {
+        foreach (var n in getNearby.InvokeFunc())
+            if (n.Item1.Equals(name, StringComparison.OrdinalIgnoreCase) && (world.Length == 0 || n.Item2.Equals(world, StringComparison.OrdinalIgnoreCase)))
+                return n.Item8 ? (n.Item9, n.Item10) : (true, true);
+        return (true, true);
+    }, (true, true));
 
     public Arousal GetArousal() => Try(() =>
     {

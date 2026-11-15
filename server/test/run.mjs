@@ -150,6 +150,24 @@ await test("members see the roster with roles and shared status", async () => {
   assert.equal(r.data.you.role, "farmer");
 });
 
+await test("notices: a cow ready to be bred again pops up for the rest of her dairy", async () => {
+  await beat(alice, { houseId: HOUSE });
+  const before = (await beat(bob, { houseId: HOUSE, noticeAfter: 0 })).data.notices.length;
+  const sent = await call(alice, "POST", "/v1/dairy/notice", { kind: "breedReady" });
+  assert.equal(sent.data.sent, true, JSON.stringify(sent.data));
+  assert.equal((await call(alice, "POST", "/v1/dairy/notice", { kind: "breedReady" })).data.sent, false, "once every 15 minutes");
+  assert.equal((await call(alice, "POST", "/v1/dairy/notice", { kind: "anything" })).status, 400);
+  const n = (await beat(bob, { houseId: HOUSE, noticeAfter: 0 })).data.notices;
+  assert.equal(n.length, before + 1);
+  const mine = n[n.length - 1];
+  assert.equal(mine.kind, "breedReady");
+  assert.equal(mine.name, "Alice Cow");
+  assert.equal((await beat(bob, { houseId: HOUSE, noticeAfter: mine.id })).data.notices.length, 0, "only new ones");
+  assert.equal((await beat(bob, { noticeAfter: 0 })).data.notices.length, 0, "only to those standing in that dairy");
+  assert.equal((await beat(alice, { houseId: HOUSE, noticeAfter: 0 })).data.notices.length, 0, "not your own");
+  assert.equal((await beat(bob, { houseId: HOUSE })).data.notices.length, 0, "older plugins don't ask");
+});
+
 await test("breeding status: seed is kept within 0-100 and only real pregnancy stages pass", async () => {
   await beat(carl, { status: { milk: 3.5, cap: 8, seed: 250, preg: "<b>twins</b>" } });
   let st = (await call(bob, "GET", "/v1/dairy/mine")).data.members[2].status;
@@ -162,6 +180,30 @@ await test("breeding status: seed is kept within 0-100 and only real pregnancy s
   assert.equal(st.pregFather, "Bram bBullb", "the father's name, cleaned");
   await beat(carl, { status: { milk: 3.5, cap: 8, pregFather: "Bram Bull" } });
   assert.equal((await call(bob, "GET", "/v1/dairy/mine")).data.members[2].status.pregFather, "", "no father without a pregnancy");
+});
+
+await test("scan: anyone can see a member's bonuses and breeding, unless they say no", async () => {
+  await beat(carl, { name: "Carl Bull", worldName: "Gilgamesh" });
+  const me = (await call(bob, "GET", "/v1/dairy/mine")).data.members.find(m => m.name === "Carl Bull");
+  assert.equal(me.world, "Gilgamesh");
+  await beat(carl, { status: { milk: 3, cap: 8, seed: 80, bonuses: [{ n: "Fed", p: 15 }, { n: "<b>x</b>", p: 99999 }], speed: 1.155, bredBy: "Bram", bredPct: 12, bredUntil: 9999999999 } });
+  let r = await call(dana, "GET", `/v1/scan/${encodeURIComponent(me.world)}/${encodeURIComponent("carl bull")}`);
+  assert.equal(r.status, 200, JSON.stringify(r.data) + " " + me.world);
+  assert.equal(r.data.found, true);
+  assert.equal(r.data.hidden, false, "anyone by default");
+  assert.equal(r.data.dairy, "Rose Hollow");
+  assert.deepEqual(r.data.status.bonuses, [{ n: "Fed", p: 15 }, { n: "<b>x</b>", p: 1000 }]);
+  assert.equal(r.data.status.speed, 1.16);
+  assert.equal(r.data.status.bredBy, "Bram");
+  await beat(carl, { status: { milk: 3, cap: 8, scan: "dairy" } });
+  r = await call(dana, "GET", `/v1/scan/${encodeURIComponent(me.world)}/Carl%20Bull`);
+  assert.equal(r.data.hidden, true, "dairy only: an outsider can't");
+  assert.equal(r.data.status, undefined);
+  assert.equal((await call(bob, "GET", `/v1/scan/${encodeURIComponent(me.world)}/Carl%20Bull`)).data.hidden, false, "dairy only: a dairy-mate can");
+  await beat(carl, { status: { milk: 3, cap: 8, scan: "nobody" } });
+  assert.equal((await call(bob, "GET", `/v1/scan/${encodeURIComponent(me.world)}/Carl%20Bull`)).data.hidden, true, "nobody");
+  assert.equal((await call(dana, "GET", "/v1/scan/Gilgamesh/Nobody%20Here")).data.found, false);
+  await beat(carl, { status: { milk: 3.5, cap: 8, seed: 60 } });
 });
 
 await test("several roles at once: self-add cow/bull, farmer is given, only the owner takes away", async () => {
@@ -287,12 +329,20 @@ await test("dairy XP: only in the dairy, capped per member per day", async () =>
   assert.match((await call(bob, "POST", "/v1/dairy/contract/ship", { grade: 1, oz: 10 })).data.error, /a Grand Creamery \(Limsa Creamery, Uldah Creamery\)/);
   assert.equal((await call(alice, "DELETE", "/v1/dev/creamery/1")).status, 403, "developer only");
   assert.equal((await call(bob, "POST", "/v1/dairy/contract/ship", { grade: 1, oz: 10 })).status, 400, "not at the creamery");
-  await beat(bob, { atCreamery: true });
+  await beat(alice, { atCreamery: true, creamerySlot: 2, name: "Alice Owner", worldName: "Lich" });
+  const atC = (await beat(bob, { atCreamery: true, creamerySlot: 2, name: "Bob Hand", worldName: "Gilgamesh" })).data.creameryHere;
+  assert.equal(atC.slot, 2);
+  assert.deepEqual(atC.here, [{ name: "Alice Owner", world: "Lich" }], "everyone else at this creamery, any world");
+  assert.equal(atC.todayOz, 0);
   const fundBefore = (await call(alice, "GET", "/v1/dairy/mine")).data.progress.fund;
   r = await call(bob, "POST", "/v1/dairy/contract/ship", { grade: 1, oz: 500 });
   assert.equal(r.data.shipped, 196, "only what's left is taken");
   assert.equal(r.data.finished, true);
   assert.equal((await call(bob, "POST", "/v1/dairy/contract/ship", { grade: 1, oz: 1 })).status, 409, "done");
+  const after = (await beat(alice, { atCreamery: true, creamerySlot: 2, name: "Alice Owner", worldName: "Lich" })).data.creameryHere;
+  assert.equal(after.todayOz, 196, "delivered here today");
+  assert.equal(after.todayDairies, 1);
+  assert.equal((await beat(alice, { atCreamery: true, creamerySlot: 0 })).data.creameryHere.todayOz, 0, "per creamery");
   c = (await call(alice, "GET", "/v1/dairy/mine")).data.progress;
   assert.equal(c.contract.completed, true);
   assert.equal(c.fund, fundBefore + 800);

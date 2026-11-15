@@ -452,6 +452,17 @@ public sealed partial class MainWindow
             var here = G.CreameryHere;
             Ui.Wrapped(here != null ? $"You're at {here.Name}." : crs.Count == 1 ? "Bring your jugs here to ship them." : "Bring your jugs to any of these to ship them.",
                 here != null ? Theme.SageDeep : Theme.RoseDeep, width);
+            if (here != null && G.CreameryNow is { } now)
+            {
+                // Everyone at this creamery on any world (you may not see them: other worlds, other instances)
+                Ui.Wrapped(now.TodayOz > 0 ? $"Delivered here today: {Units.Oz(now.TodayOz, "N0")} by {now.TodayDairies} dair{(now.TodayDairies == 1 ? "y" : "ies")}." : "Nothing delivered here yet today.", Theme.BlueDeep, width);
+                if (now.Here.Count > 0)
+                {
+                    var names = now.Here.Take(6).Select(p => p.World.Length > 0 ? $"{p.Name} ({p.World})" : p.Name);
+                    Ui.Wrapped("Also here now, on any world: " + string.Join(", ", names) + (now.Here.Count > 6 ? $" and {now.Here.Count - 6} more" : "") + ".", Theme.InkSoft, width);
+                }
+                else ImGui.TextColored(Theme.InkSoft, "No one else is here right now.");
+            }
             foreach (var cr in crs)
             {
                 // The name with its Map button, and where it is underneath (so narrow panels don't cut it off)
@@ -850,23 +861,10 @@ public sealed partial class MainWindow
             G.PostBuyOrder(orderOz, 0, orderCoins);
     }
 
-    private static readonly Dictionary<string, string> dcByWorld = new(StringComparer.OrdinalIgnoreCase);
-
     /// <summary>
-    /// A listing's data center, from the game's own world list (by its world), so it's right even when a listing was
-    /// saved with the wrong one by an older version. Falls back to what the listing says.
+    /// A listing's data center. The server works it out from the world (a fixed table of every world), so it's right
+    /// even for listings saved wrong by older versions. (The game's own world sheet, read through Lumina, gave the
+    /// data center next to the right one: Lich came out Chaos, Lamia Aether.)
     /// </summary>
-    private static string DcOf(DairyListing d)
-    {
-        if (d.WorldName.Length == 0) return d.DcName;
-        if (dcByWorld.Count == 0)
-            foreach (var w in Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.World>())
-            {
-                var name = w.Name.ExtractText();
-                var dc = w.DataCenter.ValueNullable?.Name.ExtractText() ?? "";
-                if (name.Length > 0 && dc.Length > 0 && w.IsPublic) dcByWorld[name] = dc;
-            }
-
-        return dcByWorld.TryGetValue(d.WorldName, out var found) ? found : d.DcName;
-    }
+    private static string DcOf(DairyListing d) => d.DcName;
 }

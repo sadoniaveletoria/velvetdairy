@@ -45,6 +45,12 @@ public sealed partial class DairyGame
 
     public Session? Active { get; private set; }
     public Whereabouts Where { get; private set; }
+
+    /// <summary>
+    /// Somewhere the HUD is for (with "only in a dairy" on): in your dairy, in one you're visiting, or while
+    /// something is going on (being milked, a breeding scene).
+    /// </summary>
+    public bool HudPlaceNow => Where.InDairy || Net.Last?.Here != null || Active != null || InScene;
     public event Action<string, int>? Toast;   // message, kind (0 info, 1 good, 2 warn)
     public event Action? Stroked;              // a farmhand stroke drew milk (for the squirt sound)
 
@@ -380,6 +386,9 @@ public sealed partial class DairyGame
             return Creameries.FirstOrDefault(c => Plugin.ClientState.TerritoryType == c.Territory && Vector3.Distance(me.Position, new Vector3(c.X, c.Y, c.Z)) <= c.Radius);
         }
     }
+
+    /// <summary>At a Grand Creamery: who else is there on any world, and today's deliveries there (from the last heartbeat).</summary>
+    public CreameryNow? CreameryNow => AtCreamery && Net.Last?.CreameryHere is { } c && c.Slot == CreameryHere!.Slot ? c : null;
 
     /// <summary>Standing at a Grand Creamery right now.</summary>
     public bool AtCreamery => CreameryHere != null;
@@ -935,7 +944,7 @@ public sealed partial class DairyGame
         restPendingSince = now;
         Cow.ComfortBonus = ComfyNow;
         Cow.ComfyReadyUtc = DateTime.UtcNow.AddMinutes(Catalog.NeedCooldownMinutes);
-        CareDone($"You settle in and get comfy. Stay seated {Catalog.RestSettleMinutes:0} minutes and it stays with you when you get up.");
+        CareDone($"You settle in and get comfy (Comfy +{ComfyNow * 100:0}%). Stay seated {Catalog.RestSettleMinutes:0} minutes and it stays with you when you get up.");
         return true;
     }
 
@@ -947,9 +956,26 @@ public sealed partial class DairyGame
     public TimeSpan RestSettleLeft => restPendingSince < 0 ? TimeSpan.Zero
         : TimeSpan.FromSeconds(Math.Max(0, Catalog.RestSettleMinutes * 60 - (now - restPendingSince)));
 
+    // Sitting on furniture in your dairy rests you by itself (no button): after a few seconds seated, whenever resting
+    // is off cooldown and the Comfy bar isn't full
+    private double seatedSince = -1;
+    private const double AutoRestAfter = 5;
+
     private void WatchRest()
     {
-        if (restPendingSince < 0) return;
+        if (restPendingSince < 0)
+        {
+            if (!(Where.InDairy && Where.Seated))
+            {
+                seatedSince = -1;
+                return;
+            }
+
+            if (seatedSince < 0) seatedSince = now;
+            if (now - seatedSince >= AutoRestAfter && Cow.Comfort < 99.5f && RestWait <= TimeSpan.Zero && RestProblem() == null) Rest();
+            return;
+        }
+
         if (now - restPendingSince >= Catalog.RestSettleMinutes * 60)
         {
             restPendingSince = -1;

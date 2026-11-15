@@ -373,9 +373,11 @@ public sealed class NetClient : IDisposable
             pos = g.Position(),
             // Held until you're awake: the server only counts them then
             dairyXp = g.Wake == DairyGame.Wakefulness.Awake ? g.TakeDairyXp() : 0,
+            noticeAfter = lastNotice,
             pumped = g.Wake == DairyGame.Wakefulness.Awake ? g.TakePumped() : null,
             seedPumped = g.Wake == DairyGame.Wakefulness.Awake ? g.TakeSeedPumped() : 0,
             atCreamery = g.AtCreamery,
+            creamerySlot = g.CreameryHere?.Slot ?? 0,
             awake = g.Wake == DairyGame.Wakefulness.Awake,
             status = new MemberStatus
             {
@@ -384,6 +386,12 @@ public sealed class NetClient : IDisposable
                 Seed = g.IsBull ? g.SeedNow : 0, Preg = g.Pregnant ? g.Preg.Stage : "", PregFather = g.Pregnant ? g.Preg.FatherName : "",
                 SeedOz = g.ProducesSeed ? (float)Math.Round(F.Cow.Seed, 2) : 0, SeedCap = g.ProducesSeed ? g.SeedCapacity : 0,
                 SeedGrade = g.ProducesSeed ? g.SeedGrade : 0, SeedSpoiled = g.ProducesSeed && g.SeedSpoiled,
+                Breeding = g.BreedingTarget,
+                Bonuses = g.ScanBonuses(out var speed), Speed = speed,
+                BredBy = g.BredLeft > TimeSpan.Zero ? F.BredBy : "", BredPct = g.BredLeft > TimeSpan.Zero ? (float)Math.Round(g.BredBonusNow * 100, 1) : 0,
+                BredUntil = g.BredLeft > TimeSpan.Zero ? new DateTimeOffset(F.BredUntilUtc, TimeSpan.Zero).ToUnixTimeSeconds() : 0,
+                BreedWait = g.IsCow && g.BreedCooldownLeft > TimeSpan.Zero ? DateTimeOffset.UtcNow.Add(g.BreedCooldownLeft).ToUnixTimeSeconds() : 0,
+                Scan = F.ScanAllow,
                 Quality = (int)F.Quality, TotalOz = (int)F.Stats.TotalOz,
                 Emotes = g.Producer ? g.MilkEmotesForFarmers() : new List<string>(),
                 HandBy = g.Active is { Kind: VelvetDairy.Game.SessionKind.Hand, Hand: { IsTest: false } h } ? h.Name : "",
@@ -400,6 +408,15 @@ public sealed class NetClient : IDisposable
             var before = Last?.Membership?.DairyId;
             Last = r;
             Status = $"{r.Online} online";
+
+            // Notices to your dairy (one pop-up each). The first check-in only catches up, so logging in doesn't replay old ones.
+            foreach (var n in r.Notices.Where(n => n.Id > lastNotice))
+            {
+                if (lastNotice >= 0) plugin.Game.OnNotice(n);
+                lastNotice = Math.Max(lastNotice, n.Id);
+            }
+
+            if (lastNotice < 0) lastNotice = 0;
             plugin.Game.OnMembership(r.Membership);
             if (r.Membership?.DairyId != before) nextMine = 0;
 
@@ -450,9 +467,14 @@ public sealed class NetClient : IDisposable
         plugin.Game.Where.InDairy || plugin.MainWindow.IsOpen || plugin.Members.IsOpen || plugin.Kitchen.IsOpen ||
         plugin.Milking.IsOpen || (F.ShowHud && F.ShowOwnerHud && F.NetMember?.IsOwner == true);
 
+    /// <summary>Scan another player (anyone targeting them can, if they allow it).</summary>
+    public void Scan(string name, string world, Action<ScanReply> ok, Action<string> failed) =>
+        Call<ScanReply>("GET", $"/v1/scan/{Uri.EscapeDataString(world)}/{Uri.EscapeDataString(name)}", null, ok, failed);
+
     public void RefreshMine()
     {
-        nextMine = Now + (WatchingDairy ? 60 : 300);
+        // A scene where you and your partner choose who breeds: their choice shows up quickly
+        nextMine = Now + (plugin.Game.EitherWayScene ? 10 : WatchingDairy ? 60 : 300);
         Call<MyDairyReply>("GET", "/v1/dairy/mine", null, r =>
         {
             Mine = r.Dairy == null ? null : r;
@@ -603,6 +625,10 @@ public sealed class NetClient : IDisposable
 
     // ----- Applications -----
     private int announcedApplications;
+    private long lastNotice = -1;   // -1: not caught up yet (the first check-in)
+
+    /// <summary>Tells everyone in your dairy something (a pop-up on their screen), e.g. "breedReady".</summary>
+    public void PostNotice(string kind) => Call<object>("POST", "/v1/dairy/notice", new { kind }, _ => { }, _ => { });
     private DateTime lastApplications = DateTime.MinValue;
 
     /// <summary>Applications to your dairy (for the owner, or farmers if the owner allows it).</summary>

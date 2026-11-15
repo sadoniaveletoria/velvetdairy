@@ -51,6 +51,9 @@ public sealed class Plugin : IDalamudPlugin
     public MilkAskWindow MilkAskPopup { get; }
     public TutorialWindow Tutorial { get; }
     public HelperNoticeWindow Helpers { get; }
+    public NoticeWindow Notices { get; }
+    public BreedChoiceWindow BreedChoice { get; }
+    public ScanWindow Scanner { get; }
     public CharacterClaimWindow Claim { get; }
 
     /// <summary>This build's version, sent to the network so old versions can be told to update.</summary>
@@ -129,6 +132,12 @@ public sealed class Plugin : IDalamudPlugin
         windowSystem.AddWindow(Tutorial);
         Helpers = new HelperNoticeWindow(this, fonts);
         windowSystem.AddWindow(Helpers);
+        Notices = new NoticeWindow(this, fonts);
+        windowSystem.AddWindow(Notices);
+        BreedChoice = new BreedChoiceWindow(this, fonts);
+        windowSystem.AddWindow(BreedChoice);
+        Scanner = new ScanWindow(this, fonts);
+        windowSystem.AddWindow(Scanner);
         Claim = new CharacterClaimWindow(this, fonts);
         claimSystem.AddWindow(Claim);
         contextMenu = new ContextMenuHandler(this);
@@ -416,6 +425,8 @@ public sealed class Plugin : IDalamudPlugin
         {
             Config.Farm.ShowHud = !Config.Farm.ShowHud;
             SaveConfig();
+            if (Config.Farm.ShowHud && Config.Farm.HudOnlyInDairy && !Game.HudPlaceNow)
+                Game.Notify("HUD on. It shows once you're in a dairy (Settings: \"Only while I'm in a dairy\").", 0);
         }
         else if (a.StartsWith("dev", StringComparison.OrdinalIgnoreCase))
         {
