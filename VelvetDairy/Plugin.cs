@@ -425,6 +425,8 @@ public sealed class Plugin : IDalamudPlugin
         {
             Config.Farm.ShowHud = !Config.Farm.ShowHud;
             SaveConfig();
+            if (Config.Farm.ShowHud && Config.Farm.HudOnlyInDairy && !Game.HudPlaceNow)
+                Game.Notify("HUD on. It shows once you're in a dairy (Settings: \"Only while I'm in a dairy\").", 0);
         }
         else if (a.StartsWith("dev", StringComparison.OrdinalIgnoreCase))
         {

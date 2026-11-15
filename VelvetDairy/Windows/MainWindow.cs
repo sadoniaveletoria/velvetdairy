@@ -1841,6 +1841,15 @@ public sealed partial class MainWindow : Window
         var changed = false;
         var b = F.ShowHud;
         if (ImGui.Checkbox("Show the milk bottle HUD (/milkers hud)", ref b)) { F.ShowHud = b; changed = true; }
+        if (F.ShowHud)
+        {
+            ImGui.Indent();
+            b = F.HudOnlyInDairy;
+            if (ImGui.Checkbox("Only while I'm in a dairy", ref b)) { F.HudOnlyInDairy = b; changed = true; }
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip(Units.Text("Hides the HUD everywhere else: it shows in your dairy, in a dairy you're visiting, and while you're being milked or in a breeding scene."));
+            ImGui.Unindent();
+        }
         b = F.LockHud;
         if (ImGui.Checkbox("Lock the HUD in place", ref b)) { F.LockHud = b; changed = true; }
         b = F.ChatEcho;
