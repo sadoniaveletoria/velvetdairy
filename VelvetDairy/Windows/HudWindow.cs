@@ -17,7 +17,7 @@ public sealed class HudWindow : Window
     private FarmSave F => plugin.Config.Farm;
     private DairyGame G => plugin.Game;
 
-    private static readonly Vector2 HudSize = new(330, 168);
+    private static readonly Vector2 HudSize = new(360, 176);
     private const float ButtonRow = 38f;   // farmers get a row of buttons under the card: Herd Care and Kitchen
 
     private bool ShowHandMilk => G.IsFarmer;
@@ -139,7 +139,7 @@ public sealed class HudWindow : Window
         var tick = G.LastXpTick;
         var age = G.Now - tick.At;
         if (tick.Amount > 0 && age < 3)
-            Ui.Text(dl, fonts.Small, $"+{tick.Amount} xp", bmin + new Vector2(bh / 2 + 2, bh * 0.25f - (float)age * 10f),
+            Ui.Text(dl, fonts.Small, $"+{tick.Amount} xp", bmin + new Vector2(bh / 2 + 2, bh * 0.42f - (float)age * 10f),
                 Theme.Alpha(Theme.HoneyDeep, (float)(1 - age / 3)));
 
         // Milk and grade
@@ -149,7 +149,12 @@ public sealed class HudWindow : Window
         Ui.Text(dl, fonts.Heading, amountText, new Vector2(x, o.Y + 18), Theme.Ink);
         var mw = Ui.Measure(fonts.Heading, amountText).X;
         var capText = Units.Oz(cap, seedOnly ? "0.#" : "0") + (seedOnly ? " seed" : "");
-        Ui.Text(dl, fonts.Small, bCount > 1 ? $"/ {capText} · {full} of {bCount} full" : $"/ {capText}", new Vector2(x + mw + 4, o.Y + 24), Theme.InkSoft);
+        // "/ 240 oz · 0 of 5 full", dropping the bottle count (then shortening) when it doesn't fit beside the amount
+        var capRoom = o.X + size.X - 20 - (x + mw + 4);
+        var capLine = bCount > 1 ? $"/ {capText} · {full} of {bCount} full" : $"/ {capText}";
+        if (Ui.Measure(fonts.Small, capLine).X > capRoom && bCount > 1) capLine = $"/ {capText} · {full}/{bCount}";
+        if (Ui.Measure(fonts.Small, capLine).X > capRoom) capLine = $"/ {capText}";
+        Ui.Text(dl, fonts.Small, Fit(capLine, capRoom), new Vector2(x + mw + 4, o.Y + 24), Theme.InkSoft);
         // The grade seal sits on the jug's shoulder, like the Barn's, so it never covers the text
         Ui.Seal(dl, new Vector2(bmin.X + bh / 2 - 4, bmin.Y + bh * 0.2f), 15, Grades.Name(grade), Theme.GradeColor(grade));
 
@@ -162,12 +167,14 @@ public sealed class HudWindow : Window
             ("Comfy", cow.Comfort, Theme.RoseDeep), ("Happy", cow.Mood, Theme.SageDeep),
         };
         var half = (bw - 10) / 2;
+        // The bar sits under the label's full height (so it never cuts through the letters)
+        var labelH = Ui.Measure(fonts.Small, "Ag").Y;
         for (var i = 0; i < needs.Length; i++)
         {
             var bx = x + (i % 2) * (half + 10);
-            var by = y + (i / 2) * 28;
-            Ui.Text(dl, fonts.Small, needs[i].Label, new Vector2(bx, by), Theme.InkSoft);
-            Ui.Bar(dl, new Vector2(bx, by + 16), new Vector2(bx + half, by + 21), needs[i].V / 100f, Theme.NeedColor(needs[i].V, needs[i].C));
+            var by = y + (i / 2) * (labelH + 12);
+            Ui.Text(dl, fonts.Small, Fit(needs[i].Label, half), new Vector2(bx, by), Theme.InkSoft);
+            Ui.Bar(dl, new Vector2(bx, by + labelH + 2), new Vector2(bx + half, by + labelH + 6), needs[i].V / 100f, Theme.NeedColor(needs[i].V, needs[i].C));
         }
 
         // Status line
@@ -226,7 +233,7 @@ public sealed class HudWindow : Window
         }
         else if (G.Pregnant && G.IsCow)
         {
-            status = $"Pregnant · {DairyGame.StageName(G.Preg.Stage)}";
+            status = G.Preg.Stage switch { "first" => "Pregnant · 1st trimester", "second" => "Pregnant · 2nd trimester", "third" => "Pregnant · 3rd trimester", _ => "Pregnant" };
             col = Theme.RoseDeep;
         }
         else if (G.Where.InDairy)
