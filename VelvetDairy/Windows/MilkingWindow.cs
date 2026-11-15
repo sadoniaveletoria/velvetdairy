@@ -40,6 +40,17 @@ public sealed class MilkingWindow : Window
         ImGui.SameLine();
         if (ImGui.SmallButton("Animation...##hmanim")) plugin.MilkAnimation.IsOpen = true;
         if (ImGui.IsItemHovered()) ImGui.SetTooltip(Units.Text("Pick the emote the Milk button does, and a Penumbra animation mod used only while you milk."));
+
+        // The feeding bell: farmers and the owner, inside the dairy, once an hour
+        if (G.CanCarry)
+        {
+            ImGui.Spacing();
+            if (Ui.Button("##ringbell", "Ring the feeding bell", new Vector2(210, 30), "honey", G.CanRingBell,
+                    G.CanRingBell ? "Everyone in the dairy hears it: each cow and bull picks a bar to fill right up, and gets a 20 minute boost. Once an hour."
+                                  : "Ring it from inside your dairy."))
+                G.RingFeedingBell();
+        }
+
         ImGui.Separator();
         ImGui.Spacing();
         if (ImGui.BeginChild("##handmilklist", Vector2.Zero, false))
