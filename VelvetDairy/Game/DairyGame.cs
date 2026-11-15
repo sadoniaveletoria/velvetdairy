@@ -789,7 +789,8 @@ public sealed partial class DairyGame
         // Need bars drain as the bonus wears off, only while you're awake; asleep, dozing or logged out they wait
         if (Wake == Wakefulness.Awake)
         {
-            var step = 100f / Catalog.NeedMinutes * m;
+            // In a dairy (yours, or one you're visiting as a guest) your bonuses wear off half as fast
+            var step = 100f / Catalog.NeedMinutes * m * (Where.InDairy ? Catalog.InDairyDrain : 1f);
             Cow.Hunger = Clamp(Cow.Hunger - step);
             Cow.Thirst = Clamp(Cow.Thirst - step / (Owned("trough") > 0 ? 1.5f : 1f) * (Owned("spring") > 0 ? 0.8f : 1f));
             Cow.Mood = Clamp(Cow.Mood - step / ((Owned("lavender") > 0 ? 2f : 1f) * (Owned("bell") > 0 ? 1.2f : 1f)));

@@ -23,6 +23,11 @@ public sealed class ChangelogWindow : Window
     /// <summary>Newest first. Write these for players: what changed for them, not how.</summary>
     private static readonly Entry[] Entries =
     {
+        new("0.9.76", "Bonuses last longer in a dairy", new[]
+        {
+            "While you're in a dairy (yours, or a public one you're visiting), your Fed, Watered, Comfy and Happy bars drain half as fast, so your bonuses last twice as long while you stay.",
+            "The version under the plugins list always fits, and the HUD just says Update needed when there's a new version.",
+        }),
         new("0.9.73", "Several dairies, guests, bull items and a fairer Shop", new[]
         {
             "# Several dairies",

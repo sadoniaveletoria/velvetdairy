@@ -916,7 +916,7 @@ public sealed partial class MainWindow : Window
 
         foreach (var r in rows)
         {
-            var left = r.Value / 100f * Catalog.NeedMinutes;
+            var left = r.Value / 100f * Catalog.NeedMinutes / (G.Where.InDairy ? Catalog.InDairyDrain : 1f);   // lasts twice as long in a dairy
             var text = r.Value > 0 && r.Bonus > 0 ? $"+{r.Bonus * 100:0}% · {(left >= 1 ? $"{left:0}m" : "<1m")}" : "plain";
             // Comfy while sitting for it: how much longer until it's yours
             if (r.Label == "Comfy" && G.RestSettleLeft > TimeSpan.Zero)
