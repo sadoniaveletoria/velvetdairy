@@ -97,7 +97,7 @@ public sealed record FeedItem(
     float Fed = 0, float Water = 0, float Happy = 0, int BoostMinutes = 0, float Quality = 0, int HoldDays = 0, bool Baked = false);
 
 /// <summary>Something you buy once or in levels.</summary>
-public sealed record Upgrade(string Id, string Name, string Icon, int[] Prices, int[] Unlocks, string Desc, bool Cosmetic = false, bool Farmer = false)
+public sealed record Upgrade(string Id, string Name, string Icon, int[] Prices, int[] Unlocks, string Desc, bool Cosmetic = false, bool Farmer = false, bool Bull = false)
 {
     public int MaxLevel => Prices.Length;
 }
@@ -233,6 +233,15 @@ public static class Catalog
         new Upgrade("royalhalter", "Royal halter", "ribbon", new[] { 12000 }, new[] { 70 }, "A halter fit for royalty. +3% pay.", true),
         new Upgrade("spring", "Endless spring", "water", new[] { 15000 }, new[] { 85 }, "Watered drains 20% slower."),
         new Upgrade("sweettooth", "Sweet tooth", "clover", new[] { 18000 }, new[] { 92 }, "Treat milk boosts last 15% longer."),
+        // Bulls: unlocked by bull level, only for bulls (a cow who's also a bull gets both sets)
+        new Upgrade("nosering", "Nose ring", "ribbon", new[] { 300 }, new[] { 5 }, "A polished brass ring. +3% pay for seed.", true, Bull: true),
+        new Upgrade("studbook", "Stud book", "coin", new[] { 900 }, new[] { 10 }, "25 breedings a day at full seed output instead of 20.", Bull: true),
+        new Upgrade("horncaps", "Brass horn caps", "bell", new[] { 1600 }, new[] { 20 }, "Shining caps for your horns. +5% pay for seed.", true, Bull: true),
+        new Upgrade("prizestud", "Prize stud", "ribbon", new[] { 2400 }, new[] { 25 }, "Bull xp from breeding +25%.", Bull: true),
+        new Upgrade("breedpen", "Breeding pen", "bucket", new[] { 4000 }, new[] { 35 }, "Each breeding in your dairy gives the dairy xp.", Bull: true),
+        new Upgrade("herdsire", "Herd sire", "milk", new[] { 7000 }, new[] { 50 }, "Your seed fills your vials 15% faster.", Bull: true),
+        new Upgrade("bullsash", "Champion bull sash", "coin", new[] { 12000 }, new[] { 75 }, "+10% pay for seed, and your breeding output never drops below 60%.", true, Bull: true),
+        new Upgrade("legendstud", "Legendary stud", "coin", new[] { 20000 }, new[] { 100 }, "30 breedings a day at full seed output.", Bull: true),
         new Upgrade("crown", "Velvet crown", "coin", new[] { 25000 }, new[] { 100 }, "The final prize: a gold crown on your HUD and next to your name in your dairy's member list.", true),
     };
 

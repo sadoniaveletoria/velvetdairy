@@ -2491,11 +2491,15 @@ public sealed partial class DairyGame
         var have = Owned(u.Id);
         if (have >= u.MaxLevel) return "Owned.";
         if (u.Farmer && !CanCarry) return "For farmers and dairy owners.";
-        var lvl = u.Farmer ? FarmerLevel : ShopLevel;
-        if (lvl < u.Unlocks[have]) return $"Unlocks at {(u.Farmer ? "farmer " : "")}level {u.Unlocks[have]}.";
+        if (u.Bull && !IsBull) return "For bulls.";
+        var lvl = UnlockLevel(u);
+        if (lvl < u.Unlocks[have]) return $"Unlocks at {(u.Farmer ? "farmer " : u.Bull ? "bull " : "")}level {u.Unlocks[have]}.";
         if (F.Coins < u.Prices[have]) return "Not enough coins.";
         return null;
     }
+
+    /// <summary>The level an upgrade unlocks by: farmer level, bull level, or your shop level.</summary>
+    public int UnlockLevel(Upgrade u) => u.Farmer ? FarmerLevel : u.Bull ? BullLevel : ShopLevel;
 
     public bool BuyUpgrade(Upgrade u)
     {

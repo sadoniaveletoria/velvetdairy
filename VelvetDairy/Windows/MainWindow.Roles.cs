@@ -371,7 +371,7 @@ public sealed partial class MainWindow
         SubHeading("Breeding", width);
         Ui.Wrapped("Bulls breed their dairy's cows in a scene with the Corruption plugin. When you finish in a scene with a cow of your dairy, you've bred them: they get a little more milk for a while, and you get bull xp.",
             Theme.Ink, width);
-        Ui.Wrapped($"There's no limit on how often you breed, but you tire: after {DairyGame.FreshBreeds} breedings a day your breeding output drops 20% each time (down to 20%), which makes the cow's bonus and your xp smaller. It's back to full at midnight UTC.",
+        Ui.Wrapped($"There's no limit on how often you breed, but you tire: after {G.FreshBreedsNow} breedings a day your breeding output drops 20% each time (down to {G.SeedFloor * 100:0}%), which makes the cow's bonus and your xp smaller. It's back to full at midnight UTC.",
             Theme.InkSoft, width);
         Ui.Wrapped("Getting a cow pregnant is up to Corruption (their cycle and settings); Eorzea Milkers shows it when it happens.", Theme.InkSoft, width);
         if (!G.CorruptionOn) Ui.Wrapped("Corruption isn't installed or loaded, so breeding doesn't count yet. It's on GitHub: RaylaPetal/corruption.", Theme.Warn, width);
@@ -405,8 +405,8 @@ public sealed partial class MainWindow
         SubHeading("Breeding output", width);
         var seed = G.SeedNow;
         ImGui.TextColored(seed >= 100 ? Theme.SageDeep : Theme.HoneyDeep, $"{seed}% for your next breeding · bred today: {F.DayBreeds}");
-        ImGui.TextColored(Theme.InkSoft, F.DayBreeds < DairyGame.FreshBreeds
-            ? $"{DairyGame.FreshBreeds - F.DayBreeds} more at full output today"
+        ImGui.TextColored(Theme.InkSoft, F.DayBreeds < G.FreshBreedsNow
+            ? $"{G.FreshBreedsNow - F.DayBreeds} more at full output today"
             : "You're tired: each breeding today gives a bit less. Full again at midnight UTC.");
         Ui.Wrapped($"Each breeding: up to {DairyGame.BreedXp} bull xp, and the cow gets +{DairyGame.BredBonus * 100:0}% milk for {DairyGame.BredMinutes} minutes, both scaled by your breeding output.", Theme.InkSoft, width);
     }

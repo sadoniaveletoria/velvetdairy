@@ -31,6 +31,9 @@ public sealed partial class DairyGame
     /// <summary>Bull xp for one breeding at full seed output.</summary>
     public const int BreedXp = 40;
 
+    /// <summary>Dairy xp for each breeding with the Breeding pen.</summary>
+    public const int BreedPenDairyXp = 15;
+
     public CorruptionLink.Pregnancy Preg { get; private set; } = CorruptionLink.NoPregnancy;
     private double nextPregRead;
     private double nextCorruptionCheck;
@@ -556,8 +559,15 @@ public sealed partial class DairyGame
 
     // ----- Bulls: breeding and seed output -----
 
-    /// <summary>Seed output for a bull's next breeding today: full for the first few, then 20% less each, down to 20%.</summary>
-    public static float SeedFor(int breedsBefore) => breedsBefore < FreshBreeds ? 1f : Math.Max(0.2f, 1f - 0.2f * (breedsBefore - FreshBreeds + 1));
+    /// <summary>Breedings a day at full seed output: 20, 25 with the Stud book, 30 with Legendary stud.</summary>
+    public int FreshBreedsNow => Owned("legendstud") > 0 ? 30 : Owned("studbook") > 0 ? 25 : FreshBreeds;
+
+    /// <summary>The lowest your seed output drops to: 20%, or 60% with the Champion bull sash.</summary>
+    public float SeedFloor => Owned("bullsash") > 0 ? 0.6f : 0.2f;
+
+    /// <summary>Seed output for a bull's next breeding today: full for the first few, then 20% less each, down to the floor.</summary>
+    public float SeedFor(int breedsBefore) =>
+        breedsBefore < FreshBreedsNow ? 1f : Math.Max(SeedFloor, 1f - 0.2f * (breedsBefore - FreshBreedsNow + 1));
 
     /// <summary>Your seed output now (for your next breeding), 20 to 100.</summary>
     public int SeedNow => (int)Math.Round(SeedFor(F.DayBreeds) * 100);
@@ -614,7 +624,8 @@ public sealed partial class DairyGame
         bredThemThisScene = true;
         var output = SeedFor(F.DayBreeds);
         F.DayBreeds++;
-        var xp = Math.Max(1, (int)Math.Round(BreedXp * output));
+        var xp = Math.Max(1, (int)Math.Round(BreedXp * output * (Owned("prizestud") > 0 ? 1.25f : 1f)));
+        if (Owned("breedpen") > 0) EarnDairyXp(BreedPenDairyXp);   // the dairy only counts it while you're in it
         AddBullXp(xp);
         var next = SeedNow;
         Say($"You bred {cow.Name}. +{xp} bull xp" + (next < 100 ? $". You're getting tired: seed output {next}% for the next one (resets at midnight UTC)." : "."), 1);

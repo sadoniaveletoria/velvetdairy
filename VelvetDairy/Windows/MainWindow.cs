@@ -1449,7 +1449,7 @@ public sealed partial class MainWindow : Window
 
     private void DrawUpgradeShop(float width, bool looks)
     {
-        var list = Catalog.Upgrades.Where(u => u.Cosmetic == looks && !BottleUpgrades.Contains(u.Id) && !(u.Id == "stallkit" && G.Networked)).ToList();
+        var list = Catalog.Upgrades.Where(u => u.Cosmetic == looks && !BottleUpgrades.Contains(u.Id) && !(u.Id == "stallkit" && G.Networked) && (!u.Bull || G.IsBull)).ToList();
         var owned = list.Where(u => G.Owned(u.Id) >= u.MaxLevel).ToList();
         foreach (var u in list)
         {
@@ -1479,7 +1479,7 @@ public sealed partial class MainWindow : Window
                 _ => u.Desc,
             };
             var sub = maxed ? "Owned · " + desc
-                : (u.Farmer ? G.FarmerLevel : G.ShopLevel) < u.Unlocks[have] ? $"Unlocks at level {u.Unlocks[have]} · {desc}"
+                : G.UnlockLevel(u) < u.Unlocks[have] ? $"Unlocks at {(u.Bull ? "bull " : u.Farmer ? "farmer " : "")}level {u.Unlocks[have]} · {desc}"
                 : $"{u.Prices[have]} coins · {desc}";
             if (Row($"##up{u.Id}", u.Icon, u.Name + levelText + (u.Cosmetic ? "  ·  look" : ""), sub, maxed ? "Owned" : "Buy", "blue", problem == null,
                     maxed ? u.Desc : problem ?? u.Desc, width))

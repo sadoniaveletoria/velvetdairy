@@ -48,7 +48,15 @@ public sealed partial class DairyGame
     public float SeedShare => SeedRateByGrade[Math.Clamp(SeedGrade, 0, SeedRateByGrade.Length - 1)];
 
     /// <summary>What goes into your seed speed: the same needs and bonuses as milk, your bull level, and your seed grade.</summary>
-    public List<RatePart> SeedRateParts() => RateParts(true, true);
+    public List<RatePart> SeedRateParts()
+    {
+        var parts = RateParts(true, true);
+        if (Owned("herdsire") > 0) parts.Add(new RatePart("Herd sire", 1.15f));
+        return parts;
+    }
+
+    /// <summary>Bull wearables: extra pay for seed (Nose ring +3%, Brass horn caps +5%, Champion bull sash +10%).</summary>
+    public float SeedPayBonus => 1f + (Owned("nosering") > 0 ? 0.03f : 0) + (Owned("horncaps") > 0 ? 0.05f : 0) + (Owned("bullsash") > 0 ? 0.10f : 0);
 
     public float SeedPerMinute() => SeedRateParts().Aggregate(BaseRate, (r, p) => r * p.Multiplier);
 
@@ -203,7 +211,7 @@ public sealed partial class DairyGame
 
         var paidOz = Math.Clamp(Catalog.DailyPaidOz * SeedRatio - F.DaySeedOz, 0, collected);
         var rateBefore = Catalog.TaperRate(F.DayEarned);
-        var pay = Earn((int)Math.Round(paidOz * PayRate(s.SeedGrade) * SeedPriceMult));
+        var pay = Earn((int)Math.Round(paidOz * PayRate(s.SeedGrade) * SeedPriceMult * SeedPayBonus));
         F.Stats.TotalSeedOz += collected;
         F.DaySeedOz += collected;
         EarnDairyXp(milkEquivalent * (hand ? 1.5f : 1f));
