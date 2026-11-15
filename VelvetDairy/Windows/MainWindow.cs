@@ -423,7 +423,7 @@ public sealed partial class MainWindow : Window
 
         // Which version of Eorzea Milkers this is (handy when asking for help)
         var v = System.Version.TryParse(Plugin.Version, out var pv) ? $"{pv.Major}.{pv.Minor}.{pv.Build}" : Plugin.Version;
-        Ui.Text(dl, fonts.Small, $"Eorzea Milkers v{v}", new Vector2(o.X + 18, ly + 4), Theme.InkSoft);
+        Ui.Text(dl, fonts.Tiny, $"Eorzea Milkers v{v}", new Vector2(o.X + 18, ly + 6), Theme.InkSoft);
         if (ImGui.IsMouseHoveringRect(new Vector2(o.X + 12, ly + 4), new Vector2(o.X + SideW - 8, ly + 4 + lineH)))
             ImGui.SetTooltip("Your Eorzea Milkers version. /milkers changes shows what's new.");
     }
