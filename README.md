@@ -84,6 +84,7 @@ Cow and bull are yours: you add or drop them, and they hold in every dairy you'r
 **Bonuses** (the Barn tab)
 - **Fed** (food), **Watered** (drink), **Comfy** (rest) and **Happy** (treats) each make milk come faster.
 - Each use adds 30 minutes to that bar, up to an hour, and each has a 15-minute cooldown. Better food and treats give bigger bonuses.
+- **Over an hour is full enough:** while a bar has more than an hour left (at the rate it drains right now), you can't top it up: eating, drinking, a farmer's grooming, the feeding bell and sitting for Comfy all wait until it's under an hour. (In a dairy bars drain half as fast, so a full bar shows up to 2 hours.)
 - **In a dairy your bars last longer:** while you're in a dairy (yours, or a public one you're visiting), Fed, Watered, Comfy and Happy drain **half as fast**. Out of a dairy they drain at the normal rate.
 - **Comfy:** sit on furniture in your dairy (a stall seat counts); there's no button. You get no Comfy until you've stayed seated **10 minutes**, then it adds 30 minutes to the bar. Keep sitting and every further 10 minutes adds another 30, up to a full hour. Get up sooner and that sit gives nothing. The Comfy bar doesn't drain while you sit, and the bar and HUD show how long is left. Sitting itself doesn't speed up milk; Comfy does.
 - **All four at once** makes you **Contented**, a bit faster still.

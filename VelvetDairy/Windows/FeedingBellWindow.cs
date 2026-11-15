@@ -60,7 +60,8 @@ public sealed class FeedingBellWindow : Window
         ImGui.Spacing();
         foreach (var (bar, color) in new[] { ("Fed", "honey"), ("Watered", "blue"), ("Comfy", "rose"), ("Happy", "sage") })
         {
-            if (Ui.Button($"##bell{bar}", bar, new Vector2(100, 30), color, true, $"Fill your {bar} bar right up, and a 20 minute boost."))
+            var full = plugin.Game.NeedFull(plugin.Game.BarValue(bar));
+            if (Ui.Button($"##bell{bar}", bar, new Vector2(100, 30), color, !full, full ? $"Your {bar} bar is over an hour already." : $"Fill your {bar} bar right up, and a 20 minute boost."))
             {
                 plugin.Game.ClaimFeeding(bar);
                 shownAt = -1;

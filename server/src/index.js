@@ -612,7 +612,7 @@ const notice = (env, install, note) => addInbox(env, install, "notice", 0, 0, 0,
 // Fields that change a little with almost every heartbeat (milk filling, xp, drains). A change in only these is
 // written at most every STATUS_REFRESH seconds; anything else (milking, a stall, asking, spoiled...) is written at once.
 // This keeps database writes down without making anything that matters slower.
-const STATUS_VOLATILE = ["milk", "seedOz", "quality", "totalOz", "drainLeft", "drainAt", "w", "bonuses", "speed"];
+const STATUS_VOLATILE = ["milk", "seedOz", "quality", "totalOz", "drainLeft", "drainAt", "w", "bonuses", "speed", "needs"];
 const STATUS_REFRESH = 90;
 
 function statusNeedsWrite(oldJson, newJson, t) {
@@ -730,6 +730,7 @@ async function heartbeat(env, me, request) {
       bredBy: clean(st.bredBy, 40), bredPct: Math.max(0, Math.min(100, num(st.bredPct))), bredUntil: Math.max(0, Math.floor(num(st.bredUntil))),
       breedWait: Math.max(0, Math.floor(num(st.breedWait))),   // a cow: when she can be bred again (unix seconds)
       scan: ["anyone", "dairy", "nobody"].includes(st.scan) ? st.scan : "anyone",   // who can scan them
+      needs: Array.isArray(st.needs) ? st.needs.slice(0, 4).map(x => Math.max(0, Math.min(600, Math.round(Number(x) || 0)))) : [],   // minutes left: Fed, Watered, Comfy, Happy
       breedOk: clean(st.breedOk, 40),    // a cow: the bull from another dairy she allowed to breed her this scene
       guestAt: clean(st.guestAt, 24),    // a guest: the public dairy they're visiting (so its farmers can see them)
     });

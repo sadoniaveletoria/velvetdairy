@@ -394,6 +394,7 @@ public sealed class NetClient : IDisposable
                 BredUntil = g.BredLeft > TimeSpan.Zero ? new DateTimeOffset(F.BredUntilUtc, TimeSpan.Zero).ToUnixTimeSeconds() : 0,
                 BreedWait = g.IsCow && g.BreedCooldownLeft > TimeSpan.Zero ? DateTimeOffset.UtcNow.Add(g.BreedCooldownLeft).ToUnixTimeSeconds() : 0,
                 Scan = F.ScanAllow,
+                Needs = g.NeedMinutesNow.ToList(),
                 Quality = (int)F.Quality, TotalOz = (int)F.Stats.TotalOz,
                 Emotes = g.Producer ? g.MilkEmotesForFarmers() : new List<string>(),
                 HandBy = g.Active is { Kind: VelvetDairy.Game.SessionKind.Hand, Hand: { IsTest: false } h } ? h.Name : "",

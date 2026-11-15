@@ -259,7 +259,7 @@ public sealed partial class DairyGame
                 case "groom":
                     // A farmer groomed you: you're Happy (+5%) even without a treat, and the bar gets 30 more minutes.
                     // A bigger treat bonus that's still going is kept.
-                    if (Producer)
+                    if (Producer && !NeedFull(Cow.Mood))
                     {
                         Cow.HappyBonus = Cow.Mood <= 0 ? Catalog.GroomHappy : Math.Max(Cow.HappyBonus, Catalog.GroomHappy);
                         Cow.Mood = Fill(Cow.Mood);
@@ -370,8 +370,16 @@ public sealed partial class DairyGame
     }
 
     /// <summary>Feeding time: one bar of your choice fills right up, and milk (and seed) gets a 20 minute boost.</summary>
+    public float BarValue(string bar) => bar switch { "Fed" => Cow.Hunger, "Watered" => Cow.Thirst, "Comfy" => Cow.Comfort, _ => Cow.Mood };
+
     public void ClaimFeeding(string bar)
     {
+        if (NeedFull(BarValue(bar)))
+        {
+            Fail(FullText(bar, BarValue(bar)));
+            return;
+        }
+
         Touch();
         switch (bar)
         {
@@ -891,6 +899,7 @@ public sealed partial class DairyGame
         if (Count(id) <= 0) return Fail($"You're out of {item.Name}. Buy more in the Shop.");
 
         if (!FeedForYou(item)) return Fail(item.Role == "bull" ? "That's for bulls." : "That's for cows who are also bulls.");
+        if (NeedsFullFor(item) is { } full) return Fail(full);
         if (item.RestHours > 0 && F.RestTeaDay == DateTime.UtcNow.ToString("yyyy-MM-dd")) return Fail($"You've had {item.Name} today already.");
         if (item.Quality > 0 && QualityTreatWait > TimeSpan.Zero)
             return Fail($"You can have another quality treat in {Wait(QualityTreatWait)}.");
@@ -898,9 +907,9 @@ public sealed partial class DairyGame
         if (wait > TimeSpan.Zero) return Fail($"You can have that in {Wait(wait)}.");
         F.Pantry[id] = Count(id) - 1;
         var cd = DateTime.UtcNow.AddMinutes(Catalog.NeedCooldownMinutes);
-        if (item.Fed > 0) { Cow.Hunger = Fill(Cow.Hunger); Cow.FedBonus = item.Fed; Cow.FedReadyUtc = cd; }
-        if (item.Water > 0) { Cow.Thirst = Fill(Cow.Thirst); Cow.WaterBonus = item.Water; Cow.WaterReadyUtc = cd; }
-        if (item.Happy > 0) { Cow.Mood = Fill(Cow.Mood); Cow.HappyBonus = item.Happy; Cow.HappyReadyUtc = cd; }
+        if (item.Fed > 0 && !NeedFull(Cow.Hunger)) { Cow.Hunger = Fill(Cow.Hunger); Cow.FedBonus = item.Fed; Cow.FedReadyUtc = cd; }
+        if (item.Water > 0 && !NeedFull(Cow.Thirst)) { Cow.Thirst = Fill(Cow.Thirst); Cow.WaterBonus = item.Water; Cow.WaterReadyUtc = cd; }
+        if (item.Happy > 0 && !NeedFull(Cow.Mood)) { Cow.Mood = Fill(Cow.Mood); Cow.HappyBonus = item.Happy; Cow.HappyReadyUtc = cd; }
         if (item.HoldDays > 0)
         {
             var from = Cow.FreshHoldUntilUtc > DateTime.UtcNow ? Cow.FreshHoldUntilUtc : DateTime.UtcNow;
@@ -1016,11 +1025,28 @@ public sealed partial class DairyGame
     /// <summary>Each use adds half a bar (30 minutes), up to full.</summary>
     private static float Fill(float bar) => Math.Min(100f, bar + Catalog.NeedFill);
 
+    /// <summary>
+    /// How long a need bar lasts at the rate it drains now (twice as long in a dairy). Over an hour and it's full
+    /// enough: eating, drinking, grooming and the feeding bell won't add to it.
+    /// </summary>
+    public float NeedMinutesLeft(float bar) => bar / 100f * Catalog.NeedMinutes / (Where.InDairy ? Catalog.InDairyDrain : 1f);
+
+    public const float NeedTopUpLimit = 60f;
+
+    /// <summary>A bar that's over an hour: no more until it's under.</summary>
+    public bool NeedFull(float bar) => NeedMinutesLeft(bar) > NeedTopUpLimit;
+
+    private string FullText(string bar, float v) => $"Your {bar} bar is over an hour ({NeedMinutesLeft(v):0} min). Top it up once it's under an hour.";
+
+    /// <summary>For your status: minutes left on each bar (so farmers know whether grooming or feeding would help).</summary>
+    public int[] NeedMinutesNow => new[] { Cow.Hunger, Cow.Thirst, Cow.Comfort, Cow.Mood }.Select(v => (int)Math.Round(NeedMinutesLeft(v))).ToArray();
+
     public bool Drink()
     {
         var p = CareProblem();
         if (p != null) return Fail(p);
         if (DrinkWait > TimeSpan.Zero) return Fail($"You can drink again in {Wait(DrinkWait)}.");
+        if (NeedFull(Cow.Thirst)) return Fail(FullText("Watered", Cow.Thirst));
         Cow.Thirst = Fill(Cow.Thirst);
         Cow.WaterBonus = Catalog.TroughBonus;
         Cow.WaterReadyUtc = DateTime.UtcNow.AddMinutes(Catalog.NeedCooldownMinutes);
@@ -1077,7 +1103,7 @@ public sealed partial class DairyGame
             }
 
             if (seatedSince < 0) seatedSince = now;
-            if (now - seatedSince >= AutoRestAfter && Cow.Comfort < 99.5f && RestProblem() == null) Rest();
+            if (now - seatedSince >= AutoRestAfter && !NeedFull(Cow.Comfort) && RestProblem() == null) Rest();
             return;
         }
 
@@ -1861,6 +1887,8 @@ public sealed partial class DairyGame
         if (distance < 0 || distance > HandRange) return $"Get within {HandRange:0} yalms of {cowName} first.";
         var w = GroomWait(cowId);
         if (w > 0) return $"You can groom {cowName} again in {Wait(TimeSpan.FromSeconds(w))}.";
+        var needs = Net.Mine?.Members.Concat(Net.Mine.Guests).FirstOrDefault(m => m.Id == cowId)?.Status?.Needs;
+        if (needs is { Count: 4 } && needs[3] > NeedTopUpLimit) return $"{cowName}'s Happy bar is over an hour ({needs[3]} min). Groom them once it's under.";
         return null;
     }
 
@@ -2570,6 +2598,18 @@ public sealed partial class DairyGame
         if (FeedUnlockLevel(item) < item.Unlock) return $"Unlocks at {(item.Role == "bull" ? "bull " : item.Role == "both" ? "cow and bull " : "")}level {item.Unlock}.";
         if (F.Coins < item.Price * qty) return "Not enough coins.";
         return null;
+    }
+
+    /// <summary>A food that only fills bars, all of them over an hour: there's nothing for it to do yet.</summary>
+    public string? NeedsFullFor(FeedItem item)
+    {
+        var fills = new List<(string Bar, float V)>();
+        if (item.Fed > 0) fills.Add(("Fed", Cow.Hunger));
+        if (item.Water > 0) fills.Add(("Watered", Cow.Thirst));
+        if (item.Happy > 0) fills.Add(("Happy", Cow.Mood));
+        var onlyBars = item.BoostMinutes == 0 && item.Quality == 0 && item.HoldDays == 0 && item.XpBoostMinutes == 0 && item.NextSeedBonus == 0 && !item.StudTonic && item.RestHours == 0;
+        if (fills.Count == 0 || !onlyBars || fills.Any(f => !NeedFull(f.V))) return null;
+        return fills.Count == 1 ? FullText(fills[0].Bar, fills[0].V) : $"Your {string.Join(" and ", fills.Select(f => f.Bar))} bars are over an hour. Eat again once one is under an hour.";
     }
 
     /// <summary>Bull foods are for bulls; cow-and-bull foods for those who are both.</summary>
