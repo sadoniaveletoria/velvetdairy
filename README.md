@@ -39,7 +39,7 @@ Only the owner can take a role away from someone.
 ## The HUD
 
 - The small HUD shows your bottle (and seed vials for bulls), your grade and what's happening now. Double-click or right-click it to open the main window.
-- Its buttons: **Herd Care** (farmers), **Kitchen** (farmers), and **Scan** while you target another player close by.
+- Its buttons: **Herd Care** (farmers), and while you target another player close by, **Scan**, plus **Breed** if you're a bull and they're a cow of your dairy. The Kitchen is on **Roles → Farmer**.
 - **It only shows while you're in a dairy** (yours, or one you're visiting), or while you're being milked or in a breeding scene. Elsewhere it hides to keep your screen clear. Want it everywhere? Untick **Only while I'm in a dairy** in Settings. `/milkers hud` (or the Settings box) hides it completely.
 
 ---
@@ -92,7 +92,7 @@ Only the owner can take a role away from someone.
 - **Hand milking:** press **Herd Care** on the HUD (or Roles → Farmer), stand near a cow, press **Target**, then **Milk**. Your character does the milking emote (/beesknees by default, or one you choose) until the cow is empty, then stops by itself. You earn 25% of what the cow is paid, on top of their pay.
 - **Your own animation:** if you use Penumbra, pick an animation mod and its options with **Animation…** in the Herd Care window. It switches on only while you milk.
 - **Chores:** **Groom** a cow or bull (they get 30 minutes of Happy), **Feed** a cow or bull a treat from the dairy shelf (press Feed and pick which; free, but not to yourself), and **Clean** an empty stall (cows milked there get a bonus for an hour). All earn farmer XP.
-- **The Kitchen** (the Kitchen button on the HUD): bake with milk from your jugs. Recipes unlock with your farmer level:
+- **The Kitchen** (the Kitchen button on **Roles → Farmer**): bake with milk from your jugs. Recipes unlock with your farmer level:
   - **Butter** (level 1): 16 oz of milk → 1 butter.
   - **Butter cookies** (level 3): 1 butter + 8 oz of milk → 3 cookies, for the dairy shelf.
   - **Flour** (level 6): 2 wheat grain (from the Shop) → 1 flour.
@@ -114,7 +114,7 @@ Breeding is new and still being tuned: numbers and details will change.
 - **Breeding needs** the [Corruption](https://github.com/RaylaPetal/corruption) plugin (0.3.5 or newer) and Cummy, for both of you. The bull's Corruption needs **Let other plugins control Corruption** turned on (Settings → Other plugins). The cow's Cummy blocks always apply.
 - **When a bull of your dairy finishes in a Corruption scene with a cow of your dairy, she's bred:** +5% milk for 30 minutes (less if the bull's seed output is low that day). Once per scene, and a cow can be bred again 20 minutes after the last time. The bull gets up to 40 bull xp; after 20 breedings in a day his seed output (and xp) drops, resetting at midnight UTC.
 - **Who breeds whom** in Eorzea Milkers follows your roles in the dairy: a bull can breed a cow. Whether it can become a **pregnancy** is Corruption's: its Pregnancy settings (can carry, can breed) must allow it. If they don't, the scene note says so; the bred bonus and bull xp still count.
-- **Both cow and bull?** With a partner who's also both, a pop-up asks **Who breeds this scene?** before you start: pick **I breed them**, **They breed me**, or **Not now**. Only that way counts, and finishing doesn't breed anyone until one of you picks. Each new scene asks again.
+- **Both cow and bull?** With a partner who's also both, whoever is doing the breeding targets the other and presses **Breed** on the HUD (or right-click them → Eorzea Milkers → Breed). Only that way counts, and finishing doesn't breed anyone until one of you has pressed it. Press it again to cancel. It's used up once you've bred them, so press it again next time. If you both press it, neither counts until one of you cancels.
 - **Ready again:** when a cow's 30-minute bred bonus runs out, everyone with the HUD in the dairy she's standing in gets a small pop-up with a soft bell, and so does she.
 - **Pregnancy** comes from Corruption (a bull always finishes inside, so it rolls for conception). Once it's confirmed, a pregnant cow gives +5%, +10% and +15% milk by trimester until the birth. Roles → Cow shows the trimester, due date, Sire and past births.
 - During a scene the HUD shows who you're with and your arousal; the main window says who breeds whom.

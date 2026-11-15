@@ -923,8 +923,8 @@ public sealed partial class MainWindow : Window
         if (G.Pregnant && G.IsCow)
             notes.Add(($"Pregnant ({DairyGame.StageName(G.Preg.Stage)}): +{G.PregnancyBonus * 100:0}% milk until the birth." + (G.Preg.FatherName.Length > 0 ? $" Sire: {G.Preg.FatherName}." : ""), Theme.RoseDeep));
         if (G.InScene)
-            notes.Add(($"Corruption: {G.SceneLine}." + (G.BothChoseToBreed ? " You both chose to breed the other: one of you picks \"They breed me\" in the pop-up."
-                : G.EitherWayScene && !G.BreedingAsBull && !G.BredAsCow ? " You're both cow and bull: choose who breeds this scene (the pop-up). Until one of you does, finishing doesn't breed."
+            notes.Add(($"Corruption: {G.SceneLine}." + (G.BothChoseToBreed ? " You both pressed Breed on the other: one of you presses it again to cancel, so only one of you breeds."
+                : G.EitherWayScene && !G.BreedingAsBull && !G.BredAsCow ? " You can breed each other: whoever is breeding targets the other and presses Breed on the HUD. Until one of you does, finishing doesn't breed."
                 : G.BreedingAsBull ? " When you finish, you breed them" + (G.ForcedCreampie ? " (always inside, so Corruption rolls for conception)." : ".")
                 : G.BredAsCow ? " When they finish, you're bred" + (G.ConceiveChance > 0 ? $", with a {G.ConceiveChance * 100:0}% chance of conceiving (from Corruption)." : ".") : "")
                 + (G.BreedOneWayWhy.Length > 0 ? " " + G.BreedOneWayWhy : ""), Theme.RoseDeep));
@@ -1338,7 +1338,7 @@ public sealed partial class MainWindow : Window
         var cur = ImGui.GetCursorScreenPos();
         Ui.Bar(ImGui.GetWindowDrawList(), cur + new Vector2(0, 6), cur + new Vector2(Math.Min(width, 360), 14), G.MaxCarry > 0 ? Math.Clamp(G.Carried / G.MaxCarry, 0, 1) : 0, Theme.BlueDeep);
         ImGui.Dummy(new Vector2(width, 20));
-        Ui.Wrapped("Fill it at your dairy (HUD > Kitchen). Farmer xp comes from hand milking, grooming, cleaning stalls, baking, filling jugs, deliveries and contracts.", Theme.InkSoft, width);
+        Ui.Wrapped("Fill it at your dairy (Roles > Farmer > Kitchen). Farmer xp comes from hand milking, grooming, cleaning stalls, baking, filling jugs, deliveries and contracts.", Theme.InkSoft, width);
     }
 
     private void DrawBottleShop(float width)
@@ -2046,7 +2046,7 @@ public sealed partial class MainWindow : Window
         Ui.Wrapped("1. Join a dairy (Dairies tab, ask the owner for an invite) or start your own on the Dairy tab.\n" +
                    "2. Cows: milk fills up over time, faster with Fed, Watered, Comfy and Happy (Barn > Care).\n" +
                    "3. Get milked on one of your dairy's stalls, or by a farmer pressing Milk on you. You're paid by your grade.\n" +
-                   "4. Farmers: Herd Care and Kitchen are on the HUD. Fill jugs in the Kitchen, then deliver on the Creamery tab.\n" +
+                   "4. Farmers: Herd Care is on the HUD and the Kitchen is on Roles > Farmer. Fill jugs in the Kitchen, then deliver on the Creamery tab.\n" +
                    "5. Spend coins in the Shop. The full guide is the ? at the top, or /milkers guide.", Theme.Ink, width);
 
         SubHeading("Having trouble?", width);

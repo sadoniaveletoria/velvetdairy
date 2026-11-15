@@ -157,7 +157,7 @@ public sealed partial class MainWindow
         Ui.Wrapped($"Grooming cows ({Catalog.GroomXp} each, every 15 min per cow), cleaning stalls ({Catalog.CleanXp} each), hand milking pay, filling jugs, customer orders, deliveries and contract shipments.", Theme.InkSoft, width);
     }
 
-    /// <summary>Hand milking and the Kitchen each open their own window (also on the HUD).</summary>
+    /// <summary>Hand milking and the Kitchen each open their own window (Herd Care is also on the HUD).</summary>
     private void DrawFarmerButtons(float width)
     {
         var buttons = new System.Collections.Generic.List<Btn>();

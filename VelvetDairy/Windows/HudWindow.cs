@@ -21,7 +21,7 @@ public sealed class HudWindow : Window
     private const float ButtonRow = 38f;   // farmers get a row of buttons under the card: Herd Care and Kitchen
 
     private bool ShowHandMilk => G.IsFarmer;
-    private bool ShowKitchen => G.CanCarry;
+    private bool ShowKitchen => false;   // the Kitchen is on Roles > Farmer; the HUD keeps Herd Care, Scan and Breed
 
     /// <summary>Targeting another player close by (with the network on): a Scan button for them.</summary>
     private Dalamud.Game.ClientState.Objects.SubKinds.IPlayerCharacter? ScanTarget
@@ -36,6 +36,10 @@ public sealed class HudWindow : Window
     }
 
     private bool ShowButtons => ShowHandMilk || ShowKitchen || ScanTarget != null;
+
+    /// <summary>The target is a cow of your dairy and you're a bull: a Breed button for them.</summary>
+    private bool ShowBreed(Dalamud.Game.ClientState.Objects.SubKinds.IPlayerCharacter? pc) =>
+        pc != null && G.CanBreedPlayer(pc.Name.TextValue, pc.HomeWorld.ValueNullable?.Name.ExtractText() ?? "");
 
     public HudWindow(Plugin plugin, Art art, Fonts fonts)
         : base("Eorzea Milkers HUD##VelvetDairyHud",
@@ -297,7 +301,8 @@ public sealed class HudWindow : Window
         if (ShowHandMilk || ShowKitchen || scan != null)
         {
             var by = o.Y + size.Y - 10;
-            var count = (ShowHandMilk ? 1 : 0) + (ShowKitchen ? 1 : 0) + (scan != null ? 1 : 0);
+            var breed = ShowBreed(scan);
+            var count = (ShowHandMilk ? 1 : 0) + (ShowKitchen ? 1 : 0) + (scan != null ? 1 : 0) + (breed ? 1 : 0);
             var bw2 = (size.X - 40 - 10 * (count - 1)) / count;
             var bx = o.X + 20;
             if (ShowHandMilk)
@@ -321,6 +326,19 @@ public sealed class HudWindow : Window
                 var label = count == 1 ? $"Scan {who}" : "Scan";
                 if (Ui.Button("##hudscan", label, new Vector2(bw2, 30), "sage", true, $"See {who}'s milk, bonuses, breeding and pregnancy (if they allow scans).", new Vector2(bx, by)))
                     plugin.Scanner.Open(who, scan.HomeWorld.ValueNullable?.Name.ExtractText() ?? "");
+                bx += bw2 + 10;
+            }
+
+            if (breed && scan != null)
+            {
+                var who = scan.Name.TextValue;
+                var world = scan.HomeWorld.ValueNullable?.Name.ExtractText() ?? "";
+                var on = G.BreedingPlayer(who, world);
+                if (Ui.Button("##hudbreed", on ? "Breeding" : "Breed", new Vector2(bw2, 30), on ? "sage" : "rose", true,
+                        on ? $"You're the one breeding {who}: when you finish in a scene with them, you breed them. Press again to cancel."
+                           : $"Be the one breeding {who}: when you finish in a scene with them, you breed them" + (G.IsCow ? ", and their finish doesn't breed you." : "."),
+                        new Vector2(bx, by)))
+                    G.ToggleBreed(who, world);
             }
         }
 

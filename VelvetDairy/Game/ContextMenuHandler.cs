@@ -51,6 +51,8 @@ public sealed class ContextMenuHandler : IDisposable
         if (game.Networked)
         {
             items.Add(Item($"Scan {name}", () => plugin.Scanner.Open(name, worldName)));
+            if (game.CanBreedPlayer(name, worldName))
+                items.Add(Item(game.BreedingPlayer(name, worldName) ? $"Stop breeding {name}" : $"Breed {name}", () => game.ToggleBreed(name, worldName)));
             var member = game.MemberNamed(name, worldName);
             if (member == null)
                 foreach (var role in game.InvitableRoles)

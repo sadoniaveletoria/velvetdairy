@@ -52,7 +52,6 @@ public sealed class Plugin : IDalamudPlugin
     public TutorialWindow Tutorial { get; }
     public HelperNoticeWindow Helpers { get; }
     public NoticeWindow Notices { get; }
-    public BreedChoiceWindow BreedChoice { get; }
     public ScanWindow Scanner { get; }
     public CharacterClaimWindow Claim { get; }
 
@@ -134,8 +133,6 @@ public sealed class Plugin : IDalamudPlugin
         windowSystem.AddWindow(Helpers);
         Notices = new NoticeWindow(this, fonts);
         windowSystem.AddWindow(Notices);
-        BreedChoice = new BreedChoiceWindow(this, fonts);
-        windowSystem.AddWindow(BreedChoice);
         Scanner = new ScanWindow(this, fonts);
         windowSystem.AddWindow(Scanner);
         Claim = new CharacterClaimWindow(this, fonts);

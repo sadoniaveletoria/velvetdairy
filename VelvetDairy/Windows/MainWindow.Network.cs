@@ -494,7 +494,7 @@ public sealed partial class MainWindow
         }
 
         ImGui.TextColored(Theme.Ink, $"Your jugs: {Units.Oz(G.Carried, "0.#")}");
-        if (G.Carried <= 0) Ui.Wrapped("Fill jugs at your dairy first (HUD > Kitchen).", Theme.InkSoft, width);
+        if (G.Carried <= 0) Ui.Wrapped("Fill jugs at your dairy first (Roles > Farmer > Kitchen).", Theme.InkSoft, width);
         var leftOz = (int)Math.Ceiling(c.Left);
         if (G.Carried >= 0.05f)
         {

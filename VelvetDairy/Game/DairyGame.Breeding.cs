@@ -174,15 +174,15 @@ public sealed partial class DairyGame
     private bool CorruptionCanBreedMe => myBody.CanCarry && partnerBody.CanBreed;
 
     /// <summary>
-    /// Both of you are cow and bull and could go either way: it's not decided by who finishes. One of you chooses to
-    /// breed the other for this scene (a pop-up), and only that way counts. A new scene chooses again.
+    /// Both of you are cow and bull and could go either way: it's not decided by who finishes. Whoever is breeding
+    /// targets the other and presses Breed (on the HUD, or right-click > Eorzea Milkers), and only that way counts.
     /// </summary>
     public bool EitherWayScene => CouldBreedThem && CouldBeBred;
 
-    /// <summary>You chose to breed your partner this scene.</summary>
-    public bool IChoseToBreed => breedChoiceFor.Length > 0 && breedChoiceFor == sceneKey;
+    /// <summary>You pressed Breed on your scene partner.</summary>
+    public bool IChoseToBreed => breedChoiceFor.Length > 0 && breedChoiceFor.Equals(sceneKey, StringComparison.OrdinalIgnoreCase);
 
-    /// <summary>Your partner chose to breed you this scene (their status says so).</summary>
+    /// <summary>Your partner pressed Breed on you (their status says so).</summary>
     public bool PartnerChoseToBreed
     {
         get
@@ -196,27 +196,40 @@ public sealed partial class DairyGame
         }
     }
 
-    /// <summary>For your status: who you chose to breed (Name@World), so their plugin knows; empty otherwise.</summary>
-    public string BreedingTarget => EitherWayScene && IChoseToBreed ? sceneKey : "";
+    /// <summary>For your status: who you pressed Breed on (Name@World), so their plugin knows; empty otherwise.</summary>
+    public string BreedingTarget => breedChoiceFor;
 
-    /// <summary>You both chose to breed the other: neither counts until one of you lets the other.</summary>
+    /// <summary>You both pressed Breed on the other: neither counts until one of you cancels.</summary>
     public bool BothChoseToBreed => EitherWayScene && IChoseToBreed && PartnerChoseToBreed;
 
-    /// <summary>Choose who breeds this scene (true: you breed them; false: you don't, so they can).</summary>
-    public void ChooseToBreed(bool me)
+    /// <summary>You can press Breed on this player: you're a bull and they're a cow of your dairy.</summary>
+    public bool CanBreedPlayer(string name, string world) =>
+        IsBull && Networked && DairyMember(name, world) is { } m && m.Has("cow");
+
+    /// <summary>You've pressed Breed on this player (until it's done, or you press it again).</summary>
+    public bool BreedingPlayer(string name, string world) =>
+        breedChoiceFor.Equals($"{name}@{world}", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>Breed button: you're the one breeding this player (press again to cancel).</summary>
+    public void ToggleBreed(string name, string world)
     {
-        breedChoiceFor = me ? sceneKey : "";
-        breedChoiceAsked = sceneKey;
+        var key = $"{name}@{world}";
+        if (breedChoiceFor.Equals(key, StringComparison.OrdinalIgnoreCase))
+        {
+            breedChoiceFor = "";
+            Say($"You won't breed {name} now.", 0);
+        }
+        else
+        {
+            breedChoiceFor = key;
+            Say($"You're breeding {name}: when you finish in a scene with them, you breed them" + (IsCow ? " (and their finish doesn't breed you)." : "."), 0);
+        }
+
         Net.BeatWithin(1);
-        Diag.Info("breed", me ? $"Chose to breed {SceneNow.PartnerName} this scene" : "Chose not to breed this scene");
+        Diag.Info("breed", breedChoiceFor.Length > 0 ? $"Pressed Breed on {key}" : $"Cancelled Breed on {key}");
     }
 
-    /// <summary>The pop-up asking who breeds: an either-way scene where neither of you has chosen yet.</summary>
-    public bool WantsBreedChoice => EitherWayScene && (BothChoseToBreed || (breedChoiceAsked != sceneKey && !PartnerChoseToBreed));
-
-    public void DismissBreedChoice() => breedChoiceAsked = sceneKey;
-
-    private string breedChoiceFor = "", breedChoiceAsked = "";
+    private string breedChoiceFor = "";
     private bool sceneLogged;
     private string lastSceneLine = "";
 
@@ -315,6 +328,7 @@ public sealed partial class DairyGame
         var key = InScene ? $"{SceneNow.PartnerName}@{SceneNow.PartnerWorld}" : "";
         if (key != sceneKey)
         {
+            if (bredThemThisScene && breedChoiceFor.Equals(sceneKey, StringComparison.OrdinalIgnoreCase)) breedChoiceFor = "";
             sceneKey = key;
             wasBredThisScene = bredThemThisScene = false;
             if (key.Length > 0) sceneLogged = false;

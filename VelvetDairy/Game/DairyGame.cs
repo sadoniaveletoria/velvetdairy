@@ -421,7 +421,7 @@ public sealed partial class DairyGame
         }
         else if (!Where.InDairy) return "Go to your dairy to ship milk.";
         if (oz < 1) return "Nothing left to ship.";
-        if (Carried < oz - 0.01f) return $"You carry {Units.Oz(Carried, "0.#")}. Fill jugs at your dairy (HUD > Kitchen).";
+        if (Carried < oz - 0.01f) return $"You carry {Units.Oz(Carried, "0.#")}. Fill jugs at your dairy (Roles > Farmer > Kitchen).";
         return null;
     }
 
