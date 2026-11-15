@@ -104,8 +104,17 @@ public sealed class CorruptionLink : IDisposable
         onReady.Unsubscribe(OnReloaded);
     }
 
-    private void OnClimax() => Climax?.Invoke();
-    private void OnPartnerClimax(string name, string world) => PartnerClimax?.Invoke(name, world);
+    private void OnClimax()
+    {
+        Diag.Info("corruption", "Corruption: you climaxed");
+        Climax?.Invoke();
+    }
+
+    private void OnPartnerClimax(string name, string world)
+    {
+        Diag.Info("corruption", $"Corruption: your partner {name}@{world} climaxed");
+        PartnerClimax?.Invoke(name, world);
+    }
     private void OnChanged() => Changed?.Invoke();
 
     private static T Try<T>(Func<T> call, T empty)

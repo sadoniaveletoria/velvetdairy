@@ -160,7 +160,7 @@ public sealed partial class DairyGame
     {
         if (!InScene || SceneNow.Solo || SceneNow.PartnerName.Length == 0) return false;
         var p = DairyMember(SceneNow.PartnerName, SceneNow.PartnerWorld);
-        return p != null && (p.Roles.Contains(role) || p.Role == role);
+        return p != null && p.Has(role);
     }
 
     // Each way on its own: you could breed them, they could breed you (roles in your dairy, and what the bodies can do)
@@ -211,6 +211,8 @@ public sealed partial class DairyGame
     public void DismissBreedChoice() => breedChoiceAsked = sceneKey;
 
     private string breedChoiceFor = "", breedChoiceAsked = "";
+    private bool sceneLogged;
+    private string lastSceneLine = "";
 
     /// <summary>
     /// Why only one way (or no way) breeds in this scene when your roles would allow more: what Corruption says a body
@@ -308,6 +310,30 @@ public sealed partial class DairyGame
         {
             sceneKey = key;
             wasBredThisScene = bredThemThisScene = false;
+            if (key.Length > 0) sceneLogged = false;
+            else Diag.Info("breed", "Scene ended");
+        }
+
+        // Once per scene (and again if it changes): who could breed whom, and why, so a scene that didn't breed can be explained
+        if (InScene && !SceneNow.Solo)
+        {
+            var p = DairyMember(SceneNow.PartnerName, SceneNow.PartnerWorld);
+            var line = $"Scene with {SceneNow.PartnerName}@{SceneNow.PartnerWorld} ({SceneNow.State}): your roles {string.Join("/", MyRoles)}, theirs " +
+                       (p == null ? "not in your dairy" : string.Join("/", p.AllRoles)) +
+                       $"; you could breed them {CouldBreedThem}, they could breed you {CouldBeBred}, either way {EitherWayScene}" +
+                       (EitherWayScene ? $" (you chose to breed {IChoseToBreed}, they chose {PartnerChoseToBreed})" : "") +
+                       (BreedOneWayWhy.Length > 0 ? $"; {BreedOneWayWhy}" : "");
+            if (!sceneLogged || line != lastSceneLine)
+            {
+                Diag.Info("breed", line);
+                sceneLogged = true;
+                lastSceneLine = line;
+            }
+        }
+        else if (InScene && SceneNow.Solo && !sceneLogged)
+        {
+            Diag.Info("breed", "Solo scene (no partner): nothing to breed");
+            sceneLogged = true;
         }
 
         UpdateForcedCreampie();
@@ -369,10 +395,25 @@ public sealed partial class DairyGame
     /// <summary>Corruption: your scene partner climaxed. If you're a cow and they're a bull of your dairy, you've been bred.</summary>
     public void OnPartnerClimax(string name, string world)
     {
-        if (!IsCow || Blocked() != null) return;
+        if (!IsCow)
+        {
+            Diag.Info("breed", $"{name} finished: you aren't a cow, so it doesn't breed you");
+            return;
+        }
+
+        if (Blocked() is { } blocked)
+        {
+            Diag.Info("breed", $"{name} finished, but breeding is blocked: {blocked}");
+            return;
+        }
+
         ReadScene(true);   // up to date, so a scene that only just started is the one this breeding belongs to
         var bull = DairyMember(name, world);
-        if (bull == null || !(bull.Roles.Contains("bull") || bull.Role == "bull")) return;
+        if (bull == null || !bull.Has("bull"))
+        {
+            Diag.Info("breed", bull == null ? $"{name}@{world} finished, but they aren't in your dairy" : $"{name} finished, but they aren't a bull in your dairy");
+            return;
+        }
         if (EitherWayScene && !BredAsCow)
         {
             Diag.Info("breed", $"{name} finished, but they didn't choose to breed you this scene");
@@ -416,12 +457,32 @@ public sealed partial class DairyGame
     /// <summary>Corruption: you climaxed. If you're a bull in a scene with a cow of your dairy, you bred her.</summary>
     public void OnClimax()
     {
-        if (!IsBull || Blocked() != null) return;
+        if (!IsBull)
+        {
+            Diag.Info("breed", "You finished: you aren't a bull, so it doesn't breed anyone");
+            return;
+        }
+
+        if (Blocked() is { } blocked)
+        {
+            Diag.Info("breed", $"You finished, but breeding is blocked: {blocked}");
+            return;
+        }
+
         ReadScene(true);
         var scene = SceneNow;
-        if (!scene.Ready || scene.Solo || scene.PartnerName.Length == 0) return;
+        if (!scene.Ready || scene.Solo || scene.PartnerName.Length == 0)
+        {
+            Diag.Info("breed", $"You finished, but not in a scene with a partner (ready {scene.Ready}, solo {scene.Solo})");
+            return;
+        }
+
         var cow = DairyMember(scene.PartnerName, scene.PartnerWorld);
-        if (cow == null || !(cow.Roles.Contains("cow") || cow.Role == "cow")) return;
+        if (cow == null || !cow.Has("cow"))
+        {
+            Diag.Info("breed", cow == null ? $"You finished with {scene.PartnerName}@{scene.PartnerWorld}, but they aren't in your dairy" : $"You finished with {cow.Name}, but they aren't a cow in your dairy");
+            return;
+        }
         if (EitherWayScene && !BreedingAsBull)
         {
             Diag.Info("breed", "You finished, but you didn't choose to breed them this scene");
