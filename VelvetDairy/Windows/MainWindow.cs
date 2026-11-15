@@ -926,7 +926,8 @@ public sealed partial class MainWindow : Window
             notes.Add(($"Corruption: {G.SceneLine}." + (G.BothChoseToBreed ? " You both chose to breed the other: one of you picks \"They breed me\" in the pop-up."
                 : G.EitherWayScene && !G.BreedingAsBull && !G.BredAsCow ? " You're both cow and bull: choose who breeds this scene (the pop-up). Until one of you does, finishing doesn't breed."
                 : G.BreedingAsBull ? " When you finish, you breed them" + (G.ForcedCreampie ? " (always inside, so Corruption rolls for conception)." : ".")
-                : G.BredAsCow ? " When they finish, you're bred" + (G.ConceiveChance > 0 ? $", with a {G.ConceiveChance * 100:0}% chance of conceiving (from Corruption)." : ".") : ""), Theme.RoseDeep));
+                : G.BredAsCow ? " When they finish, you're bred" + (G.ConceiveChance > 0 ? $", with a {G.ConceiveChance * 100:0}% chance of conceiving (from Corruption)." : ".") : "")
+                + (G.BreedOneWayWhy.Length > 0 ? " " + G.BreedOneWayWhy : ""), Theme.RoseDeep));
         if (!where.InDairy) notes.Add((where.Why + " Care and milking wait until you're back.", Theme.RoseDeep));
         if (G.FreshHoldLeft > TimeSpan.Zero) notes.Add(($"Dry-off tonic: your grade won't slip for {DairyGame.Wait(G.FreshHoldLeft)}.", Theme.SageDeep));
         else if (G.GradeSlip > 0) notes.Add(($"Your grade slipped {G.GradeSlip} step{(G.GradeSlip > 1 ? "s" : "")} from going days without milking. One milking brings it back.", Theme.RoseDeep));

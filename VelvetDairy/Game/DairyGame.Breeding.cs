@@ -212,6 +212,29 @@ public sealed partial class DairyGame
 
     private string breedChoiceFor = "", breedChoiceAsked = "";
 
+    /// <summary>
+    /// Why only one way (or no way) breeds in this scene when your roles would allow more: what Corruption says a body
+    /// can't do, or a missing role in your dairy. Empty when nothing is ruled out.
+    /// </summary>
+    public string BreedOneWayWhy
+    {
+        get
+        {
+            if (!InScene || SceneNow.Solo || SceneNow.PartnerName.Length == 0) return "";
+            var name = SceneNow.PartnerName.Split(' ')[0];
+            var why = new List<string>();
+            if (IsCow && PartnerIs("bull") && !CouldBeBred)
+                why.Add(!myBody.CanCarry ? $"your Corruption body is set so you can't carry, so {name} can't breed you"
+                    : $"{name}'s Corruption body is set so they can't breed, so they can't breed you");
+            if (IsBull && PartnerIs("cow") && !CouldBreedThem)
+                why.Add(!myBody.CanBreed ? $"your Corruption body is set so you can't breed, so you can't breed {name}"
+                    : $"{name}'s Corruption body is set so they can't carry, so you can't breed them");
+            if (IsCow && !PartnerIs("bull") && PartnerIs("cow") && IsBull) why.Add($"{name} isn't a bull in your dairy, so they can't breed you");
+            if (IsBull && !PartnerIs("cow") && PartnerIs("bull") && IsCow) why.Add($"{name} isn't a cow in your dairy, so you can't breed them");
+            return why.Count == 0 ? "" : char.ToUpperInvariant(why[0][0]) + string.Join("; ", why)[1..] + ".";
+        }
+    }
+
     /// <summary>You're a bull in a scene with a cow of your dairy: you're the one breeding.</summary>
     public bool BreedingAsBull => CouldBreedThem && (!CouldBeBred || (IChoseToBreed && !PartnerChoseToBreed));
 
@@ -269,8 +292,12 @@ public sealed partial class DairyGame
         ArousalNow = InScene ? plugin.Corruption.GetArousal() : CorruptionLink.NoArousal;
         if (InScene && !SceneNow.Solo)
         {
-            myBody = plugin.Corruption.GetBody();
-            partnerBody = plugin.Corruption.GetBodyOf(SceneNow.PartnerName, SceneNow.PartnerWorld);
+            var mine = plugin.Corruption.GetBody();
+            var theirs = plugin.Corruption.GetBodyOf(SceneNow.PartnerName, SceneNow.PartnerWorld);
+            if (mine != myBody || theirs != partnerBody)
+                Diag.Info("breed", $"Bodies (from Corruption): you carry {mine.CanCarry}, breed {mine.CanBreed}; {SceneNow.PartnerName} carry {theirs.CanCarry}, breed {theirs.CanBreed}");
+            myBody = mine;
+            partnerBody = theirs;
         }
         else myBody = partnerBody = (true, true);
         ConceiveChance = BredAsCow && !Pregnant ? Math.Clamp(plugin.Corruption.BreedChance(SceneNow.PartnerName, SceneNow.PartnerWorld), 0, 1) : 0;
