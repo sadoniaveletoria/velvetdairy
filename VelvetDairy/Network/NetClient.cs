@@ -686,6 +686,20 @@ public sealed class NetClient : IDisposable
     public void SetApplying(List<string> lookingFor, bool farmersAnswer, Action<string> failed) =>
         Call<object>("PUT", "/v1/dairy/applying", new { lookingFor, farmersAnswer }, _ => MineWithin(1), failed);
 
+    /// <summary>Play in another of your dairies.</summary>
+    public void SwitchDairy(string id, Action<string> ok, Action<string> failed) =>
+        Call<SwitchReply>("POST", "/v1/dairy/active", new { id }, r =>
+        {
+            Mine = null;
+            Poke();
+            ok(r.Dairy);
+        }, failed);
+
+    public sealed class SwitchReply
+    {
+        public string Dairy { get; set; } = "";
+    }
+
     public void Leave(Action ok, Action<string> failed) =>
         Call<object>("POST", "/v1/members/leave", new { }, _ =>
         {

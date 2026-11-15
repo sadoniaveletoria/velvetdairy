@@ -269,6 +269,7 @@ async function route(request, env) {
     ["POST", /^\/v1\/invites\/(\d+)\/decline$/, m => declineInvite(env, me, Number(m[1]))],
     ["DELETE", /^\/v1\/invites\/(\d+)$/, m => cancelInvite(env, me, Number(m[1]))],
     ["POST", /^\/v1\/members\/leave$/, () => leave(env, me)],
+    ["POST", /^\/v1\/dairy\/active$/, () => switchDairy(env, me, request)],
     ["POST", /^\/v1\/applications$/, () => apply(env, me, request)],
     ["DELETE", /^\/v1\/applications\/(\d+)$/, m => withdrawApplication(env, me, Number(m[1]))],
     ["GET", /^\/v1\/dairy\/applications$/, () => dairyApplications(env, me)],
@@ -321,10 +322,42 @@ async function route(request, env) {
 
 // ---------------------------------------------------------------- helpers
 
+/**
+ * The dairy a player is playing in now (they can belong to several, and own one): the one they last switched to or
+ * stood in, else the one they own, else the first they joined. Everything "your dairy" means this one.
+ */
 async function membership(env, install) {
   return await env.DB.prepare(
-    "SELECT m.*, d.owner = m.install AS is_owner, d.name AS dairy_name FROM members m JOIN dairies d ON d.id = m.dairy_id WHERE m.install = ?")
+    `SELECT m.*, d.owner = m.install AS is_owner, d.name AS dairy_name FROM memberships m JOIN dairies d ON d.id = m.dairy_id
+     LEFT JOIN active_dairy a ON a.install = m.install
+     WHERE m.install = ? ORDER BY COALESCE(m.dairy_id = a.dairy_id, 0) DESC, (d.owner = m.install) DESC, m.joined LIMIT 1`)
     .bind(install).first();
+}
+
+/** Their membership of this one dairy, if any. */
+async function membershipIn(env, install, dairyId) {
+  return await env.DB.prepare(
+    "SELECT m.*, d.owner = m.install AS is_owner, d.name AS dairy_name FROM memberships m JOIN dairies d ON d.id = m.dairy_id WHERE m.install = ? AND m.dairy_id = ?")
+    .bind(install, dairyId).first();
+}
+
+/** Every dairy a player belongs to, for switching between them. */
+async function myDairies(env, install) {
+  return (await env.DB.prepare(
+    "SELECT m.dairy_id, m.role, d.name, d.owner = m.install AS is_owner FROM memberships m JOIN dairies d ON d.id = m.dairy_id WHERE m.install = ? ORDER BY (d.owner = m.install) DESC, m.joined")
+    .bind(install).all()).results.map(r => ({ id: r.dairy_id, name: r.name, isOwner: !!r.is_owner, role: primaryRole(r.role), roles: roleList(r.role) }));
+}
+
+const setActive = (env, install, dairyId) =>
+  env.DB.prepare("INSERT INTO active_dairy (install, dairy_id) VALUES (?, ?) ON CONFLICT(install) DO UPDATE SET dairy_id = excluded.dairy_id").bind(install, dairyId);
+
+/** Play in another of your dairies. */
+async function switchDairy(env, me, request) {
+  const b = await body(request);
+  const m = await membershipIn(env, me.id, String(b.id || ""));
+  if (!m) fail(404, "You aren't in that dairy.");
+  await setActive(env, me.id, m.dairy_id).run();
+  return { ok: true, dairy: m.dairy_name };
 }
 
 /**
@@ -333,15 +366,19 @@ async function membership(env, install) {
  */
 async function scanPlayer(env, me, world, name) {
   const t = now();
-  const m = await env.DB.prepare(`SELECT m.install, m.role, m.name, m.world_name, m.status, m.dairy_id, d.name AS dairy_name, i.last_seen, i.version
-      FROM members m JOIN dairies d ON d.id = m.dairy_id LEFT JOIN installs i ON i.id = m.install
-      WHERE m.name = ? COLLATE NOCASE AND m.world_name = ? COLLATE NOCASE LIMIT 1`).bind(clean(name, 40), clean(world, 40)).first();
+  const who = await env.DB.prepare("SELECT install FROM memberships WHERE name = ? COLLATE NOCASE AND world_name = ? COLLATE NOCASE LIMIT 1")
+    .bind(clean(name, 40), clean(world, 40)).first();
+  const act = who && await membership(env, who.install);
+  const m = act && await env.DB.prepare(`SELECT m.install, m.role, m.name, m.world_name, m.status, m.dairy_id, d.name AS dairy_name, i.last_seen, i.version
+      FROM memberships m JOIN dairies d ON d.id = m.dairy_id LEFT JOIN installs i ON i.id = m.install
+      WHERE m.install = ? AND m.dairy_id = ?`).bind(act.install, act.dairy_id).first();
   if (!m) return { found: false, why: "They're not in a dairy, so there's nothing to scan." };
   const st = safeParse(m.status) || {};
   const allow = st.scan || "anyone";
   if (m.install !== me.id && allow !== "anyone") {
-    const mine = await membership(env, me.id);
-    if (allow === "nobody" || !mine || mine.dairy_id !== m.dairy_id)
+    const shared = await env.DB.prepare("SELECT 1 FROM memberships a JOIN memberships b ON a.dairy_id = b.dairy_id WHERE a.install = ? AND b.install = ? LIMIT 1")
+      .bind(me.id, m.install).first();
+    if (allow === "nobody" || !shared)
       return { found: true, hidden: true, name: m.name, why: allow === "nobody" ? "They don't allow scans." : "They only allow scans from their own dairy." };
   }
   return {
@@ -440,6 +477,17 @@ const isIsland = t => ISLAND_TERRITORIES.includes(Number(t));
 
 async function dairyInArea(env, pos, memberOf = null) {
   if (!pos || typeof pos !== "object") return null;
+  // Several dairies of yours: the first whose box (or private place) you're in
+  if (Array.isArray(memberOf)) {
+    if (memberOf.length <= 1) return dairyInArea(env, pos, memberOf[0] || null);
+    let open = null;
+    for (const id of memberOf) {
+      const d = await dairyInArea(env, pos, id);
+      if (d && memberOf.includes(d.id)) return d;
+      open = open || d;
+    }
+    return open;
+  }
   const territory = Number(pos.territory), world = Number(pos.world), house = pos.house ? String(pos.house) : "";
   const p = { x: Number(pos.x), y: Number(pos.y), z: Number(pos.z) };
   if (!Number.isFinite(territory) || !Number.isFinite(world) || !Number.isFinite(p.x)) return null;
@@ -513,8 +561,10 @@ const withWritten = (json, t) => JSON.stringify({ ...(safeParse(json) || {}), w:
 async function heartbeat(env, me, request) {
   const b = await body(request);
   const t = now();
-  const home = await membership(env, me.id);
-  const here = (await dairyInArea(env, b.pos, home ? home.dairy_id : null)) || (await dairyAt(env, b.houseId));
+  let home = await membership(env, me.id);
+  const mine = home ? (await env.DB.prepare("SELECT dairy_id FROM memberships WHERE install = ?").bind(me.id).all()).results.map(r => r.dairy_id) : [];
+  const here = (await dairyInArea(env, b.pos, mine)) || (await dairyAt(env, b.houseId));
+  if (home && here && here.id !== home.dairy_id && mine.includes(here.id)) await setActive(env, me.id, here.id).run();
   const charHash = isHash(b.charHash) ? b.charHash : me.char_hash;
   if (t - me.last_seen >= HEARTBEAT_MIN || (here?.id ?? null) !== me.at_dairy || charHash !== me.char_hash) {
     await env.DB.prepare("UPDATE installs SET last_seen = ?, at_dairy = ?, version = ?, char_hash = ? WHERE id = ?")
@@ -528,7 +578,7 @@ async function heartbeat(env, me, request) {
   const newName = clean(b.name, 40), newWorld = clean(b.worldName, 30);
   if (mem && newName && (newName !== mem.name || (newWorld && newWorld !== mem.world_name))) {
     await env.DB.batch([
-      env.DB.prepare("UPDATE members SET name = ?, world_name = ? WHERE install = ?").bind(newName, newWorld || mem.world_name, me.id),
+      env.DB.prepare("UPDATE memberships SET name = ?, world_name = ? WHERE install = ?").bind(newName, newWorld || mem.world_name, me.id),
       env.DB.prepare("UPDATE dairies SET owner_name = ? WHERE owner = ?").bind(newName, me.id),
     ]);
     mem.name = newName;
@@ -571,7 +621,7 @@ async function heartbeat(env, me, request) {
       scan: ["anyone", "dairy", "nobody"].includes(st.scan) ? st.scan : "anyone",   // who can scan them
     });
     if (statusNeedsWrite(mem.status, status, t))
-      await env.DB.prepare("UPDATE members SET status = ? WHERE install = ?").bind(withWritten(status, t), me.id).run();
+      await env.DB.prepare("UPDATE memberships SET status = ? WHERE install = ?").bind(withWritten(status, t), me.id).run();
   }
 
   // Dairy XP from what the member did since the last heartbeat. It only counts while the server sees them
@@ -660,6 +710,7 @@ async function heartbeat(env, me, request) {
     online: await onlineCount(env),
     here: here ? { id: here.id, name: here.name, isPublic: !!here.is_public && !here.in_private, mine: !!mem && mem.dairy_id === here.id, private: !!here.in_private } : null,
     membership: mem ? { dairyId: mem.dairy_id, dairy: mem.dairy_name, role: primaryRole(mem.role), roles: roleList(mem.role), isOwner: !!mem.is_owner, level: (await progressOf(env, mem.dairy_id)).level } : null,
+    dairies: mine.length > 1 || (mem && mine.length) ? await myDairies(env, me.id) : [],
     dairyXp,
     pumped,
     seedPumped,
@@ -719,8 +770,8 @@ async function myApplications(env, me) {
 
 async function apply(env, me, request) {
   const b = await body(request);
-  if (await membership(env, me.id)) fail(409, "You can only be in one dairy at a time. Leave yours first to apply to another.");
   const d = await env.DB.prepare("SELECT * FROM dairies WHERE id = ?").bind(String(b.dairyId || "")).first();
+  if (d && await membershipIn(env, me.id, d.id)) fail(409, `You're already in ${d.name}.`);
   if (!d) fail(404, "That dairy closed.");
   const looking = (await applyingOf(env, d.id)).lookingFor;
   if (!looking.length) fail(409, `${d.name} isn't taking applications.`);
@@ -780,15 +831,14 @@ async function acceptApplication(env, me, id, request) {
   const roles = Array.isArray(b.roles) ? roleList(b.roles.join(",")).filter(r => wanted.includes(r)) : wanted;
   if (!roles.length) fail(400, "Accept at least one of the roles they asked for.");
   const t = now();
-  if (await membership(env, a.install)) {
+  if (await membershipIn(env, a.install, mem.dairy_id)) {
     await env.DB.prepare("UPDATE applications SET status = 'withdrawn', answered = ? WHERE id = ?").bind(t, id).run();
-    fail(409, `${a.name} already joined a dairy.`);
+    fail(409, `${a.name} is already in your dairy.`);
   }
   await env.DB.batch([
-    env.DB.prepare("INSERT INTO members (install, dairy_id, role, name, world_name, joined) VALUES (?, ?, ?, ?, ?, ?)")
+    env.DB.prepare("INSERT INTO memberships (install, dairy_id, role, name, world_name, joined) VALUES (?, ?, ?, ?, ?, ?)")
       .bind(a.install, mem.dairy_id, roleText(roles), a.name, a.world_name, t),
     env.DB.prepare("UPDATE applications SET status = 'accepted', answered = ?, answered_by = ? WHERE id = ?").bind(t, me.id, id),
-    env.DB.prepare("UPDATE applications SET status = 'withdrawn', answered = ? WHERE install = ? AND status = 'pending' AND id != ?").bind(t, a.install, id),
   ]);
   const names = { cow: "Cow", farmer: "Farmer", bull: "Bull" };
   await notice(env, a.install, `${mem.dairy_name} accepted you as a ${roles.map(r => names[r]).join(" and ")}! You're a member now.`);
@@ -855,7 +905,7 @@ async function listDairies(env, me) {
     SELECT d.*, p.xp, p.week, p.week_xp,
       a.territory AS a_territory, a.world AS a_world, a.house AS a_house, a.x AS a_x, a.y AS a_y, a.z AS a_z, a.map_id AS a_map, a.zone AS a_zone,
       (SELECT COUNT(*) FROM installs i WHERE i.at_dairy = d.id AND i.last_seen >= ?) AS here,
-      (SELECT COUNT(*) FROM members m WHERE m.dairy_id = d.id) AS members,
+      (SELECT COUNT(*) FROM memberships m WHERE m.dairy_id = d.id) AS members,
       (SELECT COUNT(*) FROM orders o WHERE o.dairy_id = d.id AND o.status = 'open') AS orders,
       (SELECT looking_for FROM dairy_applying ap WHERE ap.dairy_id = d.id) AS looking_for
     FROM dairies d LEFT JOIN dairy_progress p ON p.dairy_id = d.id LEFT JOIN dairy_area a ON a.dairy_id = d.id
@@ -873,7 +923,7 @@ async function myDairy(env, me) {
   const t = now();
   const members = (await env.DB.prepare(`
       SELECT m.install, m.role, m.name, m.world_name, m.status, i.last_seen, i.version
-      FROM members m LEFT JOIN installs i ON i.id = m.install WHERE m.dairy_id = ? ORDER BY m.joined`).bind(d.id).all()).results;
+      FROM memberships m LEFT JOIN installs i ON i.id = m.install WHERE m.dairy_id = ? ORDER BY m.joined`).bind(d.id).all()).results;
   const stalls = (await env.DB.prepare(
     "SELECT s.*, COALESCE(c.until, 0) AS clean_until FROM stalls s LEFT JOIN stall_clean c ON c.stall_id = s.id WHERE s.dairy_id = ? ORDER BY s.created")
     .bind(d.id).all()).results;
@@ -1016,12 +1066,14 @@ async function putDairy(env, me, request) {
   }
 
   if (!existing) {
-    // The owner joins their own dairy (leaving any other)
-    const old = await membership(env, me.id);
-    if (old && old.dairy_id !== id) await env.DB.prepare("DELETE FROM members WHERE install = ?").bind(me.id).run();
-    await env.DB.prepare(
-      "INSERT INTO members (install, dairy_id, role, name, world_name, joined) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(install) DO UPDATE SET dairy_id = excluded.dairy_id, role = excluded.role")
-      .bind(me.id, id, role, clean(b.ownerName, 40), clean(b.worldName, 30), t).run();
+    // The owner joins their own dairy (staying in any others) and plays in it now
+    const status = (await env.DB.prepare("SELECT status FROM memberships WHERE install = ? LIMIT 1").bind(me.id).first())?.status || "";
+    await env.DB.batch([
+      env.DB.prepare(
+        "INSERT INTO memberships (install, dairy_id, role, name, world_name, status, joined) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(install, dairy_id) DO UPDATE SET role = excluded.role")
+        .bind(me.id, id, role, clean(b.ownerName, 40), clean(b.worldName, 30), status, t),
+      setActive(env, me.id, id),
+    ]);
   }
 
   // Private dairies keep their buy orders: farmers deliver to them from their own dairies
@@ -1053,10 +1105,10 @@ async function deletePrivate(env, me) {
 async function deleteDairy(env, me) {
   const d = await ownedDairy(env, me);
   await refundOpenOrders(env, me.id, "Your dairy was closed, so this buy order was cancelled.");
-  const others = (await env.DB.prepare("SELECT install FROM members WHERE dairy_id = ? AND install != ?").bind(d.id, me.id).all()).results;
+  const others = (await env.DB.prepare("SELECT install FROM memberships WHERE dairy_id = ? AND install != ?").bind(d.id, me.id).all()).results;
   for (const m of others) await notice(env, m.install, `${d.name} closed, so you're no longer a member.`);
   await env.DB.batch([
-    env.DB.prepare("DELETE FROM members WHERE dairy_id = ?").bind(d.id),
+    env.DB.prepare("DELETE FROM memberships WHERE dairy_id = ?").bind(d.id),
     env.DB.prepare("DELETE FROM stalls WHERE dairy_id = ?").bind(d.id),
     env.DB.prepare("DELETE FROM dairy_progress WHERE dairy_id = ?").bind(d.id),
     env.DB.prepare("DELETE FROM donations WHERE dairy_id = ?").bind(d.id),
@@ -1087,10 +1139,10 @@ async function invite(env, me, request) {
   if (!isHash(b.toHash)) fail(400, "Bad player.");
   const toName = clean(b.toName, 40);
 
-  const count = await env.DB.prepare("SELECT COUNT(*) AS n FROM members WHERE dairy_id = ?").bind(mem.dairy_id).first();
+  const count = await env.DB.prepare("SELECT COUNT(*) AS n FROM memberships WHERE dairy_id = ?").bind(mem.dairy_id).first();
   if (count.n >= MAX_MEMBERS) fail(400, `A dairy can have up to ${MAX_MEMBERS} members.`);
   const already = await env.DB.prepare(
-    "SELECT 1 FROM members m JOIN installs i ON i.id = m.install WHERE m.dairy_id = ? AND i.char_hash = ?").bind(mem.dairy_id, b.toHash).first();
+    "SELECT 1 FROM memberships m JOIN installs i ON i.id = m.install WHERE m.dairy_id = ? AND i.char_hash = ?").bind(mem.dairy_id, b.toHash).first();
   if (already) fail(409, `${toName} is already in your dairy.`);
   const t = now();
   await env.DB.prepare("UPDATE invites SET status = 'cancelled' WHERE dairy_id = ? AND to_hash = ? AND status = 'pending'")
@@ -1111,28 +1163,28 @@ async function pendingInviteFor(env, me, id, charHash) {
 async function acceptInvite(env, me, id, request) {
   const b = await body(request);
   const i = await pendingInviteFor(env, me, id, b.charHash);
-  const owned = await env.DB.prepare("SELECT name FROM dairies WHERE owner = ?").bind(me.id).first();
-  if (owned) fail(409, `You own ${owned.name}. Close it before joining another dairy.`);
   const d = await env.DB.prepare("SELECT * FROM dairies WHERE id = ?").bind(i.dairy_id).first();
   if (!d) fail(404, "That dairy closed.");
-  const old = await membership(env, me.id);
-  if (old && old.dairy_id === d.id) {
+  const old = await membershipIn(env, me.id, d.id);
+  if (old) {
     // Already in this dairy: the invite adds the role
     await env.DB.batch([
-      env.DB.prepare("UPDATE members SET role = ? WHERE install = ?").bind(roleText(roleList(old.role + "," + i.role)), me.id),
+      env.DB.prepare("UPDATE memberships SET role = ? WHERE install = ? AND dairy_id = ?").bind(roleText(roleList(old.role + "," + i.role)), me.id, d.id),
       env.DB.prepare("UPDATE invites SET status = 'accepted' WHERE id = ?").bind(id),
     ]);
     await notice(env, i.from_install, `${i.to_name} is now also a ${i.role} at ${d.name}.`);
     return { ok: true, dairy: d.name, role: i.role, left: null };
   }
+  // Joining keeps your other dairies; you play in the new one now
+  const status = (await env.DB.prepare("SELECT status FROM memberships WHERE install = ? LIMIT 1").bind(me.id).first())?.status || "";
   await env.DB.batch([
-    env.DB.prepare("DELETE FROM members WHERE install = ?").bind(me.id),
-    env.DB.prepare("INSERT INTO members (install, dairy_id, role, name, world_name, joined) VALUES (?, ?, ?, ?, ?, ?)")
-      .bind(me.id, d.id, i.role, clean(b.name, 40) || i.to_name, clean(b.worldName, 30), now()),
+    env.DB.prepare("INSERT INTO memberships (install, dairy_id, role, name, world_name, status, joined) VALUES (?, ?, ?, ?, ?, ?, ?)")
+      .bind(me.id, d.id, i.role, clean(b.name, 40) || i.to_name, clean(b.worldName, 30), status, now()),
     env.DB.prepare("UPDATE invites SET status = 'accepted' WHERE id = ?").bind(id),
+    setActive(env, me.id, d.id),
   ]);
   await notice(env, i.from_install, `${i.to_name} joined ${d.name} as a ${i.role}.`);
-  return { ok: true, dairy: d.name, role: i.role, left: old ? old.dairy_name : null };
+  return { ok: true, dairy: d.name, role: i.role, left: null };
 }
 
 async function declineInvite(env, me, id) {
@@ -1155,19 +1207,22 @@ async function leave(env, me) {
   const mem = await membership(env, me.id);
   if (!mem) fail(404, "You aren't in a dairy.");
   if (mem.is_owner) fail(400, "You own this dairy. Close it instead (Dairy tab).");
-  await env.DB.prepare("DELETE FROM members WHERE install = ?").bind(me.id).run();
+  await env.DB.batch([
+    env.DB.prepare("DELETE FROM memberships WHERE install = ? AND dairy_id = ?").bind(me.id, mem.dairy_id),
+    env.DB.prepare("DELETE FROM active_dairy WHERE install = ?").bind(me.id),
+  ]);
   return { ok: true };
 }
 
 /** Owners remove anyone but themselves; farmers remove cows and bulls. */
 async function removeMember(env, me, target) {
   const mem = await membership(env, me.id);
-  const them = await membership(env, target);
-  if (!mem || !them || them.dairy_id !== mem.dairy_id) fail(404, "They aren't in your dairy.");
+  const them = mem && await membershipIn(env, target, mem.dairy_id);
+  if (!mem || !them) fail(404, "They aren't in your dairy.");
   if (them.is_owner) fail(400, "The owner can't be removed.");
   const allowed = mem.is_owner || (hasRole(mem, "farmer") && !hasRole(them, "farmer"));
   if (!allowed) fail(403, "You can't remove them.");
-  await env.DB.prepare("DELETE FROM members WHERE install = ?").bind(target).run();
+  await env.DB.prepare("DELETE FROM memberships WHERE install = ? AND dairy_id = ?").bind(target, mem.dairy_id).run();
   await notice(env, target, `You were removed from ${mem.dairy_name}.`);
   return { ok: true };
 }
@@ -1180,8 +1235,8 @@ async function changeRoles(env, me, target, request) {
   const b = await body(request);
   const mem = await membership(env, me.id);
   if (!mem) fail(400, "Join a dairy first.");
-  const them = target === me.id ? mem : await membership(env, target);
-  if (!them || them.dairy_id !== mem.dairy_id) fail(404, "They aren't in your dairy.");
+  const them = target === me.id ? mem : await membershipIn(env, target, mem.dairy_id);
+  if (!them) fail(404, "They aren't in your dairy.");
   const add = b.add ? String(b.add) : null, remove = b.remove ? String(b.remove) : null;
   const self = target === me.id;
   let list = roleList(them.role);
@@ -1196,7 +1251,7 @@ async function changeRoles(env, me, target, request) {
     if (!mem.is_owner) fail(403, "Only the owner can take a role away.");
     list = list.filter(r => r !== remove);
   }
-  await env.DB.prepare("UPDATE members SET role = ? WHERE install = ?").bind(roleText(list), target).run();
+  await env.DB.prepare("UPDATE memberships SET role = ? WHERE install = ? AND dairy_id = ?").bind(roleText(list), target, mem.dairy_id).run();
   if (!self) await notice(env, target, add ? `You're now also a ${add} at ${mem.dairy_name}.` : `You're no longer a ${remove} at ${mem.dairy_name}.`);
   return { ok: true, roles: list };
 }
@@ -1205,11 +1260,11 @@ async function setRole(env, me, target, request) {
   const b = await body(request);
   const mem = await membership(env, me.id);
   if (!mem || !mem.is_owner) fail(403, "Only the owner can change roles.");
-  const them = await membership(env, target);
-  if (!them || them.dairy_id !== mem.dairy_id) fail(404, "They aren't in your dairy.");
+  const them = await membershipIn(env, target, mem.dairy_id);
+  if (!them) fail(404, "They aren't in your dairy.");
   const allowed = them.is_owner ? PLAY_ROLES : INVITE_ROLES;
   if (!allowed.includes(b.role)) fail(400, "Bad role.");
-  await env.DB.prepare("UPDATE members SET role = ? WHERE install = ?").bind(b.role, target).run();
+  await env.DB.prepare("UPDATE memberships SET role = ? WHERE install = ? AND dairy_id = ?").bind(b.role, target, mem.dairy_id).run();
   if (target !== me.id) await notice(env, target, `You're now a ${b.role} at ${mem.dairy_name}.`);
   return { ok: true };
 }
@@ -1300,7 +1355,7 @@ async function groom(env, me, request) {
   const cowId = String(b.cow || "");
   if (cowId === me.id) fail(400, "You can't groom yourself.");
   // Cows and bulls (bulls make seed with the same needs, so grooming helps them the same way)
-  const cow = await env.DB.prepare(`SELECT install, name FROM members WHERE install = ? AND dairy_id = ? AND (${ROLE_SQL} OR ${ROLE_SQL})`)
+  const cow = await env.DB.prepare(`SELECT install, name FROM memberships WHERE install = ? AND dairy_id = ? AND (${ROLE_SQL} OR ${ROLE_SQL})`)
     .bind(cowId, mem.dairy_id, "cow", "bull").first();
   if (!cow) fail(400, "They aren't a cow or bull in your dairy.");
   const t = now();
@@ -1440,7 +1495,7 @@ async function shelfFeed(env, me, request) {
   if (!inOwnDairy(me, mem)) fail(400, "Go to your dairy to feed from its shelf.");
   const toId = String(b.to || "");
   if (toId === me.id) fail(400, "You can't feed yourself for free. Buy it from the shelf instead.");
-  const to = await env.DB.prepare("SELECT install, name, role, status FROM members WHERE install = ? AND dairy_id = ?").bind(toId, mem.dairy_id).first();
+  const to = await env.DB.prepare("SELECT install, name, role, status FROM memberships WHERE install = ? AND dairy_id = ?").bind(toId, mem.dairy_id).first();
   if (!to || !(hasRole(to, "cow") || hasRole(to, "bull"))) fail(400, "You can feed your dairy's cows and bulls.");
   const t = now();
   // One treat per cow or bull every 15 minutes, whoever gives it (and a cow's own treat counts too)
@@ -1527,7 +1582,7 @@ async function handPay(env, me, request) {
   if (oz <= 0) fail(400, "No milk.");
   const name = clean(b.farmer, 40), world = clean(b.world, 30);
   const farmer = await env.DB.prepare(
-    `SELECT install, name, status FROM members WHERE dairy_id = ? AND ${ROLE_SQL} AND name = ? AND world_name = ?`).bind(mem.dairy_id, "farmer", name, world).first();
+    `SELECT install, name, status FROM memberships WHERE dairy_id = ? AND ${ROLE_SQL} AND name = ? AND world_name = ?`).bind(mem.dairy_id, "farmer", name, world).first();
   if (!farmer || farmer.install === me.id) fail(400, "That farmer isn't in your dairy.");
 
   const day = today();
@@ -1583,7 +1638,7 @@ async function settleContracts(env, dairyId) {
     const xp = Math.floor(c.reward_xp * share), fund = Math.floor(c.reward_fund * share);
     if (xp <= 0 && fund <= 0) continue;
     const d = await env.DB.prepare("SELECT name FROM dairies WHERE id = ?").bind(dairyId).first();
-    const members = (await env.DB.prepare("SELECT install FROM members WHERE dairy_id = ?").bind(dairyId).all()).results;
+    const members = (await env.DB.prepare("SELECT install FROM memberships WHERE dairy_id = ?").bind(dairyId).all()).results;
     await env.DB.batch([
       addXpStmt(env, dairyId, xp),
       env.DB.prepare(`INSERT INTO dairy_progress (dairy_id, fund, week) VALUES (?, ?, ?)
@@ -1652,7 +1707,7 @@ async function shipToContract(env, me, request) {
       .bind(now(), mem.dairy_id, c.week).first();
     if (won) {
       finished = true;
-      const members = (await env.DB.prepare("SELECT install FROM members WHERE dairy_id = ?").bind(mem.dairy_id).all()).results;
+      const members = (await env.DB.prepare("SELECT install FROM memberships WHERE dairy_id = ?").bind(mem.dairy_id).all()).results;
       await env.DB.batch([
         addXpStmt(env, mem.dairy_id, won.reward_xp),
         env.DB.prepare(`INSERT INTO dairy_progress (dairy_id, fund, week) VALUES (?, ?, ?)

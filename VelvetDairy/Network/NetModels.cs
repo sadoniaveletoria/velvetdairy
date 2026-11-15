@@ -27,6 +27,18 @@ public sealed class HeartbeatReply
     public CreameryNow? CreameryHere { get; set; }   // standing at a Grand Creamery: who else is there (any world) and today's deliveries
     public List<CreameryInfo>? Creameries { get; set; }   // up to 3 (one per Grand Company); Creamery is the first
     public float Carried { get; set; }
+    public List<MyDairyEntry> Dairies { get; set; } = new();   // every dairy you belong to (you can be in several, and own one)
+}
+
+/// <summary>One of the dairies you belong to.</summary>
+public sealed class MyDairyEntry
+{
+    public string Id { get; set; } = "";
+    public string Name { get; set; } = "";
+    public bool IsOwner { get; set; }
+    public string Role { get; set; } = "";
+    public List<string> Roles { get; set; } = new();
+    public string RoleText => VelvetDairy.Game.Roles.Text(VelvetDairy.Game.Roles.From(Roles, Role));
 }
 
 /// <summary>Where the Grand Creamery is (set by the developer): weekly contracts are delivered there.</summary>

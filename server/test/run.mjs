@@ -456,14 +456,36 @@ await test("owner changes a member's role; owner can't leave their own dairy", a
   assert.equal((await call(alice, "POST", "/v1/members/leave")).status, 400);
 });
 
-await test("joining a new dairy leaves the old one; owners can't join others", async () => {
+await test("several dairies: joining another keeps the first, owners can join others, standing in one plays in it", async () => {
   await call(erin, "PUT", "/v1/dairy", dairyBody({ houseId: HOUSE2, name: "Erin Acres", ownerName: "Erin", role: "farmer" }));
   const inv = await call(erin, "POST", "/v1/invites", { toHash: bob.hash, toName: "Bob Hand", role: "cow" });
   const a = await call(bob, "POST", `/v1/invites/${inv.data.id}/accept`, { charHash: bob.hash, name: "Bob Hand" });
-  assert.equal(a.data.left, "Rose Hollow");
-  assert.equal((await beat(bob)).data.membership.dairy, "Erin Acres");
+  assert.equal(a.data.left, null, "nobody leaves anything");
+  let hb = (await beat(bob)).data;
+  assert.equal(hb.membership.dairy, "Erin Acres", "plays in the new one");
+  assert.deepEqual(hb.dairies.map(d => d.name).sort(), ["Erin Acres", "Rose Hollow"]);
+  assert.equal((await call(bob, "POST", "/v1/dairy/active", { id: dairy })).status, 200);
+  assert.equal((await beat(bob)).data.membership.dairy, "Rose Hollow", "switched back");
+  assert.equal((await beat(bob, { houseId: HOUSE2 })).data.membership.dairy, "Erin Acres", "standing in a dairy of yours plays in it");
+  assert.equal((await call(bob, "POST", "/v1/dairy/active", { id: "ffffffffffffffffffffffff" })).status, 404);
+  // Both still list Bob
+  const rose = (await call(alice, "GET", "/v1/dairy/mine")).data.members.map(m => m.name);
+  assert.ok(rose.includes("Bob Hand"));
+  // An owner joins someone else's dairy too
   const inv2 = await call(erin, "POST", "/v1/invites", { toHash: alice.hash, toName: "Alice Cow", role: "cow" });
-  assert.equal((await call(alice, "POST", `/v1/invites/${inv2.data.id}/accept`, { charHash: alice.hash })).status, 409);
+  assert.equal((await call(alice, "POST", `/v1/invites/${inv2.data.id}/accept`, { charHash: alice.hash })).status, 200);
+  hb = (await beat(alice)).data;
+  assert.equal(hb.membership.dairy, "Erin Acres");
+  assert.equal(hb.membership.isOwner, false);
+  // Leaving only leaves the one you're playing in; your own dairy stays
+  assert.equal((await call(alice, "POST", "/v1/members/leave")).status, 200);
+  hb = (await beat(alice)).data;
+  assert.equal(hb.membership.dairy, "Rose Hollow");
+  assert.equal(hb.membership.isOwner, true);
+  // Back to how the later tests expect it: Bob only in Erin Acres
+  await call(bob, "POST", "/v1/dairy/active", { id: dairy });
+  assert.equal((await call(bob, "POST", "/v1/members/leave")).status, 200);
+  assert.equal((await beat(bob)).data.membership.dairy, "Erin Acres");
 });
 
 await test("public dairy shows its address and who's there", async () => {
@@ -658,7 +680,7 @@ await test("applications: apply, answer, cooldown, and farmers only when allowed
   assert.ok((await call(cal, "GET", "/v1/dairies")).data.applications.some(a => a.status === "denied" && a.retryAt > 0));
 });
 
-await test("applications: accepting one withdraws the others; withdraw your own", async () => {
+await test("applications: accepting one keeps the others open (you can join several); withdraw your own", async () => {
   const o1 = player("Olive One"), o2 = player("Otto Two"), dee = player("Dee Applicant");
   for (const p of [o1, o2, dee]) await beat(p);
   await call(o1, "PUT", "/v1/dairy", dairyBody({ houseId: "5550001112224", name: "Dairy One", ownerName: "Olive One" }));
@@ -671,8 +693,10 @@ await test("applications: accepting one withdraws the others; withdraw your own"
   assert.equal((await call(dee, "DELETE", `/v1/applications/${a2.data.id}`)).status, 200);
   const a3 = await call(dee, "POST", "/v1/applications", { dairyId: id2, roles: ["cow"], name: "Dee Applicant" });
   assert.equal((await call(o1, "POST", `/v1/dairy/applications/${a1.data.id}/accept`, {})).status, 200);
-  assert.equal((await call(o2, "GET", "/v1/dairy/applications")).data.applications.length, 0);   // withdrawn
-  assert.equal((await call(o2, "POST", `/v1/dairy/applications/${a3.data.id}/accept`, {})).status, 404);
+  assert.equal((await call(o2, "GET", "/v1/dairy/applications")).data.applications.length, 1, "still open");
+  assert.equal((await call(o2, "POST", `/v1/dairy/applications/${a3.data.id}/accept`, {})).status, 200);
+  assert.deepEqual((await beat(dee)).data.dairies.map(d => d.name).sort(), ["Dairy One", "Dairy Two"]);
+  assert.equal((await call(dee, "POST", "/v1/applications", { dairyId: id1, roles: ["cow"], name: "Dee Applicant" })).status, 409, "already in it");
 });
 
 await test("weekly contract: an unfinished week still pays for the share delivered", async () => {

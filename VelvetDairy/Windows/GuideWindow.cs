@@ -36,7 +36,7 @@ public sealed class GuideWindow : Window
             "Owner: runs the dairy. Marks out where it is, sets up stalls, invites farmers, cows and bulls, spends the dairy fund and posts buy orders. The owner can also play any mix of roles.",
             "You can hold several roles at once (a Cow + Farmer + Bull can take care of everyone). Add cow or bull to yourself any time on Dairy > Overview. Farmer is given by a farmer or the owner. Only the owner takes roles away.",
             "Each role has its own level: cow level (milk speed and shop unlocks), farmer level (unlocks bigger farmer tanks) and bull level. Adding or losing a role never loses its progress. The Roles tab has a page for each: cow level and milk quality, farmer level and tank, bull level and seed quality.",
-            "You belong to one dairy at a time. Invites show up on the Dairy tab; accepting one leaves your old dairy.",
+            "You can belong to several dairies at once, and own one of your own as well. Invites show up on the Dairy tab; accepting one keeps your other dairies. Everything you do (milking, stalls, contracts, the tank) counts for the dairy you're playing in: walking into another of your dairies switches to it, or press Play here under Your dairies on the Dairy tab. Your levels and progress are yours and go with you to every dairy. In someone else's dairy and want your own? Press Start my own dairy on the Dairy tab.",
         }),
         new("Your cow", new[]
         {

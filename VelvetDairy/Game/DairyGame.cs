@@ -160,6 +160,15 @@ public sealed partial class DairyGame
             plugin.SaveConfig();
         }
 
+        // Playing in another of your dairies now (switched, or walked into it): its stalls and members come next
+        if (before != null && before.DairyId != m.DairyId)
+        {
+            Stop();
+            netStalls = new List<Stall>();
+            Say($"You're playing in {m.Dairy} now.", 1);
+            Net.Poke();
+        }
+
         var roles = m.AllRoles;
         if (before == null || before.DairyId != m.DairyId || !before.Roles.SequenceEqual(roles) || before.IsOwner != m.IsOwner || before.Dairy != m.Dairy)
         {
@@ -2054,7 +2063,7 @@ public sealed partial class DairyGame
         if (Blocked() != null) return Blocked();
         if (Networked)
         {
-            if (F.NetMember != null && !F.NetMember.IsOwner) return $"You're a member of {F.NetMember.Dairy}. Leave it first to start your own dairy.";
+            if (OwnedDairy is { } own && F.NetMember?.IsOwner != true) return $"You already own {own.Name}. Switch to it to change it.";
             if (Draft == null) return "Mark out your dairy's area first.";
             return null;
         }
@@ -3145,14 +3154,29 @@ public sealed partial class DairyGame
     }
 
     public void AcceptInvite(InviteInfo inv) =>
-        Net.Accept(inv, r => Say(r.Left != null ? $"You left {r.Left} and joined {r.Dairy} as a {r.Role}." : $"You joined {r.Dairy} as a {r.Role}.", 1), e => Fail(e));
+        Net.Accept(inv, r => Say(r.Left != null ? $"You left {r.Left} and joined {r.Dairy} as a {r.Role}." : $"You joined {r.Dairy} as a {r.Role}. Your other dairies are kept; switch between them on the Dairy tab.", 1), e => Fail(e));
 
     public void DeclineInvite(InviteInfo inv) => Net.Decline(inv, e => Fail(e));
+
+    /// <summary>Every dairy you belong to (you can be in several, and own one).</summary>
+    public List<MyDairyEntry> MyDairies => Net.Last?.Dairies ?? new List<MyDairyEntry>();
+
+    /// <summary>The dairy you own, if any (whichever you're playing in now).</summary>
+    public MyDairyEntry? OwnedDairy => MyDairies.FirstOrDefault(d => d.IsOwner) ??
+                                       (F.NetMember is { IsOwner: true } m ? new MyDairyEntry { Id = m.DairyId, Name = m.Dairy, IsOwner = true } : null);
+
+    /// <summary>Play in another of your dairies (walking into one of them switches too).</summary>
+    public void SwitchDairy(MyDairyEntry d)
+    {
+        Stop();
+        Net.SwitchDairy(d.Id, name => Say($"Switching to {name}...", 0), e => Fail(e));
+    }
 
     public void LeaveDairy()
     {
         Stop();
-        Net.Leave(() => Say("You left the dairy.", 0), e => Fail(e));
+        var name = F.NetMember?.Dairy ?? "the dairy";
+        Net.Leave(() => Say($"You left {name}.", 0), e => Fail(e));
     }
 
     public void CloseDairy()

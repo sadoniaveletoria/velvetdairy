@@ -122,7 +122,7 @@ public sealed class TutorialWindow : Window
                 Title("Joining a dairy");
                 Para("Dairies are run by players. An owner (or one of their farmers) invites you as a cow, a farmer or a bull.");
                 Para("Find one on the Dairies tab: public dairies show where they are, and Visit flags them on your map. Say hello to the owner and ask for an invite.");
-                Para("When someone invites you, it appears on your Dairy tab with Accept and Decline. You can only be in one dairy at a time.");
+                Para("When someone invites you, it appears on your Dairy tab with Accept and Decline. You can belong to several dairies, and your levels go with you.");
                 if (ImGui.Button("Open the Dairies tab##tutdirs", new Vector2(200, 30))) plugin.MainWindow.OpenTab(MainWindow.TabDairies);
                 ImGui.SameLine();
                 if (Next("Got it")) step = Step.Done;

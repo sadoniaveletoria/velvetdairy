@@ -194,7 +194,8 @@ public sealed partial class MainWindow
 
             // Applying: only when you're not in a dairy yet, and it's looking for someone
             var app = apps.FirstOrDefault(a => a.DairyId == d.Id);
-            var inDairy = F.NetMember != null;
+            // In it already (as one of your dairies): no applying
+            var inDairy = G.MyDairies.Any(x => x.Id == d.Id) || F.NetMember?.DairyId == d.Id;
             Btn? applyBtn = null;
             if (!d.Mine && d.LookingFor.Count > 0 && !inDairy)
             {
@@ -202,8 +203,6 @@ public sealed partial class MainWindow
                 else if (app?.Status == "denied" && app.RetryAt > NowUnix) applyBtn = new Btn($"##apply{d.Id}", "Apply", "rose", false, $"{d.Name} didn't take you last time. You can apply again {Until(app.RetryAt)}.");
                 else applyBtn = new Btn($"##apply{d.Id}", "Apply", "rose", true, "Ask to join with the roles you want.");
             }
-            else if (!d.Mine && d.LookingFor.Count > 0 && inDairy && F.NetMember?.DairyId != d.Id)
-                applyBtn = new Btn($"##apply{d.Id}", "Apply", "rose", false, "You can only be in one dairy at a time. Leave yours first (Dairy tab) to apply to another.");
             if (app?.Status == "pending") lines.Add(new Line($"You applied {Ago(app.Sent)} · waiting for an answer", Theme.HoneyDeep));
 
             var canVisit = d.Area != null || (d.HouseId != null && d.World != null && d.Ward != null);
@@ -350,10 +349,10 @@ public sealed partial class MainWindow
         var invites = G.Net.Last?.Invites ?? new List<InviteInfo>();
         foreach (var inv in invites.ToList())
         {
-            var warn = m == null ? "" : m.IsOwner ? "Owners can't join another dairy. Close yours first." : $"You'd leave {m.Dairy}.";
+            var warn = m == null ? "" : $"You stay in {m.Dairy} too; switch between your dairies on this tab.";
             var clicked = ListRow(Ico("ribbon"), $"Invite: {inv.Dairy}", Theme.RoseDeep,
                 new[] { new Line($"Join as a {inv.Role} · {inv.World}", RoleColor(inv.Role)), new Line(warn, Theme.InkSoft) },
-                new[] { new Btn($"##decl{inv.Id}", "Decline", "cream"), new Btn($"##acc{inv.Id}", "Accept", "sage", m?.IsOwner != true, m?.IsOwner == true ? warn : null) }, width);
+                new[] { new Btn($"##decl{inv.Id}", "Decline", "cream"), new Btn($"##acc{inv.Id}", "Accept", "sage", true, null) }, width);
             if (clicked == 0) G.DeclineInvite(inv);
             else if (clicked == 1) G.AcceptInvite(inv);
         }
@@ -381,12 +380,60 @@ public sealed partial class MainWindow
         else
         {
             Gap(4);
-            if (Ui.Button("##leavedairy", "Leave dairy", new Vector2(150, 30), "cream", ImGui.GetIO().KeyShift, "Hold Shift and click to leave."))
+            if (Ui.Button("##leavedairy", "Leave dairy", new Vector2(150, 30), "cream", ImGui.GetIO().KeyShift, $"Hold Shift and click to leave {m.Dairy}. Your other dairies are kept."))
                 G.LeaveDairy();
         }
 
+        DrawMyDairies(width);
+
         SubHeading("Members", width);
         DrawMemberSummary(width);
+    }
+
+    private bool startingOwn;
+
+    /// <summary>
+    /// Every dairy you belong to, with a switch to play in another (walking into one of them switches too), and starting
+    /// your own while you're in someone else's. Your levels are yours wherever you play.
+    /// </summary>
+    private void DrawMyDairies(float width)
+    {
+        var all = G.MyDairies;
+        var m = F.NetMember;
+        if (all.Count > 1)
+        {
+            SubHeading("Your dairies", width);
+            Ui.Wrapped("You can belong to several dairies. Everything you do counts for the one you're playing in; walking into another of yours switches to it. Your levels go with you everywhere.", Theme.InkSoft, width);
+            foreach (var d in all)
+            {
+                var now = d.Id == m?.DairyId;
+                var clicked = ListRow(Ico(d.IsOwner ? "coin" : "ribbon"), d.Name, now ? Theme.SageDeep : Theme.Ink,
+                    new[] { new Line((d.IsOwner ? "You own it · " : "") + (d.RoleText.Length > 0 ? d.RoleText : "member") + (now ? " · playing here now" : ""), now ? Theme.SageDeep : Theme.InkSoft) },
+                    now ? Array.Empty<Btn>() : new[] { new Btn($"##switch{d.Id}", "Play here", "sage", true, $"Play in {d.Name} now: its stalls, contract and tank.") }, width);
+                if (clicked == 0) G.SwitchDairy(d);
+            }
+        }
+
+        if (G.OwnedDairy == null)
+        {
+            Gap(6);
+            if (!startingOwn)
+            {
+                if (Ui.Button("##startown", "Start my own dairy", new Vector2(190, 30), "rose", true, $"Register a dairy of your own. You stay in {m?.Dairy ?? "this dairy"} too."))
+                    startingOwn = true;
+            }
+            else
+            {
+                SubHeading("Start my own dairy", width);
+                Ui.Wrapped($"You stay in {m?.Dairy ?? "this dairy"} too, and can switch between them here.", Theme.InkSoft, width);
+                DrawRegisterForm(width, false);
+                if (ImGui.SmallButton("Never mind##startowncancel"))
+                {
+                    startingOwn = false;
+                    G.CancelDraft();
+                }
+            }
+        }
     }
 
     private void DrawContract(float width)
