@@ -899,7 +899,7 @@ public sealed partial class MainWindow : Window
         {
             ("hay", "Fed", cow.Hunger, cow.FedBonus, Theme.HoneyDeep, "Eat feed from your pantry. Better food gives a bigger bonus (wheat grain +4% up to Golden mash +15%)."),
             ("water", "Watered", cow.Thirst, cow.WaterBonus, Theme.BlueDeep, "Drink at the trough (free, +4%) or have a Mineral block (+8%)."),
-            ("cushion", "Comfy", cow.Comfort, cow.ComfortBonus, Theme.RoseDeep, "Sit on furniture in your dairy and stay seated: after 15 minutes you get Comfy (30 minutes on the bar), and each further 15 minutes seated adds 30 more, up to an hour. Get up sooner and that sit gives nothing. Bedding upgrades make it bigger."),
+            ("cushion", "Comfy", cow.Comfort, cow.ComfortBonus, Theme.RoseDeep, "There's no button: sit on furniture in your dairy (a stall seat counts) and stay seated. After 15 minutes you get Comfy (30 minutes on the bar), and each further 15 minutes seated adds 30 more, up to an hour. Get up sooner and that sit gives nothing. Bedding upgrades make it bigger."),
             ("clover", "Happy", cow.Mood, cow.HappyBonus, Theme.SageDeep, "Have a treat: clover, salt lick, cream clover or a quality treat."),
         };
 
@@ -908,7 +908,8 @@ public sealed partial class MainWindow : Window
             var left = r.Value / 100f * Catalog.NeedMinutes;
             var text = r.Value > 0 && r.Bonus > 0 ? $"+{r.Bonus * 100:0}% · {(left >= 1 ? $"{left:0}m" : "<1m")}" : "plain";
             var h = Ui.Gauge(dl, new Vector2(p.X, y), width, r.Icon, r.Label, r.Value, r.Color, text);
-            if (ImGui.IsMouseHoveringRect(new Vector2(p.X, y), new Vector2(p.X + width, y + h))) ImGui.SetTooltip(Units.Text(r.Tip));
+            if (ImGui.IsMouseHoveringRect(new Vector2(p.X, y), new Vector2(p.X + width, y + h)))
+                ImGui.SetTooltip(Units.Text(r.Label == "Comfy" ? $"{RestLine(G.RestSettleLeft, TimeSpan.Zero, G.RestProblem(), G.CareProblem() == null)}.\n\n{r.Tip}" : r.Tip));
             y += h + 10;
         }
 
@@ -977,12 +978,6 @@ public sealed partial class MainWindow : Window
         var wcd = G.DrinkWait;
         cells.Add(("##drink", "water", "Drink", wcd > TimeSpan.Zero ? $"Ready in {DairyGame.Wait(wcd)}" : $"Free · Watered +{Catalog.TroughBonus * 100:0}%",
             "Drink", "blue", ok && wcd <= TimeSpan.Zero, problem ?? $"Free. Watered +{Catalog.TroughBonus * 100:0}%, +30 minutes.", () => G.Drink()));
-        var rcd = G.RestWait;
-        var restProblem = G.RestProblem();
-        var settle = G.RestSettleLeft;
-        // Comfy: no button, sitting on furniture in your dairy rests you by itself
-        cells.Add(("##rest", "cushion", "Comfy", RestLine(settle, rcd, restProblem, ok),
-            "", "rose", true, null, () => { }));
         foreach (var item in Catalog.Feed)
         {
             if (G.ShopLevel < item.Unlock || F.HiddenFeed!.Contains(item.Id)) continue;
@@ -996,12 +991,12 @@ public sealed partial class MainWindow : Window
             var tip = problem ?? (qualityHeld ? $"Quality treats share a {Grades.QualityTreatHours:0}-hour cooldown." :
                 waiting ? $"Eating, drinking, resting and treats each wait {Catalog.NeedCooldownMinutes:0} minutes between uses." : $"{item.Desc}\n{Effects(item)}");
             var id = item.Id;
-            cells.Add(($"##feed{id}", item.Icon, item.Name, waiting ? $"{have} left · ready in {DairyGame.Wait(wait)}" : $"{have} left · {Effects(item)}",
+            cells.Add(($"##feed{id}", item.Icon, item.Name, waiting ? $"{have} left · ready in {DairyGame.Wait(wait)}" : $"{have} left · {Effects(item, true)}",
                 "Eat", "honey", ok && !waiting, tip, () => G.UseFeed(id)));
         }
 
         // Nothing to eat: the last card points at the Shop
-        if (cells.Count == 2)
+        if (cells.Count == 1)
             cells.Add(("##careshop", "hay", "Pantry empty", "Buy feed in the Shop", "Shop", "cream", true, "Buy feed and treats.", () => tab = TabShop));
 
         const float cellGap = 10f, cellH = 58f;
@@ -1070,11 +1065,6 @@ public sealed partial class MainWindow : Window
                 ok && wcd <= TimeSpan.Zero, problem, width))
             G.Drink();
 
-        var rcd = G.RestWait;
-        var restProblem = G.RestProblem();
-        var settle = G.RestSettleLeft;
-        Row("##rest", "cushion", "Comfy", RestLine(settle, rcd, restProblem, ok), "", "rose", true, null, width);
-
         var shown = 0;
         foreach (var item in Catalog.Feed)
         {
@@ -1133,8 +1123,16 @@ public sealed partial class MainWindow : Window
         ImGui.Dummy(new Vector2(width, 60));
     }
 
-    private static string Effects(FeedItem f)
+    /// <summary>What a food or treat does; short leaves out the extras (for the small Care cards; the tooltip has it all).</summary>
+    private static string Effects(FeedItem f, bool short_ = false)
     {
+        if (short_)
+        {
+            var main = f.Fed != 0 ? $"Fed +{f.Fed * 100:0}%" : f.Water != 0 ? $"Watered +{f.Water * 100:0}%" : f.Happy != 0 ? $"Happy +{f.Happy * 100:0}%"
+                : f.Quality != 0 ? $"+{f.Quality:0} quality" : f.HoldDays != 0 ? $"holds grade {f.HoldDays}d" : f.BoostMinutes != 0 ? $"boost {f.BoostMinutes}m" : "";
+            return main;
+        }
+
         var parts = new List<string>();
         if (f.Fed != 0) parts.Add($"Fed +{f.Fed * 100:0}%");
         if (f.Water != 0) parts.Add($"Watered +{f.Water * 100:0}%");
