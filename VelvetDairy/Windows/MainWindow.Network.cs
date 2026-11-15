@@ -758,8 +758,9 @@ public sealed partial class MainWindow
                 var p = G.AddRoleProblem(null, r);
                 buttons.Add(new Btn($"##addme{r}", "Add", "sage", p == null, p ?? $"Become a {r} too. You keep your other roles."));
             }
-            else if (G.IsOwner)
-                buttons.Add(new Btn($"##rmme{r}", "Remove", "cream", ImGui.GetIO().KeyShift, "Hold Shift and click. Your progress as a " + r + " is kept."));
+            else if (G.IsOwner || r is "cow" or "bull")
+                buttons.Add(new Btn($"##rmme{r}", "Remove", "cream", ImGui.GetIO().KeyShift,
+                    "Hold Shift and click. Your progress as a " + r + " is kept." + (r is "cow" or "bull" ? " It's dropped in every dairy you're in." : "")));
 
             var clicked = ListRow(null, $"{Roles.Title(r)}{(has ? "  ·  yours" : "")}", has ? RoleColor(r) : Theme.InkSoft,
                 new[] { new Line(desc, Theme.InkSoft) }, buttons, width);
@@ -770,7 +771,7 @@ public sealed partial class MainWindow
             }
         }
 
-        if (!G.IsOwner) Ui.Wrapped("Add cow or bull any time. Farmer is given by a farmer or the owner. Only the owner takes roles away. Your progress in each role is always kept.", Theme.InkSoft, width);
+        Ui.Wrapped("Cow and bull are yours: add or drop them any time, and they hold in every dairy you're in. Farmer is given by a farmer or the owner of each dairy, and only the owner takes it away. Your progress in each role is always kept.", Theme.InkSoft, width);
         Gap(4);
     }
 

@@ -210,13 +210,14 @@ await test("several roles at once: self-add cow/bull, farmer is given, only the 
   let r = await call(carl, "POST", `/v1/members/${carl.id}/roles`, { add: "cow" });
   assert.deepEqual(r.data.roles, ["cow", "bull"], "anyone can add cow to themselves");
   assert.equal((await call(carl, "POST", `/v1/members/${carl.id}/roles`, { add: "farmer" })).status, 403, "can't make yourself a farmer");
-  assert.equal((await call(carl, "POST", `/v1/members/${carl.id}/roles`, { remove: "cow" })).status, 403, "only the owner takes roles away");
+  assert.equal((await call(carl, "POST", `/v1/members/${carl.id}/roles`, { remove: "farmer" })).status, 403, "only the owner takes farmer away");
   assert.deepEqual((await call(bob, "POST", `/v1/members/${carl.id}/roles`, { add: "farmer" })).data.roles, ["cow", "farmer", "bull"], "a farmer gives farmer");
   assert.deepEqual((await beat(carl)).data.membership.roles, ["cow", "farmer", "bull"]);
   assert.equal((await call(bob, "POST", `/v1/members/${carl.id}/roles`, { remove: "farmer" })).status, 403);
   r = await call(alice, "POST", `/v1/members/${carl.id}/roles`, { remove: "farmer" });
-  r = await call(alice, "POST", `/v1/members/${carl.id}/roles`, { remove: "cow" });
-  assert.deepEqual(r.data.roles, ["bull"]);
+  assert.equal((await call(alice, "POST", `/v1/members/${carl.id}/roles`, { remove: "cow" })).status, 400, "cow is theirs: the owner can't take it");
+  r = await call(carl, "POST", `/v1/members/${carl.id}/roles`, { remove: "cow" });
+  assert.deepEqual(r.data.roles, ["bull"], "they drop their own cow");
   // The owner gives themselves any role and can take it back
   assert.deepEqual((await call(alice, "POST", `/v1/members/${alice.id}/roles`, { add: "farmer" })).data.roles, ["cow", "farmer"]);
   assert.deepEqual((await call(alice, "POST", `/v1/members/${alice.id}/roles`, { remove: "farmer" })).data.roles, ["cow"]);
@@ -468,6 +469,10 @@ await test("several dairies: joining another keeps the first, owners can join ot
   assert.equal((await beat(bob)).data.membership.dairy, "Rose Hollow", "switched back");
   assert.equal((await beat(bob, { houseId: HOUSE2 })).data.membership.dairy, "Erin Acres", "standing in a dairy of yours plays in it");
   assert.equal((await call(bob, "POST", "/v1/dairy/active", { id: "ffffffffffffffffffffffff" })).status, 404);
+  // Cow and bull follow you: Bob became a bull in Erin Acres, so he's one in Rose Hollow too; farmer stays per dairy
+  await call(bob, "POST", `/v1/members/${bob.id}/roles`, { add: "bull" });
+  const roseBob = (await call(alice, "GET", "/v1/dairy/mine")).data.members.find(m => m.name === "Bob Hand");
+  assert.ok(roseBob.roles.includes("bull"), "bull everywhere");
   // Both still list Bob
   const rose = (await call(alice, "GET", "/v1/dairy/mine")).data.members.map(m => m.name);
   assert.ok(rose.includes("Bob Hand"));

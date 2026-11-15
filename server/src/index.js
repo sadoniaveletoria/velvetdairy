@@ -101,6 +101,21 @@ const roleList = r => ROLE_ORDER.filter(x => String(r || "").split(",").includes
 const hasRole = (mem, r) => !!mem && roleList(mem.role).includes(r);
 const roleText = list => list.length ? list.join(",") : "none";
 const primaryRole = r => roleList(r)[0] || "none";
+
+// Cow and bull are the player's own (they add them to themselves): they hold in every dairy they're in. Farmer is a job
+// a dairy gives you, so it stays per dairy.
+const SELF_ROLES = ["cow", "bull"];
+
+/** Make every dairy of theirs carry the same cow and bull roles (the union of what their rows have). */
+async function syncSelfRoles(env, install, rows = null) {
+  rows = rows || (await env.DB.prepare("SELECT dairy_id, role FROM memberships WHERE install = ?").bind(install).all()).results;
+  if (rows.length < 2) return;
+  const own = SELF_ROLES.filter(r => rows.some(x => roleList(x.role).includes(r)));
+  const fix = rows.filter(x => own.some(r => !roleList(x.role).includes(r)));
+  if (!fix.length) return;
+  await env.DB.batch(fix.map(x => env.DB.prepare("UPDATE memberships SET role = ? WHERE install = ? AND dairy_id = ?")
+    .bind(roleText(roleList(roleList(x.role).concat(own).join(","))), install, x.dairy_id)));
+}
 /** SQL test for "this member has role ?" on members.role */
 const ROLE_SQL = "(',' || role || ',') LIKE '%,' || ? || ',%'";
 
@@ -561,7 +576,9 @@ async function heartbeat(env, me, request) {
   const b = await body(request);
   const t = now();
   let home = await membership(env, me.id);
-  const mine = home ? (await env.DB.prepare("SELECT dairy_id FROM memberships WHERE install = ?").bind(me.id).all()).results.map(r => r.dairy_id) : [];
+  const myRows = home ? (await env.DB.prepare("SELECT dairy_id, role FROM memberships WHERE install = ?").bind(me.id).all()).results : [];
+  const mine = myRows.map(r => r.dairy_id);
+  await syncSelfRoles(env, me.id, myRows);
   const here = (await dairyInArea(env, b.pos, mine)) || (await dairyAt(env, b.houseId));
   if (home && here && here.id !== home.dairy_id && mine.includes(here.id)) await setActive(env, me.id, here.id).run();
   const charHash = isHash(b.charHash) ? b.charHash : me.char_hash;
@@ -839,6 +856,7 @@ async function acceptApplication(env, me, id, request) {
       .bind(a.install, mem.dairy_id, roleText(roles), a.name, a.world_name, t),
     env.DB.prepare("UPDATE applications SET status = 'accepted', answered = ?, answered_by = ? WHERE id = ?").bind(t, me.id, id),
   ]);
+  await syncSelfRoles(env, a.install);
   const names = { cow: "Cow", farmer: "Farmer", bull: "Bull" };
   await notice(env, a.install, `${mem.dairy_name} accepted you as a ${roles.map(r => names[r]).join(" and ")}! You're a member now.`);
   return { ok: true, name: a.name, roles };
@@ -1073,6 +1091,7 @@ async function putDairy(env, me, request) {
         .bind(me.id, id, role, clean(b.ownerName, 40), clean(b.worldName, 30), status, t),
       setActive(env, me.id, id),
     ]);
+    await syncSelfRoles(env, me.id);
   }
 
   // Private dairies keep their buy orders: farmers deliver to them from their own dairies
@@ -1182,6 +1201,7 @@ async function acceptInvite(env, me, id, request) {
     env.DB.prepare("UPDATE invites SET status = 'accepted' WHERE id = ?").bind(id),
     setActive(env, me.id, d.id),
   ]);
+  await syncSelfRoles(env, me.id);
   await notice(env, i.from_install, `${i.to_name} joined ${d.name} as a ${i.role}.`);
   return { ok: true, dairy: d.name, role: i.role, left: null };
 }
@@ -1247,10 +1267,22 @@ async function changeRoles(env, me, target, request) {
     if (!list.includes(add)) list = roleList(list.concat(add).join(","));
   }
   if (remove) {
-    if (!mem.is_owner) fail(403, "Only the owner can take a role away.");
+    if (SELF_ROLES.includes(remove) && !self) fail(400, `${remove === "cow" ? "Cow" : "Bull"} is theirs in every dairy; only they can drop it. You can remove them from your dairy instead.`);
+    if (!mem.is_owner && !(self && SELF_ROLES.includes(remove))) fail(403, "Only the owner can take a role away.");
     list = list.filter(r => r !== remove);
   }
-  await env.DB.prepare("UPDATE memberships SET role = ? WHERE install = ? AND dairy_id = ?").bind(roleText(list), target, mem.dairy_id).run();
+  const everywhere = self && SELF_ROLES.includes(add || remove);
+  if (everywhere) {
+    // Your own cow or bull: the same in every dairy of yours
+    const rows = (await env.DB.prepare("SELECT dairy_id, role FROM memberships WHERE install = ?").bind(target).all()).results;
+    await env.DB.batch(rows.map(x => {
+      let l = roleList(x.role);
+      if (add && !l.includes(add)) l = roleList(l.concat(add).join(","));
+      if (remove) l = l.filter(r => r !== remove);
+      return env.DB.prepare("UPDATE memberships SET role = ? WHERE install = ? AND dairy_id = ?").bind(roleText(l), target, x.dairy_id);
+    }));
+  } else
+    await env.DB.prepare("UPDATE memberships SET role = ? WHERE install = ? AND dairy_id = ?").bind(roleText(list), target, mem.dairy_id).run();
   if (!self) await notice(env, target, add ? `You're now also a ${add} at ${mem.dairy_name}.` : `You're no longer a ${remove} at ${mem.dairy_name}.`);
   return { ok: true, roles: list };
 }

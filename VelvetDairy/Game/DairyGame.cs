@@ -3146,7 +3146,14 @@ public sealed partial class DairyGame
 
     public void RemoveRole(MemberInfo? m, string role)
     {
-        if (F.NetMember?.IsOwner != true)
+        var mine = m == null;
+        if (!mine && role is "cow" or "bull")
+        {
+            Fail($"{Roles.Title(role)} is theirs in every dairy; only they can drop it. You can remove them from your dairy instead.");
+            return;
+        }
+
+        if (F.NetMember?.IsOwner != true && !(mine && role is "cow" or "bull"))
         {
             Fail("Only the owner can take a role away.");
             return;
