@@ -23,7 +23,7 @@ public sealed class ChangelogWindow : Window
     /// <summary>Newest first. Write these for players: what changed for them, not how.</summary>
     private static readonly Entry[] Entries =
     {
-        new("0.9.60", "Scanning, breeding choices and a tidier HUD", new[]
+        new("0.9.61", "Scanning, breeding choices and a tidier HUD", new[]
         {
             "# Scan other players",
             "Target another player with Eorzea Milkers (within 15 yalms) and press Scan on the HUD, or right-click them > Eorzea Milkers > Scan. You don't need to be a farmer or owner. You see their milk and seed, every bonus speeding them up and the total, their bred bonus (who, how much, how long), pregnancy and Sire, when a cow can be bred again, and a bull's seed output.",
@@ -38,7 +38,7 @@ public sealed class ChangelogWindow : Window
             "At a Grand Creamery you see everyone else standing there on any world and data center, on Dairy > Contract, and the HUD says how many are there.",
             "Each Grand Creamery counts what's been shipped there today: \"Delivered here today: 1,240 oz by 9 dairies.\"",
             "# Also",
-            "Comfy has no Rest button any more: sit on furniture in your dairy (a stall seat counts) and you get comfy by yourself after a few seconds. Stay seated 15 minutes for it to take effect; the Care row shows how long is left.",
+            "Comfy has no Rest button any more: sit on furniture in your dairy (a stall seat counts). After 15 minutes seated you get Comfy (30 minutes on the bar), and every further 15 minutes seated adds 30 more, up to an hour. Get up sooner and that sit gives nothing. The Care row shows how long is left.",
             "Bulls who aren't cows get the hand milking settings (milking emotes, ask first) on the Bull tab.",
             "The Dairies list shows each dairy's real data center (Lich on Light, Lamia on Primal).",
             "Milk levels on member lists refresh about every 90 seconds, so the server writes less. Everything you act on stays instant.",
