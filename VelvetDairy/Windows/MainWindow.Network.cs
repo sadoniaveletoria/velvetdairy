@@ -250,7 +250,7 @@ public sealed partial class MainWindow
         if (d.Area is { House.Length: 0 } yard && d.Ward is > 0 && Estate.DistrictKind(yard.Territory) > 0 && Lifestream.Installed)
         {
             // Outdoors in a residential ward: Lifestream takes you to the ward, and the spot is flagged on your map
-            var why = Lifestream.GoTo(d.Name, yard.World, Estate.DistrictKind(yard.Territory), d.Ward.Value, 1, 0, false);
+            var why = Lifestream.GoTo(d.Name, yard.World, Estate.DistrictKind(yard.Territory), d.Ward.Value, d.Plot is > 0 ? d.Plot.Value : 1, 0, false);
             FlagArea(d, yard);
             G.Notify(why ?? $"Lifestream is taking you to {Estate.DistrictName(yard.Territory)}, Ward {d.Ward}; {d.Name} is flagged on your map.", why != null ? 2 : 0);
             return;

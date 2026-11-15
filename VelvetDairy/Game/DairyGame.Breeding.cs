@@ -408,8 +408,10 @@ public sealed partial class DairyGame
     private void FillOutdoorWard()
     {
         if (wardFilled || !Networked || F.NetMember is not { IsOwner: true } m || !Where.InDairy || Where.Guest) return;
-        if (Net.Mine?.Dairy is not { } d || d.Ward > 0 || d.Area is not { House.Length: 0 } area || Estate.DistrictKind(area.Territory) == 0) return;
+        if (Net.Mine?.Dairy is not { } d || d.Area is not { House.Length: 0 } area || Estate.DistrictKind(area.Territory) == 0) return;
         if (Plugin.ClientState.TerritoryType != area.Territory || Housing.OutdoorWard() == 0) return;
+        // Missing its ward, or its yard (plot) when the owner is standing in one
+        if (d.Ward > 0 && (d.Plot > 0 || Housing.OutdoorPlot() == 0 || !area.Contains(Plugin.ObjectTable.LocalPlayer?.Position ?? default))) return;
         wardFilled = true;
         Diag.Info("net", $"Adding ward {Housing.OutdoorWard()} to {d.Name}'s outdoor area");
         PublishDairy(d.Name, area);

@@ -23,10 +23,11 @@ public sealed class ChangelogWindow : Window
     /// <summary>Newest first. Write these for players: what changed for them, not how.</summary>
     private static readonly Entry[] Entries =
     {
-        new("0.9.81", "Feeding bell, weekend contest and bonuses that last in a dairy", new[]
+        new("0.9.82", "Feeding bell, weekend contest and bonuses that last in a dairy", new[]
         {
             "The feeding bell: farmers and the owner ring it from Herd Care (once an hour). Everyone in the dairy hears it, and each cow and bull picks a bar to fill right up, plus a 20 minute boost.",
             "Weekend milk contest, every Saturday and Sunday (UTC): milk pumped into your dairy's tank also fills the weekly contract. The Contract card shows the top pumpers and last weekend's champion.",
+            "A dairy outdoors in a plot's yard shows its plot too (\"Empyreum, Ward 30, Plot 10 (outside)\"), and Visit takes you to that plot. It's added the next time the owner stands in their dairy.",
             "Breeding no longer waits 10 minutes into a scene: Corruption's arousal and climax decide when a breeding happens.",
             "A bar with more than an hour left is full enough: you can't eat, drink, be groomed or pick it at the feeding bell until it's under an hour.",
                         "Weekly contracts are bigger: 1,500 oz at dairy level 1, growing 250 oz a level up to 6,000 oz (this week's grows to match).",

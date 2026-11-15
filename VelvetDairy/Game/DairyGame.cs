@@ -2237,6 +2237,7 @@ public sealed partial class DairyGame
             area,
             // An outdoor box in a residential district: its ward (for the Dairies list and Visit)
             outdoorWard = area is { House.Length: 0 } && Estate.DistrictKind(area.Territory) > 0 ? Housing.OutdoorWard() : 0,
+            outdoorPlot = area is { House.Length: 0 } && Estate.DistrictKind(area.Territory) > 0 ? Housing.OutdoorPlot() : 0,   // the yard it's in, if any
             districtKind = area is { House.Length: 0 } ? Estate.DistrictKind(area.Territory) : 0,
         };
         var isNew = F.NetMember?.IsOwner != true;
