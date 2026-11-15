@@ -899,7 +899,7 @@ public sealed partial class MainWindow : Window
         {
             ("hay", "Fed", cow.Hunger, cow.FedBonus, Theme.HoneyDeep, "Eat feed from your pantry. Better food gives a bigger bonus (wheat grain +4% up to Golden mash +15%)."),
             ("water", "Watered", cow.Thirst, cow.WaterBonus, Theme.BlueDeep, "Drink at the trough (free, +4%) or have a Mineral block (+8%)."),
-            ("cushion", "Comfy", cow.Comfort, cow.ComfortBonus, Theme.RoseDeep, "There's no button: sit on furniture in your dairy (a stall seat counts) and stay seated. After 15 minutes you get Comfy (30 minutes on the bar), and each further 15 minutes seated adds 30 more, up to an hour. Get up sooner and that sit gives nothing. Bedding upgrades make it bigger."),
+            ("cushion", "Comfy", cow.Comfort, cow.ComfortBonus, Theme.RoseDeep, "Sit in your dairy 15 min for +30 min of Comfy (up to 1 h)."),
             ("clover", "Happy", cow.Mood, cow.HappyBonus, Theme.SageDeep, "Have a treat: clover, salt lick, cream clover or a quality treat."),
         };
 
@@ -909,7 +909,7 @@ public sealed partial class MainWindow : Window
             var text = r.Value > 0 && r.Bonus > 0 ? $"+{r.Bonus * 100:0}% · {(left >= 1 ? $"{left:0}m" : "<1m")}" : "plain";
             var h = Ui.Gauge(dl, new Vector2(p.X, y), width, r.Icon, r.Label, r.Value, r.Color, text);
             if (ImGui.IsMouseHoveringRect(new Vector2(p.X, y), new Vector2(p.X + width, y + h)))
-                ImGui.SetTooltip(Units.Text(r.Label == "Comfy" ? $"{RestLine(G.RestSettleLeft, TimeSpan.Zero, G.RestProblem(), G.CareProblem() == null)}.\n\n{r.Tip}" : r.Tip));
+                ImGui.SetTooltip(Units.Text(r.Label == "Comfy" && G.RestSettleLeft > TimeSpan.Zero ? $"Stay seated {DairyGame.Wait(G.RestSettleLeft)} more." : r.Tip));
             y += h + 10;
         }
 
