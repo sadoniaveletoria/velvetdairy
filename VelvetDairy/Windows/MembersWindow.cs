@@ -485,7 +485,7 @@ public sealed class MembersWindow : Window
                 var p = G.AddRoleProblem(m, r);
                 if (p == null && ImGui.MenuItem($"Give the {r} role")) G.AddRole(m, r);
             }
-            else if (G.IsOwner && ImGui.MenuItem($"Take the {r} role away")) G.RemoveRole(m, r);
+            else if (G.IsOwner && r == "farmer" && ImGui.MenuItem($"Take the {r} role away")) G.RemoveRole(m, r);   // cow and bull are theirs
         }
 
         if (G.CanRemove(m))

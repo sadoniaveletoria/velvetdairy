@@ -120,7 +120,7 @@ public sealed partial class MainWindow
         SubHeading("How it works", width);
         Ui.Wrapped("Owners register their own estate as a dairy and invite farmers, cows and bulls. Farmers can invite cows and bulls. " +
                    "Public dairies show their address here so anyone can visit; private ones only show their name. " +
-                   "Farmers fill other dairies' buy orders from inside their own dairy (or in person at a public one for +10%), and the creamery's visitor orders in person at public dairies. " +
+                   "Farmers fill other dairies' buy orders from inside their own dairy (or in person at a public one), and the creamery's visitor orders in person at public dairies. " +
                    "Dairies level up from what their members do inside them; higher levels get more stalls and better stall tiers and list first.", Theme.InkSoft, width);
         if (!Lifestream.Installed)
         {
@@ -190,11 +190,12 @@ public sealed partial class MainWindow
             };
             if (d.Owner.Length > 0) lines.Add(new Line($"Owner: {d.Owner}", Theme.InkSoft));
             if (d.LookingFor.Count > 0) lines.Add(new Line($"Looking for: {string.Join(", ", d.LookingFor.Select(r => char.ToUpperInvariant(r[0]) + r[1..] + "s"))}", Theme.SageDeep));
-            if (d.Description.Length > 0) lines.Add(new Line(d.Description, Theme.Ink));
+            if (d.Description.Length > 0 && !d.IsPublic && !d.Mine) lines.Add(new Line(d.Description, Theme.Ink));   // public ones: in Details
 
             // Applying: only when you're not in a dairy yet, and it's looking for someone
             var app = apps.FirstOrDefault(a => a.DairyId == d.Id);
-            var inDairy = F.NetMember != null;
+            // In it already (as one of your dairies): no applying
+            var inDairy = G.MyDairies.Any(x => x.Id == d.Id) || F.NetMember?.DairyId == d.Id;
             Btn? applyBtn = null;
             if (!d.Mine && d.LookingFor.Count > 0 && !inDairy)
             {
@@ -202,16 +203,15 @@ public sealed partial class MainWindow
                 else if (app?.Status == "denied" && app.RetryAt > NowUnix) applyBtn = new Btn($"##apply{d.Id}", "Apply", "rose", false, $"{d.Name} didn't take you last time. You can apply again {Until(app.RetryAt)}.");
                 else applyBtn = new Btn($"##apply{d.Id}", "Apply", "rose", true, "Ask to join with the roles you want.");
             }
-            else if (!d.Mine && d.LookingFor.Count > 0 && inDairy && F.NetMember?.DairyId != d.Id)
-                applyBtn = new Btn($"##apply{d.Id}", "Apply", "rose", false, "You can only be in one dairy at a time. Leave yours first (Dairy tab) to apply to another.");
             if (app?.Status == "pending") lines.Add(new Line($"You applied {Ago(app.Sent)} · waiting for an answer", Theme.HoneyDeep));
 
             var canVisit = d.Area != null || (d.HouseId != null && d.World != null && d.Ward != null);
             var buttons = new List<Btn>();
             if (applyBtn is { } ab) buttons.Add(ab);
+            if (d.IsPublic || inDairy)
+                buttons.Add(new Btn($"##details{d.Id}", "Details", "sage", true, $"{d.Name}: who's there now (roles and levels), its tank and stalls."));
             if (canVisit)
             {
-                buttons.Add(new Btn($"##copy{d.Id}", "Copy", "cream", true, "Copy the address."));
                 buttons.Add(new Btn($"##visit{d.Id}", "Visit", "blue", !Lifestream.Busy, Lifestream.Installed ? "Travel there with Lifestream." : "Copies the address (install Lifestream to travel automatically)."));
             }
 
@@ -221,8 +221,8 @@ public sealed partial class MainWindow
             var label = buttons[clicked].Label;
             if (label == "Apply") plugin.Apply.Open(d);
             else if (label == "Withdraw" && app != null) net.WithdrawApplication(app.Id, e => G.Notify(e, 2));
-            else if (label == "Copy") Copy(d);
             else if (label == "Visit") Visit(d);
+            else if (label == "Details") plugin.WhoHere.Open(d);
         }
     }
 
@@ -244,6 +244,15 @@ public sealed partial class MainWindow
         if (d.Area is { } isle && Estate.Island(isle.Territory))
         {
             G.Notify($"{d.Name} is on its owner's Island Sanctuary: ask them to take you to their island.", 0);
+            return;
+        }
+
+        if (d.Area is { House.Length: 0 } yard && d.Ward is > 0 && Estate.DistrictKind(yard.Territory) > 0 && Lifestream.Installed)
+        {
+            // Outdoors in a residential ward: Lifestream takes you to the ward, and the spot is flagged on your map
+            var why = Lifestream.GoTo(d.Name, yard.World, Estate.DistrictKind(yard.Territory), d.Ward.Value, 1, 0, false);
+            FlagArea(d, yard);
+            G.Notify(why ?? $"Lifestream is taking you to {Estate.DistrictName(yard.Territory)}, Ward {d.Ward}; {d.Name} is flagged on your map.", why != null ? 2 : 0);
             return;
         }
 
@@ -294,6 +303,21 @@ public sealed partial class MainWindow
     // =====================================================================
     // Dairy tab on the network: your dairy, its stalls and its people
     // =====================================================================
+
+    /// <summary>Flag a dairy's outdoor box on the map (quietly; nothing if the map can't be opened).</summary>
+    private static void FlagArea(DairyListing d, DairyArea ar)
+    {
+        try
+        {
+            if (ar.MapId == 0) return;
+            var link = new Dalamud.Game.Text.SeStringHandling.Payloads.MapLinkPayload(ar.Territory, ar.MapId, (int)(ar.X * 1000), (int)(ar.Z * 1000));
+            Plugin.GameGui.OpenMapWithMapLink(link);
+        }
+        catch
+        {
+            // the travel still happens
+        }
+    }
 
     private void DrawNetDairy(Vector2 min, Vector2 max)
     {
@@ -350,10 +374,10 @@ public sealed partial class MainWindow
         var invites = G.Net.Last?.Invites ?? new List<InviteInfo>();
         foreach (var inv in invites.ToList())
         {
-            var warn = m == null ? "" : m.IsOwner ? "Owners can't join another dairy. Close yours first." : $"You'd leave {m.Dairy}.";
+            var warn = m == null ? "" : $"You stay in {m.Dairy} too; switch between your dairies on this tab.";
             var clicked = ListRow(Ico("ribbon"), $"Invite: {inv.Dairy}", Theme.RoseDeep,
                 new[] { new Line($"Join as a {inv.Role} · {inv.World}", RoleColor(inv.Role)), new Line(warn, Theme.InkSoft) },
-                new[] { new Btn($"##decl{inv.Id}", "Decline", "cream"), new Btn($"##acc{inv.Id}", "Accept", "sage", m?.IsOwner != true, m?.IsOwner == true ? warn : null) }, width);
+                new[] { new Btn($"##decl{inv.Id}", "Decline", "cream"), new Btn($"##acc{inv.Id}", "Accept", "sage", true, null) }, width);
             if (clicked == 0) G.DeclineInvite(inv);
             else if (clicked == 1) G.AcceptInvite(inv);
         }
@@ -381,12 +405,60 @@ public sealed partial class MainWindow
         else
         {
             Gap(4);
-            if (Ui.Button("##leavedairy", "Leave dairy", new Vector2(150, 30), "cream", ImGui.GetIO().KeyShift, "Hold Shift and click to leave."))
+            if (Ui.Button("##leavedairy", "Leave dairy", new Vector2(150, 30), "cream", ImGui.GetIO().KeyShift, $"Hold Shift and click to leave {m.Dairy}. Your other dairies are kept."))
                 G.LeaveDairy();
         }
 
+        DrawMyDairies(width);
+
         SubHeading("Members", width);
         DrawMemberSummary(width);
+    }
+
+    private bool startingOwn;
+
+    /// <summary>
+    /// Every dairy you belong to, with a switch to play in another (walking into one of them switches too), and starting
+    /// your own while you're in someone else's. Your levels are yours wherever you play.
+    /// </summary>
+    private void DrawMyDairies(float width)
+    {
+        var all = G.MyDairies;
+        var m = F.NetMember;
+        if (all.Count > 1)
+        {
+            SubHeading("Your dairies", width);
+            Ui.Wrapped("You can belong to several dairies. Everything you do counts for the one you're playing in; walking into another of yours switches to it. Your levels go with you everywhere.", Theme.InkSoft, width);
+            foreach (var d in all)
+            {
+                var now = d.Id == m?.DairyId;
+                var clicked = ListRow(Ico(d.IsOwner ? "coin" : "ribbon"), d.Name, now ? Theme.SageDeep : Theme.Ink,
+                    new[] { new Line((d.IsOwner ? "You own it · " : "") + (d.RoleText.Length > 0 ? d.RoleText : "member") + (now ? " · playing here now" : ""), now ? Theme.SageDeep : Theme.InkSoft) },
+                    now ? Array.Empty<Btn>() : new[] { new Btn($"##switch{d.Id}", "Play here", "sage", true, $"Play in {d.Name} now: its stalls, contract and tank.") }, width);
+                if (clicked == 0) G.SwitchDairy(d);
+            }
+        }
+
+        if (G.OwnedDairy == null)
+        {
+            Gap(6);
+            if (!startingOwn)
+            {
+                if (Ui.Button("##startown", "Start my own dairy", new Vector2(190, 30), "rose", true, $"Register a dairy of your own. You stay in {m?.Dairy ?? "this dairy"} too."))
+                    startingOwn = true;
+            }
+            else
+            {
+                SubHeading("Start my own dairy", width);
+                Ui.Wrapped($"You stay in {m?.Dairy ?? "this dairy"} too, and can switch between them here.", Theme.InkSoft, width);
+                DrawRegisterForm(width, false);
+                if (ImGui.SmallButton("Never mind##startowncancel"))
+                {
+                    startingOwn = false;
+                    G.CancelDraft();
+                }
+            }
+        }
     }
 
     private void DrawContract(float width)
@@ -494,7 +566,7 @@ public sealed partial class MainWindow
         }
 
         ImGui.TextColored(Theme.Ink, $"Your jugs: {Units.Oz(G.Carried, "0.#")}");
-        if (G.Carried <= 0) Ui.Wrapped("Fill jugs at your dairy first (HUD > Kitchen).", Theme.InkSoft, width);
+        if (G.Carried <= 0) Ui.Wrapped("Fill jugs at your dairy first (Roles > Farmer > Kitchen).", Theme.InkSoft, width);
         var leftOz = (int)Math.Ceiling(c.Left);
         if (G.Carried >= 0.05f)
         {
@@ -711,8 +783,9 @@ public sealed partial class MainWindow
                 var p = G.AddRoleProblem(null, r);
                 buttons.Add(new Btn($"##addme{r}", "Add", "sage", p == null, p ?? $"Become a {r} too. You keep your other roles."));
             }
-            else if (G.IsOwner)
-                buttons.Add(new Btn($"##rmme{r}", "Remove", "cream", ImGui.GetIO().KeyShift, "Hold Shift and click. Your progress as a " + r + " is kept."));
+            else if (G.IsOwner || r is "cow" or "bull")
+                buttons.Add(new Btn($"##rmme{r}", "Remove", "cream", ImGui.GetIO().KeyShift,
+                    "Hold Shift and click. Your progress as a " + r + " is kept." + (r is "cow" or "bull" ? " It's dropped in every dairy you're in." : "")));
 
             var clicked = ListRow(null, $"{Roles.Title(r)}{(has ? "  ·  yours" : "")}", has ? RoleColor(r) : Theme.InkSoft,
                 new[] { new Line(desc, Theme.InkSoft) }, buttons, width);
@@ -723,7 +796,7 @@ public sealed partial class MainWindow
             }
         }
 
-        if (!G.IsOwner) Ui.Wrapped("Add cow or bull any time. Farmer is given by a farmer or the owner. Only the owner takes roles away. Your progress in each role is always kept.", Theme.InkSoft, width);
+        Ui.Wrapped("Cow and bull are yours: add or drop them any time, and they hold in every dairy you're in. Farmer is given by a farmer or the owner of each dairy, and only the owner takes it away. Your progress in each role is always kept.", Theme.InkSoft, width);
         Gap(4);
     }
 
@@ -805,7 +878,7 @@ public sealed partial class MainWindow
                 var clicked = ListRow(Ico("coin"), $"{o.DairyName} · {Units.Oz(o.Oz)}", Theme.Ink,
                     new[]
                     {
-                        new Line(here ? $"Pays {o.Coins} + {(int)Math.Round(o.Coins * 0.1)} for coming in person" : $"Pays {o.Coins} coins{(o.DairyPublic ? " (+10% in person)" : "")}", Theme.HoneyDeep),
+                        new Line($"Pays {o.Coins} coins", Theme.HoneyDeep),
                     },
                     new[] { new Btn($"##bfill{o.Id}", "Deliver", "sage", p == null, p) }, width, Math.Min(1f, have / o.Oz), p == null ? Theme.SageDeep : Theme.BlueDeep);
                 if (clicked == 0) G.Deliver(o);

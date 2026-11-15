@@ -36,11 +36,11 @@ public sealed class GuideWindow : Window
             "Owner: runs the dairy. Marks out where it is, sets up stalls, invites farmers, cows and bulls, spends the dairy fund and posts buy orders. The owner can also play any mix of roles.",
             "You can hold several roles at once (a Cow + Farmer + Bull can take care of everyone). Add cow or bull to yourself any time on Dairy > Overview. Farmer is given by a farmer or the owner. Only the owner takes roles away.",
             "Each role has its own level: cow level (milk speed and shop unlocks), farmer level (unlocks bigger farmer tanks) and bull level. Adding or losing a role never loses its progress. The Roles tab has a page for each: cow level and milk quality, farmer level and tank, bull level and seed quality.",
-            "You belong to one dairy at a time. Invites show up on the Dairy tab; accepting one leaves your old dairy.",
+            "You can belong to several dairies at once, and own one of your own as well. Invites show up on the Dairy tab; accepting one keeps your other dairies. Everything you do (milking, stalls, contracts, the tank) counts for the dairy you're playing in: walking into another of your dairies switches to it, or press Play here under Your dairies on the Dairy tab. Your levels and progress are yours and go with you to every dairy. In someone else's dairy and want your own? Press Start my own dairy on the Dairy tab.",
         }),
         new("Your cow", new[]
         {
-            "Cows have four bonuses: Fed (eat food), Watered (drink), Comfy (sit on furniture in your dairy: you get nothing until you've sat 15 minutes, then 30 minutes of Comfy; each further 15 minutes seated adds 30 more, up to an hour) and Happy (have a treat). Each use fills half its bar (30 minutes, up to a full hour), then the bar drains as the bonus wears off. Eating, drinking, resting and treats each have a 15-minute cooldown. Using one again adds time, not a bigger bonus; better food and treats give bigger bonuses. All four at once makes you Contented, +10% more.",
+            "Cows have four bonuses: Fed (eat food), Watered (drink), Comfy (sit on furniture in your dairy: after 10 minutes seated you get 30 minutes of Comfy, and each further 10 minutes adds 30 more, up to an hour; the Comfy bar doesn't drain while you sit) and Happy (have a treat). Each use fills half its bar (30 minutes, up to a full hour), then the bar drains as the bonus wears off. Eating, drinking and treats each have a 15-minute cooldown. Using one again adds time, not a bigger bonus; better food and treats give bigger bonuses. All four at once makes you Contented, +10% more.",
             "Bonuses only count down while you're awake and playing; they wait while you're asleep or logged out. When one runs out you're just plain: it never slows you down or lowers your grade. The newest food or treat of a kind replaces the last.",
             "Care happens inside your dairy (Barn tab): Drink and Rest (sitting on furniture) are free; feed comes from your Pantry.",
             "Pantry tab: everything you own. Eat it, sell back what you don't need for half price, or hide it from your lists.",
@@ -58,12 +58,17 @@ public sealed class GuideWindow : Window
         new("Getting milked", new[]
         {
             "Stalls: sit on one of your dairy's stalls (on the seat itself, not next to it) and the milking machine starts by itself and empties your bottles (and a bull's seed vials). Better stall tiers get more milk out.",
-            "You don't have to get up between milkings: stay seated on the stall and it starts again by itself once half a bottle has refilled. Sitting on the stall counts as resting in your dairy, so you keep the resting milk bonus the whole time (not while milk is being drawn, since nothing fills then). Getting up stops a milking that's going.",
+            "You don't have to get up between milkings: stay seated on the stall and it starts again by itself once half a bottle has refilled. Sitting on the stall counts as sitting in your dairy, so it builds Comfy and holds off dozing. Getting up stops a milking that's going.",
             "One catch: if you sit without doing anything for 30 minutes you start dozing, and a dozing cow's stall doesn't start a new milking. Move, emote or click anything in Eorzea Milkers and it starts again.",
             "Hand milking: a farmer of your dairy stands within 3 yalms, targets you and presses Milk on you (HUD > Herd Care). Their plugin does their milking emote or pose (/beesknees, a sit pose like /groundsit, or whatever they picked) and tells yours they mean you; someone just doing an emote nearby never milks you. Milk then flows until you're empty, or until they stop, step away or change target. If they started with the Milk button, their emote ends by itself once you're empty (with a quick pat); a sit pose is left for them to get up from. Roles > Cow lets you allow any emote or sit pose (the default) or only the ones you list. It gets more out than a basic stall and pays the farmer a share on top of your pay. You can turn off 'Farmers can start milking me without asking' on Roles > Cow: then a farmer pressing Milk on you pops up a request, and milking (and their emote) only starts if you press Allow.",
+            "Breeding needs 10 minutes in the scene: a finish before that doesn't breed. The HUD's bar fills with the time, then shows arousal. Whoever is breeding starts from 0 arousal (their plugin brings it down at the start of the scene, if Corruption's 'Let other plugins control Corruption' is on).",
+            "Guests: in someone else's public dairy you're a guest. You're milked on its stalls and cared for there (eat, drink, Comfy, treats) like at home, with your own grade, pay and xp, and your milk (or seed) goes into that dairy's tank. Its farmers can hand milk, groom and feed you; hand milking always asks you to Allow first.",
+            "Breeding with a bull from another dairy: when one is in a Corruption scene with you, you get a pop-up. If you Allow, their finish counts as a breeding (after 10 minutes in the scene); if not, it doesn't.",
+            "Cow and bull are yours: you add or drop them on the Roles tab and they hold in every dairy you're in. Farmer is given by each dairy.",
+            "Breeding a partner who, like you, is both cow and bull: whoever is doing the breeding targets the other and presses Breed on the HUD (or right-click them > Eorzea Milkers > Breed). Only that way counts; until one of you presses it, finishing doesn't breed either of you. Press it again to cancel. It's used up after you breed them. The Kitchen button moved off the HUD: it's on Roles > Farmer.",
             "Scanning: target another player with Eorzea Milkers (within 15 yalms) and press Scan on the HUD, or right-click them > Eorzea Milkers > Scan. You don't need to be a farmer or owner. It shows their milk and seed, every bonus speeding them up and the total, their bred bonus (who bred them, how much and for how long), pregnancy and Sire, when a cow can be bred again, and a bull's seed output. Only players in a dairy can be scanned, and each picks who can scan them in Settings: anyone (the default), their dairy only, or nobody.",
             "Farmers: the Herd Care button on the HUD (or Roles > Farmer) opens a window with your dairy's cows, how close they are, how full, and which emotes milk each of them.",
-            "The Kitchen (HUD > Kitchen, or Roles > Farmer): farmers fill their jugs from the dairy tank at the top, and bake with milk from their jugs, making ingredients for their pantry. For now that's butter (16 oz of milk makes 1). Ingredients are only used to make other things, and more recipes are coming.",
+            "The Kitchen (Roles > Farmer > Kitchen): farmers fill their jugs from the dairy tank at the top, and bake with milk from their jugs, making ingredients for their pantry. For now that's butter (16 oz of milk makes 1). Ingredients are only used to make other things, and more recipes are coming.",
             "Farmer chores: Groom a cow or bull (in the Herd Care window) you're standing next to for 20 farmer xp; it adds 30 minutes to their Happy bar (once every 15 minutes each). Feed one a treat from the dairy shelf: press Feed and pick which treat (free for you, farmer xp, one treat per cow or bull every 15 minutes, whoever gives it). Clean a stall nobody is sitting on for 25 farmer xp; cows milked there get +10% speed and xp for an hour, and it can be freshened again once half an hour is left. Stalls never get worse than their tier.",
             "Feed from the shelf (Herd Care window): give a cow or bull something your dairy baked, straight from the dairy shelf. It's free for the farmer (nobody is paid for it) and earns 10 farmer xp; cows get the treat's Happy and milk boost, bulls get bull xp. Once every 15 minutes per cow or bull, and never to yourself.",
             "You're paid the moment you're milked: per ounce, by your grade, plus 2% for each dairy level and your looks bonus (Creamery > Your pay).",
@@ -110,13 +115,12 @@ public sealed class GuideWindow : Window
             "Dairy level: members earn dairy XP by milking and caring inside it (up to 300 each a day), and from filled buy orders and contracts. Higher levels give better stall tiers (3 from level 5, 4 from level 12), 2% more pay per level, and put the dairy higher in the Dairies list.",
             "Dairy fund: anyone in the dairy can donate coins. The owner spends them on new stalls and stall upgrades.",
             "Dairy tank: every milking inside the dairy adds that milk to the tank, by grade. Farmers and the owner fill jugs from it.",
-            "The owner HUD shows who's online, who's in the dairy, each cow's milk and grade, the contract and the tank.",
         }),
         new("Jugs and deliveries", new[]
         {
-            "Farmers and the owner fill jugs from the dairy tank (top of the Kitchen window: HUD > Kitchen), inside the dairy, up to what their farmer tank holds: a 32 oz milk pail at first, up to a 256 oz tanker cart (Shop > Farmer tank, unlocked by farmer level).",
+            "Farmers and the owner fill jugs from the dairy tank (top of the Kitchen window: Roles > Farmer > Kitchen), inside the dairy, up to what their farmer tank holds: a 32 oz milk pail at first, up to a 256 oz tanker cart (Shop > Farmer tank, unlocked by farmer level).",
             "Customer orders (Creamery tab): the creamery's customers want milk. Deliver from your jugs for coins and XP; better-paying customers come as your farmer level grows.",
-            "Deliveries: other dairies' buy orders (public or private) are listed on the Creamery tab. Fill them from inside your own dairy with milk in your jugs; it goes straight into the buying dairy's tank. Delivering in person at a public dairy pays 10% more. The creamery's two visitor orders a day per public dairy are still in person.",
+            "Deliveries: other dairies' buy orders (public or private) are listed on the Creamery tab. Fill them from inside your own dairy with milk in your jugs; it goes straight into the buying dairy's tank. The creamery's two visitor orders a day per public dairy are still in person.",
             "Any owner, public or private, can post buy orders (Creamery > Deliveries): the coins are held until a delivery fills it or you cancel.",
         }),
         new("Weekly contract", new[]
@@ -128,13 +132,14 @@ public sealed class GuideWindow : Window
         new("Dairies and the network", new[]
         {
             "Dairies tab: how many people are playing right now, every dairy (public ones show where they are), and this week's top dairies.",
-            "Visit: flags an outdoor dairy on your map, or travels to an in-house dairy with the Lifestream plugin (without it, it copies the address).",
+            "Details (Dairies tab): a dairy's address, owner, what it's looking for and description, its tank (milk and seed) and stalls, and who's there now with roles and levels, members or visiting, and whether each cow can be bred. Players who don't share (scan setting) are only counted.",
+            "Visit: with the Lifestream plugin it travels to a dairy in a house, or to the ward of an outdoor dairy in a residential district (and flags the spot on your map). Other outdoor dairies are flagged on your map. Without Lifestream it copies the address.",
             "You can turn the network off in Settings; the game then runs on its own.",
         }),
         new("Commands and settings", new[]
         {
             "/milkers opens the main window. /milkers hud shows or hides the HUD. /milkers guide opens this guide. /milkers tutorial runs the walkthrough again.",
-            "Settings: HUD, chat echo, sounds and volume, the network, the owner HUD.",
+            "Settings: HUD, chat echo, sounds and volume, the network, who can scan you.",
             "Your save is protected; editing the plugin's files resets progress.",
         }),
     };

@@ -32,14 +32,14 @@ You can hold several roles at once, and each role levels up on its own. Your pro
 | **Owner** | Run the dairy: place stalls, invite people, post buy orders | Start your own dairy |
 | **Bull** | Make seed and get milked (like milk, but much less), breed your dairy's cows with the [Corruption](https://github.com/RaylaPetal/corruption) plugin. *Still in testing: details will change.* | Add it to yourself |
 
-Only the owner can take a role away from someone.
+Cow and bull are yours: you add or drop them, and they hold in every dairy you're in. Farmer is given by each dairy, and only that dairy's owner can take it away.
 
 ---
 
 ## The HUD
 
 - The small HUD shows your bottle (and seed vials for bulls), your grade and what's happening now. Double-click or right-click it to open the main window.
-- Its buttons: **Herd Care** (farmers), **Kitchen** (farmers), and **Scan** while you target another player close by.
+- Its buttons: **Herd Care** (farmers), and while you target another player close by, **Scan**, plus **Breed** if you're both cow and bull and so are they (members of your dairy). The Kitchen is on **Roles → Farmer**.
 - **It only shows while you're in a dairy** (yours, or one you're visiting), or while you're being milked or in a breeding scene. Elsewhere it hides to keep your screen clear. Want it everywhere? Untick **Only while I'm in a dairy** in Settings. `/milkers hud` (or the Settings box) hides it completely.
 
 ---
@@ -47,6 +47,8 @@ Only the owner can take a role away from someone.
 ## Your dairy
 
 - **The public area** is a box you mark out anywhere: a field, a corner of a city, or a room in a house. Visitors can find it and deliver to it in person.
+- **Details:** on the **Dairies** tab, each public dairy (and your own) has a **Details** button: where it is, its owner, what it's looking for and its description, how much milk (and seed) is in its tank, how many stalls it has, and **who's there right now** with their roles and levels (cow, bull, farmer), member or visiting, and whether each cow can be bred. Handy for finding a dairy with a bull. Players whose scan setting is "My dairy only" or "Nobody" are counted but not named.
+- **Finding a dairy:** the **Dairies** tab shows each one's address (for a box outdoors in a residential district, the district and ward). **Visit** uses the [Lifestream](https://github.com/NightmareXIV/Lifestream) plugin to take you there: to the house, or to the ward with the spot flagged on your map. Other outdoor dairies are flagged on your map. Without Lifestream, Visit copies the address.
 - **The private place** (optional) is a second spot just for members, like your home or apartment. Use the whole house, or draw borders around part of it. Everything works there, but visitors never see it.
 - **Stalls** are seats (a chair, bench or bed) that milk whoever sits on them. Put them in either place. The first is free; each one after costs more from the dairy fund (250, 1,000, 2,250, 4,000…). Upgrade them to Wooden, Padded, Velvet and Gilded for faster milking.
 - **Stall markers** (Settings, on by default): a small green dot above each stall, only on your screen, so you can see which seats milk you.
@@ -65,7 +67,7 @@ Only the owner can take a role away from someone.
 - No milk is made while you're logged out.
 
 **Getting milked** (only inside your dairy)
-- **At a stall:** sit on its seat and it starts by itself. You don't need to get up between milkings: stay seated and it starts again once half a bottle has refilled, and sitting there counts as resting, so you keep the resting bonus. (After 30 minutes without doing anything you start dozing and it won't start a new milking until you move, emote or click something.)
+- **At a stall:** sit on its seat and it starts by itself. You don't need to get up between milkings: stay seated and it starts again once half a bottle has refilled, and sitting there builds Comfy like any seat in your dairy. (After 30 minutes without doing anything you start dozing and it won't start a new milking until you move, emote or click something.)
 - **By hand:** a farmer of your dairy stands close, targets you and presses **Milk**. Hand milking is faster, pays more and makes up a lost grade.
 - You're **paid the moment you're milked**, by grade: C 6, B 8, A 10, S 12, S+ 14 coins an ounce, plus a bonus for your dairy's level.
 - **Daily earnings taper off:** everything the game pays you in a day (milking, farmer shares, orders, goals, awards) counts together. The first 3,000 coins are paid in full, then half up to 8,000, then a tenth. XP is never reduced, coins from other players don't count, and it resets each day.
@@ -79,7 +81,7 @@ Only the owner can take a role away from someone.
 **Bonuses** (the Barn tab)
 - **Fed** (food), **Watered** (drink), **Comfy** (rest) and **Happy** (treats) each make milk come faster.
 - Each use adds 30 minutes to that bar, up to an hour, and each has a 15-minute cooldown. Better food and treats give bigger bonuses.
-- **Comfy:** sit on furniture in your dairy (a stall seat counts); there's no button. You get no Comfy until you've stayed seated **15 minutes**, then it adds 30 minutes to the bar. Keep sitting and every further 15 minutes adds another 30, up to a full hour. Get up sooner and that sit gives nothing. The Care row shows how long is left.
+- **Comfy:** sit on furniture in your dairy (a stall seat counts); there's no button. You get no Comfy until you've stayed seated **10 minutes**, then it adds 30 minutes to the bar. Keep sitting and every further 10 minutes adds another 30, up to a full hour. Get up sooner and that sit gives nothing. The Comfy bar doesn't drain while you sit, and the bar and HUD show how long is left. Sitting itself doesn't speed up milk; Comfy does.
 - **All four at once** makes you **Contented**, a bit faster still.
 - Bars only drain while you're awake and playing. Running out never hurts you; you're just back to normal speed.
 
@@ -89,10 +91,10 @@ Only the owner can take a role away from someone.
 
 ## Playing as a farmer
 
-- **Hand milking:** press **Herd Care** on the HUD (or Roles → Farmer), stand near a cow, press **Target**, then **Milk**. Your character does the milking emote (/beesknees by default, or one you choose) until the cow is empty, then stops by itself. You earn 25% of what the cow is paid, on top of their pay.
+- **Hand milking:** press **Herd Care** on the HUD (or Roles → Farmer), stand near a cow, press **Target**, then **Milk**. Your character does the milking emote (/beesknees by default, or one you choose) until the cow is empty, then stops by itself. You earn 25% of what the cow is paid, on top of their pay (10% more for a cow wearing the Champion's ribbon).
 - **Your own animation:** if you use Penumbra, pick an animation mod and its options with **Animation…** in the Herd Care window. It switches on only while you milk.
 - **Chores:** **Groom** a cow or bull (they get 30 minutes of Happy), **Feed** a cow or bull a treat from the dairy shelf (press Feed and pick which; free, but not to yourself), and **Clean** an empty stall (cows milked there get a bonus for an hour). All earn farmer XP.
-- **The Kitchen** (the Kitchen button on the HUD): bake with milk from your jugs. Recipes unlock with your farmer level:
+- **The Kitchen** (the Kitchen button on **Roles → Farmer**): bake with milk from your jugs. Recipes unlock with your farmer level:
   - **Butter** (level 1): 16 oz of milk → 1 butter.
   - **Butter cookies** (level 3): 1 butter + 8 oz of milk → 3 cookies, for the dairy shelf.
   - **Flour** (level 6): 2 wheat grain (from the Shop) → 1 flour.
@@ -102,7 +104,7 @@ Only the owner can take a role away from someone.
 - **Jugs:** fill them from the dairy tank at the top of the **Kitchen** window. Bigger farmer tanks unlock as your farmer level grows.
 - **Deliveries:**
   - **Customer orders**, with a new one every 20 minutes.
-  - **Other dairies' buy orders**, public or private. Fill them from inside your own dairy, or in person at a public dairy for **+10%**.
+  - **Other dairies' buy orders**, public or private. Fill them from inside your own dairy, or in person at a public dairy (same pay).
   - **The weekly contract** (500 oz at dairy level 1, up to 1,500), delivered in person at any **Grand Creamery**. **Dairy → Contract** shows where they are. Fill it for the full reward; if it isn't full by Monday, your dairy still gets the share it delivered.
 
 ---
@@ -112,19 +114,36 @@ Only the owner can take a role away from someone.
 Breeding is new and still being tuned: numbers and details will change.
 - **Bulls** make seed and get milked, the way cows make milk, with the same four bonuses. Seed fills small vials and pays ten times milk's price per ounce. Add the Bull role to yourself on the Roles tab.
 - **Breeding needs** the [Corruption](https://github.com/RaylaPetal/corruption) plugin (0.3.5 or newer) and Cummy, for both of you. The bull's Corruption needs **Let other plugins control Corruption** turned on (Settings → Other plugins). The cow's Cummy blocks always apply.
-- **When a bull of your dairy finishes in a Corruption scene with a cow of your dairy, she's bred:** +5% milk for 30 minutes (less if the bull's seed output is low that day). Once per scene, and a cow can be bred again 20 minutes after the last time. The bull gets up to 40 bull xp; after 20 breedings in a day his seed output (and xp) drops, resetting at midnight UTC.
-- **Who breeds whom** follows what Corruption says your bodies can do (who can breed, who can carry).
-- **Both cow and bull?** With a partner who's also both, a pop-up asks **Who breeds this scene?** before you start: pick **I breed them**, **They breed me**, or **Not now**. Only that way counts, and finishing doesn't breed anyone until one of you picks. Each new scene asks again.
-- **Ready again:** when a cow's 30-minute bred bonus runs out, everyone with the HUD in the dairy she's standing in gets a small pop-up with a soft bell, and so does she.
+- **A breeding needs 10 minutes in the scene:** a finish before that doesn't breed (the HUD's bar fills up with the time, then shows arousal). Whoever is breeding starts from 0 arousal: their plugin brings it down at the start, if their Corruption has **Let other plugins control Corruption** on.
+- **When a bull of your dairy finishes in a Corruption scene with a cow of your dairy, she's bred:** +5% milk for 30 minutes (less if the bull's seed output is low that day; 45 minutes with the Champion's ribbon). Once per scene, and a cow can be bred again 20 minutes after the last time. The bull gets up to 40 bull xp; after 20 breedings in a day his seed output (and xp) drops, resetting at midnight UTC.
+- **Who breeds whom** in Eorzea Milkers follows your roles in the dairy: a bull can breed a cow. Whether it can become a **pregnancy** is Corruption's: its Pregnancy settings (can carry, can breed) must allow it. If they don't, the scene note says so; the bred bonus and bull xp still count.
+- **Both cow and bull?** With a partner who's also both (the **Breed** button only shows then), whoever is doing the breeding targets the other and presses **Breed** on the HUD (or right-click them → Eorzea Milkers → Breed). Only that way counts, and finishing doesn't breed anyone until one of you has pressed it. Press it again to cancel. It's used up once you've bred them, so press it again next time. If you both press it, neither counts until one of you cancels.
+- **Bred bonus over:** when a cow's bred bonus runs out, everyone with the HUD in the dairy she's standing in gets a small pop-up with a soft bell ("Rayla's bred bonus has run out"), and so does she. (She can be bred again 20 minutes after the last time, so by then she's ready.)
+- **Bull Shop items** (unlocked by bull level, only for bulls; a cow who's also a bull gets both sets): Nose ring (5, +3% seed pay), Stud book (10, 25 breedings a day at full output), Brass horn caps (20, +5% seed pay), Prize stud (25, +25% bull xp from breeding), Breeding pen (35, each breeding gives your dairy xp), Herd sire (50, seed fills 15% faster), Champion bull sash (75, +10% seed pay and breeding output never below 60%), Legendary stud (100, 30 breedings a day at full output).
+- **Bull foods** (Shop, by bull level): Iron oats (8: fills Fed and Watered at once), Bull's salt lick (12: Happy and +25% bull xp for 30 min), Seed tea (15: your next seed milking gives 25% more), Stud draught (20: your next breeding gives the cow 50% more bred bonus, 15 min longer).
+- **Cow-and-bull foods** (for those who are both; unlocked by the lower of the two levels): Twin blend (10: Fed and Happy at once, and a 30 min boost to milk and seed), Velvet & brass bonbon (15: Happy and +20% cow and bull xp for 30 min), Balance tea (20: 2 hours off your milking time today so you tire later; once a day).
 - **Pregnancy** comes from Corruption (a bull always finishes inside, so it rolls for conception). Once it's confirmed, a pregnant cow gives +5%, +10% and +15% milk by trimester until the birth. Roles → Cow shows the trimester, due date, Sire and past births.
-- During a scene the HUD shows who you're with and your arousal; the main window says who breeds whom.
+- During a scene the HUD shows who you're with, and its bar fills with the 10-minute breeding timer (then shows arousal); the main window says who breeds whom and why.
 
 ---
 
 ## Joining a dairy
 
 - Get **invited** by the owner or a farmer, or **apply**: on the **Dairies** tab, dairies that are looking for members show what they want (Cows, Farmers, Bulls) and an **Apply** button. Pick your roles, add a short note and send it.
-- **You can only be in one dairy at a time.** You can apply to several, but when one accepts you, your other applications are withdrawn. To move to another dairy, leave yours first (**Dairy** tab).
+- **You can belong to several dairies at once**, and own one of your own as well. Joining another keeps the ones you're in; applications to other dairies stay open.
+- **One dairy at a time is the one you're playing in:** milking, stalls, the contract, the tank and dairy XP all count for it. Walking into another of your dairies switches to it, or press **Play here** under **Your dairies** on the Dairy tab.
+- **Your levels are yours:** cow, bull and farmer levels and your progress go with you to every dairy. Cow and bull hold everywhere; farmer only where a dairy made you one.
+- In someone else's dairy and want your own? Press **Start my own dairy** on the Dairy tab. **Leave dairy** only leaves the one you're playing in.
+- **Roles across dairies:** cow and bull are **yours**: you add or drop them yourself (Roles tab), and they hold in every dairy you're in. An owner can't take them away (they can remove you from their dairy instead). **Farmer** is a job each dairy gives you, so you're only a farmer where you've been made one.
+
+---
+
+## Visiting public dairies (guests)
+
+- In someone else's **public** dairy you're a **guest**. You need to be a cow or bull (in any dairy of yours).
+- You can be **milked on its stalls** and cared for there (eat, drink, Comfy, treats) like at home, with your own grade, pay and XP. Your milk (or seed) goes into **that dairy's tank**.
+- Its farmers can hand milk, groom and feed you. **Hand milking always asks you to Allow first.**
+- **Breeding with a bull from another dairy:** when one is in a Corruption scene with you, you get a pop-up. If you **Allow**, their finish counts as a breeding (after the usual 10 minutes in the scene); if not, it doesn't.
 - If a dairy says no, you can apply to it again after 3 days.
 
 ---
@@ -140,7 +159,6 @@ Target someone with Eorzea Milkers and press **Scan** on the HUD (or right-click
 - Invite people with **right-click → Eorzea Milkers**, or on **Dairy → Overview**.
 - Take **applications**: in **Members → Applications**, tick what you're looking for, then accept or deny. You can let your farmers answer applications too (off unless you turn it on).
 - **Manage members** shows everyone's levels, milk, quality, how much they've given and when they were last online.
-- The **owner HUD** shows who's online, who's in the dairy and how full each cow is.
 - Post **buy orders** to bring milk into your tank from other dairies. This works even if your dairy is private.
 - Fill the **weekly contract** together for dairy XP and fund coins.
 
@@ -152,7 +170,10 @@ Target someone with Eorzea Milkers and press **Scan** on the HUD (or right-click
 - **Cow levels** make milk faster (up to level 50) and unlock feed and upgrades. **Farmer levels** unlock bigger tanks and better orders.
 - **Daily goals** (Progress tab): four for cows and four for farmers, with a bonus for finishing a set.
 - **Awards:** collect them for coins.
-- **The Shop** sells feed, treats, bottles, comfort upgrades and things to wear.
+- **The Shop** sells feed, treats, bottles, comfort upgrades and things to wear, and only shows what's for your roles. Cow items (and wearables, which raise **milk** pay) are for cows; bull items and foods (wearables raise **seed** pay) unlock by bull level and are for bulls (see Bulls and breeding). Bottles, bedding, troughs and other comfort items are for both.
+- **Comfort items:** Plush bedding (Comfy +7% instead of +4%, Comfy bar drains half as fast), Lavender bedding (Comfy +3% more, Happy bar drains half as fast), Silk cushion (Comfy bar drains 15% slower on top), Bell collar (Happy drains a little slower), Clean trough (Watered lasts half again as long), Endless spring (Watered drains 20% slower).
+- **Champion's ribbon** (cow level 28): farmers who hand milk you earn 10% more; being bred lasts 45 minutes; pregnancy gives 5% more milk.
+- The main window shows your Eorzea Milkers version at the bottom of the left side (handy when asking for help).
 
 ---
 

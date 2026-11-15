@@ -206,17 +206,36 @@ await test("scan: anyone can see a member's bonuses and breeding, unless they sa
   await beat(carl, { status: { milk: 3.5, cap: 8, seed: 60 } });
 });
 
+await test("who's here: a public dairy lists the players there with roles and levels", async () => {
+  const d = (await call(alice, "GET", "/v1/dairies")).data.dairies.find(x => x.name === "Rose Hollow");
+  await beat(carl, { houseId: HOUSE, status: { milk: 3, cap: 8, level: 7, bullLevel: 3, farmerLevel: 1 } });
+  let r = await call(dana, "GET", `/v1/dairies/${d.id}/here`);
+  assert.equal(r.status, d.isPublic ? 200 : 403, JSON.stringify(r.data) + " " + d.id);
+  r = await call(alice, "GET", `/v1/dairies/${d.id}/here`);
+  assert.equal(r.status, 200, JSON.stringify(r.data));
+  const c = r.data.people.find(p => p.name === "Carl Bull");
+  assert.ok(c, JSON.stringify(r.data));
+  assert.equal(c.member, true);
+  assert.ok(c.bullLevel >= 1);
+  await beat(carl, { houseId: HOUSE, status: { milk: 3, cap: 8, scan: "nobody" } });
+  r = await call(alice, "GET", `/v1/dairies/${d.id}/here`);
+  assert.equal(r.data.people.find(p => p.name === "Carl Bull"), undefined, "scan nobody: not named");
+  assert.ok(r.data.hidden >= 1);
+  await beat(carl, { houseId: HOUSE, status: { milk: 3, cap: 8, scan: "anyone" } });
+});
+
 await test("several roles at once: self-add cow/bull, farmer is given, only the owner takes away", async () => {
   let r = await call(carl, "POST", `/v1/members/${carl.id}/roles`, { add: "cow" });
   assert.deepEqual(r.data.roles, ["cow", "bull"], "anyone can add cow to themselves");
   assert.equal((await call(carl, "POST", `/v1/members/${carl.id}/roles`, { add: "farmer" })).status, 403, "can't make yourself a farmer");
-  assert.equal((await call(carl, "POST", `/v1/members/${carl.id}/roles`, { remove: "cow" })).status, 403, "only the owner takes roles away");
+  assert.equal((await call(carl, "POST", `/v1/members/${carl.id}/roles`, { remove: "farmer" })).status, 403, "only the owner takes farmer away");
   assert.deepEqual((await call(bob, "POST", `/v1/members/${carl.id}/roles`, { add: "farmer" })).data.roles, ["cow", "farmer", "bull"], "a farmer gives farmer");
   assert.deepEqual((await beat(carl)).data.membership.roles, ["cow", "farmer", "bull"]);
   assert.equal((await call(bob, "POST", `/v1/members/${carl.id}/roles`, { remove: "farmer" })).status, 403);
   r = await call(alice, "POST", `/v1/members/${carl.id}/roles`, { remove: "farmer" });
-  r = await call(alice, "POST", `/v1/members/${carl.id}/roles`, { remove: "cow" });
-  assert.deepEqual(r.data.roles, ["bull"]);
+  assert.equal((await call(alice, "POST", `/v1/members/${carl.id}/roles`, { remove: "cow" })).status, 400, "cow is theirs: the owner can't take it");
+  r = await call(carl, "POST", `/v1/members/${carl.id}/roles`, { remove: "cow" });
+  assert.deepEqual(r.data.roles, ["bull"], "they drop their own cow");
   // The owner gives themselves any role and can take it back
   assert.deepEqual((await call(alice, "POST", `/v1/members/${alice.id}/roles`, { add: "farmer" })).data.roles, ["cow", "farmer"]);
   assert.deepEqual((await call(alice, "POST", `/v1/members/${alice.id}/roles`, { remove: "farmer" })).data.roles, ["cow"]);
@@ -456,14 +475,40 @@ await test("owner changes a member's role; owner can't leave their own dairy", a
   assert.equal((await call(alice, "POST", "/v1/members/leave")).status, 400);
 });
 
-await test("joining a new dairy leaves the old one; owners can't join others", async () => {
+await test("several dairies: joining another keeps the first, owners can join others, standing in one plays in it", async () => {
   await call(erin, "PUT", "/v1/dairy", dairyBody({ houseId: HOUSE2, name: "Erin Acres", ownerName: "Erin", role: "farmer" }));
   const inv = await call(erin, "POST", "/v1/invites", { toHash: bob.hash, toName: "Bob Hand", role: "cow" });
   const a = await call(bob, "POST", `/v1/invites/${inv.data.id}/accept`, { charHash: bob.hash, name: "Bob Hand" });
-  assert.equal(a.data.left, "Rose Hollow");
-  assert.equal((await beat(bob)).data.membership.dairy, "Erin Acres");
+  assert.equal(a.data.left, null, "nobody leaves anything");
+  let hb = (await beat(bob)).data;
+  assert.equal(hb.membership.dairy, "Erin Acres", "plays in the new one");
+  assert.deepEqual(hb.dairies.map(d => d.name).sort(), ["Erin Acres", "Rose Hollow"]);
+  assert.equal((await call(bob, "POST", "/v1/dairy/active", { id: dairy })).status, 200);
+  assert.equal((await beat(bob)).data.membership.dairy, "Rose Hollow", "switched back");
+  assert.equal((await beat(bob, { houseId: HOUSE2 })).data.membership.dairy, "Erin Acres", "standing in a dairy of yours plays in it");
+  assert.equal((await call(bob, "POST", "/v1/dairy/active", { id: "ffffffffffffffffffffffff" })).status, 404);
+  // Cow and bull follow you: Bob became a bull in Erin Acres, so he's one in Rose Hollow too; farmer stays per dairy
+  await call(bob, "POST", `/v1/members/${bob.id}/roles`, { add: "bull" });
+  const roseBob = (await call(alice, "GET", "/v1/dairy/mine")).data.members.find(m => m.name === "Bob Hand");
+  assert.ok(roseBob.roles.includes("bull"), "bull everywhere");
+  // Both still list Bob
+  const rose = (await call(alice, "GET", "/v1/dairy/mine")).data.members.map(m => m.name);
+  assert.ok(rose.includes("Bob Hand"));
+  // An owner joins someone else's dairy too
   const inv2 = await call(erin, "POST", "/v1/invites", { toHash: alice.hash, toName: "Alice Cow", role: "cow" });
-  assert.equal((await call(alice, "POST", `/v1/invites/${inv2.data.id}/accept`, { charHash: alice.hash })).status, 409);
+  assert.equal((await call(alice, "POST", `/v1/invites/${inv2.data.id}/accept`, { charHash: alice.hash })).status, 200);
+  hb = (await beat(alice)).data;
+  assert.equal(hb.membership.dairy, "Erin Acres");
+  assert.equal(hb.membership.isOwner, false);
+  // Leaving only leaves the one you're playing in; your own dairy stays
+  assert.equal((await call(alice, "POST", "/v1/members/leave")).status, 200);
+  hb = (await beat(alice)).data;
+  assert.equal(hb.membership.dairy, "Rose Hollow");
+  assert.equal(hb.membership.isOwner, true);
+  // Back to how the later tests expect it: Bob only in Erin Acres
+  await call(bob, "POST", "/v1/dairy/active", { id: dairy });
+  assert.equal((await call(bob, "POST", "/v1/members/leave")).status, 200);
+  assert.equal((await beat(bob)).data.membership.dairy, "Erin Acres");
 });
 
 await test("public dairy shows its address and who's there", async () => {
@@ -504,7 +549,7 @@ await test("delivery pays the seller and gives the owner the milk, once", async 
   assert.equal((await call(carl, "POST", `/v1/orders/${orderId}/fill`, { grade: 2, houseId: HOUSE })).status, 409);
   const d = (await call(dana, "POST", "/v1/inbox/claim")).data.items;
   assert.equal(d[0].kind, "payout");
-  assert.equal(d[0].coins, 220, "in person pays 10% more");
+  assert.equal(d[0].coins, 200, "in person pays the same as from your own dairy");
   assert.equal((await call(dana, "POST", "/v1/inbox/claim")).data.items.length, 0);
   const a = (await call(alice, "POST", "/v1/inbox/claim")).data.items;
   assert.ok(a.some(i => i.kind === "notice"), "owner is told");
@@ -658,7 +703,7 @@ await test("applications: apply, answer, cooldown, and farmers only when allowed
   assert.ok((await call(cal, "GET", "/v1/dairies")).data.applications.some(a => a.status === "denied" && a.retryAt > 0));
 });
 
-await test("applications: accepting one withdraws the others; withdraw your own", async () => {
+await test("applications: accepting one keeps the others open (you can join several); withdraw your own", async () => {
   const o1 = player("Olive One"), o2 = player("Otto Two"), dee = player("Dee Applicant");
   for (const p of [o1, o2, dee]) await beat(p);
   await call(o1, "PUT", "/v1/dairy", dairyBody({ houseId: "5550001112224", name: "Dairy One", ownerName: "Olive One" }));
@@ -671,8 +716,10 @@ await test("applications: accepting one withdraws the others; withdraw your own"
   assert.equal((await call(dee, "DELETE", `/v1/applications/${a2.data.id}`)).status, 200);
   const a3 = await call(dee, "POST", "/v1/applications", { dairyId: id2, roles: ["cow"], name: "Dee Applicant" });
   assert.equal((await call(o1, "POST", `/v1/dairy/applications/${a1.data.id}/accept`, {})).status, 200);
-  assert.equal((await call(o2, "GET", "/v1/dairy/applications")).data.applications.length, 0);   // withdrawn
-  assert.equal((await call(o2, "POST", `/v1/dairy/applications/${a3.data.id}/accept`, {})).status, 404);
+  assert.equal((await call(o2, "GET", "/v1/dairy/applications")).data.applications.length, 1, "still open");
+  assert.equal((await call(o2, "POST", `/v1/dairy/applications/${a3.data.id}/accept`, {})).status, 200);
+  assert.deepEqual((await beat(dee)).data.dairies.map(d => d.name).sort(), ["Dairy One", "Dairy Two"]);
+  assert.equal((await call(dee, "POST", "/v1/applications", { dairyId: id1, roles: ["cow"], name: "Dee Applicant" })).status, 409, "already in it");
 });
 
 await test("weekly contract: an unfinished week still pays for the share delivered", async () => {
@@ -692,6 +739,50 @@ await test("weekly contract: an unfinished week still pays for the share deliver
   // Paid once
   const again = (await call(o, "GET", "/v1/dairy/mine")).data.progress;
   assert.equal(again.fund, after.fund);
+});
+
+await test("guests: milked in someone else's public dairy, their milk goes into that dairy's tank", async () => {
+  const hana = player("Hana Host"), gus = player("Gus Guest");
+  const H3 = "1234567890333", H4 = "1234567890444";
+  await beat(hana, { name: "Hana Host", worldName: "Gilgamesh" });
+  await beat(gus, { name: "Gus Guest", worldName: "Gilgamesh" });
+  assert.equal((await call(hana, "PUT", "/v1/dairy", dairyBody({ houseId: H3, name: "Open Barn", isPublic: true, ownerName: "Hana Host", role: "farmer" }))).status, 200);
+  assert.equal((await call(gus, "PUT", "/v1/dairy", dairyBody({ houseId: H4, name: "Gus Farm", isPublic: false, ownerName: "Gus Guest", role: "cow" }))).status, 200);
+  await call(hana, "POST", "/v1/stalls", { name: "Seat", x: 1, y: 2, z: 3 });
+
+  // Gus visits Hana's public dairy: he's a guest, with its stalls and online farmers, and his milk fills Hana's tank
+  await beat(hana, { houseId: H3, status: { milking: "Gus Guest" } });
+  const r = (await beat(gus, { houseId: H3, pumped: [6], awake: true })).data;
+  assert.equal(r.here.guest, true);
+  assert.equal(r.here.stalls.length, 1);
+  assert.equal(r.here.farmers[0].name, "Hana Host");
+  assert.equal(r.here.farmers[0].milking, "Gus Guest");
+  assert.equal(r.pumped, 6);
+  assert.equal((await call(hana, "GET", "/v1/dairy/mine")).data.progress.tank.total, 6);
+  assert.equal((await call(gus, "GET", "/v1/dairy/mine")).data.progress.tank.total, 0, "not his own dairy's tank");
+  assert.ok((await call(hana, "GET", "/v1/dairy/mine")).data.guests.some(g => g.name === "Gus Guest"), "the host's farmers see the guest");
+
+  // Hana's farmers can hand milk the guest: the farmer's share is paid as usual
+  const pay = await call(gus, "POST", "/v1/handpay", { farmer: "Hana Host", world: "Gilgamesh", oz: 10, grade: 0 });
+  assert.equal(pay.status, 200, JSON.stringify(pay.data));
+  assert.ok(pay.data.coins > 0);
+
+  // Hana (a farmer) can groom the guest too
+  assert.equal((await call(hana, "POST", "/v1/groom", { cow: gus.id })).status, 200);
+
+  // A private dairy has no guests
+  await call(hana, "PUT", "/v1/dairy", dairyBody({ houseId: H3, name: "Open Barn", isPublic: false, ownerName: "Hana Host", role: "farmer" }));
+  const r2 = (await beat(gus, { houseId: H3, pumped: [6], awake: true })).data;
+  assert.ok(!r2.here?.guest);
+  assert.equal(r2.pumped, 0);
+
+  // Looking a player up: their roles, and whom they allowed to breed them
+  await beat(gus, { status: { milk: 1, cap: 8, breedOk: "Bram Bull" } });
+  const look = (await call(hana, "GET", "/v1/player?name=Gus%20Guest&world=Gilgamesh")).data;
+  assert.equal(look.found, true);
+  assert.deepEqual(look.roles, ["cow"]);
+  assert.equal(look.breedOk, "Bram Bull");
+  assert.equal((await call(hana, "GET", "/v1/player?name=Nobody%20Here&world=Gilgamesh")).data.found, false);
 });
 
 console.log(`\n${passed} passed`);

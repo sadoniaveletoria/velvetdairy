@@ -24,7 +24,7 @@ public sealed class MilkAskWindow : Window
         PositionCondition = ImGuiCond.Appearing;
     }
 
-    public override bool DrawConditions() => G.MilkAsk != null && plugin.Config.Farm.Confirmed18;
+    public override bool DrawConditions() => (G.MilkAsk != null || G.BreedAsk != null) && plugin.Config.Farm.Confirmed18;
 
     public override void PreDraw()
     {
@@ -37,6 +37,19 @@ public sealed class MilkAskWindow : Window
 
     public override void Draw()
     {
+        if (G.BreedAsk is { } bull)
+        {
+            // A bull from another dairy, in a Corruption scene with you
+            ImGui.TextColored(Theme.Ink, $"{bull} wants to breed you.");
+            ImGui.TextColored(Theme.InkSoft, "They're a bull from another dairy. If you allow it, their finish counts as a breeding\n(and always inside, so Corruption rolls for conception).");
+            ImGui.Spacing();
+            if (Ui.Button("##breedallow", "Allow", new Vector2(130, 32), "rose", true, "Let them breed you this scene.")) G.AnswerBreedAsk(true);
+            ImGui.SameLine();
+            if (Ui.Button("##breednot", "No", new Vector2(130, 32), "cream", true, "Their finish won't count as a breeding.")) G.AnswerBreedAsk(false);
+            if (G.MilkAsk == null) return;
+            ImGui.Separator();
+        }
+
         if (G.MilkAsk is not { } f) return;
         ImGui.TextColored(Theme.Ink, $"{f.Name} wants to milk you.");
         ImGui.TextColored(Theme.InkSoft, $"You have {Units.Oz(plugin.Config.Farm.Cow.Milk, "0.#")}. They're doing their Milk emote on you.");
@@ -45,6 +58,6 @@ public sealed class MilkAskWindow : Window
         ImGui.SameLine();
         if (Ui.Button("##asknot", "Not now", new Vector2(130, 32), "cream", true, "They can ask again in 2 minutes.")) G.AnswerMilkAsk(false);
         ImGui.Spacing();
-        ImGui.TextColored(Theme.InkSoft, "Roles > Cow: turn on \"start without asking\" to skip this.");
+        ImGui.TextColored(Theme.InkSoft, G.Where.Guest ? "You're a guest here: farmers of this dairy always ask first." : "Roles > Cow: turn on \"start without asking\" to skip this.");
     }
 }

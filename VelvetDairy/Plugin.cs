@@ -40,7 +40,6 @@ public sealed class Plugin : IDalamudPlugin
     public CorruptionLink Corruption { get; }
     public Companions Companions { get; }
     public NetClient Net { get; private set; }
-    public OwnerHudWindow OwnerHud { get; }
     public MembersWindow Members { get; }
     public ApplyWindow Apply { get; }
     public GuideWindow Guide { get; }
@@ -52,8 +51,8 @@ public sealed class Plugin : IDalamudPlugin
     public TutorialWindow Tutorial { get; }
     public HelperNoticeWindow Helpers { get; }
     public NoticeWindow Notices { get; }
-    public BreedChoiceWindow BreedChoice { get; }
     public ScanWindow Scanner { get; }
+    public WhoHereWindow WhoHere { get; }
     public CharacterClaimWindow Claim { get; }
 
     /// <summary>This build's version, sent to the network so old versions can be told to update.</summary>
@@ -110,8 +109,6 @@ public sealed class Plugin : IDalamudPlugin
         Hud = new HudWindow(this, art, fonts);
         windowSystem.AddWindow(MainWindow);
         windowSystem.AddWindow(Hud);
-        OwnerHud = new OwnerHudWindow(this, art, fonts);
-        windowSystem.AddWindow(OwnerHud);
         Members = new MembersWindow(this, fonts);
         windowSystem.AddWindow(Members);
         Apply = new ApplyWindow(this, fonts);
@@ -134,10 +131,10 @@ public sealed class Plugin : IDalamudPlugin
         windowSystem.AddWindow(Helpers);
         Notices = new NoticeWindow(this, fonts);
         windowSystem.AddWindow(Notices);
-        BreedChoice = new BreedChoiceWindow(this, fonts);
-        windowSystem.AddWindow(BreedChoice);
         Scanner = new ScanWindow(this, fonts);
         windowSystem.AddWindow(Scanner);
+        WhoHere = new WhoHereWindow(this, fonts);
+        windowSystem.AddWindow(WhoHere);
         Claim = new CharacterClaimWindow(this, fonts);
         claimSystem.AddWindow(Claim);
         contextMenu = new ContextMenuHandler(this);
@@ -354,6 +351,15 @@ public sealed class Plugin : IDalamudPlugin
         Config.Farm = save;
         Config.EnsureDefaults();
         devCache = null;
+
+        // Shop items that were taken out: their coins come back
+        foreach (var (id, gone, price) in new[] { ("heifer", "Prize heifer sash", 1600), ("deeprest", "Deep rest", 900) })
+            if (Config.Farm.Upgrades.Remove(id))
+            {
+                Config.Farm.Coins += price;
+                Diag.Info("save", $"{gone} was taken out of the Shop: refunded {price} coins");
+                ChatGui.Print($"[Eorzea Milkers] {gone} was taken out of the Shop, so you got its {price} coins back.");
+            }
 
         // Name change or world transfer: the save follows the character (the next heartbeat updates your dairy's roster)
         var me = ObjectTable.LocalPlayer;

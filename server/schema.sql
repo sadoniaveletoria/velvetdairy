@@ -50,6 +50,31 @@ CREATE TABLE IF NOT EXISTS members (
 );
 CREATE INDEX IF NOT EXISTS members_dairy ON members(dairy_id);
 
+-- A player can belong to several dairies (and own one): one row per player and dairy. Replaces members (one dairy per
+-- player), whose rows are copied over once.
+CREATE TABLE IF NOT EXISTS memberships (
+  install    TEXT NOT NULL,
+  dairy_id   TEXT NOT NULL,
+  role       TEXT NOT NULL,               -- roles in this dairy: farmer, cow, bull (comma list), or none (owner only)
+  name       TEXT NOT NULL DEFAULT '',
+  world_name TEXT NOT NULL DEFAULT '',
+  status     TEXT NOT NULL DEFAULT '',    -- the player's shared status (the same in every dairy of theirs)
+  joined     INTEGER NOT NULL,
+  PRIMARY KEY (install, dairy_id)
+);
+CREATE INDEX IF NOT EXISTS memberships_dairy ON memberships(dairy_id);
+CREATE TABLE IF NOT EXISTS schema_flags (name TEXT PRIMARY KEY);
+INSERT OR IGNORE INTO memberships (install, dairy_id, role, name, world_name, status, joined)
+  SELECT install, dairy_id, role, name, world_name, status, joined FROM members
+  WHERE NOT EXISTS (SELECT 1 FROM schema_flags WHERE name = 'memberships');
+INSERT OR IGNORE INTO schema_flags (name) VALUES ('memberships');
+
+-- The dairy each player is playing in now (switched to, or last stood in)
+CREATE TABLE IF NOT EXISTS active_dairy (
+  install  TEXT PRIMARY KEY,
+  dairy_id TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS invites (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
   dairy_id   TEXT NOT NULL,

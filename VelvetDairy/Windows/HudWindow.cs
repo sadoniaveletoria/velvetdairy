@@ -17,11 +17,11 @@ public sealed class HudWindow : Window
     private FarmSave F => plugin.Config.Farm;
     private DairyGame G => plugin.Game;
 
-    private static readonly Vector2 HudSize = new(330, 168);
+    private static readonly Vector2 HudSize = new(360, 176);
     private const float ButtonRow = 38f;   // farmers get a row of buttons under the card: Herd Care and Kitchen
 
     private bool ShowHandMilk => G.IsFarmer;
-    private bool ShowKitchen => G.CanCarry;
+    private bool ShowKitchen => false;   // the Kitchen is on Roles > Farmer; the HUD keeps Herd Care, Scan and Breed
 
     /// <summary>Targeting another player close by (with the network on): a Scan button for them.</summary>
     private Dalamud.Game.ClientState.Objects.SubKinds.IPlayerCharacter? ScanTarget
@@ -36,6 +36,10 @@ public sealed class HudWindow : Window
     }
 
     private bool ShowButtons => ShowHandMilk || ShowKitchen || ScanTarget != null;
+
+    /// <summary>The target is a cow of your dairy and you're a bull: a Breed button for them.</summary>
+    private bool ShowBreed(Dalamud.Game.ClientState.Objects.SubKinds.IPlayerCharacter? pc) =>
+        pc != null && G.CanBreedPlayer(pc.Name.TextValue, pc.HomeWorld.ValueNullable?.Name.ExtractText() ?? "");
 
     public HudWindow(Plugin plugin, Art art, Fonts fonts)
         : base("Eorzea Milkers HUD##VelvetDairyHud",
@@ -139,7 +143,7 @@ public sealed class HudWindow : Window
         var tick = G.LastXpTick;
         var age = G.Now - tick.At;
         if (tick.Amount > 0 && age < 3)
-            Ui.Text(dl, fonts.Small, $"+{tick.Amount} xp", bmin + new Vector2(bh / 2 + 2, bh * 0.25f - (float)age * 10f),
+            Ui.Text(dl, fonts.Small, $"+{tick.Amount} xp", bmin + new Vector2(bh / 2 + 2, bh * 0.42f - (float)age * 10f),
                 Theme.Alpha(Theme.HoneyDeep, (float)(1 - age / 3)));
 
         // Milk and grade
@@ -149,7 +153,12 @@ public sealed class HudWindow : Window
         Ui.Text(dl, fonts.Heading, amountText, new Vector2(x, o.Y + 18), Theme.Ink);
         var mw = Ui.Measure(fonts.Heading, amountText).X;
         var capText = Units.Oz(cap, seedOnly ? "0.#" : "0") + (seedOnly ? " seed" : "");
-        Ui.Text(dl, fonts.Small, bCount > 1 ? $"/ {capText} · {full} of {bCount} full" : $"/ {capText}", new Vector2(x + mw + 4, o.Y + 24), Theme.InkSoft);
+        // "/ 240 oz · 0 of 5 full", dropping the bottle count (then shortening) when it doesn't fit beside the amount
+        var capRoom = o.X + size.X - 20 - (x + mw + 4);
+        var capLine = bCount > 1 ? $"/ {capText} · {full} of {bCount} full" : $"/ {capText}";
+        if (Ui.Measure(fonts.Small, capLine).X > capRoom && bCount > 1) capLine = $"/ {capText} · {full}/{bCount}";
+        if (Ui.Measure(fonts.Small, capLine).X > capRoom) capLine = $"/ {capText}";
+        Ui.Text(dl, fonts.Small, Fit(capLine, capRoom), new Vector2(x + mw + 4, o.Y + 24), Theme.InkSoft);
         // The grade seal sits on the jug's shoulder, like the Barn's, so it never covers the text
         Ui.Seal(dl, new Vector2(bmin.X + bh / 2 - 4, bmin.Y + bh * 0.2f), 15, Grades.Name(grade), Theme.GradeColor(grade));
 
@@ -162,12 +171,14 @@ public sealed class HudWindow : Window
             ("Comfy", cow.Comfort, Theme.RoseDeep), ("Happy", cow.Mood, Theme.SageDeep),
         };
         var half = (bw - 10) / 2;
+        // The bar sits under the label's full height (so it never cuts through the letters)
+        var labelH = Ui.Measure(fonts.Small, "Ag").Y;
         for (var i = 0; i < needs.Length; i++)
         {
             var bx = x + (i % 2) * (half + 10);
-            var by = y + (i / 2) * 28;
-            Ui.Text(dl, fonts.Small, needs[i].Label, new Vector2(bx, by), Theme.InkSoft);
-            Ui.Bar(dl, new Vector2(bx, by + 16), new Vector2(bx + half, by + 21), needs[i].V / 100f, Theme.NeedColor(needs[i].V, needs[i].C));
+            var by = y + (i / 2) * (labelH + 12);
+            Ui.Text(dl, fonts.Small, Fit(needs[i].Label, half), new Vector2(bx, by), Theme.InkSoft);
+            Ui.Bar(dl, new Vector2(bx, by + labelH + 2), new Vector2(bx + half, by + labelH + 6), needs[i].V / 100f, Theme.NeedColor(needs[i].V, needs[i].C));
         }
 
         // Status line
@@ -216,7 +227,10 @@ public sealed class HudWindow : Window
             // A Corruption scene: who with and arousal, with a bar where the milking bar goes
             status = G.SceneLine;
             col = Theme.RoseDeep;
-            if (G.ArousalNow.Ready)
+            // A breeding scene: the bar fills with the 10 minute breed timer, then shows arousal
+            if (G.BreedScene && G.BreedTimerLeft > TimeSpan.Zero)
+                Ui.Bar(dl, new Vector2(x, o.Y + size.Y - 26), new Vector2(x + bw, o.Y + size.Y - 22), G.BreedTimerFraction, Theme.HoneyDeep);
+            else if (G.ArousalNow.Ready)
                 Ui.Bar(dl, new Vector2(x, o.Y + size.Y - 26), new Vector2(x + bw, o.Y + size.Y - 22), G.ArousalNow.Value / 100f, Theme.RoseDeep);
         }
         else if (G.BredLeft > TimeSpan.Zero)
@@ -226,12 +240,17 @@ public sealed class HudWindow : Window
         }
         else if (G.Pregnant && G.IsCow)
         {
-            status = $"Pregnant · {DairyGame.StageName(G.Preg.Stage)}";
+            status = G.Preg.Stage switch { "first" => "Pregnant · 1st trimester", "second" => "Pregnant · 2nd trimester", "third" => "Pregnant · 3rd trimester", _ => "Pregnant" };
             col = Theme.RoseDeep;
+        }
+        else if (G.Where.Guest)
+        {
+            status = $"Visiting {G.GuestHere?.Name ?? "a dairy"}" + (G.Where.Seated ? " · resting" : "");
+            col = Theme.SageDeep;
         }
         else if (G.Where.InDairy)
         {
-            status = G.Where.Seated ? "Resting in the dairy" : "In the dairy";
+            status = G.Where.Seated ? (G.RestSettleLeft > TimeSpan.Zero ? $"Getting comfy · {Math.Max(1, (int)Math.Ceiling(G.RestSettleLeft.TotalMinutes))}m" : "Sitting in the dairy") : "In the dairy";
             col = Theme.SageDeep;
         }
         else
@@ -290,7 +309,8 @@ public sealed class HudWindow : Window
         if (ShowHandMilk || ShowKitchen || scan != null)
         {
             var by = o.Y + size.Y - 10;
-            var count = (ShowHandMilk ? 1 : 0) + (ShowKitchen ? 1 : 0) + (scan != null ? 1 : 0);
+            var breed = ShowBreed(scan);
+            var count = (ShowHandMilk ? 1 : 0) + (ShowKitchen ? 1 : 0) + (scan != null ? 1 : 0) + (breed ? 1 : 0);
             var bw2 = (size.X - 40 - 10 * (count - 1)) / count;
             var bx = o.X + 20;
             if (ShowHandMilk)
@@ -314,6 +334,19 @@ public sealed class HudWindow : Window
                 var label = count == 1 ? $"Scan {who}" : "Scan";
                 if (Ui.Button("##hudscan", label, new Vector2(bw2, 30), "sage", true, $"See {who}'s milk, bonuses, breeding and pregnancy (if they allow scans).", new Vector2(bx, by)))
                     plugin.Scanner.Open(who, scan.HomeWorld.ValueNullable?.Name.ExtractText() ?? "");
+                bx += bw2 + 10;
+            }
+
+            if (breed && scan != null)
+            {
+                var who = scan.Name.TextValue;
+                var world = scan.HomeWorld.ValueNullable?.Name.ExtractText() ?? "";
+                var on = G.BreedingPlayer(who, world);
+                if (Ui.Button("##hudbreed", on ? "Breeding" : "Breed", new Vector2(bw2, 30), on ? "sage" : "rose", true,
+                        on ? $"You're the one breeding {who}: when you finish in a scene with them, you breed them. Press again to cancel."
+                           : $"Be the one breeding {who}: when you finish in a scene with them, you breed them" + (G.IsCow ? ", and their finish doesn't breed you." : "."),
+                        new Vector2(bx, by)))
+                    G.ToggleBreed(who, world);
             }
         }
 

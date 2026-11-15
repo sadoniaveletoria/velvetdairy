@@ -294,9 +294,11 @@ public sealed partial class MainWindow : Window
         // Where you are: in the dairy (or its private place) or away from it
         if (member != null || F.Dairy != null)
         {
-            if (G.Where.InDairy)
+            if (G.AtHome)
                 Pill(G.InPrivatePlace ? "PRIVATE" : G.Where.Seated ? "RESTING" : "HERE", Theme.SageDeep,
-                    (G.InPrivatePlace ? "In your dairy's private place. " : G.Where.Seated ? "Resting in your dairy. " : "In your dairy. ") + G.Where.Why);
+                    (G.InPrivatePlace ? "In your dairy's private place. " : G.Where.Seated ? "Sitting in your dairy. " : "In your dairy. ") + G.Where.Why);
+            else if (G.Where.Guest)
+                Pill("VISITING", Theme.SageDeep, $"{G.Where.Why} You're a guest: you can be milked on its stalls and cared for here like at home, and your milk goes into its tank. Its farmers can hand milk you (you'll get an Allow first).");
             else if (G.CreameryHere is { } cr)
                 Pill("CREAMERY", Theme.BlueDeep, $"At {cr.Name}: ship your contract milk on Dairy > Contract. Milking, care and chores only work inside your dairy.");
             else Pill("AWAY", Theme.InkSoft, G.Where.Why + " Milking, care and chores only work inside the dairy.");
@@ -393,7 +395,7 @@ public sealed partial class MainWindow : Window
         // The helper plugins, at the bottom
         var all = plugin.Companions.All(G.Now);
         var lineH = Ui.Measure(fonts.Small, "Ag").Y + 3;
-        var top = o.Y + h - 12 - all.Count * lineH - 24;
+        var top = o.Y + h - 12 - all.Count * lineH - 24 - lineH - 4;   // the plugins, then this plugin's version
         if (top < y + 8) return;   // a very short window
         dl.AddLine(new Vector2(o.X + 14, top), new Vector2(o.X + SideW - 14, top), Ui.U(Theme.RoseDeep, 0.18f), 1f);
         Ui.Text(dl, fonts.Small, "PLUGINS", new Vector2(o.X + 18, top + 5), Theme.InkSoft);
@@ -418,6 +420,12 @@ public sealed partial class MainWindow : Window
 
             ly += lineH;
         }
+
+        // Which version of Eorzea Milkers this is (handy when asking for help)
+        var v = System.Version.TryParse(Plugin.Version, out var pv) ? $"{pv.Major}.{pv.Minor}.{pv.Build}" : Plugin.Version;
+        Ui.Text(dl, fonts.Small, $"Eorzea Milkers v{v}", new Vector2(o.X + 18, ly + 4), Theme.InkSoft);
+        if (ImGui.IsMouseHoveringRect(new Vector2(o.X + 12, ly + 4), new Vector2(o.X + SideW - 8, ly + 4 + lineH)))
+            ImGui.SetTooltip("Your Eorzea Milkers version. /milkers changes shows what's new.");
     }
 
     /// <summary>Link buttons in the header's bottom-right corner, from the right edge inwards (a Donate button can go here later).</summary>
@@ -876,7 +884,7 @@ public sealed partial class MainWindow : Window
         if (seedOnly ? cow.SeedTaint > 0 : cow.Taint > 0) extras.Add("Off taste");
         var slip = seedOnly ? G.SeedSlip : G.GradeSlip;
         if (slip > 0) extras.Add($"Grade slipped {slip}");
-        if (G.Where.InDairy && G.Where.Seated && G.Active == null) extras.Add("Resting");
+        if (G.Where.InDairy && G.Where.Seated && G.Active == null) extras.Add(G.RestSettleLeft > TimeSpan.Zero ? $"Getting comfy {Mins(G.RestSettleLeft)}" : "Sitting");
         if (G.Contented) extras.Add("Contented");
         if (G.BoostLeft > TimeSpan.Zero) extras.Add($"Treat boost {Mins(G.BoostLeft)}");
         return string.Join(" · ", extras);
@@ -899,7 +907,7 @@ public sealed partial class MainWindow : Window
         {
             ("hay", "Fed", cow.Hunger, cow.FedBonus, Theme.HoneyDeep, "Eat feed from your pantry. Better food gives a bigger bonus (wheat grain +4% up to Golden mash +15%)."),
             ("water", "Watered", cow.Thirst, cow.WaterBonus, Theme.BlueDeep, "Drink at the trough (free, +4%) or have a Mineral block (+8%)."),
-            ("cushion", "Comfy", cow.Comfort, cow.ComfortBonus, Theme.RoseDeep, "Sit on furniture in your dairy and stay seated: after 15 minutes you get Comfy (30 minutes on the bar), and each further 15 minutes seated adds 30 more, up to an hour. Get up sooner and that sit gives nothing. Bedding upgrades make it bigger."),
+            ("cushion", "Comfy", cow.Comfort, cow.ComfortBonus, Theme.RoseDeep, "Sit in your dairy 10 min for +30 min of Comfy (up to 1 h). It doesn't drain while you sit."),
             ("clover", "Happy", cow.Mood, cow.HappyBonus, Theme.SageDeep, "Have a treat: clover, salt lick, cream clover or a quality treat."),
         };
 
@@ -907,8 +915,12 @@ public sealed partial class MainWindow : Window
         {
             var left = r.Value / 100f * Catalog.NeedMinutes;
             var text = r.Value > 0 && r.Bonus > 0 ? $"+{r.Bonus * 100:0}% · {(left >= 1 ? $"{left:0}m" : "<1m")}" : "plain";
+            // Comfy while sitting for it: how much longer until it's yours
+            if (r.Label == "Comfy" && G.RestSettleLeft > TimeSpan.Zero)
+                text = $"sit {Math.Max(1, (int)Math.Ceiling(G.RestSettleLeft.TotalMinutes))}m more";
             var h = Ui.Gauge(dl, new Vector2(p.X, y), width, r.Icon, r.Label, r.Value, r.Color, text);
-            if (ImGui.IsMouseHoveringRect(new Vector2(p.X, y), new Vector2(p.X + width, y + h))) ImGui.SetTooltip(Units.Text(r.Tip));
+            if (ImGui.IsMouseHoveringRect(new Vector2(p.X, y), new Vector2(p.X + width, y + h)))
+                ImGui.SetTooltip(Units.Text(r.Label == "Comfy" && G.RestSettleLeft > TimeSpan.Zero ? $"Stay seated {DairyGame.Wait(G.RestSettleLeft)} more." : r.Tip));
             y += h + 10;
         }
 
@@ -922,10 +934,12 @@ public sealed partial class MainWindow : Window
         if (G.Pregnant && G.IsCow)
             notes.Add(($"Pregnant ({DairyGame.StageName(G.Preg.Stage)}): +{G.PregnancyBonus * 100:0}% milk until the birth." + (G.Preg.FatherName.Length > 0 ? $" Sire: {G.Preg.FatherName}." : ""), Theme.RoseDeep));
         if (G.InScene)
-            notes.Add(($"Corruption: {G.SceneLine}." + (G.BothChoseToBreed ? " You both chose to breed the other: one of you picks \"They breed me\" in the pop-up."
-                : G.EitherWayScene && !G.BreedingAsBull && !G.BredAsCow ? " You're both cow and bull: choose who breeds this scene (the pop-up). Until one of you does, finishing doesn't breed."
+            notes.Add(($"Corruption: {G.SceneLine}." + (G.BothChoseToBreed ? " You both pressed Breed on the other: one of you presses it again to cancel, so only one of you breeds."
+                : G.EitherWayScene && !G.BreedingAsBull && !G.BredAsCow ? " You can breed each other: whoever is breeding targets the other and presses Breed on the HUD. Until one of you does, finishing doesn't breed."
                 : G.BreedingAsBull ? " When you finish, you breed them" + (G.ForcedCreampie ? " (always inside, so Corruption rolls for conception)." : ".")
-                : G.BredAsCow ? " When they finish, you're bred" + (G.ConceiveChance > 0 ? $", with a {G.ConceiveChance * 100:0}% chance of conceiving (from Corruption)." : ".") : ""), Theme.RoseDeep));
+                : G.BredAsCow ? " When they finish, you're bred" + (G.ConceiveChance > 0 ? $", with a {G.ConceiveChance * 100:0}% chance of conceiving (from Corruption)." : ".") : "")
+                + (G.BreedScene && G.BreedTimerLeft > TimeSpan.Zero ? $" Breeding counts after {DairyGame.BreedSceneMinutes} minutes in the scene ({DairyGame.Wait(G.BreedTimerLeft)} to go)." : "")
+                + (G.BreedOneWayWhy.Length > 0 ? " " + G.BreedOneWayWhy : ""), Theme.RoseDeep));
         if (!where.InDairy) notes.Add((where.Why + " Care and milking wait until you're back.", Theme.RoseDeep));
         if (G.FreshHoldLeft > TimeSpan.Zero) notes.Add(($"Dry-off tonic: your grade won't slip for {DairyGame.Wait(G.FreshHoldLeft)}.", Theme.SageDeep));
         else if (G.GradeSlip > 0) notes.Add(($"Your grade slipped {G.GradeSlip} step{(G.GradeSlip > 1 ? "s" : "")} from going days without milking. One milking brings it back.", Theme.RoseDeep));
@@ -977,15 +991,9 @@ public sealed partial class MainWindow : Window
         var wcd = G.DrinkWait;
         cells.Add(("##drink", "water", "Drink", wcd > TimeSpan.Zero ? $"Ready in {DairyGame.Wait(wcd)}" : $"Free · Watered +{Catalog.TroughBonus * 100:0}%",
             "Drink", "blue", ok && wcd <= TimeSpan.Zero, problem ?? $"Free. Watered +{Catalog.TroughBonus * 100:0}%, +30 minutes.", () => G.Drink()));
-        var rcd = G.RestWait;
-        var restProblem = G.RestProblem();
-        var settle = G.RestSettleLeft;
-        // Comfy: no button, sitting on furniture in your dairy rests you by itself
-        cells.Add(("##rest", "cushion", "Comfy", RestLine(settle, rcd, restProblem, ok),
-            "", "rose", true, null, () => { }));
         foreach (var item in Catalog.Feed)
         {
-            if (G.ShopLevel < item.Unlock || F.HiddenFeed!.Contains(item.Id)) continue;
+            if (!G.FeedUnlocked(item) || F.HiddenFeed!.Contains(item.Id)) continue;
             var have = G.Count(item.Id);
             if (have <= 0) continue;
             var wait = item.HoldDays > 0 ? TimeSpan.Zero : G.FeedWait(item);
@@ -994,14 +1002,14 @@ public sealed partial class MainWindow : Window
             if (qualityHeld) wait = qwait;
             var waiting = wait > TimeSpan.Zero;
             var tip = problem ?? (qualityHeld ? $"Quality treats share a {Grades.QualityTreatHours:0}-hour cooldown." :
-                waiting ? $"Eating, drinking, resting and treats each wait {Catalog.NeedCooldownMinutes:0} minutes between uses." : $"{item.Desc}\n{Effects(item)}");
+                waiting ? $"Eating, drinking and treats each wait {Catalog.NeedCooldownMinutes:0} minutes between uses." : $"{item.Desc}\n{Effects(item)}");
             var id = item.Id;
-            cells.Add(($"##feed{id}", item.Icon, item.Name, waiting ? $"{have} left · ready in {DairyGame.Wait(wait)}" : $"{have} left · {Effects(item)}",
+            cells.Add(($"##feed{id}", item.Icon, item.Name, waiting ? $"{have} left · ready in {DairyGame.Wait(wait)}" : $"{have} left · {Effects(item, true)}",
                 "Eat", "honey", ok && !waiting, tip, () => G.UseFeed(id)));
         }
 
         // Nothing to eat: the last card points at the Shop
-        if (cells.Count == 2)
+        if (cells.Count == 1)
             cells.Add(("##careshop", "hay", "Pantry empty", "Buy feed in the Shop", "Shop", "cream", true, "Buy feed and treats.", () => tab = TabShop));
 
         const float cellGap = 10f, cellH = 58f;
@@ -1070,15 +1078,10 @@ public sealed partial class MainWindow : Window
                 ok && wcd <= TimeSpan.Zero, problem, width))
             G.Drink();
 
-        var rcd = G.RestWait;
-        var restProblem = G.RestProblem();
-        var settle = G.RestSettleLeft;
-        Row("##rest", "cushion", "Comfy", RestLine(settle, rcd, restProblem, ok), "", "rose", true, null, width);
-
         var shown = 0;
         foreach (var item in Catalog.Feed)
         {
-            if (G.ShopLevel < item.Unlock || F.HiddenFeed!.Contains(item.Id)) continue;
+            if (!G.FeedUnlocked(item) || F.HiddenFeed!.Contains(item.Id)) continue;
             var have = G.Count(item.Id);
             if (have <= 0) continue;   // Care only lists what you have right now (the Pantry can show the rest)
             shown++;
@@ -1088,7 +1091,7 @@ public sealed partial class MainWindow : Window
             if (qualityHeld) wait = qwait;
             var waiting = wait > TimeSpan.Zero;
             var tip = problem ?? (have <= 0 ? "Buy more in the Shop." : qualityHeld ? $"Quality treats share a {Grades.QualityTreatHours:0}-hour cooldown." :
-                waiting ? $"Eating, drinking, resting and treats each wait {Catalog.NeedCooldownMinutes:0} minutes between uses." : item.Desc);
+                waiting ? $"Eating, drinking and treats each wait {Catalog.NeedCooldownMinutes:0} minutes between uses." : item.Desc);
             var sub = waiting ? $"{have} left · ready in {DairyGame.Wait(wait)}" : $"{have} left · {Effects(item)}";
             if (Row($"##feed{item.Id}", item.Icon, item.Name, sub, "Eat", "honey", ok && have > 0 && !waiting, tip, width))
                 G.UseFeed(item.Id);
@@ -1133,8 +1136,16 @@ public sealed partial class MainWindow : Window
         ImGui.Dummy(new Vector2(width, 60));
     }
 
-    private static string Effects(FeedItem f)
+    /// <summary>What a food or treat does; short leaves out the extras (for the small Care cards; the tooltip has it all).</summary>
+    private static string Effects(FeedItem f, bool short_ = false)
     {
+        if (short_)
+        {
+            var main = f.Fed != 0 ? $"Fed +{f.Fed * 100:0}%" : f.Water != 0 ? $"Watered +{f.Water * 100:0}%" : f.Happy != 0 ? $"Happy +{f.Happy * 100:0}%"
+                : f.Quality != 0 ? $"+{f.Quality:0} quality" : f.HoldDays != 0 ? $"holds grade {f.HoldDays}d" : f.BoostMinutes != 0 ? $"boost {f.BoostMinutes}m" : "";
+            return main;
+        }
+
         var parts = new List<string>();
         if (f.Fed != 0) parts.Add($"Fed +{f.Fed * 100:0}%");
         if (f.Water != 0) parts.Add($"Watered +{f.Water * 100:0}%");
@@ -1339,7 +1350,7 @@ public sealed partial class MainWindow : Window
         var cur = ImGui.GetCursorScreenPos();
         Ui.Bar(ImGui.GetWindowDrawList(), cur + new Vector2(0, 6), cur + new Vector2(Math.Min(width, 360), 14), G.MaxCarry > 0 ? Math.Clamp(G.Carried / G.MaxCarry, 0, 1) : 0, Theme.BlueDeep);
         ImGui.Dummy(new Vector2(width, 20));
-        Ui.Wrapped("Fill it at your dairy (HUD > Kitchen). Farmer xp comes from hand milking, grooming, cleaning stalls, baking, filling jugs, deliveries and contracts.", Theme.InkSoft, width);
+        Ui.Wrapped("Fill it at your dairy (Roles > Farmer > Kitchen). Farmer xp comes from hand milking, grooming, cleaning stalls, baking, filling jugs, deliveries and contracts.", Theme.InkSoft, width);
     }
 
     private void DrawBottleShop(float width)
@@ -1376,18 +1387,18 @@ public sealed partial class MainWindow : Window
         var hiddenCount = 0;
         foreach (var item in Catalog.Feed)
         {
-            if (item.Baked || (item.Quality > 0) != treats) continue;   // baked treats come off the dairy shelf
+            if (item.Baked || (item.Quality > 0) != treats || !G.FeedForYou(item)) continue;   // baked treats come off the dairy shelf
             var hidden = F.HiddenFeed!.Contains(item.Id);
             if (hidden) hiddenCount++;
             if (hidden && !showHiddenFeed) continue;
 
-            var locked = G.ShopLevel < item.Unlock;
+            var locked = G.FeedUnlockLevel(item) < item.Unlock;
             var have = G.Count(item.Id);
             var p1 = G.BuyFeedProblem(item, 1);
             var p5 = G.BuyFeedProblem(item, 5);
             var back = DairyGame.SellBackPrice(item);
             var lines = locked
-                ? new[] { new Line($"Unlocks at level {item.Unlock}", Theme.InkSoft) }
+                ? new[] { new Line($"Unlocks at {(item.Role == "bull" ? "bull " : item.Role == "both" ? "cow and bull " : "")}level {item.Unlock}", Theme.InkSoft) }
                 : new[]
                 {
                     new Line($"{item.Price} coins · you have {have}" + (have > 0 ? $" · sells back for {back}" : ""), Theme.InkSoft),
@@ -1440,7 +1451,7 @@ public sealed partial class MainWindow : Window
 
     private void DrawUpgradeShop(float width, bool looks)
     {
-        var list = Catalog.Upgrades.Where(u => u.Cosmetic == looks && !BottleUpgrades.Contains(u.Id) && !(u.Id == "stallkit" && G.Networked)).ToList();
+        var list = Catalog.Upgrades.Where(u => u.Cosmetic == looks && !BottleUpgrades.Contains(u.Id) && !(u.Id == "stallkit" && G.Networked) && (!u.Bull || G.IsBull) && (!u.Cow || G.IsCow)).ToList();
         var owned = list.Where(u => G.Owned(u.Id) >= u.MaxLevel).ToList();
         foreach (var u in list)
         {
@@ -1470,7 +1481,7 @@ public sealed partial class MainWindow : Window
                 _ => u.Desc,
             };
             var sub = maxed ? "Owned · " + desc
-                : (u.Farmer ? G.FarmerLevel : G.ShopLevel) < u.Unlocks[have] ? $"Unlocks at level {u.Unlocks[have]} · {desc}"
+                : G.UnlockLevel(u) < u.Unlocks[have] ? $"Unlocks at {(u.Bull ? "bull " : u.Farmer ? "farmer " : "")}level {u.Unlocks[have]} · {desc}"
                 : $"{u.Prices[have]} coins · {desc}";
             if (Row($"##up{u.Id}", u.Icon, u.Name + levelText + (u.Cosmetic ? "  ·  look" : ""), sub, maxed ? "Owned" : "Buy", "blue", problem == null,
                     maxed ? u.Desc : problem ?? u.Desc, width))
@@ -1865,8 +1876,6 @@ public sealed partial class MainWindow : Window
         if (ImGui.Checkbox("Join the Eorzea Milkers Network (dairies, invites, deliveries, online count)", ref b)) { F.NetEnabled = b; changed = true; }
         if (ImGui.IsItemHovered())
             ImGui.SetTooltip(Units.Text("Shares only what the network needs: a random id for this install, your dairy's listing, and your character name with the dairy you join."));
-        b = F.ShowOwnerHud;
-        if (ImGui.Checkbox("Show the owner HUD when I own a dairy", ref b)) { F.ShowOwnerHud = b; changed = true; }
 
         // Who can scan you (target you and press Scan): your milk, bonuses, breeding and pregnancy
         ImGui.TextColored(Theme.Ink, "Who can scan me:");
@@ -1886,7 +1895,7 @@ public sealed partial class MainWindow : Window
         {
             var here = G.StallsHere().Count();
             ImGui.Indent();
-            ImGui.TextColored(Theme.InkSoft, !G.Where.InDairy ? "Markers show once you're in your dairy."
+            ImGui.TextColored(Theme.InkSoft, !G.AtHome ? "Markers show once you're in your dairy."
                 : here > 0 ? $"Marking {here} stall{(here == 1 ? "" : "s")} here{(G.InPrivatePlace ? " (private place)" : "")}."
                 : G.Stalls.Count == 0 ? "Your dairy has no stalls yet." : $"None of your {G.Stalls.Count} stall(s) are in this part of the dairy.");
             ImGui.Unindent();
@@ -2047,7 +2056,7 @@ public sealed partial class MainWindow : Window
         Ui.Wrapped("1. Join a dairy (Dairies tab, ask the owner for an invite) or start your own on the Dairy tab.\n" +
                    "2. Cows: milk fills up over time, faster with Fed, Watered, Comfy and Happy (Barn > Care).\n" +
                    "3. Get milked on one of your dairy's stalls, or by a farmer pressing Milk on you. You're paid by your grade.\n" +
-                   "4. Farmers: Herd Care and Kitchen are on the HUD. Fill jugs in the Kitchen, then deliver on the Creamery tab.\n" +
+                   "4. Farmers: Herd Care is on the HUD and the Kitchen is on Roles > Farmer. Fill jugs in the Kitchen, then deliver on the Creamery tab.\n" +
                    "5. Spend coins in the Shop. The full guide is the ? at the top, or /milkers guide.", Theme.Ink, width);
 
         SubHeading("Having trouble?", width);

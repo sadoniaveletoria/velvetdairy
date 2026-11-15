@@ -16,11 +16,23 @@ public sealed partial class DairyGame
     public const float BredBonus = 0.05f;
     public const int BredMinutes = 30, BredCooldownMinutes = 20;
 
+    /// <summary>The Champion's ribbon: a prized cow (farmers who hand milk her earn 10% more; bred 45 minutes; pregnancy +5%).</summary>
+    public bool Prized => Owned("champion") > 0;
+
+    /// <summary>How long being bred lasts for you: 30 minutes, 45 with the Champion's ribbon.</summary>
+    public int BredMinutesNow => Prized ? 45 : BredMinutes;
+
+    /// <summary>A finish only breeds after this long in the scene (so a scene doesn't end in a breeding a minute in).</summary>
+    public const int BreedSceneMinutes = 10;
+
     /// <summary>Bulls breed as often as they like, but after this many a day their seed output drops.</summary>
     public const int FreshBreeds = 20;
 
     /// <summary>Bull xp for one breeding at full seed output.</summary>
     public const int BreedXp = 40;
+
+    /// <summary>Dairy xp for each breeding with the Breeding pen.</summary>
+    public const int BreedPenDairyXp = 15;
 
     public CorruptionLink.Pregnancy Preg { get; private set; } = CorruptionLink.NoPregnancy;
     private double nextPregRead;
@@ -49,7 +61,7 @@ public sealed partial class DairyGame
     public TimeSpan BredLeft => F.BredUntilUtc > DateTime.UtcNow ? F.BredUntilUtc - DateTime.UtcNow : TimeSpan.Zero;
 
     /// <summary>The milk bonus from being bred right now (scaled by the bull's seed output).</summary>
-    public float BredBonusNow => BredLeft > TimeSpan.Zero ? BredBonus * Math.Clamp(F.BredStrength, 0.2f, 1f) : 0f;
+    public float BredBonusNow => BredLeft > TimeSpan.Zero ? BredBonus * Math.Clamp(F.BredStrength, 0.2f, 1.5f) : 0f;
 
     /// <summary>When another breeding will count again.</summary>
     public TimeSpan BreedCooldownLeft
@@ -64,7 +76,15 @@ public sealed partial class DairyGame
     public bool Pregnant => Preg.Stage is "first" or "second" or "third";
 
     /// <summary>+5% / +10% / +15% milk in the first, second and third trimester. Nothing after the birth.</summary>
-    public float PregnancyBonus => !IsCow ? 0f : Preg.Stage switch { "first" => 0.05f, "second" => 0.10f, "third" => 0.15f, _ => 0f };
+    public float PregnancyBonus
+    {
+        get
+        {
+            if (!IsCow) return 0f;
+            var b = Preg.Stage switch { "first" => 0.05f, "second" => 0.10f, "third" => 0.15f, _ => 0f };
+            return b > 0 && Prized ? b + 0.05f : b;   // the Champion's ribbon: +5% more
+        }
+    }
 
     public static string StageName(string stage) => stage switch
     {
@@ -126,7 +146,8 @@ public sealed partial class DairyGame
     /// <summary>One short line about the scene: who with and arousal.</summary>
     public string SceneLine =>
         (SceneNow.Solo || SceneNow.PartnerName.Length == 0 ? "Solo scene" : $"With {SceneNow.PartnerName.Split(' ')[0]}") +
-        (ArousalNow.Ready ? ArousalNow.RefractorySeconds > 0 ? " · catching your breath" : $" · arousal {ArousalNow.Value}%" : "") +
+        (BreedScene && BreedTimerLeft > TimeSpan.Zero ? $" · breeding in {Math.Max(1, (int)Math.Ceiling(BreedTimerLeft.TotalMinutes))}m"
+            : ArousalNow.Ready ? ArousalNow.RefractorySeconds > 0 ? " · catching your breath" : $" · arousal {ArousalNow.Value}%" : "") +
         (ConceiveChance > 0 ? $" · {ConceiveChance * 100:0}% chance" : "") +
         (ForcedCreampie ? " · creampie" : "");
 
@@ -160,23 +181,30 @@ public sealed partial class DairyGame
     {
         if (!InScene || SceneNow.Solo || SceneNow.PartnerName.Length == 0) return false;
         var p = DairyMember(SceneNow.PartnerName, SceneNow.PartnerWorld);
-        return p != null && (p.Roles.Contains(role) || p.Role == role);
+        return p != null && p.Has(role);
     }
 
-    // Each way on its own: you could breed them, they could breed you (roles in your dairy, and what the bodies can do)
-    private bool CouldBreedThem => IsBull && myBody.CanBreed && partnerBody.CanCarry && PartnerIs("cow");
-    private bool CouldBeBred => IsCow && myBody.CanCarry && partnerBody.CanBreed && PartnerIs("bull");
+    // Each way on its own: you could breed them, they could breed you
+    // Your dairy roles decide who can breed whom in Eorzea Milkers (the bred bonus, bull xp, the "who breeds" pop-up).
+    // What Corruption says each body can do only decides whether Corruption can make it a pregnancy.
+    // ...or a partner from another dairy who said yes (the cow pressed Allow for this bull)
+    private bool CouldBreedThem => IsBull && (PartnerIs("cow") || OutsideCowSaidYes);
+    private bool CouldBeBred => IsCow && (PartnerIs("bull") || OutsideBullAllowed(SceneNow.PartnerName));
+
+    /// <summary>Corruption can make a pregnancy of the way this scene breeds (both bodies allow it).</summary>
+    private bool CorruptionCanBreedThem => myBody.CanBreed && partnerBody.CanCarry;
+    private bool CorruptionCanBreedMe => myBody.CanCarry && partnerBody.CanBreed;
 
     /// <summary>
-    /// Both of you are cow and bull and could go either way: it's not decided by who finishes. One of you chooses to
-    /// breed the other for this scene (a pop-up), and only that way counts. A new scene chooses again.
+    /// Both of you are cow and bull and could go either way: it's not decided by who finishes. Whoever is breeding
+    /// targets the other and presses Breed (on the HUD, or right-click > Eorzea Milkers), and only that way counts.
     /// </summary>
     public bool EitherWayScene => CouldBreedThem && CouldBeBred;
 
-    /// <summary>You chose to breed your partner this scene.</summary>
-    public bool IChoseToBreed => breedChoiceFor.Length > 0 && breedChoiceFor == sceneKey;
+    /// <summary>You pressed Breed on your scene partner.</summary>
+    public bool IChoseToBreed => breedChoiceFor.Length > 0 && breedChoiceFor.Equals(sceneKey, StringComparison.OrdinalIgnoreCase);
 
-    /// <summary>Your partner chose to breed you this scene (their status says so).</summary>
+    /// <summary>Your partner pressed Breed on you (their status says so).</summary>
     public bool PartnerChoseToBreed
     {
         get
@@ -190,27 +218,124 @@ public sealed partial class DairyGame
         }
     }
 
-    /// <summary>For your status: who you chose to breed (Name@World), so their plugin knows; empty otherwise.</summary>
-    public string BreedingTarget => EitherWayScene && IChoseToBreed ? sceneKey : "";
+    /// <summary>For your status: who you pressed Breed on (Name@World), so their plugin knows; empty otherwise.</summary>
+    public string BreedingTarget => breedChoiceFor;
 
-    /// <summary>You both chose to breed the other: neither counts until one of you lets the other.</summary>
+    /// <summary>You both pressed Breed on the other: neither counts until one of you cancels.</summary>
     public bool BothChoseToBreed => EitherWayScene && IChoseToBreed && PartnerChoseToBreed;
 
-    /// <summary>Choose who breeds this scene (true: you breed them; false: you don't, so they can).</summary>
-    public void ChooseToBreed(bool me)
+    /// <summary>
+    /// You can press Breed on this player: you're both cow and bull, and so are they (that's when it decides who breeds;
+    /// a bull and a cow who aren't both breed the one way without it).
+    /// </summary>
+    public bool CanBreedPlayer(string name, string world) =>
+        IsBull && IsCow && Networked && DairyMember(name, world) is { } m && m.Has("cow") && m.Has("bull");
+
+    /// <summary>You've pressed Breed on this player (until it's done, or you press it again).</summary>
+    public bool BreedingPlayer(string name, string world) =>
+        breedChoiceFor.Equals($"{name}@{world}", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>Breed button: you're the one breeding this player (press again to cancel).</summary>
+    public void ToggleBreed(string name, string world)
     {
-        breedChoiceFor = me ? sceneKey : "";
-        breedChoiceAsked = sceneKey;
+        var key = $"{name}@{world}";
+        if (breedChoiceFor.Equals(key, StringComparison.OrdinalIgnoreCase))
+        {
+            breedChoiceFor = "";
+            Say($"You won't breed {name} now.", 0);
+        }
+        else
+        {
+            breedChoiceFor = key;
+            Say($"You're breeding {name}: when you finish in a scene with them, you breed them" + (IsCow ? " (and their finish doesn't breed you)." : "."), 0);
+        }
+
         Net.BeatWithin(1);
-        Diag.Info("breed", me ? $"Chose to breed {SceneNow.PartnerName} this scene" : "Chose not to breed this scene");
+        Diag.Info("breed", breedChoiceFor.Length > 0 ? $"Pressed Breed on {key}" : $"Cancelled Breed on {key}");
     }
 
-    /// <summary>The pop-up asking who breeds: an either-way scene where neither of you has chosen yet.</summary>
-    public bool WantsBreedChoice => EitherWayScene && (BothChoseToBreed || (breedChoiceAsked != sceneKey && !PartnerChoseToBreed));
+    private string breedChoiceFor = "";
 
-    public void DismissBreedChoice() => breedChoiceAsked = sceneKey;
+    // ----- Breeding scenes: a 10 minute minimum, and the breeder starts from 0 arousal -----
 
-    private string breedChoiceFor = "", breedChoiceAsked = "";
+    private double sceneStartedAt = -1;
+    private string arousalResetFor = "";
+    private double nextArousalStep;
+    private bool arousalResetting;
+
+    /// <summary>This scene breeds one way or the other (you breed them, or they breed you).</summary>
+    public bool BreedScene => BreedingAsBull || BredAsCow;
+
+    /// <summary>Time in this scene so far (zero when not in one).</summary>
+    public TimeSpan SceneTime => sceneStartedAt < 0 || !InScene ? TimeSpan.Zero : TimeSpan.FromSeconds(now - sceneStartedAt);
+
+    /// <summary>How long until a finish breeds in this scene (zero once the minimum is up).</summary>
+    public TimeSpan BreedTimerLeft => sceneStartedAt < 0 ? TimeSpan.Zero
+        : TimeSpan.FromSeconds(Math.Max(0, BreedSceneMinutes * 60 - (now - sceneStartedAt)));
+
+    /// <summary>The breed timer filling up, 0 to 1 (for the HUD's bar).</summary>
+    public float BreedTimerFraction => (float)Math.Clamp((now - sceneStartedAt) / (BreedSceneMinutes * 60.0), 0, 1);
+
+    /// <summary>
+    /// When a scene becomes one where you're breeding them, your arousal is brought down to 0, as fast as Corruption
+    /// lets another plugin (60 a minute), so you don't start the breeding already about to finish. Needs Corruption's
+    /// "Let other plugins control Corruption"; without it nothing changes.
+    /// </summary>
+    private void ResetBreederArousal()
+    {
+        if (!InScene || !BreedingAsBull)
+        {
+            arousalResetting = false;
+            return;
+        }
+
+        if (arousalResetFor != sceneKey)
+        {
+            arousalResetFor = sceneKey;
+            arousalResetting = true;
+            nextArousalStep = 0;
+            Diag.Info("breed", $"Breeding {SceneNow.PartnerName}: bringing your arousal down to 0 (it's {ArousalNow.Value}%)");
+        }
+
+        if (!arousalResetting || now < nextArousalStep) return;
+        if (!ArousalNow.Ready || ArousalNow.Value <= 0)
+        {
+            arousalResetting = false;
+            return;
+        }
+
+        nextArousalStep = now + 25;   // 25 at a time: well inside Corruption's 60 a minute
+        var answer = plugin.Corruption.AddArousal(-Math.Min(25, ArousalNow.Value));
+        if (answer is "ok" or "limited") return;
+        arousalResetting = false;
+        Diag.Info("breed", $"Couldn't lower your arousal: Corruption answered \"{answer}\"" +
+                           (answer == "not-allowed" ? " (turn on \"Let other plugins control Corruption\" in Corruption's settings)" : ""));
+    }
+    private bool sceneLogged;
+    private string lastSceneLine = "";
+
+    /// <summary>
+    /// For the scene note: a missing role in your dairy that rules a way out, and when Corruption can't make a breeding
+    /// a pregnancy (a body set to carry only or breed only). Empty when there's nothing to say.
+    /// </summary>
+    public string BreedOneWayWhy
+    {
+        get
+        {
+            if (!InScene || SceneNow.Solo || SceneNow.PartnerName.Length == 0) return "";
+            var name = SceneNow.PartnerName.Split(' ')[0];
+            var why = new List<string>();
+            if (IsCow && IsBull && PartnerIs("cow") && !PartnerIs("bull")) why.Add($"{name} isn't a bull in your dairy, so they can't breed you");
+            if (IsCow && IsBull && PartnerIs("bull") && !PartnerIs("cow")) why.Add($"{name} isn't a cow in your dairy, so you can't breed them");
+            if (BredAsCow && !CorruptionCanBreedMe)
+                why.Add(!myBody.CanCarry ? "your Corruption body is set so you can't carry, so Corruption won't roll a pregnancy"
+                    : $"{name}'s Corruption body is set so they can't breed, so Corruption won't roll a pregnancy from them (the bred bonus still counts)");
+            if (BreedingAsBull && !CorruptionCanBreedThem)
+                why.Add(!myBody.CanBreed ? $"your Corruption body is set so you can't breed, so Corruption won't roll a pregnancy for {name} (the bred bonus still counts)"
+                    : $"{name}'s Corruption body is set so they can't carry, so Corruption won't roll a pregnancy");
+            return why.Count == 0 ? "" : char.ToUpperInvariant(why[0][0]) + string.Join("; ", why)[1..] + ".";
+        }
+    }
 
     /// <summary>You're a bull in a scene with a cow of your dairy: you're the one breeding.</summary>
     public bool BreedingAsBull => CouldBreedThem && (!CouldBeBred || (IChoseToBreed && !PartnerChoseToBreed));
@@ -230,7 +355,8 @@ public sealed partial class DairyGame
     /// </summary>
     private void UpdateForcedCreampie()
     {
-        var want = CorruptionOn && BreedingAsBull;   // an either-way scene: only when you chose to breed them
+        // Breeding them (an either-way scene: only when you chose to), and Corruption can make it a pregnancy
+        var want = CorruptionOn && BreedingAsBull && CorruptionCanBreedThem;
         if (want == forcedOn && (!want || ForceCreampieAnswer == "ok")) return;
         if (!want)
         {
@@ -269,28 +395,67 @@ public sealed partial class DairyGame
         ArousalNow = InScene ? plugin.Corruption.GetArousal() : CorruptionLink.NoArousal;
         if (InScene && !SceneNow.Solo)
         {
-            myBody = plugin.Corruption.GetBody();
-            partnerBody = plugin.Corruption.GetBodyOf(SceneNow.PartnerName, SceneNow.PartnerWorld);
+            var mine = plugin.Corruption.GetBody();
+            var theirs = plugin.Corruption.GetBodyOf(SceneNow.PartnerName, SceneNow.PartnerWorld);
+            if (mine != myBody || theirs != partnerBody)
+                Diag.Info("breed", $"Bodies (from Corruption): you carry {mine.CanCarry}, breed {mine.CanBreed}; {SceneNow.PartnerName} carry {theirs.CanCarry}, breed {theirs.CanBreed}");
+            myBody = mine;
+            partnerBody = theirs;
         }
         else myBody = partnerBody = (true, true);
-        ConceiveChance = BredAsCow && !Pregnant ? Math.Clamp(plugin.Corruption.BreedChance(SceneNow.PartnerName, SceneNow.PartnerWorld), 0, 1) : 0;
+        ConceiveChance = BredAsCow && CorruptionCanBreedMe && !Pregnant ? Math.Clamp(plugin.Corruption.BreedChance(SceneNow.PartnerName, SceneNow.PartnerWorld), 0, 1) : 0;
 
         // A new scene (or a new partner) allows one more breeding; the same scene going on doesn't
         var key = InScene ? $"{SceneNow.PartnerName}@{SceneNow.PartnerWorld}" : "";
         if (key != sceneKey)
         {
+            if (bredThemThisScene && breedChoiceFor.Equals(sceneKey, StringComparison.OrdinalIgnoreCase)) breedChoiceFor = "";
             sceneKey = key;
             wasBredThisScene = bredThemThisScene = false;
+            if (key.Length > 0)
+            {
+                sceneLogged = false;
+                sceneStartedAt = now;
+            }
+            else
+            {
+                sceneStartedAt = -1;
+                Diag.Info("breed", "Scene ended");
+            }
         }
 
+        // Once per scene (and again if it changes): who could breed whom, and why, so a scene that didn't breed can be explained
+        if (InScene && !SceneNow.Solo)
+        {
+            var p = DairyMember(SceneNow.PartnerName, SceneNow.PartnerWorld);
+            var line = $"Scene with {SceneNow.PartnerName}@{SceneNow.PartnerWorld} ({SceneNow.State}): your roles {string.Join("/", MyRoles)}, theirs " +
+                       (p == null ? "not in your dairy" : string.Join("/", p.AllRoles)) +
+                       $"; you could breed them {CouldBreedThem}, they could breed you {CouldBeBred}, either way {EitherWayScene}" +
+                       (EitherWayScene ? $" (you chose to breed {IChoseToBreed}, they chose {PartnerChoseToBreed})" : "") +
+                       (BreedOneWayWhy.Length > 0 ? $"; {BreedOneWayWhy}" : "");
+            if (!sceneLogged || line != lastSceneLine)
+            {
+                Diag.Info("breed", line);
+                sceneLogged = true;
+                lastSceneLine = line;
+            }
+        }
+        else if (InScene && SceneNow.Solo && !sceneLogged)
+        {
+            Diag.Info("breed", "Solo scene (no partner): nothing to breed");
+            sceneLogged = true;
+        }
+
+        UpdateOutsidePartner();
         UpdateForcedCreampie();
+        ResetBreederArousal();
     }
 
     /// <summary>A notice to your dairy: show it as a pop-up (with a little bell).</summary>
     public void OnNotice(DairyNotice n)
     {
         if (n.Kind == "breedReady")
-            plugin.Notices.Show("Ready to be bred", $"{n.Name} can be bred again.");
+            plugin.Notices.Show("Ready to be bred", $"{n.Name}'s bred bonus has run out.");
     }
 
     private DateTime? readyToldFor;
@@ -299,19 +464,36 @@ public sealed partial class DairyGame
     /// A cow's breeding bonus has run out (30 minutes after she was bred): tell her, and let the rest of her dairy know (a pop-up with a bell).
     /// Only right after it happens (not for an old breeding after a restart).
     /// </summary>
+    private bool wardFilled;
+
+    /// <summary>
+    /// An owner whose dairy is an outdoor box in a residential district, saved before the ward was kept: the next time
+    /// they stand in it, the ward is added (so the Dairies list shows it and Visit can take people there).
+    /// </summary>
+    private void FillOutdoorWard()
+    {
+        if (wardFilled || !Networked || F.NetMember is not { IsOwner: true } m || !Where.InDairy || Where.Guest) return;
+        if (Net.Mine?.Dairy is not { } d || d.Ward > 0 || d.Area is not { House.Length: 0 } area || Estate.DistrictKind(area.Territory) == 0) return;
+        if (Plugin.ClientState.TerritoryType != area.Territory || Housing.OutdoorWard() == 0) return;
+        wardFilled = true;
+        Diag.Info("net", $"Adding ward {Housing.OutdoorWard()} to {d.Name}'s outdoor area");
+        PublishDairy(d.Name, area);
+    }
+
     private void AnnounceReadyAgain()
     {
         var at = F.BredAtUtc;
         if (!IsCow || at <= DateTime.MinValue || readyToldFor == at || BredLeft > TimeSpan.Zero) return;
         readyToldFor = at;
-        if (DateTime.UtcNow - at > TimeSpan.FromMinutes(BredMinutes + 5)) return;
-        plugin.Notices.Show("Ready to be bred", "You can be bred again.");
+        if (DateTime.UtcNow - at > TimeSpan.FromMinutes(BredMinutesNow + 5)) return;
+        plugin.Notices.Show("Ready to be bred", "Your bred bonus has run out.");
         if (Networked && F.NetMember != null) Net.PostNotice("breedReady");
     }
 
     private void BreedingUpdate()
     {
         ReadScene();
+        FillOutdoorWard();
         AnnounceReadyAgain();
         if (now < nextPregRead || Plugin.ObjectTable.LocalPlayer == null) return;
         nextPregRead = now + 30;
@@ -342,20 +524,48 @@ public sealed partial class DairyGame
     /// <summary>Corruption: your scene partner climaxed. If you're a cow and they're a bull of your dairy, you've been bred.</summary>
     public void OnPartnerClimax(string name, string world)
     {
-        if (!IsCow || Blocked() != null) return;
+        if (!IsCow)
+        {
+            Diag.Info("breed", $"{name} finished: you aren't a cow, so it doesn't breed you");
+            return;
+        }
+
+        if (Blocked() is { } blocked)
+        {
+            Diag.Info("breed", $"{name} finished, but breeding is blocked: {blocked}");
+            return;
+        }
+
         ReadScene(true);   // up to date, so a scene that only just started is the one this breeding belongs to
+        // A bull of your dairy, or a bull from another dairy you pressed Allow for in this scene
         var bull = DairyMember(name, world);
-        if (bull == null || !(bull.Roles.Contains("bull") || bull.Role == "bull")) return;
+        if (bull != null && !bull.Has("bull"))
+        {
+            Diag.Info("breed", $"{name} finished, but they aren't a bull in your dairy");
+            return;
+        }
+
+        if (bull == null && !OutsideBullAllowed(name))
+        {
+            Diag.Info("breed", $"{name}@{world} finished, but they aren't in your dairy and you didn't allow them to breed you");
+            return;
+        }
+
+        var bullName = bull?.Name ?? name;
         if (EitherWayScene && !BredAsCow)
         {
             Diag.Info("breed", $"{name} finished, but they didn't choose to breed you this scene");
             return;
         }
-        if (!myBody.CanCarry || !partnerBody.CanBreed)
+        if (!CorruptionCanBreedMe)
+            Diag.Info("breed", $"{name} breeds you in the dairy; Corruption won't roll a pregnancy (you can carry: {myBody.CanCarry}, they can breed: {partnerBody.CanBreed})");
+        if (BreedTimerLeft > TimeSpan.Zero)
         {
-            Diag.Info("breed", $"{name} finished, but your bodies don't breed that way (you can carry: {myBody.CanCarry}, they can breed: {partnerBody.CanBreed})");
+            Diag.Info("breed", $"{name} finished {SceneTime.TotalMinutes:0.#} min into the scene; breeding counts after {BreedSceneMinutes} min");
+            Say($"Too soon to breed: a finish breeds after {BreedSceneMinutes} minutes in the scene ({DairyGame.Wait(BreedTimerLeft)} to go).", 0);
             return;
         }
+
         if (wasBredThisScene)
         {
             Diag.Info("breed", $"{name} finished again in the same scene; only the first counts");
@@ -368,20 +578,28 @@ public sealed partial class DairyGame
             return;
         }
 
-        var seed = bull.Status?.Seed is > 0 and var s ? s : 100;
+        var seed = bull?.Status?.Seed is > 0 and var s ? s : 100;
+        var stud = bull?.Status?.StudTonic == true;   // the bull had a Stud draught: half again as strong, 15 minutes longer
         wasBredThisScene = true;
         F.BredAtUtc = DateTime.UtcNow;
-        F.BredUntilUtc = DateTime.UtcNow.AddMinutes(BredMinutes);
-        F.BredStrength = Math.Clamp(seed / 100f, 0.2f, 1f);
-        F.BredBy = bull.Name;
-        Say($"{bull.Name} bred you: +{BredBonusNow * 100:0.#}% milk for {BredMinutes} minutes{(seed < 100 ? $" (their breeding output is at {seed}% today)" : "")}.", 1);
+        F.BredUntilUtc = DateTime.UtcNow.AddMinutes(BredMinutesNow + (stud ? 15 : 0));
+        F.BredStrength = Math.Clamp(seed / 100f, 0.2f, 1f) * (stud ? 1.5f : 1f);
+        F.BredBy = bullName;
+        Say($"{bullName} bred you: +{BredBonusNow * 100:0.#}% milk for {BredMinutesNow + (stud ? 15 : 0)} minutes{(stud ? " (they had a Stud draught)" : "")}{(seed < 100 ? $" (their breeding output is at {seed}% today)" : "")}.", 1);
         plugin.SaveConfig();
     }
 
     // ----- Bulls: breeding and seed output -----
 
-    /// <summary>Seed output for a bull's next breeding today: full for the first few, then 20% less each, down to 20%.</summary>
-    public static float SeedFor(int breedsBefore) => breedsBefore < FreshBreeds ? 1f : Math.Max(0.2f, 1f - 0.2f * (breedsBefore - FreshBreeds + 1));
+    /// <summary>Breedings a day at full seed output: 20, 25 with the Stud book, 30 with Legendary stud.</summary>
+    public int FreshBreedsNow => Owned("legendstud") > 0 ? 30 : Owned("studbook") > 0 ? 25 : FreshBreeds;
+
+    /// <summary>The lowest your seed output drops to: 20%, or 60% with the Champion bull sash.</summary>
+    public float SeedFloor => Owned("bullsash") > 0 ? 0.6f : 0.2f;
+
+    /// <summary>Seed output for a bull's next breeding today: full for the first few, then 20% less each, down to the floor.</summary>
+    public float SeedFor(int breedsBefore) =>
+        breedsBefore < FreshBreedsNow ? 1f : Math.Max(SeedFloor, 1f - 0.2f * (breedsBefore - FreshBreedsNow + 1));
 
     /// <summary>Your seed output now (for your next breeding), 20 to 100.</summary>
     public int SeedNow => (int)Math.Round(SeedFor(F.DayBreeds) * 100);
@@ -389,35 +607,70 @@ public sealed partial class DairyGame
     /// <summary>Corruption: you climaxed. If you're a bull in a scene with a cow of your dairy, you bred her.</summary>
     public void OnClimax()
     {
-        if (!IsBull || Blocked() != null) return;
+        if (!IsBull)
+        {
+            Diag.Info("breed", "You finished: you aren't a bull, so it doesn't breed anyone");
+            return;
+        }
+
+        if (Blocked() is { } blocked)
+        {
+            Diag.Info("breed", $"You finished, but breeding is blocked: {blocked}");
+            return;
+        }
+
         ReadScene(true);
         var scene = SceneNow;
-        if (!scene.Ready || scene.Solo || scene.PartnerName.Length == 0) return;
+        if (!scene.Ready || scene.Solo || scene.PartnerName.Length == 0)
+        {
+            Diag.Info("breed", $"You finished, but not in a scene with a partner (ready {scene.Ready}, solo {scene.Solo})");
+            return;
+        }
+
+        // A cow of your dairy, or a cow from another dairy who pressed Allow for you
         var cow = DairyMember(scene.PartnerName, scene.PartnerWorld);
-        if (cow == null || !(cow.Roles.Contains("cow") || cow.Role == "cow")) return;
+        if (cow != null && !cow.Has("cow"))
+        {
+            Diag.Info("breed", $"You finished with {cow.Name}, but they aren't a cow in your dairy");
+            return;
+        }
+
+        if (cow == null && !OutsideCowSaidYes)
+        {
+            Diag.Info("breed", $"You finished with {scene.PartnerName}@{scene.PartnerWorld}, but they aren't in your dairy and didn't allow you to breed them");
+            return;
+        }
+
+        var cowName = cow?.Name ?? scene.PartnerName;
         if (EitherWayScene && !BreedingAsBull)
         {
             Diag.Info("breed", "You finished, but you didn't choose to breed them this scene");
             return;
         }
-        if (!myBody.CanBreed || !partnerBody.CanCarry)
+        if (!CorruptionCanBreedThem)
+            Diag.Info("breed", $"You breed them in the dairy; Corruption won't roll a pregnancy (you can breed: {myBody.CanBreed}, they can carry: {partnerBody.CanCarry})");
+        if (BreedTimerLeft > TimeSpan.Zero)
         {
-            Diag.Info("breed", $"You finished, but your bodies don't breed that way (you can breed: {myBody.CanBreed}, they can carry: {partnerBody.CanCarry})");
+            Diag.Info("breed", $"You finished {SceneTime.TotalMinutes:0.#} min into the scene; breeding counts after {BreedSceneMinutes} min");
+            Say($"Too soon to breed: a finish breeds after {BreedSceneMinutes} minutes in the scene ({DairyGame.Wait(BreedTimerLeft)} to go).", 0);
             return;
         }
+
         if (bredThemThisScene)
         {
-            Diag.Info("breed", $"Finished again with {cow.Name} in the same scene; only the first counts");
+            Diag.Info("breed", $"Finished again with {cowName} in the same scene; only the first counts");
             return;
         }
 
         bredThemThisScene = true;
+        F.StudTonic = false;
         var output = SeedFor(F.DayBreeds);
         F.DayBreeds++;
-        var xp = Math.Max(1, (int)Math.Round(BreedXp * output));
+        var xp = Math.Max(1, (int)Math.Round(BreedXp * output * (Owned("prizestud") > 0 ? 1.25f : 1f)));
+        if (Owned("breedpen") > 0) EarnDairyXp(BreedPenDairyXp);   // the dairy only counts it while you're in it
         AddBullXp(xp);
         var next = SeedNow;
-        Say($"You bred {cow.Name}. +{xp} bull xp" + (next < 100 ? $". You're getting tired: seed output {next}% for the next one (resets at midnight UTC)." : "."), 1);
+        Say($"You bred {cowName}. +{xp} bull xp" + (next < 100 ? $". You're getting tired: seed output {next}% for the next one (resets at midnight UTC)." : "."), 1);
         plugin.SaveConfig();
     }
 
@@ -440,7 +693,7 @@ public sealed partial class DairyGame
     private void AddBullXp(int amount)
     {
         var before = BullLevel;
-        F.BullXp += amount;
+        F.BullXp += Boosted(amount);
         for (var l = before + 1; l <= BullLevel; l++)
             Say($"Bull level {l}!" + (Leveling.BullRank(l) is { } t && l % 25 == 0 ? $" You're a {t}." : ""), 1);
     }

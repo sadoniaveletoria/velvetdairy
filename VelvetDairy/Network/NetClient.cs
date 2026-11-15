@@ -384,9 +384,11 @@ public sealed class NetClient : IDisposable
                 Milk = (float)Math.Round(F.Cow.Milk, 1), Cap = g.Capacity, Grade = g.CurrentGrade, Spoiled = g.Spoiled,
                 InDairy = g.Where.InDairy, Level = g.Level, FarmerLevel = g.FarmerLevel, BullLevel = g.BullLevel, Crown = g.Crowned,
                 Seed = g.IsBull ? g.SeedNow : 0, Preg = g.Pregnant ? g.Preg.Stage : "", PregFather = g.Pregnant ? g.Preg.FatherName : "",
+                BreedOk = g.BreedOkFor, GuestAt = g.Where.Guest ? g.GuestHere?.Id ?? "" : "",
                 SeedOz = g.ProducesSeed ? (float)Math.Round(F.Cow.Seed, 2) : 0, SeedCap = g.ProducesSeed ? g.SeedCapacity : 0,
                 SeedGrade = g.ProducesSeed ? g.SeedGrade : 0, SeedSpoiled = g.ProducesSeed && g.SeedSpoiled,
                 Breeding = g.BreedingTarget,
+                StudTonic = g.IsBull && F.StudTonic,
                 Bonuses = g.ScanBonuses(out var speed), Speed = speed,
                 BredBy = g.BredLeft > TimeSpan.Zero ? F.BredBy : "", BredPct = g.BredLeft > TimeSpan.Zero ? (float)Math.Round(g.BredBonusNow * 100, 1) : 0,
                 BredUntil = g.BredLeft > TimeSpan.Zero ? new DateTimeOffset(F.BredUntilUtc, TimeSpan.Zero).ToUnixTimeSeconds() : 0,
@@ -397,7 +399,7 @@ public sealed class NetClient : IDisposable
                 HandBy = g.Active is { Kind: VelvetDairy.Game.SessionKind.Hand, Hand: { IsTest: false } h } ? h.Name : "",
                 AnyEmote = F.AnyLoopEmote,
                 Milking = g.MilkingCowName ?? "",
-                Ask = g.Producer && !F.AutoHand,
+                Ask = g.Producer && (!F.AutoHand || g.Where.Guest),
                 Refused = g.RefusedFarmer,
                 TreatAt = g.Producer && F.Cow.HappyReadyUtc > DateTime.UtcNow ? new DateTimeOffset(DateTime.SpecifyKind(F.Cow.HappyReadyUtc, DateTimeKind.Utc)).ToUnixTimeSeconds() : 0,
             },
@@ -460,21 +462,29 @@ public sealed class NetClient : IDisposable
 
     /// <summary>
     /// Your dairy's members, stalls and status only change what you see while you're in the dairy, have one of the
-    /// windows open, or watch the owner HUD. Otherwise it's checked every 5 minutes instead of every minute
+    /// windows open. Otherwise it's checked every 5 minutes instead of every minute
     /// (every request counts against the server's daily allowance).
     /// </summary>
     private bool WatchingDairy =>
         plugin.Game.Where.InDairy || plugin.MainWindow.IsOpen || plugin.Members.IsOpen || plugin.Kitchen.IsOpen ||
-        plugin.Milking.IsOpen || (F.ShowHud && F.ShowOwnerHud && F.NetMember?.IsOwner == true);
+        plugin.Milking.IsOpen;
 
     /// <summary>Scan another player (anyone targeting them can, if they allow it).</summary>
+    /// <summary>Who's at a dairy right now.</summary>
+    public void WhoIsHere(string dairyId, Action<HereReply> ok, Action<string> failed) =>
+        Call<HereReply>("GET", $"/v1/dairies/{Uri.EscapeDataString(dairyId)}/details", null, ok, failed);
+
     public void Scan(string name, string world, Action<ScanReply> ok, Action<string> failed) =>
         Call<ScanReply>("GET", $"/v1/scan/{Uri.EscapeDataString(world)}/{Uri.EscapeDataString(name)}", null, ok, failed);
+
+    /// <summary>Another player's roles, and whom they allowed to breed them (breeding across dairies).</summary>
+    public void LookupPlayer(string name, string world, Action<PlayerLookup> done) =>
+        Call<PlayerLookup>("GET", $"/v1/player?name={Uri.EscapeDataString(name)}&world={Uri.EscapeDataString(world)}", null, done, _ => done(new PlayerLookup()));
 
     public void RefreshMine()
     {
         // A scene where you and your partner choose who breeds: their choice shows up quickly
-        nextMine = Now + (plugin.Game.EitherWayScene ? 10 : WatchingDairy ? 60 : 300);
+        nextMine = Now + (plugin.Game.InScene ? 10 : WatchingDairy ? 60 : 300);
         Call<MyDairyReply>("GET", "/v1/dairy/mine", null, r =>
         {
             Mine = r.Dairy == null ? null : r;
@@ -533,8 +543,8 @@ public sealed class NetClient : IDisposable
         }, failed);
 
     /// <summary>Tells the server a farmer hand milked you, so they get their share.</summary>
-    public void HandPay(string farmer, string world, float oz, int grade, bool seed = false) =>
-        Call<HandPayReply>("POST", "/v1/handpay", new { farmer, world, oz = Math.Round(oz, 3), grade, seed }, _ => { }, e => Plugin.Log.Debug($"Hand pay: {e}"));
+    public void HandPay(string farmer, string world, float oz, int grade, bool seed = false, bool prized = false) =>
+        Call<HandPayReply>("POST", "/v1/handpay", new { farmer, world, oz = Math.Round(oz, 3), grade, seed, prized }, _ => { }, e => Plugin.Log.Debug($"Hand pay: {e}"));
 
     public void Donate(int coins, Action<int> ok, Action<string> failed) =>
         Call<FundReply>("POST", "/v1/dairy/fund", new { coins }, r =>
@@ -684,6 +694,20 @@ public sealed class NetClient : IDisposable
     /// <summary>Owner: which roles the dairy takes applications for, and whether farmers can answer them.</summary>
     public void SetApplying(List<string> lookingFor, bool farmersAnswer, Action<string> failed) =>
         Call<object>("PUT", "/v1/dairy/applying", new { lookingFor, farmersAnswer }, _ => MineWithin(1), failed);
+
+    /// <summary>Play in another of your dairies.</summary>
+    public void SwitchDairy(string id, Action<string> ok, Action<string> failed) =>
+        Call<SwitchReply>("POST", "/v1/dairy/active", new { id }, r =>
+        {
+            Mine = null;
+            Poke();
+            ok(r.Dairy);
+        }, failed);
+
+    public sealed class SwitchReply
+    {
+        public string Dairy { get; set; } = "";
+    }
 
     public void Leave(Action ok, Action<string> failed) =>
         Call<object>("POST", "/v1/members/leave", new { }, _ =>

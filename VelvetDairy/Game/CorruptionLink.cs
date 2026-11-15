@@ -49,6 +49,7 @@ public sealed class CorruptionLink : IDisposable
     private readonly ICallGateSubscriber<object> onStateChanged;
     private readonly ICallGateSubscriber<object> onReady;
     private readonly ICallGateSubscriber<string, bool, string> setForceCreampie;
+    private readonly ICallGateSubscriber<double, string, string> addArousal;
 
     /// <summary>Corruption (re)loaded: anything we set there (forced creampies) has to be set again.</summary>
     public event Action? Reloaded;
@@ -79,6 +80,7 @@ public sealed class CorruptionLink : IDisposable
         onStateChanged = pi.GetIpcSubscriber<object>("Corruption.OnStateChanged");
         onReady = pi.GetIpcSubscriber<object>("Corruption.Ready");
         setForceCreampie = pi.GetIpcSubscriber<string, bool, string>("Corruption.SetForceCreampie");
+        addArousal = pi.GetIpcSubscriber<double, string, string>("Corruption.AddArousal");
         onClimax.Subscribe(OnClimax);
         onPartnerClimax.Subscribe(OnPartnerClimax);
         onStateChanged.Subscribe(OnChanged);
@@ -93,6 +95,12 @@ public sealed class CorruptionLink : IDisposable
     /// breeder's climax rolls for conception). Corruption only allows it with the player's consent in its own settings
     /// ("not-allowed" otherwise), and keeps Cummy's blocks. Returns Corruption's answer, or "" if it couldn't be reached.
     /// </summary>
+    /// <summary>
+    /// Raise or lower your own arousal (Corruption: at most 25 a call and 60 a minute, and only with its "let other
+    /// plugins control Corruption" on). Returns Corruption's answer: ok, limited, not-allowed, paused...
+    /// </summary>
+    public string AddArousal(double amount) => Try(() => addArousal.InvokeFunc(amount, "Eorzea Milkers") ?? "", "");
+
     public string SetForceCreampie(bool on) => Try(() => setForceCreampie.InvokeFunc("Eorzea Milkers", on) ?? "", "");
 
     public void Dispose()
@@ -104,8 +112,17 @@ public sealed class CorruptionLink : IDisposable
         onReady.Unsubscribe(OnReloaded);
     }
 
-    private void OnClimax() => Climax?.Invoke();
-    private void OnPartnerClimax(string name, string world) => PartnerClimax?.Invoke(name, world);
+    private void OnClimax()
+    {
+        Diag.Info("corruption", "Corruption: you climaxed");
+        Climax?.Invoke();
+    }
+
+    private void OnPartnerClimax(string name, string world)
+    {
+        Diag.Info("corruption", $"Corruption: your partner {name}@{world} climaxed");
+        PartnerClimax?.Invoke(name, world);
+    }
     private void OnChanged() => Changed?.Invoke();
 
     private static T Try<T>(Func<T> call, T empty)

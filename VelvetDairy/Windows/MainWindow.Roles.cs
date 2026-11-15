@@ -157,7 +157,7 @@ public sealed partial class MainWindow
         Ui.Wrapped($"Grooming cows ({Catalog.GroomXp} each, every 15 min per cow), cleaning stalls ({Catalog.CleanXp} each), hand milking pay, filling jugs, customer orders, deliveries and contract shipments.", Theme.InkSoft, width);
     }
 
-    /// <summary>Hand milking and the Kitchen each open their own window (also on the HUD).</summary>
+    /// <summary>Hand milking and the Kitchen each open their own window (Herd Care is also on the HUD).</summary>
     private void DrawFarmerButtons(float width)
     {
         var buttons = new System.Collections.Generic.List<Btn>();
@@ -173,7 +173,7 @@ public sealed partial class MainWindow
         }
 
         if (G.Baking is { } b)
-            ImGui.TextColored(Theme.InkSoft, $"{Catalog.Doing(b.Recipe)} {Catalog.MadeName(b.Recipe.Makes).ToLowerInvariant()} · {F.Bake!.Done + 1} of {F.Bake.Count} · {(G.Where.InDairy ? $"{DairyGame.Wait(b.Left)} left" : "paused")}");
+            ImGui.TextColored(Theme.InkSoft, $"{Catalog.Doing(b.Recipe)} {Catalog.MadeName(b.Recipe.Makes).ToLowerInvariant()} · {F.Bake!.Done + 1} of {F.Bake.Count} · {(G.AtHome ? $"{DairyGame.Wait(b.Left)} left" : "paused")}");
         ImGui.TextColored(Theme.InkSoft, $"Jugs: {Units.Num(G.Carried, "0.#")} / {Units.Num(G.MaxCarry)} {Units.Unit}");
         Gap(4);
     }
@@ -225,7 +225,8 @@ public sealed partial class MainWindow
         var mine = G.Net.Mine;
         var me = Plugin.ObjectTable.LocalPlayer;
         var myName = me?.Name.TextValue ?? "";
-        var cows = mine?.Members.Where(m => (m.Has("cow") || m.Has("bull")) && !m.Name.Equals(myName, StringComparison.OrdinalIgnoreCase)).ToList() ?? new();
+        // Your dairy's cows and bulls, and guests from other dairies visiting it (a public dairy)
+        var cows = mine?.Members.Concat(mine.Guests).Where(m => (m.Has("cow") || m.Has("bull")) && !m.Name.Equals(myName, StringComparison.OrdinalIgnoreCase)).ToList() ?? new();
         if (cows.Count == 0)
         {
             ImGui.TextColored(Theme.InkSoft, "No other cows or bulls in your dairy yet.");
@@ -245,6 +246,7 @@ public sealed partial class MainWindow
 
             var st = c.Status;
             var lines = new System.Collections.Generic.List<Line>();
+            if (c.Guest) lines.Add(new Line("Guest: visiting from another dairy (they press Allow before you milk them)", Theme.BlueDeep));
             if (!c.Online) lines.Add(new Line("Offline", Theme.InkSoft));
             else
             {
@@ -371,7 +373,7 @@ public sealed partial class MainWindow
         SubHeading("Breeding", width);
         Ui.Wrapped("Bulls breed their dairy's cows in a scene with the Corruption plugin. When you finish in a scene with a cow of your dairy, you've bred them: they get a little more milk for a while, and you get bull xp.",
             Theme.Ink, width);
-        Ui.Wrapped($"There's no limit on how often you breed, but you tire: after {DairyGame.FreshBreeds} breedings a day your breeding output drops 20% each time (down to 20%), which makes the cow's bonus and your xp smaller. It's back to full at midnight UTC.",
+        Ui.Wrapped($"There's no limit on how often you breed, but you tire: after {G.FreshBreedsNow} breedings a day your breeding output drops 20% each time (down to {G.SeedFloor * 100:0}%), which makes the cow's bonus and your xp smaller. It's back to full at midnight UTC.",
             Theme.InkSoft, width);
         Ui.Wrapped("Getting a cow pregnant is up to Corruption (their cycle and settings); Eorzea Milkers shows it when it happens.", Theme.InkSoft, width);
         if (!G.CorruptionOn) Ui.Wrapped("Corruption isn't installed or loaded, so breeding doesn't count yet. It's on GitHub: RaylaPetal/corruption.", Theme.Warn, width);
@@ -405,8 +407,8 @@ public sealed partial class MainWindow
         SubHeading("Breeding output", width);
         var seed = G.SeedNow;
         ImGui.TextColored(seed >= 100 ? Theme.SageDeep : Theme.HoneyDeep, $"{seed}% for your next breeding · bred today: {F.DayBreeds}");
-        ImGui.TextColored(Theme.InkSoft, F.DayBreeds < DairyGame.FreshBreeds
-            ? $"{DairyGame.FreshBreeds - F.DayBreeds} more at full output today"
+        ImGui.TextColored(Theme.InkSoft, F.DayBreeds < G.FreshBreedsNow
+            ? $"{G.FreshBreedsNow - F.DayBreeds} more at full output today"
             : "You're tired: each breeding today gives a bit less. Full again at midnight UTC.");
         Ui.Wrapped($"Each breeding: up to {DairyGame.BreedXp} bull xp, and the cow gets +{DairyGame.BredBonus * 100:0}% milk for {DairyGame.BredMinutes} minutes, both scaled by your breeding output.", Theme.InkSoft, width);
     }
@@ -470,7 +472,7 @@ public sealed partial class MainWindow
             ImGui.TextColored(Theme.RoseDeep, $"Bred by {F.BredBy}: +{G.BredBonusNow * 100:0.#}% milk for {(int)G.BredLeft.TotalMinutes + 1} more min");
         else if (G.BreedCooldownLeft > TimeSpan.Zero)
             ImGui.TextColored(Theme.InkSoft, $"Another breeding counts in {(int)G.BreedCooldownLeft.TotalMinutes + 1} min");
-        else Ui.Wrapped($"When a bull of your dairy finishes in a Corruption scene with you, you're bred: +{DairyGame.BredBonus * 100:0}% milk for {DairyGame.BredMinutes} minutes (less if they're tired), once every {DairyGame.BredCooldownMinutes} minutes.", Theme.InkSoft, width);
+        else Ui.Wrapped($"When a bull of your dairy finishes in a Corruption scene with you, you're bred: +{DairyGame.BredBonus * 100:0}% milk for {G.BredMinutesNow} minutes (less if they're tired), once every {DairyGame.BredCooldownMinutes} minutes.", Theme.InkSoft, width);
 
         Ui.Wrapped("A bull of your dairy always finishes inside: their climaxes count as a pussy creampie, so Corruption rolls for conception each time (your Cummy blocks still apply).", Theme.InkSoft, width);
 

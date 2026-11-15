@@ -12,6 +12,15 @@ public static class Housing
         return (hm->GetCurrentWard(), hm->GetCurrentPlot());
     }
 
+    /// <summary>The ward you're in, 1-based, when you're outdoors in a residential district (0 elsewhere or indoors).</summary>
+    public static unsafe int OutdoorWard()
+    {
+        var hm = HousingManager.Instance();
+        if (hm == null || hm->IsInside() || hm->OutdoorTerritory == null) return 0;
+        var w = hm->GetCurrentWard();
+        return w >= 0 ? w + 1 : 0;
+    }
+
     public static string Describe(int ward, int plot)
     {
         if (ward < 0) return "";

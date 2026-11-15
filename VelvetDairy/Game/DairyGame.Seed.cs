@@ -48,7 +48,15 @@ public sealed partial class DairyGame
     public float SeedShare => SeedRateByGrade[Math.Clamp(SeedGrade, 0, SeedRateByGrade.Length - 1)];
 
     /// <summary>What goes into your seed speed: the same needs and bonuses as milk, your bull level, and your seed grade.</summary>
-    public List<RatePart> SeedRateParts() => RateParts(true, true);
+    public List<RatePart> SeedRateParts()
+    {
+        var parts = RateParts(true, true);
+        if (Owned("herdsire") > 0) parts.Add(new RatePart("Herd sire", 1.15f));
+        return parts;
+    }
+
+    /// <summary>Bull wearables: extra pay for seed (Nose ring +3%, Brass horn caps +5%, Champion bull sash +10%).</summary>
+    public float SeedPayBonus => 1f + (Owned("nosering") > 0 ? 0.03f : 0) + (Owned("horncaps") > 0 ? 0.05f : 0) + (Owned("bullsash") > 0 ? 0.10f : 0);
 
     public float SeedPerMinute() => SeedRateParts().Aggregate(BaseRate, (r, p) => r * p.Multiplier);
 
@@ -172,7 +180,6 @@ public sealed partial class DairyGame
     private void AddSeedQuality(float amount)
     {
         var before = Grades.Cap(F.SeedQuality);
-        if (amount > 0) amount *= 1f + (Owned("heifer") > 0 ? 0.1f : 0) + (Owned("champion") > 0 ? 0.2f : 0);
         F.SeedQuality += amount;
         var after = Grades.Cap(F.SeedQuality);
         for (var g = before + 1; g <= after; g++)
@@ -197,17 +204,23 @@ public sealed partial class DairyGame
     {
         var hand = s.Kind == SessionKind.Hand;
         var collected = s.ExtractedSeed * s.SeedYield;
+        if (F.SeedTea > 0 && collected > 0)
+        {
+            collected *= 1f + F.SeedTea;   // Seed tea: this milking gives more
+            F.SeedTea = 0;
+        }
+
         var milkEquivalent = collected / SeedRatio;
         EaseSeedTaint(Catalog.TaintPerMilking);
         AddSeedQuality(milkEquivalent * (hand ? Grades.QualityPerOzHand : Grades.QualityPerOz));
 
         var paidOz = Math.Clamp(Catalog.DailyPaidOz * SeedRatio - F.DaySeedOz, 0, collected);
         var rateBefore = Catalog.TaperRate(F.DayEarned);
-        var pay = Earn((int)Math.Round(paidOz * PayRate(s.SeedGrade) * SeedPriceMult));
+        var pay = Earn((int)Math.Round(paidOz * PayRate(s.SeedGrade, true) * SeedPriceMult));
         F.Stats.TotalSeedOz += collected;
         F.DaySeedOz += collected;
         EarnDairyXp(milkEquivalent * (hand ? 1.5f : 1f));
-        if (Networked && F.NetMember != null && Where.InDairy) pendingSeedPump += collected;
+        if (Networked && (F.NetMember != null || Where.Guest) && Where.InDairy) pendingSeedPump += collected;
         Cow.SeedLastMilkedUtc = DateTime.UtcNow;
 
         int xp;
@@ -216,7 +229,7 @@ public sealed partial class DairyGame
                                  (Fresh(s.Stall) ? 1f + Catalog.CleanBonus : 1f));
         else
         {
-            if (Networked && !s.Hand!.IsTest) Net.HandPay(s.Hand.Name, s.Hand.WorldName, collected, s.SeedGrade, true);   // the farmer's share
+            if (Networked && !s.Hand!.IsTest) Net.HandPay(s.Hand.Name, s.Hand.WorldName, collected, s.SeedGrade, true, Prized);   // the farmer's share
             xp = (int)Math.Round(milkEquivalent * Leveling.XpPerOzHand * Leveling.GradeBonus(s.SeedGrade)) + Leveling.XpHandSession;
         }
 

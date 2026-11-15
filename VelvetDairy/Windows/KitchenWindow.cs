@@ -97,8 +97,8 @@ public sealed class KitchenWindow : Window
         var job = F.Bake!;
         ImGui.TextColored(Theme.Ink, $"{b.Recipe.Name} · {job.Done + 1} of {job.Count}");
         ImGui.SameLine();
-        ImGui.TextColored(G.Where.InDairy ? Theme.InkSoft : Theme.RoseDeep,
-            G.Where.InDairy ? $"{Clock(b.Left)} left · {job.Done} done" : "Paused: go back into the dairy to keep going");
+        ImGui.TextColored(G.AtHome ? Theme.InkSoft : Theme.RoseDeep,
+            G.AtHome ? $"{Clock(b.Left)} left · {job.Done} done" : "Paused: go back into the dairy to keep going");
         ImGui.PushStyleColor(ImGuiCol.PlotHistogram, Theme.HoneyDeep);
         ImGui.ProgressBar(b.Current, new Vector2(ImGui.GetContentRegionAvail().X - 90, 14), "");
         ImGui.PopStyleColor();

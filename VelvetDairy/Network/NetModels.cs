@@ -27,6 +27,18 @@ public sealed class HeartbeatReply
     public CreameryNow? CreameryHere { get; set; }   // standing at a Grand Creamery: who else is there (any world) and today's deliveries
     public List<CreameryInfo>? Creameries { get; set; }   // up to 3 (one per Grand Company); Creamery is the first
     public float Carried { get; set; }
+    public List<MyDairyEntry> Dairies { get; set; } = new();   // every dairy you belong to (you can be in several, and own one)
+}
+
+/// <summary>One of the dairies you belong to.</summary>
+public sealed class MyDairyEntry
+{
+    public string Id { get; set; } = "";
+    public string Name { get; set; } = "";
+    public bool IsOwner { get; set; }
+    public string Role { get; set; } = "";
+    public List<string> Roles { get; set; } = new();
+    public string RoleText => VelvetDairy.Game.Roles.Text(VelvetDairy.Game.Roles.From(Roles, Role));
 }
 
 /// <summary>Where the Grand Creamery is (set by the developer): weekly contracts are delivered there.</summary>
@@ -65,6 +77,32 @@ public sealed class HereInfo
     public bool IsPublic { get; set; }
     public bool Mine { get; set; }
     public bool Private { get; set; }   // you're in your dairy's private place
+
+    // A guest in someone else's public dairy: what your plugin needs to be milked and cared for there
+    public bool Guest { get; set; }
+    public string HouseId { get; set; } = "";
+    public VelvetDairy.Game.DairyArea? Area { get; set; }
+    public List<StallInfo> Stalls { get; set; } = new();
+    public List<GuestFarmer> Farmers { get; set; } = new();
+}
+
+/// <summary>A farmer of the public dairy you're visiting, and whom they pressed Milk on.</summary>
+public sealed class GuestFarmer
+{
+    public string Name { get; set; } = "";
+    public string World { get; set; } = "";
+    public string Milking { get; set; } = "";
+    public string Refused { get; set; } = "";
+}
+
+/// <summary>Another player's roles and whom they've allowed to breed them (for breeding across dairies).</summary>
+public sealed class PlayerLookup
+{
+    public bool Found { get; set; }
+    public List<string> Roles { get; set; } = new();
+    public string DairyId { get; set; } = "";
+    public string Dairy { get; set; } = "";
+    public string BreedOk { get; set; } = "";
 }
 
 public sealed class MembershipInfo
@@ -161,12 +199,15 @@ public sealed class DairyListing
     /// Where it is, for the list: a box inside a house or apartment shows that home's district, ward and plot (from the
     /// house's id, which always says the right one); outdoors, the zone.
     /// </summary>
-    public string Address => Area != null ? AreaAddress(Area)
+    public string Address => Area != null ? AreaAddress(Area, Ward ?? 0)
         : HouseId != null && ulong.TryParse(HouseId, out var hid) && VelvetDairy.Game.Estate.FromId(hid) is { Ward: > 0 } home ? home.Describe
         : Ward is null ? "Private" : Room is > 0 && Plot is null ? $"{District}, Ward {Ward}, apartment {Room}" : $"{District}, Ward {Ward}, Plot {Plot}";
 
-    private static string AreaAddress(VelvetDairy.Game.DairyArea a)
+    private static string AreaAddress(VelvetDairy.Game.DairyArea a, int ward)
     {
+        // Outdoors in a residential district: the district and ward
+        if (a.House.Length == 0 && ward > 0 && VelvetDairy.Game.Estate.DistrictKind(a.Territory) > 0)
+            return $"{VelvetDairy.Game.Estate.DistrictName(a.Territory)}, Ward {ward} (outside)";
         if (a.House.Length == 0 || VelvetDairy.Game.Estate.SoloPlace(a.Territory) || VelvetDairy.Game.Estate.Island(a.Territory) || !ulong.TryParse(a.House, out var id)) return a.Zone;
         var addr = VelvetDairy.Game.Estate.FromId(id);
         return addr.Ward > 0 ? addr.Describe : a.Zone;
@@ -179,6 +220,7 @@ public sealed class MyDairyReply
     public YouInfo? You { get; set; }
     public List<MemberInfo> Members { get; set; } = new();
     public List<StallInfo> Stalls { get; set; } = new();
+    public List<MemberInfo> Guests { get; set; } = new();   // players from other dairies visiting this public dairy now
     public List<SentInvite> Invites { get; set; } = new();
     public DairyProgress? Progress { get; set; }
     public ApplyingInfo? Applying { get; set; }
@@ -332,6 +374,7 @@ public sealed class MemberInfo
     public bool Online { get; set; }
     public long LastSeen { get; set; }      // unix seconds their plugin last checked in (0 = never)
     public string Version { get; set; } = "";   // their plugin version, as of their last check-in
+    public bool Guest { get; set; }             // visiting from another dairy (not a member)
 
     public List<string> AllRoles => VelvetDairy.Game.Roles.From(Roles, Role);
     public bool Has(string role) => AllRoles.Contains(role);
@@ -353,7 +396,9 @@ public sealed class MemberStatus
     public bool Crown { get; set; }         // a crown next to their name in the member list
     public int Seed { get; set; }           // a bull: seed output for his next breeding (20 to 100; 0 = not a bull)
     public string Preg { get; set; } = "";  // a cow: pregnancy stage from Corruption (first, second, third), or empty
-    public string PregFather { get; set; } = "";   // a pregnant cow: the father's name (from Corruption), so he can see it
+    public string PregFather { get; set; } = "";
+    public string BreedOk { get; set; } = "";      // a cow: the bull from another dairy she allowed to breed her this scene
+    public string GuestAt { get; set; } = "";      // a guest: the public dairy they're visiting   // a pregnant cow: the father's name (from Corruption), so he can see it
     public float SeedOz { get; set; }       // a bull: seed waiting to be milked
     public float SeedCap { get; set; }      // a bull: what his vials hold (0 = not a bull)
     public int SeedGrade { get; set; }
@@ -367,6 +412,7 @@ public sealed class MemberStatus
     public long BreedWait { get; set; }
     public string Scan { get; set; } = "anyone";
     public long W { get; set; }                         // when the server last stored this (unix seconds)
+    public bool StudTonic { get; set; }          // a bull who had a Stud draught: his next breeding is stronger
     public string Breeding { get; set; } = "";   // both cow and bull: the scene partner (Name@World) they chose to breed this scene
     public int Quality { get; set; }        // milk quality score (cows)
     public int TotalOz { get; set; }        // all the milk they've ever given
@@ -383,6 +429,33 @@ public sealed class ScanBonus
 {
     public string N { get; set; } = "";
     public float P { get; set; }   // percent: +15 is 15% faster, -50 half speed
+}
+
+/// <summary>Who's at a dairy right now (Dairies list > Who's here).</summary>
+public sealed class HereReply
+{
+    public string Dairy { get; set; } = "";
+    public List<HerePerson> People { get; set; } = new();
+    public int Hidden { get; set; }   // there, but they don't share (scan setting) or aren't in a dairy
+    public long Now { get; set; }
+    public float TankMilk { get; set; }
+    public float TankSeed { get; set; }
+    public int Stalls { get; set; }
+}
+
+public sealed class HerePerson
+{
+    public string Name { get; set; } = "";
+    public string World { get; set; } = "";
+    public List<string> Roles { get; set; } = new();
+    public bool Member { get; set; }      // a member of this dairy (else visiting, from From)
+    public string From { get; set; } = "";
+    public int CowLevel { get; set; }
+    public int BullLevel { get; set; }
+    public int FarmerLevel { get; set; }
+    public string Preg { get; set; } = "";
+    public long BredUntil { get; set; }
+    public long BreedWait { get; set; }
 }
 
 /// <summary>A scan of another player: their dairy and status, or why it can't be seen.</summary>
