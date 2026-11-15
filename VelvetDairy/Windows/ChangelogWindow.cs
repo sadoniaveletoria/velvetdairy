@@ -23,10 +23,11 @@ public sealed class ChangelogWindow : Window
     /// <summary>Newest first. Write these for players: what changed for them, not how.</summary>
     private static readonly Entry[] Entries =
     {
-        new("0.9.80", "Feeding bell, weekend contest and bonuses that last in a dairy", new[]
+        new("0.9.81", "Feeding bell, weekend contest and bonuses that last in a dairy", new[]
         {
             "The feeding bell: farmers and the owner ring it from Herd Care (once an hour). Everyone in the dairy hears it, and each cow and bull picks a bar to fill right up, plus a 20 minute boost.",
             "Weekend milk contest, every Saturday and Sunday (UTC): milk pumped into your dairy's tank also fills the weekly contract. The Contract card shows the top pumpers and last weekend's champion.",
+            "Breeding no longer waits 10 minutes into a scene: Corruption's arousal and climax decide when a breeding happens.",
             "A bar with more than an hour left is full enough: you can't eat, drink, be groomed or pick it at the feeding bell until it's under an hour.",
                         "Weekly contracts are bigger: 1,500 oz at dairy level 1, growing 250 oz a level up to 6,000 oz (this week's grows to match).",
             "While you're in a dairy (yours, or a public one you're visiting), your Fed, Watered, Comfy and Happy bars drain half as fast, so your bonuses last twice as long while you stay.",
@@ -46,7 +47,6 @@ public sealed class ChangelogWindow : Window
             "Bull foods: Iron oats (Fed and Watered at once), Bull's salt lick (+25% bull xp for 30 min), Seed tea (next seed milking +25%), Stud draught (your next breeding is half again as strong and lasts 15 minutes longer).",
             "For cows who are also bulls: Twin blend (Fed and Happy at once, plus a boost), Velvet & brass bonbon (+20% cow and bull xp for 30 min), Balance tea (2 hours off your milking time today).",
             "# Breeding (still in testing)",
-            "A breeding needs 10 minutes in the scene; the HUD's bar fills with the time. Whoever is breeding starts from 0 arousal (if their Corruption lets other plugins control it).",
             "Cow and bull with a partner who's both? Target them and press Breed on the HUD to be the one breeding. The Breed button only shows when you're both cow and bull.",
             "Your roles in the dairy decide who breeds whom; Corruption's carry and breed settings only decide whether it can become a pregnancy, and the scene note says so.",
             "The Champion's ribbon is now a prized cow's ribbon: farmers who hand milk you earn 10% more, being bred lasts 45 minutes, and pregnancy gives 5% more milk.",

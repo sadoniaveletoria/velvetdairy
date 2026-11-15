@@ -941,7 +941,6 @@ public sealed partial class MainWindow : Window
                 : G.EitherWayScene && !G.BreedingAsBull && !G.BredAsCow ? " You can breed each other: whoever is breeding targets the other and presses Breed on the HUD. Until one of you does, finishing doesn't breed."
                 : G.BreedingAsBull ? " When you finish, you breed them" + (G.ForcedCreampie ? " (always inside, so Corruption rolls for conception)." : ".")
                 : G.BredAsCow ? " When they finish, you're bred" + (G.ConceiveChance > 0 ? $", with a {G.ConceiveChance * 100:0}% chance of conceiving (from Corruption)." : ".") : "")
-                + (G.BreedScene && G.BreedTimerLeft > TimeSpan.Zero ? $" Breeding counts after {DairyGame.BreedSceneMinutes} minutes in the scene ({DairyGame.Wait(G.BreedTimerLeft)} to go)." : "")
                 + (G.BreedOneWayWhy.Length > 0 ? " " + G.BreedOneWayWhy : ""), Theme.RoseDeep));
         if (!where.InDairy) notes.Add((where.Why + " Care and milking wait until you're back.", Theme.RoseDeep));
         if (G.FreshHoldLeft > TimeSpan.Zero) notes.Add(($"Dry-off tonic: your grade won't slip for {DairyGame.Wait(G.FreshHoldLeft)}.", Theme.SageDeep));

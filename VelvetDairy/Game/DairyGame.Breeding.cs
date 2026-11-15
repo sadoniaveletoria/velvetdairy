@@ -22,8 +22,6 @@ public sealed partial class DairyGame
     /// <summary>How long being bred lasts for you: 30 minutes, 45 with the Champion's ribbon.</summary>
     public int BredMinutesNow => Prized ? 45 : BredMinutes;
 
-    /// <summary>A finish only breeds after this long in the scene (so a scene doesn't end in a breeding a minute in).</summary>
-    public const int BreedSceneMinutes = 10;
 
     /// <summary>Bulls breed as often as they like, but after this many a day their seed output drops.</summary>
     public const int FreshBreeds = 20;
@@ -146,8 +144,7 @@ public sealed partial class DairyGame
     /// <summary>One short line about the scene: who with and arousal.</summary>
     public string SceneLine =>
         (SceneNow.Solo || SceneNow.PartnerName.Length == 0 ? "Solo scene" : $"With {SceneNow.PartnerName.Split(' ')[0]}") +
-        (BreedScene && BreedTimerLeft > TimeSpan.Zero ? $" · breeding in {Math.Max(1, (int)Math.Ceiling(BreedTimerLeft.TotalMinutes))}m"
-            : ArousalNow.Ready ? ArousalNow.RefractorySeconds > 0 ? " · catching your breath" : $" · arousal {ArousalNow.Value}%" : "") +
+        (ArousalNow.Ready ? ArousalNow.RefractorySeconds > 0 ? " · catching your breath" : $" · arousal {ArousalNow.Value}%" : "") +
         (ConceiveChance > 0 ? $" · {ConceiveChance * 100:0}% chance" : "") +
         (ForcedCreampie ? " · creampie" : "");
 
@@ -256,61 +253,6 @@ public sealed partial class DairyGame
 
     private string breedChoiceFor = "";
 
-    // ----- Breeding scenes: a 10 minute minimum, and the breeder starts from 0 arousal -----
-
-    private double sceneStartedAt = -1;
-    private string arousalResetFor = "";
-    private double nextArousalStep;
-    private bool arousalResetting;
-
-    /// <summary>This scene breeds one way or the other (you breed them, or they breed you).</summary>
-    public bool BreedScene => BreedingAsBull || BredAsCow;
-
-    /// <summary>Time in this scene so far (zero when not in one).</summary>
-    public TimeSpan SceneTime => sceneStartedAt < 0 || !InScene ? TimeSpan.Zero : TimeSpan.FromSeconds(now - sceneStartedAt);
-
-    /// <summary>How long until a finish breeds in this scene (zero once the minimum is up).</summary>
-    public TimeSpan BreedTimerLeft => sceneStartedAt < 0 ? TimeSpan.Zero
-        : TimeSpan.FromSeconds(Math.Max(0, BreedSceneMinutes * 60 - (now - sceneStartedAt)));
-
-    /// <summary>The breed timer filling up, 0 to 1 (for the HUD's bar).</summary>
-    public float BreedTimerFraction => (float)Math.Clamp((now - sceneStartedAt) / (BreedSceneMinutes * 60.0), 0, 1);
-
-    /// <summary>
-    /// When a scene becomes one where you're breeding them, your arousal is brought down to 0, as fast as Corruption
-    /// lets another plugin (60 a minute), so you don't start the breeding already about to finish. Needs Corruption's
-    /// "Let other plugins control Corruption"; without it nothing changes.
-    /// </summary>
-    private void ResetBreederArousal()
-    {
-        if (!InScene || !BreedingAsBull)
-        {
-            arousalResetting = false;
-            return;
-        }
-
-        if (arousalResetFor != sceneKey)
-        {
-            arousalResetFor = sceneKey;
-            arousalResetting = true;
-            nextArousalStep = 0;
-            Diag.Info("breed", $"Breeding {SceneNow.PartnerName}: bringing your arousal down to 0 (it's {ArousalNow.Value}%)");
-        }
-
-        if (!arousalResetting || now < nextArousalStep) return;
-        if (!ArousalNow.Ready || ArousalNow.Value <= 0)
-        {
-            arousalResetting = false;
-            return;
-        }
-
-        nextArousalStep = now + 25;   // 25 at a time: well inside Corruption's 60 a minute
-        var answer = plugin.Corruption.AddArousal(-Math.Min(25, ArousalNow.Value));
-        if (answer is "ok" or "limited") return;
-        arousalResetting = false;
-        Diag.Info("breed", $"Couldn't lower your arousal: Corruption answered \"{answer}\"" +
-                           (answer == "not-allowed" ? " (turn on \"Let other plugins control Corruption\" in Corruption's settings)" : ""));
-    }
     private bool sceneLogged;
     private string lastSceneLine = "";
 
@@ -412,16 +354,8 @@ public sealed partial class DairyGame
             if (bredThemThisScene && breedChoiceFor.Equals(sceneKey, StringComparison.OrdinalIgnoreCase)) breedChoiceFor = "";
             sceneKey = key;
             wasBredThisScene = bredThemThisScene = false;
-            if (key.Length > 0)
-            {
-                sceneLogged = false;
-                sceneStartedAt = now;
-            }
-            else
-            {
-                sceneStartedAt = -1;
-                Diag.Info("breed", "Scene ended");
-            }
+            if (key.Length > 0) sceneLogged = false;
+            else Diag.Info("breed", "Scene ended");
         }
 
         // Once per scene (and again if it changes): who could breed whom, and why, so a scene that didn't breed can be explained
@@ -448,7 +382,6 @@ public sealed partial class DairyGame
 
         UpdateOutsidePartner();
         UpdateForcedCreampie();
-        ResetBreederArousal();
     }
 
     /// <summary>A notice to your dairy: show it as a pop-up (with a little bell).</summary>
@@ -561,13 +494,6 @@ public sealed partial class DairyGame
         }
         if (!CorruptionCanBreedMe)
             Diag.Info("breed", $"{name} breeds you in the dairy; Corruption won't roll a pregnancy (you can carry: {myBody.CanCarry}, they can breed: {partnerBody.CanBreed})");
-        if (BreedTimerLeft > TimeSpan.Zero)
-        {
-            Diag.Info("breed", $"{name} finished {SceneTime.TotalMinutes:0.#} min into the scene; breeding counts after {BreedSceneMinutes} min");
-            Say($"Too soon to breed: a finish breeds after {BreedSceneMinutes} minutes in the scene ({DairyGame.Wait(BreedTimerLeft)} to go).", 0);
-            return;
-        }
-
         if (wasBredThisScene)
         {
             Diag.Info("breed", $"{name} finished again in the same scene; only the first counts");
@@ -651,13 +577,6 @@ public sealed partial class DairyGame
         }
         if (!CorruptionCanBreedThem)
             Diag.Info("breed", $"You breed them in the dairy; Corruption won't roll a pregnancy (you can breed: {myBody.CanBreed}, they can carry: {partnerBody.CanCarry})");
-        if (BreedTimerLeft > TimeSpan.Zero)
-        {
-            Diag.Info("breed", $"You finished {SceneTime.TotalMinutes:0.#} min into the scene; breeding counts after {BreedSceneMinutes} min");
-            Say($"Too soon to breed: a finish breeds after {BreedSceneMinutes} minutes in the scene ({DairyGame.Wait(BreedTimerLeft)} to go).", 0);
-            return;
-        }
-
         if (bredThemThisScene)
         {
             Diag.Info("breed", $"Finished again with {cowName} in the same scene; only the first counts");

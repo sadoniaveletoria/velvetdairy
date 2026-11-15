@@ -119,7 +119,6 @@ Cow and bull are yours: you add or drop them, and they hold in every dairy you'r
 Breeding is new and still being tuned: numbers and details will change.
 - **Bulls** make seed and get milked, the way cows make milk, with the same four bonuses. Seed fills small vials and pays ten times milk's price per ounce. Add the Bull role to yourself on the Roles tab.
 - **Breeding needs** the [Corruption](https://github.com/RaylaPetal/corruption) plugin (0.3.5 or newer) and Cummy, for both of you. The bull's Corruption needs **Let other plugins control Corruption** turned on (Settings → Other plugins). The cow's Cummy blocks always apply.
-- **A breeding needs 10 minutes in the scene:** a finish before that doesn't breed (the HUD's bar fills up with the time, then shows arousal). Whoever is breeding starts from 0 arousal: their plugin brings it down at the start, if their Corruption has **Let other plugins control Corruption** on.
 - **When a bull of your dairy finishes in a Corruption scene with a cow of your dairy, she's bred:** +5% milk for 30 minutes (less if the bull's seed output is low that day; 45 minutes with the Champion's ribbon). Once per scene, and a cow can be bred again 20 minutes after the last time. The bull gets up to 40 bull xp; after 20 breedings in a day his seed output (and xp) drops, resetting at midnight UTC.
 - **Who breeds whom** in Eorzea Milkers follows your roles in the dairy: a bull can breed a cow. Whether it can become a **pregnancy** is Corruption's: its Pregnancy settings (can carry, can breed) must allow it. If they don't, the scene note says so; the bred bonus and bull xp still count.
 - **Both cow and bull?** With a partner who's also both (the **Breed** button only shows then), whoever is doing the breeding targets the other and presses **Breed** on the HUD (or right-click them → Eorzea Milkers → Breed). Only that way counts, and finishing doesn't breed anyone until one of you has pressed it. Press it again to cancel. It's used up once you've bred them, so press it again next time. If you both press it, neither counts until one of you cancels.
@@ -128,7 +127,7 @@ Breeding is new and still being tuned: numbers and details will change.
 - **Bull foods** (Shop, by bull level): Iron oats (8: fills Fed and Watered at once), Bull's salt lick (12: Happy and +25% bull xp for 30 min), Seed tea (15: your next seed milking gives 25% more), Stud draught (20: your next breeding gives the cow 50% more bred bonus, 15 min longer).
 - **Cow-and-bull foods** (for those who are both; unlocked by the lower of the two levels): Twin blend (10: Fed and Happy at once, and a 30 min boost to milk and seed), Velvet & brass bonbon (15: Happy and +20% cow and bull xp for 30 min), Balance tea (20: 2 hours off your milking time today so you tire later; once a day).
 - **Pregnancy** comes from Corruption (a bull always finishes inside, so it rolls for conception). Once it's confirmed, a pregnant cow gives +5%, +10% and +15% milk by trimester until the birth. Roles → Cow shows the trimester, due date, Sire and past births.
-- During a scene the HUD shows who you're with, and its bar fills with the 10-minute breeding timer (then shows arousal); the main window says who breeds whom and why.
+- During a scene the HUD shows who you're with and your arousal (from Corruption); the main window says who breeds whom and why. When a breeding counts is up to Corruption: whenever the breeder climaxes.
 
 ---
 
@@ -148,7 +147,7 @@ Breeding is new and still being tuned: numbers and details will change.
 - In someone else's **public** dairy you're a **guest**. You need to be a cow or bull (in any dairy of yours).
 - You can be **milked on its stalls** and cared for there (eat, drink, Comfy, treats) like at home, with your own grade, pay and XP. Your milk (or seed) goes into **that dairy's tank**.
 - Its farmers can hand milk, groom and feed you. **Hand milking always asks you to Allow first.**
-- **Breeding with a bull from another dairy:** when one is in a Corruption scene with you, you get a pop-up. If you **Allow**, their finish counts as a breeding (after the usual 10 minutes in the scene); if not, it doesn't.
+- **Breeding with a bull from another dairy:** when one is in a Corruption scene with you, you get a pop-up. If you **Allow**, their finish counts as a breeding; if not, it doesn't.
 - If a dairy says no, you can apply to it again after 3 days.
 
 ---
