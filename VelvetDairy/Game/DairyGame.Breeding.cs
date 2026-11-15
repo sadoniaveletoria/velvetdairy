@@ -456,6 +456,8 @@ public sealed partial class DairyGame
     {
         if (n.Kind == "breedReady")
             plugin.Notices.Show("Ready to be bred", $"{n.Name}'s bred bonus has run out.");
+        else if (n.Kind == "feedingBell")
+            HeardFeedingBell(n.Name);
     }
 
     private DateTime? readyToldFor;

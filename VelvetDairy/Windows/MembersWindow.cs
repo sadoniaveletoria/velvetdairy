@@ -109,6 +109,16 @@ public sealed class MembersWindow : Window
             $"{members.Count} members · {online} online · {here} in the dairy · " +
             $"{members.Count(m => m.Has("cow"))} cows, {members.Count(m => m.Has("farmer"))} farmers, {members.Count(m => m.Has("bull"))} bulls");
 
+        // The feeding bell: farmers and the owner, in the dairy, once an hour
+        if (G.CanCarry)
+        {
+            if (Ui.Button("##ringbell", "Ring the feeding bell", new Vector2(200, 30), "honey", G.CanRingBell,
+                    G.CanRingBell ? "Everyone in the dairy hears it: each cow and bull picks a bar to fill right up, and gets a 20 minute boost. Once an hour."
+                                  : "Ring it from inside your dairy."))
+                G.RingFeedingBell();
+            ImGui.Spacing();
+        }
+
         // Invite your target
         var roles = G.InvitableRoles;
         if (roles.Length > 0)

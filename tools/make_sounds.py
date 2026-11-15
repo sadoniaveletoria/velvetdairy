@@ -9,6 +9,7 @@ pump_start.wav  pump spinning up
 pump_stop.wav   pump winding down with an air release
 squirt.wav      a hand-milking squirt into a pail
 ready.wav       a soft two-note bell: a cow in your dairy is ready to be bred again
+feedbell.wav    a brass hand bell rung a few times: feeding time at the dairy
 """
 import os
 import sys
@@ -226,6 +227,33 @@ def ready():
     return norm(lowpass(x * fade, 6000), 0.45)
 
 
+def feedbell():
+    """A brass hand bell swung four times (clang, clang, clang, clang) with a long ring-out."""
+    n = int(SR * 2.4)
+    t = np.arange(n) / SR
+    x = np.zeros(n)
+
+    def strike(f0, start, amp):
+        tt = t - start
+        on = tt >= 0
+        tone = np.zeros(n)
+        # A hand bell: bright, inharmonic partials, a little shimmer between the two sides of the bell
+        for ratio, a, decay in ((1.0, 1.0, 2.2), (1.003, 0.6, 2.2), (2.4, 0.5, 3.5), (3.9, 0.3, 5.0), (5.6, 0.18, 7.0), (8.1, 0.08, 9.0)):
+            tone[on] += a * np.sin(2 * np.pi * f0 * ratio * tt[on]) * np.exp(-decay * tt[on])
+        attack = np.clip(tt / 0.003, 0, 1)
+        click = np.zeros(n)
+        k = int(start * SR)
+        burst = noise(int(SR * 0.01)) * np.linspace(1, 0, int(SR * 0.01))
+        click[k:k + len(burst)] = burst[: max(0, min(len(burst), n - k))]
+        return (tone * attack + click * 0.15) * amp
+
+    for i, (f, amp) in enumerate(((1318.5, 0.75), (1174.7, 0.7), (1318.5, 0.72), (1174.7, 0.68))):
+        x += strike(f, 0.04 + i * 0.32, amp)
+    fade = np.ones(n)
+    fade[-int(SR * 0.4):] = np.linspace(1, 0, int(SR * 0.4))
+    return norm(lowpass(x * fade, 7500), 0.5)
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
     save("pump_loop.wav", pump_loop())
@@ -233,6 +261,7 @@ def main():
     save("pump_stop.wav", pump_stop())
     save("squirt.wav", squirt())
     save("ready.wav", ready())
+    save("feedbell.wav", feedbell())
     print("done")
 
 

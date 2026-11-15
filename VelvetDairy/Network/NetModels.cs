@@ -258,6 +258,16 @@ public sealed class DairyTank
     public List<Pumper> SeedPumpers { get; set; } = new();
 }
 
+/// <summary>The weekend milk contest (Saturday and Sunday, UTC): pumping into the tank also fills the contract.</summary>
+public sealed class ContestInfo
+{
+    public bool On { get; set; }
+    public long Start { get; set; }
+    public long End { get; set; }
+    public List<Pumper> Top { get; set; } = new();
+    public Pumper? LastChampion { get; set; }
+}
+
 public sealed class Pumper
 {
     public string Name { get; set; } = "";
@@ -301,6 +311,7 @@ public sealed class ContractInfo
     public int EarnedFund { get; set; }
     public bool Completed { get; set; }
     public List<Pumper> Shippers { get; set; } = new();
+    public ContestInfo? Contest { get; set; }
 
     public float Left => Math.Max(0, OzNeed - OzDone);
     public float Progress => OzNeed > 0 ? Math.Clamp(OzDone / OzNeed, 0, 1) : 0;

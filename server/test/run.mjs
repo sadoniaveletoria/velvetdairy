@@ -20,6 +20,7 @@ class Stmt {
   async run() { const r = sqlite.prepare(this.sql).run(...this.args); return { meta: { changes: r.changes } }; }
 }
 const env = {
+  CONTEST: "off",   // the weekend contest only when a test turns it on
   DB: {
     prepare: sql => new Stmt(sql),
     batch: async stmts => {
@@ -321,8 +322,8 @@ await test("dairy XP: only in the dairy, capped per member per day", async () =>
 
   // Weekly contract: sized by level; shipped from carried jugs (at the Grand Creamery once it's set); pays once
   let c = (await call(alice, "GET", "/v1/dairy/mine")).data.progress.contract;
-  assert.equal(c.ozNeed, 500, "sized when first seen (level 1)");
-  assert.equal(c.rewardFund, 2000);
+  assert.equal(c.ozNeed, 1500, "sized when first seen (level 1)");
+  assert.equal(c.rewardFund, 6000);
   // The rest of this test ships a small contract to the end
   sqlite.exec("UPDATE contracts SET oz_need = 200, reward_xp = 300, reward_fund = 800");
   assert.equal(c.minGrade, 0);
@@ -459,6 +460,25 @@ await test("dairy shelf: farmers stock it, members buy, baker and fund are paid,
   await beat(carl, { houseId: ELSEWHERE, awake: true });
   assert.equal((await call(carl, "POST", "/v1/shelf/buy", { item: "cookies" })).status, 400, "only in the dairy");
   await beat(bob, { houseId: ELSEWHERE, awake: true });
+});
+
+await test("weekend contest: pumping fills the contract too and ranks pumpers; the feeding bell rings once an hour", async () => {
+  // The bell: farmers and the owner, from inside their dairy, once an hour
+  await beat(alice, { houseId: HOUSE, awake: true });
+  const rung = await call(alice, "POST", "/v1/dairy/notice", { kind: "feedingBell" });
+  assert.equal(rung.status, 200, JSON.stringify(rung.data));
+  assert.equal((await call(alice, "POST", "/v1/dairy/notice", { kind: "feedingBell" })).status, 429, "once an hour");
+  const heard = (await beat(carl, { houseId: HOUSE, noticeAfter: 0 })).data.notices;
+  assert.ok(heard.some(n => n.kind === "feedingBell"), "everyone in the dairy hears it");
+  // The contest
+  env.CONTEST = "on";
+  const before = (await call(alice, "GET", "/v1/dairy/mine")).data.progress.contract;
+  await beat(alice, { houseId: HOUSE, awake: true, pumped: [5] });
+  const after = (await call(alice, "GET", "/v1/dairy/mine")).data.progress.contract;
+  assert.ok(after.contest.on);
+  assert.ok(after.completed || after.ozDone > before.ozDone, "pumping fills the contract");
+  assert.ok(after.contest.top.length > 0, "and ranks the pumper");
+  env.CONTEST = "off";
 });
 
 await test("farmer removes a bull; can't remove the owner", async () => {
@@ -784,5 +804,6 @@ await test("guests: milked in someone else's public dairy, their milk goes into 
   assert.equal(look.breedOk, "Bram Bull");
   assert.equal((await call(hana, "GET", "/v1/player?name=Nobody%20Here&world=Gilgamesh")).data.found, false);
 });
+
 
 console.log(`\n${passed} passed`);

@@ -133,6 +133,8 @@ public sealed class GuideWindow : Window
         new("Dairies and the network", new[]
         {
             "Dairies tab: how many people are playing right now, every dairy (public ones show where they are), and this week's top dairies.",
+            "The feeding bell (Herd Care, farmers and the owner, in the dairy, once an hour): everyone in the dairy hears it, and each cow and bull picks one bar to fill right up, plus a 20 minute boost.",
+            "Weekly contract: 1,500 oz at dairy level 1, growing 250 oz a level up to 6,000 oz. Weekend milk contest (Saturday and Sunday, UTC): milk pumped into the tank also fills the contract, so it counts twice; the Contract card shows the top pumpers and last weekend's champion.",
             "Details (Dairies tab): a dairy's address, owner, what it's looking for and description, its tank (milk and seed) and stalls, and who's there now with roles and levels, members or visiting, and whether each cow can be bred. Players who don't share (scan setting) are only counted.",
             "Visit: with the Lifestream plugin it travels to a dairy in a house, or to the ward of an outdoor dairy in a residential district (and flags the spot on your map). Other outdoor dairies are flagged on your map. Without Lifestream it copies the address.",
             "You can turn the network off in Settings; the game then runs on its own.",

@@ -339,6 +339,53 @@ public sealed partial class DairyGame
     /// <summary>Farmers and owners carry jugs from the dairy's tank and deliver them; cows just get milked.</summary>
     public bool CanCarry => Networked && F.NetMember != null && (F.NetMember.IsOwner || IsFarmer);
 
+    // ----- The feeding bell -----
+
+    /// <summary>Farmers and the owner can ring it in their own dairy, once an hour.</summary>
+    public bool CanRingBell => CanCarry && Where.InDairy && !Where.Guest;
+
+    /// <summary>Ring the dairy's feeding bell: everyone in the dairy hears it, and each cow and bull picks a bar to fill.</summary>
+    public void RingFeedingBell()
+    {
+        if (!CanRingBell)
+        {
+            Fail("Farmers and the owner ring the feeding bell, from inside their dairy.");
+            return;
+        }
+
+        Touch();
+        Net.RingBell(() =>
+        {
+            Say("You ring the feeding bell. Everyone in the dairy comes running. +10 farmer xp", 1);
+            AddFarmerXp(10);
+            HeardFeedingBell(Plugin.ObjectTable.LocalPlayer?.Name.TextValue ?? "You");
+        }, e => Fail(e));
+    }
+
+    /// <summary>The bell rang in the dairy you're in: cows and bulls get the pop-up (with the bell); others just hear it.</summary>
+    private void HeardFeedingBell(string by)
+    {
+        if (ProducesMilk || ProducesSeed) plugin.FeedingBell.Show(by);
+        else plugin.Sounds.Play("feedbell.wav");
+    }
+
+    /// <summary>Feeding time: one bar of your choice fills right up, and milk (and seed) gets a 20 minute boost.</summary>
+    public void ClaimFeeding(string bar)
+    {
+        Touch();
+        switch (bar)
+        {
+            case "Fed": Cow.Hunger = 100; Cow.FedBonus = Math.Max(Cow.FedBonus, 0.08f); break;
+            case "Watered": Cow.Thirst = 100; Cow.WaterBonus = Math.Max(Cow.WaterBonus, 0.04f); break;
+            case "Comfy": Cow.Comfort = 100; Cow.ComfortBonus = Math.Max(Cow.ComfortBonus, ComfyNow); break;
+            default: Cow.Mood = 100; Cow.HappyBonus = Math.Max(Cow.HappyBonus, 0.05f); break;
+        }
+
+        var until = DateTime.UtcNow.AddMinutes(20);
+        if (Cow.BoostUntilUtc < until) Cow.BoostUntilUtc = until;
+        CareDone($"Feeding time: your {bar} bar is full, and a 20 minute boost.");
+    }
+
     /// <summary>How much milk you can carry: your farmer tank (bought in the Shop, like a cow's bottles).</summary>
     public int FarmerTankTier => Math.Min(Owned("farmtank"), Catalog.FarmerTankSizes.Length - 1);
     public string FarmerTankName => Catalog.FarmerTankNames[FarmerTankTier];

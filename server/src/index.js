@@ -62,7 +62,20 @@ const FEED_COOLDOWN = 900;          // a farmer can feed each cow or bull from t
 // Developer (same phrase hash as the plugin's dev mode)
 const DEV_KEY_HASH = "7d4e0a8c4a26de8d2843e2a563f667d74beda3b81ffa447c22bd40d93b5af76f";
 // Weekly contracts
-const CONTRACT_BASE_OZ = 500, CONTRACT_OZ_PER_LEVEL = 50, CONTRACT_NEED_MAX = 1500;   // weekly contract size
+const CONTRACT_BASE_OZ = 1500, CONTRACT_OZ_PER_LEVEL = 250, CONTRACT_NEED_MAX = 6000;   // weekly contract size
+const BELL_GAP = 3600;               // a dairy's feeding bell rings at most once an hour
+
+/** The weekend milk contest: all of Saturday and Sunday (UTC). Milk pumped into a dairy's tank then also fills its contract. */
+const contestOn = (t = now(), env = null) =>
+  env?.CONTEST === "on" ? true : env?.CONTEST === "off" ? false : [0, 6].includes(new Date(t * 1000).getUTCDay());
+
+/** When the next (or current) contest starts and ends (unix seconds). */
+function contestWindow(t = now()) {
+  const d = new Date(t * 1000);
+  const day = d.getUTCDay();
+  const start = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) / 1000 - (day === 0 ? 1 : day === 6 ? 0 : -(6 - day)) * 86400;
+  return { start, end: start + 2 * 86400 };
+}
 const CONTRACT_MAX_OZ = 1200;       // most one shipment can carry
 const CONTRACT_XP_PER_OZ = 1.5, CONTRACT_FUND_PER_OZ = 4;             // most milk a farmer or owner can carry out of the tank at once
 const PUMP_PER_BEAT = 120;          // most oz one heartbeat can add to the dairy tank
@@ -771,6 +784,7 @@ async function heartbeat(env, me, request) {
       stmts.push(env.DB.prepare(`INSERT INTO tank_contrib (dairy_id, install, name, oz) VALUES (?, ?, ?, ?)
         ON CONFLICT(dairy_id, install) DO UPDATE SET oz = oz + excluded.oz, name = excluded.name`).bind(tankDairy, me.id, contribName, pumped));
       await env.DB.batch(stmts);
+      if (contestOn(t, env)) await contestPump(env, tankDairy, me.id, contribName, pumped);
     }
   }
 
@@ -1767,9 +1781,9 @@ const contractMinGrade = () => 0;   // milk isn't graded any more: any milk fill
 async function contractFor(env, dairyId, level) {
   const week = weekKey();
   let c = await env.DB.prepare("SELECT * FROM contracts WHERE dairy_id = ? AND week = ?").bind(dairyId, week).first();
+  const need = Math.min(CONTRACT_NEED_MAX, CONTRACT_BASE_OZ + CONTRACT_OZ_PER_LEVEL * (level - 1));
   if (c) return c;
   await settleContracts(env, dairyId);
-  const need = Math.min(CONTRACT_NEED_MAX, CONTRACT_BASE_OZ + CONTRACT_OZ_PER_LEVEL * (level - 1));
   await env.DB.prepare(`INSERT OR IGNORE INTO contracts (dairy_id, week, oz_need, min_grade, reward_xp, reward_fund) VALUES (?, ?, ?, ?, ?, ?)`)
     .bind(dairyId, week, need, contractMinGrade(level), Math.round(need * CONTRACT_XP_PER_OZ), Math.round(need * CONTRACT_FUND_PER_OZ)).run();
   return await env.DB.prepare("SELECT * FROM contracts WHERE dairy_id = ? AND week = ?").bind(dairyId, week).first();
@@ -1809,7 +1823,37 @@ async function contractOut(env, dairyId, level) {
     // What it would pay right now if the week ended (the share delivered)
     earnedXp: Math.floor(c.reward_xp * Math.min(1, c.oz_done / c.oz_need)), earnedFund: Math.floor(c.reward_fund * Math.min(1, c.oz_done / c.oz_need)),
     shippers: top.map(x => ({ name: x.name, oz: Math.round(x.oz * 10) / 10 })),
+    contest: await contestOut(env, dairyId),
   };
+}
+
+/** The weekend contest for a dairy: on or not, when, this weekend's top pumpers, and last weekend's champion. */
+async function contestOut(env, dairyId) {
+  const t = now(), w = contestWindow(t), week = weekKey();
+  const prevWeek = weekKey(new Date((t - 7 * 86400) * 1000));
+  const top = (await env.DB.prepare("SELECT name, oz FROM contest_pump WHERE dairy_id = ? AND week = ? ORDER BY oz DESC LIMIT 5").bind(dairyId, week).all()).results;
+  const champ = await env.DB.prepare("SELECT name, oz FROM contest_pump WHERE dairy_id = ? AND week = ? ORDER BY oz DESC LIMIT 1").bind(dairyId, prevWeek).first();
+  return {
+    on: contestOn(t, env), start: w.start, end: w.end,
+    top: top.map(x => ({ name: x.name, oz: Math.round(x.oz * 10) / 10 })),
+    lastChampion: champ ? { name: champ.name, oz: Math.round(champ.oz * 10) / 10 } : null,
+  };
+}
+
+/** A contract that just reached its milk: pay it once (dairy xp and fund), and tell the members. */
+async function finishContract(env, dairyId, dairyName, week) {
+  const won = await env.DB.prepare("UPDATE contracts SET completed = ? WHERE dairy_id = ? AND week = ? AND completed IS NULL AND oz_done >= oz_need RETURNING reward_xp, reward_fund")
+    .bind(now(), dairyId, week).first();
+  if (!won) return false;
+  const members = (await env.DB.prepare("SELECT install FROM memberships WHERE dairy_id = ?").bind(dairyId).all()).results;
+  await env.DB.batch([
+    addXpStmt(env, dairyId, won.reward_xp),
+    env.DB.prepare(`INSERT INTO dairy_progress (dairy_id, fund, week) VALUES (?, ?, ?)
+      ON CONFLICT(dairy_id) DO UPDATE SET fund = fund + excluded.fund`).bind(dairyId, won.reward_fund, weekKey()),
+    ...members.map(m => inboxStmt(env, m.install, "notice", 0, 0, 0,
+      `${dairyName} finished this week's creamery contract! +${won.reward_xp} dairy xp and ${won.reward_fund} coins for the fund.`)),
+  ]);
+  return true;
 }
 
 /** Farmers and the owner bring jugs to the Grand Creamery and ship them to their dairy's contract. Finishing it pays out once. */
@@ -1850,23 +1894,8 @@ async function shipToContract(env, me, request) {
     await env.DB.prepare(`INSERT INTO creamery_ship (day, slot, dairy_id, oz) VALUES (?, ?, ?, ?)
       ON CONFLICT(day, slot, dairy_id) DO UPDATE SET oz = oz + excluded.oz`).bind(today(), at.slot, mem.dairy_id, want).run();
 
-  let finished = false;
-  if (done.oz_done >= done.oz_need) {
-    // Only one shipment can mark it finished, so the reward is paid once
-    const won = await env.DB.prepare("UPDATE contracts SET completed = ? WHERE dairy_id = ? AND week = ? AND completed IS NULL RETURNING reward_xp, reward_fund")
-      .bind(now(), mem.dairy_id, c.week).first();
-    if (won) {
-      finished = true;
-      const members = (await env.DB.prepare("SELECT install FROM memberships WHERE dairy_id = ?").bind(mem.dairy_id).all()).results;
-      await env.DB.batch([
-        addXpStmt(env, mem.dairy_id, won.reward_xp),
-        env.DB.prepare(`INSERT INTO dairy_progress (dairy_id, fund, week) VALUES (?, ?, ?)
-          ON CONFLICT(dairy_id) DO UPDATE SET fund = fund + excluded.fund`).bind(mem.dairy_id, won.reward_fund, weekKey()),
-        ...members.map(m => inboxStmt(env, m.install, "notice", 0, 0, 0,
-          `${mem.dairy_name} finished this week's creamery contract! +${won.reward_xp} dairy xp and ${won.reward_fund} coins for the fund.`)),
-      ]);
-    }
-  }
+  // Only one shipment (or contest pump) can mark it finished, so the reward is paid once
+  const finished = done.oz_done >= done.oz_need && await finishContract(env, mem.dairy_id, mem.dairy_name, c.week);
 
   return { ok: true, shipped: want, ozDone: Math.round(done.oz_done * 10) / 10, ozNeed: done.oz_need, finished };
 }
@@ -1887,7 +1916,7 @@ async function creameryNow(env, slot, myId, t) {
   };
 }
 
-const NOTICE_KINDS = ["breedReady"];
+const NOTICE_KINDS = ["breedReady", "feedingBell"];
 const NOTICE_FRESH = 300;          // seconds a notice is still shown to someone checking in
 const NOTICE_GAP = 15 * 60;        // one notice of a kind per player this often
 
@@ -1895,6 +1924,24 @@ const NOTICE_GAP = 15 * 60;        // one notice of a kind per player this often
  * A short notice to everyone standing in the dairy you're in (yours, or a public one you're visiting), e.g. a cow ready
  * to be bred again. Shown to them as a pop-up with a sound.
  */
+/**
+ * The weekend contest: milk pumped into a dairy's tank also counts toward its weekly contract (so it counts twice:
+ * once now, once when it's shipped), and toward the weekend's top pumpers.
+ */
+async function contestPump(env, dairyId, install, name, oz) {
+  const week = weekKey();
+  const p = await progressOf(env, dairyId);
+  await contractFor(env, dairyId, p.level);
+  const r = await env.DB.prepare("UPDATE contracts SET oz_done = MIN(oz_need, oz_done + ?) WHERE dairy_id = ? AND week = ? AND completed IS NULL RETURNING oz_done, oz_need")
+    .bind(oz, dairyId, week).first();
+  await env.DB.prepare(`INSERT INTO contest_pump (dairy_id, week, install, name, oz) VALUES (?, ?, ?, ?, ?)
+    ON CONFLICT(dairy_id, week, install) DO UPDATE SET oz = oz + excluded.oz, name = excluded.name`).bind(dairyId, week, install, name, oz).run();
+  if (r && r.oz_done >= r.oz_need) {
+    const d = await env.DB.prepare("SELECT name FROM dairies WHERE id = ?").bind(dairyId).first();
+    await finishContract(env, dairyId, d?.name || "Your dairy", week);
+  }
+}
+
 async function postNotice(env, me, request) {
   const b = await body(request);
   const mem = await membership(env, me.id);
@@ -1903,6 +1950,19 @@ async function postNotice(env, me, request) {
   if (!NOTICE_KINDS.includes(kind)) fail(400, "Unknown notice.");
   if (kind === "breedReady" && !hasRole(mem, "cow")) fail(400, "Only cows can say they're ready to be bred.");
   const t = now();
+  if (kind === "feedingBell") {
+    // A farmer (or the owner) rings their own dairy's bell, standing in it; once an hour per dairy
+    if (!mem.is_owner && !hasRole(mem, "farmer")) fail(403, "Only farmers and the owner ring the feeding bell.");
+    if (!inOwnDairy(me, mem)) fail(400, "Ring the bell from inside your dairy.");
+    const rung = await env.DB.prepare("SELECT created, name FROM dairy_notice WHERE dairy_id = ? AND kind = 'feedingBell' ORDER BY id DESC LIMIT 1").bind(mem.dairy_id).first();
+    if (rung && t - rung.created < BELL_GAP)
+      fail(429, `${rung.name || "Someone"} rang the bell ${Math.max(1, Math.round((t - rung.created) / 60))} min ago. It can ring again in ${Math.ceil((BELL_GAP - (t - rung.created)) / 60)} min.`);
+    await env.DB.batch([
+      env.DB.prepare("INSERT INTO dairy_notice (dairy_id, install, kind, name, created) VALUES (?, ?, ?, ?, ?)").bind(mem.dairy_id, me.id, kind, mem.name || "", t),
+      env.DB.prepare("DELETE FROM dairy_notice WHERE created < ?").bind(t - 86400),
+    ]);
+    return { ok: true, sent: true };
+  }
   const last = await env.DB.prepare("SELECT created FROM dairy_notice WHERE install = ? AND kind = ? ORDER BY id DESC LIMIT 1").bind(me.id, kind).first();
   if (last && t - last.created < NOTICE_GAP) return { ok: true, sent: false };
   // To the dairy you're standing in (yours, or a public one you're visiting); not in one: your own dairy
