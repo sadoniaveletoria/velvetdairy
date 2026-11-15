@@ -227,7 +227,10 @@ public sealed class HudWindow : Window
             // A Corruption scene: who with and arousal, with a bar where the milking bar goes
             status = G.SceneLine;
             col = Theme.RoseDeep;
-            if (G.ArousalNow.Ready)
+            // A breeding scene: the bar fills with the 10 minute breed timer, then shows arousal
+            if (G.BreedScene && G.BreedTimerLeft > TimeSpan.Zero)
+                Ui.Bar(dl, new Vector2(x, o.Y + size.Y - 26), new Vector2(x + bw, o.Y + size.Y - 22), G.BreedTimerFraction, Theme.HoneyDeep);
+            else if (G.ArousalNow.Ready)
                 Ui.Bar(dl, new Vector2(x, o.Y + size.Y - 26), new Vector2(x + bw, o.Y + size.Y - 22), G.ArousalNow.Value / 100f, Theme.RoseDeep);
         }
         else if (G.BredLeft > TimeSpan.Zero)
