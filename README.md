@@ -32,7 +32,7 @@ You can hold several roles at once, and each role levels up on its own. Your pro
 | **Owner** | Run the dairy: place stalls, invite people, post buy orders | Start your own dairy |
 | **Bull** | Make seed and get milked (like milk, but much less), breed your dairy's cows with the [Corruption](https://github.com/RaylaPetal/corruption) plugin. *Still in testing: details will change.* | Add it to yourself |
 
-Only the owner can take a role away from someone.
+Cow and bull are yours: you add or drop them, and they hold in every dairy you're in. Farmer is given by each dairy, and only that dairy's owner can take it away.
 
 ---
 
@@ -130,7 +130,7 @@ Breeding is new and still being tuned: numbers and details will change.
 - Get **invited** by the owner or a farmer, or **apply**: on the **Dairies** tab, dairies that are looking for members show what they want (Cows, Farmers, Bulls) and an **Apply** button. Pick your roles, add a short note and send it.
 - **You can belong to several dairies at once**, and own one of your own as well. Joining another keeps the ones you're in; applications to other dairies stay open.
 - **One dairy at a time is the one you're playing in:** milking, stalls, the contract, the tank and dairy XP all count for it. Walking into another of your dairies switches to it, or press **Play here** under **Your dairies** on the Dairy tab.
-- **Your levels are yours:** cow, bull and farmer levels and your progress go with you to every dairy. Roles are per dairy (you can be a cow in one and a farmer in another).
+- **Your levels are yours:** cow, bull and farmer levels and your progress go with you to every dairy. Cow and bull hold everywhere; farmer only where a dairy made you one.
 - In someone else's dairy and want your own? Press **Start my own dairy** on the Dairy tab. **Leave dairy** only leaves the one you're playing in.
 - **Roles across dairies:** cow and bull are **yours**: you add or drop them yourself (Roles tab), and they hold in every dairy you're in. An owner can't take them away (they can remove you from their dairy instead). **Farmer** is a job each dairy gives you, so you're only a farmer where you've been made one.
 
