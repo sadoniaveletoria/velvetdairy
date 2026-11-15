@@ -227,10 +227,8 @@ public sealed class HudWindow : Window
             // A Corruption scene: who with and arousal, with a bar where the milking bar goes
             status = G.SceneLine;
             col = Theme.RoseDeep;
-            // A breeding scene: the bar fills with the 10 minute breed timer, then shows arousal
-            if (G.BreedScene && G.BreedTimerLeft > TimeSpan.Zero)
-                Ui.Bar(dl, new Vector2(x, o.Y + size.Y - 26), new Vector2(x + bw, o.Y + size.Y - 22), G.BreedTimerFraction, Theme.HoneyDeep);
-            else if (G.ArousalNow.Ready)
+            // Arousal (from Corruption)
+            if (G.ArousalNow.Ready)
                 Ui.Bar(dl, new Vector2(x, o.Y + size.Y - 26), new Vector2(x + bw, o.Y + size.Y - 22), G.ArousalNow.Value / 100f, Theme.RoseDeep);
         }
         else if (G.BredLeft > TimeSpan.Zero)
@@ -277,7 +275,7 @@ public sealed class HudWindow : Window
         // A newer version is out
         if (G.Net.UpdateVersion is { } nv && s == null && !G.Spoiled && !G.SeedSpoiled && !overfull)
         {
-            status = $"Update {nv} is out · /xlplugins";
+            status = "Update needed";   // short so it fits; /xlplugins has the new version
             col = Theme.BlueDeep;
         }
 

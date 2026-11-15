@@ -21,6 +21,15 @@ public static class Housing
         return w >= 0 ? w + 1 : 0;
     }
 
+    /// <summary>The plot whose yard you're standing in, 1-based, outdoors in a residential district (0 if you're on the street).</summary>
+    public static unsafe int OutdoorPlot()
+    {
+        var hm = HousingManager.Instance();
+        if (hm == null || hm->IsInside() || hm->OutdoorTerritory == null) return 0;
+        var p = (int)hm->GetCurrentPlot();
+        return p is >= 0 and < 60 ? p + 1 : 0;
+    }
+
     public static string Describe(int ward, int plot)
     {
         if (ward < 0) return "";

@@ -423,7 +423,10 @@ public sealed partial class MainWindow : Window
 
         // Which version of Eorzea Milkers this is (handy when asking for help)
         var v = System.Version.TryParse(Plugin.Version, out var pv) ? $"{pv.Major}.{pv.Minor}.{pv.Build}" : Plugin.Version;
-        Ui.Text(dl, fonts.Small, $"Eorzea Milkers v{v}", new Vector2(o.X + 18, ly + 4), Theme.InkSoft);
+        // The longest that fits inside the sidebar's paper (measured, so it never spills over the edge)
+        var room = SideW - 18 - 16;
+        var text = new[] { $"Eorzea Milkers v{v}", $"Milkers v{v}", $"v{v}" }.First(t => Ui.Measure(fonts.Tiny, t).X <= room || t.StartsWith('v'));
+        Ui.Text(dl, fonts.Tiny, text, new Vector2(o.X + 18, ly + 6), Theme.InkSoft);
         if (ImGui.IsMouseHoveringRect(new Vector2(o.X + 12, ly + 4), new Vector2(o.X + SideW - 8, ly + 4 + lineH)))
             ImGui.SetTooltip("Your Eorzea Milkers version. /milkers changes shows what's new.");
     }
@@ -913,7 +916,7 @@ public sealed partial class MainWindow : Window
 
         foreach (var r in rows)
         {
-            var left = r.Value / 100f * Catalog.NeedMinutes;
+            var left = r.Value / 100f * Catalog.NeedMinutes / (G.Where.InDairy ? Catalog.InDairyDrain : 1f);   // lasts twice as long in a dairy
             var text = r.Value > 0 && r.Bonus > 0 ? $"+{r.Bonus * 100:0}% · {(left >= 1 ? $"{left:0}m" : "<1m")}" : "plain";
             // Comfy while sitting for it: how much longer until it's yours
             if (r.Label == "Comfy" && G.RestSettleLeft > TimeSpan.Zero)
@@ -938,7 +941,6 @@ public sealed partial class MainWindow : Window
                 : G.EitherWayScene && !G.BreedingAsBull && !G.BredAsCow ? " You can breed each other: whoever is breeding targets the other and presses Breed on the HUD. Until one of you does, finishing doesn't breed."
                 : G.BreedingAsBull ? " When you finish, you breed them" + (G.ForcedCreampie ? " (always inside, so Corruption rolls for conception)." : ".")
                 : G.BredAsCow ? " When they finish, you're bred" + (G.ConceiveChance > 0 ? $", with a {G.ConceiveChance * 100:0}% chance of conceiving (from Corruption)." : ".") : "")
-                + (G.BreedScene && G.BreedTimerLeft > TimeSpan.Zero ? $" Breeding counts after {DairyGame.BreedSceneMinutes} minutes in the scene ({DairyGame.Wait(G.BreedTimerLeft)} to go)." : "")
                 + (G.BreedOneWayWhy.Length > 0 ? " " + G.BreedOneWayWhy : ""), Theme.RoseDeep));
         if (!where.InDairy) notes.Add((where.Why + " Care and milking wait until you're back.", Theme.RoseDeep));
         if (G.FreshHoldLeft > TimeSpan.Zero) notes.Add(($"Dry-off tonic: your grade won't slip for {DairyGame.Wait(G.FreshHoldLeft)}.", Theme.SageDeep));
@@ -989,8 +991,9 @@ public sealed partial class MainWindow : Window
         var ok = problem == null;
         var cells = new List<(string Id, string Icon, string Title, string Sub, string Btn, string Color, bool Enabled, string? Tip, Action Act)>();
         var wcd = G.DrinkWait;
-        cells.Add(("##drink", "water", "Drink", wcd > TimeSpan.Zero ? $"Ready in {DairyGame.Wait(wcd)}" : $"Free · Watered +{Catalog.TroughBonus * 100:0}%",
-            "Drink", "blue", ok && wcd <= TimeSpan.Zero, problem ?? $"Free. Watered +{Catalog.TroughBonus * 100:0}%, +30 minutes.", () => G.Drink()));
+        var wetFull = G.NeedFull(F.Cow.Thirst);
+        cells.Add(("##drink", "water", "Drink", wetFull ? "Watered is over an hour" : wcd > TimeSpan.Zero ? $"Ready in {DairyGame.Wait(wcd)}" : $"Free · Watered +{Catalog.TroughBonus * 100:0}%",
+            "Drink", "blue", ok && wcd <= TimeSpan.Zero && !wetFull, problem ?? (wetFull ? "Your Watered bar is over an hour. Drink again once it's under." : $"Free. Watered +{Catalog.TroughBonus * 100:0}%, +30 minutes."), () => G.Drink()));
         foreach (var item in Catalog.Feed)
         {
             if (!G.FeedUnlocked(item) || F.HiddenFeed!.Contains(item.Id)) continue;
@@ -1000,11 +1003,12 @@ public sealed partial class MainWindow : Window
             var qwait = item.Quality > 0 ? G.QualityTreatWait : TimeSpan.Zero;
             var qualityHeld = qwait > wait;
             if (qualityHeld) wait = qwait;
-            var waiting = wait > TimeSpan.Zero;
-            var tip = problem ?? (qualityHeld ? $"Quality treats share a {Grades.QualityTreatHours:0}-hour cooldown." :
+            var full = G.NeedsFullFor(item);
+            var waiting = wait > TimeSpan.Zero || full != null;
+            var tip = problem ?? full ?? (qualityHeld ? $"Quality treats share a {Grades.QualityTreatHours:0}-hour cooldown." :
                 waiting ? $"Eating, drinking and treats each wait {Catalog.NeedCooldownMinutes:0} minutes between uses." : $"{item.Desc}\n{Effects(item)}");
             var id = item.Id;
-            cells.Add(($"##feed{id}", item.Icon, item.Name, waiting ? $"{have} left · ready in {DairyGame.Wait(wait)}" : $"{have} left · {Effects(item, true)}",
+            cells.Add(($"##feed{id}", item.Icon, item.Name, full != null ? $"{have} left · bar over an hour" : waiting ? $"{have} left · ready in {DairyGame.Wait(wait)}" : $"{have} left · {Effects(item, true)}",
                 "Eat", "honey", ok && !waiting, tip, () => G.UseFeed(id)));
         }
 
@@ -1074,8 +1078,8 @@ public sealed partial class MainWindow : Window
 
         var ok = problem == null;
         var wcd = G.DrinkWait;
-        if (Row("##drink", "water", "Drink", wcd > TimeSpan.Zero ? $"Ready in {DairyGame.Wait(wcd)}" : $"Free · Watered +{Catalog.TroughBonus * 100:0}%, +30m", "Drink", "blue",
-                ok && wcd <= TimeSpan.Zero, problem, width))
+        if (Row("##drink", "water", "Drink", G.NeedFull(F.Cow.Thirst) ? "Watered is over an hour" : wcd > TimeSpan.Zero ? $"Ready in {DairyGame.Wait(wcd)}" : $"Free · Watered +{Catalog.TroughBonus * 100:0}%, +30m", "Drink", "blue",
+                ok && wcd <= TimeSpan.Zero && !G.NeedFull(F.Cow.Thirst), problem, width))
             G.Drink();
 
         var shown = 0;
@@ -1089,10 +1093,11 @@ public sealed partial class MainWindow : Window
             var qwait = item.Quality > 0 ? G.QualityTreatWait : TimeSpan.Zero;
             var qualityHeld = qwait > wait;
             if (qualityHeld) wait = qwait;
-            var waiting = wait > TimeSpan.Zero;
-            var tip = problem ?? (have <= 0 ? "Buy more in the Shop." : qualityHeld ? $"Quality treats share a {Grades.QualityTreatHours:0}-hour cooldown." :
+            var full = G.NeedsFullFor(item);
+            var waiting = wait > TimeSpan.Zero || full != null;
+            var tip = problem ?? full ?? (have <= 0 ? "Buy more in the Shop." : qualityHeld ? $"Quality treats share a {Grades.QualityTreatHours:0}-hour cooldown." :
                 waiting ? $"Eating, drinking and treats each wait {Catalog.NeedCooldownMinutes:0} minutes between uses." : item.Desc);
-            var sub = waiting ? $"{have} left · ready in {DairyGame.Wait(wait)}" : $"{have} left · {Effects(item)}";
+            var sub = full != null ? $"{have} left · bar over an hour" : waiting ? $"{have} left · ready in {DairyGame.Wait(wait)}" : $"{have} left · {Effects(item)}";
             if (Row($"##feed{item.Id}", item.Icon, item.Name, sub, "Eat", "honey", ok && have > 0 && !waiting, tip, width))
                 G.UseFeed(item.Id);
         }

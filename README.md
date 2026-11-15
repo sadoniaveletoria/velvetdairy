@@ -47,8 +47,11 @@ Cow and bull are yours: you add or drop them, and they hold in every dairy you'r
 ## Your dairy
 
 - **The public area** is a box you mark out anywhere: a field, a corner of a city, or a room in a house. Visitors can find it and deliver to it in person.
+- **The feeding bell:** farmers and the owner can ring it from **Herd Care**, inside the dairy, once an hour. Everyone in the dairy hears it chime; each cow and bull gets a pop-up to pick one bar (Fed, Watered, Comfy or Happy) to fill right up, plus a 20 minute boost. The ringer gets 10 farmer xp.
+- **Weekly contract:** 1,500 oz at dairy level 1, growing 250 oz a level up to 6,000 oz.
+- **Weekend milk contest** (all of Saturday and Sunday, UTC): milk pumped into your dairy's tank also fills the weekly contract, so it counts twice (now, and again when it's shipped). The Contract card shows the weekend's top pumpers and last weekend's champion.
 - **Details:** on the **Dairies** tab, each public dairy (and your own) has a **Details** button: where it is, its owner, what it's looking for and its description, how much milk (and seed) is in its tank, how many stalls it has, and **who's there right now** with their roles and levels (cow, bull, farmer), member or visiting, and whether each cow can be bred. Handy for finding a dairy with a bull. Players whose scan setting is "My dairy only" or "Nobody" are counted but not named.
-- **Finding a dairy:** the **Dairies** tab shows each one's address (for a box outdoors in a residential district, the district and ward). **Visit** uses the [Lifestream](https://github.com/NightmareXIV/Lifestream) plugin to take you there: to the house, or to the ward with the spot flagged on your map. Other outdoor dairies are flagged on your map. Without Lifestream, Visit copies the address.
+- **Finding a dairy:** the **Dairies** tab shows each one's address (for a box outdoors in a residential district, the district, ward and the plot whose yard it's in). **Visit** uses the [Lifestream](https://github.com/NightmareXIV/Lifestream) plugin to take you there: to the house, or to that ward and plot with the spot flagged on your map. Other outdoor dairies are flagged on your map. Without Lifestream, Visit copies the address.
 - **The private place** (optional) is a second spot just for members, like your home or apartment. Use the whole house, or draw borders around part of it. Everything works there, but visitors never see it.
 - **Stalls** are seats (a chair, bench or bed) that milk whoever sits on them. Put them in either place. The first is free; each one after costs more from the dairy fund (250, 1,000, 2,250, 4,000…). Upgrade them to Wooden, Padded, Velvet and Gilded for faster milking.
 - **Stall markers** (Settings, on by default): a small green dot above each stall, only on your screen, so you can see which seats milk you.
@@ -81,6 +84,8 @@ Cow and bull are yours: you add or drop them, and they hold in every dairy you'r
 **Bonuses** (the Barn tab)
 - **Fed** (food), **Watered** (drink), **Comfy** (rest) and **Happy** (treats) each make milk come faster.
 - Each use adds 30 minutes to that bar, up to an hour, and each has a 15-minute cooldown. Better food and treats give bigger bonuses.
+- **Over an hour is full enough:** while a bar has more than an hour left (at the rate it drains right now), you can't top it up: eating, drinking, a farmer's grooming, the feeding bell and sitting for Comfy all wait until it's under an hour. (In a dairy bars drain half as fast, so a full bar shows up to 2 hours.)
+- **In a dairy your bars last longer:** while you're in a dairy (yours, or a public one you're visiting), Fed, Watered, Comfy and Happy drain **half as fast**. Out of a dairy they drain at the normal rate.
 - **Comfy:** sit on furniture in your dairy (a stall seat counts); there's no button. You get no Comfy until you've stayed seated **10 minutes**, then it adds 30 minutes to the bar. Keep sitting and every further 10 minutes adds another 30, up to a full hour. Get up sooner and that sit gives nothing. The Comfy bar doesn't drain while you sit, and the bar and HUD show how long is left. Sitting itself doesn't speed up milk; Comfy does.
 - **All four at once** makes you **Contented**, a bit faster still.
 - Bars only drain while you're awake and playing. Running out never hurts you; you're just back to normal speed.
@@ -105,7 +110,7 @@ Cow and bull are yours: you add or drop them, and they hold in every dairy you'r
 - **Deliveries:**
   - **Customer orders**, with a new one every 20 minutes.
   - **Other dairies' buy orders**, public or private. Fill them from inside your own dairy, or in person at a public dairy (same pay).
-  - **The weekly contract** (500 oz at dairy level 1, up to 1,500), delivered in person at any **Grand Creamery**. **Dairy → Contract** shows where they are. Fill it for the full reward; if it isn't full by Monday, your dairy still gets the share it delivered.
+  - **The weekly contract** (1,500 oz at dairy level 1, plus 250 a level, up to 6,000), delivered in person at any **Grand Creamery**. **Dairy → Contract** shows where they are. Fill it for the full reward; if it isn't full by Monday, your dairy still gets the share it delivered.
 
 ---
 
@@ -114,7 +119,6 @@ Cow and bull are yours: you add or drop them, and they hold in every dairy you'r
 Breeding is new and still being tuned: numbers and details will change.
 - **Bulls** make seed and get milked, the way cows make milk, with the same four bonuses. Seed fills small vials and pays ten times milk's price per ounce. Add the Bull role to yourself on the Roles tab.
 - **Breeding needs** the [Corruption](https://github.com/RaylaPetal/corruption) plugin (0.3.5 or newer) and Cummy, for both of you. The bull's Corruption needs **Let other plugins control Corruption** turned on (Settings → Other plugins). The cow's Cummy blocks always apply.
-- **A breeding needs 10 minutes in the scene:** a finish before that doesn't breed (the HUD's bar fills up with the time, then shows arousal). Whoever is breeding starts from 0 arousal: their plugin brings it down at the start, if their Corruption has **Let other plugins control Corruption** on.
 - **When a bull of your dairy finishes in a Corruption scene with a cow of your dairy, she's bred:** +5% milk for 30 minutes (less if the bull's seed output is low that day; 45 minutes with the Champion's ribbon). Once per scene, and a cow can be bred again 20 minutes after the last time. The bull gets up to 40 bull xp; after 20 breedings in a day his seed output (and xp) drops, resetting at midnight UTC.
 - **Who breeds whom** in Eorzea Milkers follows your roles in the dairy: a bull can breed a cow. Whether it can become a **pregnancy** is Corruption's: its Pregnancy settings (can carry, can breed) must allow it. If they don't, the scene note says so; the bred bonus and bull xp still count.
 - **Both cow and bull?** With a partner who's also both (the **Breed** button only shows then), whoever is doing the breeding targets the other and presses **Breed** on the HUD (or right-click them → Eorzea Milkers → Breed). Only that way counts, and finishing doesn't breed anyone until one of you has pressed it. Press it again to cancel. It's used up once you've bred them, so press it again next time. If you both press it, neither counts until one of you cancels.
@@ -123,7 +127,7 @@ Breeding is new and still being tuned: numbers and details will change.
 - **Bull foods** (Shop, by bull level): Iron oats (8: fills Fed and Watered at once), Bull's salt lick (12: Happy and +25% bull xp for 30 min), Seed tea (15: your next seed milking gives 25% more), Stud draught (20: your next breeding gives the cow 50% more bred bonus, 15 min longer).
 - **Cow-and-bull foods** (for those who are both; unlocked by the lower of the two levels): Twin blend (10: Fed and Happy at once, and a 30 min boost to milk and seed), Velvet & brass bonbon (15: Happy and +20% cow and bull xp for 30 min), Balance tea (20: 2 hours off your milking time today so you tire later; once a day).
 - **Pregnancy** comes from Corruption (a bull always finishes inside, so it rolls for conception). Once it's confirmed, a pregnant cow gives +5%, +10% and +15% milk by trimester until the birth. Roles → Cow shows the trimester, due date, Sire and past births.
-- During a scene the HUD shows who you're with, and its bar fills with the 10-minute breeding timer (then shows arousal); the main window says who breeds whom and why.
+- During a scene the HUD shows who you're with and your arousal (from Corruption); the main window says who breeds whom and why. When a breeding counts is up to Corruption: whenever the breeder climaxes.
 
 ---
 
@@ -143,7 +147,7 @@ Breeding is new and still being tuned: numbers and details will change.
 - In someone else's **public** dairy you're a **guest**. You need to be a cow or bull (in any dairy of yours).
 - You can be **milked on its stalls** and cared for there (eat, drink, Comfy, treats) like at home, with your own grade, pay and XP. Your milk (or seed) goes into **that dairy's tank**.
 - Its farmers can hand milk, groom and feed you. **Hand milking always asks you to Allow first.**
-- **Breeding with a bull from another dairy:** when one is in a Corruption scene with you, you get a pop-up. If you **Allow**, their finish counts as a breeding (after the usual 10 minutes in the scene); if not, it doesn't.
+- **Breeding with a bull from another dairy:** when one is in a Corruption scene with you, you get a pop-up. If you **Allow**, their finish counts as a breeding; if not, it doesn't.
 - If a dairy says no, you can apply to it again after 3 days.
 
 ---

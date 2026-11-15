@@ -394,6 +394,7 @@ public sealed class NetClient : IDisposable
                 BredUntil = g.BredLeft > TimeSpan.Zero ? new DateTimeOffset(F.BredUntilUtc, TimeSpan.Zero).ToUnixTimeSeconds() : 0,
                 BreedWait = g.IsCow && g.BreedCooldownLeft > TimeSpan.Zero ? DateTimeOffset.UtcNow.Add(g.BreedCooldownLeft).ToUnixTimeSeconds() : 0,
                 Scan = F.ScanAllow,
+                Needs = g.NeedMinutesNow.ToList(),
                 Quality = (int)F.Quality, TotalOz = (int)F.Stats.TotalOz,
                 Emotes = g.Producer ? g.MilkEmotesForFarmers() : new List<string>(),
                 HandBy = g.Active is { Kind: VelvetDairy.Game.SessionKind.Hand, Hand: { IsTest: false } h } ? h.Name : "",
@@ -638,6 +639,10 @@ public sealed class NetClient : IDisposable
     private long lastNotice = -1;   // -1: not caught up yet (the first check-in)
 
     /// <summary>Tells everyone in your dairy something (a pop-up on their screen), e.g. "breedReady".</summary>
+    /// <summary>Ring your dairy's feeding bell (farmers and the owner, in the dairy, once an hour).</summary>
+    public void RingBell(Action ok, Action<string> failed) =>
+        Call<object>("POST", "/v1/dairy/notice", new { kind = "feedingBell" }, _ => ok(), failed);
+
     public void PostNotice(string kind) => Call<object>("POST", "/v1/dairy/notice", new { kind }, _ => { }, _ => { });
     private DateTime lastApplications = DateTime.MinValue;
 

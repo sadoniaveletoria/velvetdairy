@@ -15,6 +15,7 @@ public sealed class Fonts : IDisposable
     public IFontHandle Small { get; }     // small serif
     public IFontHandle Label { get; }     // small caps labels and buttons
     public IFontHandle Row { get; }       // list entry titles
+    public IFontHandle Tiny { get; }      // the smallest print (the version under the plugins list)
 
     // Jupiter has no "0" glyph, so text with numbers in it is drawn with Axis (the game's UI font) instead
     private readonly IFontHandle numTitle;
@@ -29,6 +30,7 @@ public sealed class Fonts : IDisposable
         Small = atlas.NewGameFontHandle(new GameFontStyle(GameFontFamilyAndSize.Jupiter16));
         Label = atlas.NewGameFontHandle(new GameFontStyle(GameFontFamilyAndSize.TrumpGothic23));
         Row = atlas.NewGameFontHandle(new GameFontStyle(GameFontFamilyAndSize.Jupiter20));
+        Tiny = atlas.NewGameFontHandle(new GameFontStyle(GameFontFamilyAndSize.Axis12));
         numTitle = atlas.NewGameFontHandle(new GameFontStyle(GameFontFamilyAndSize.Axis36));
         numHeading = atlas.NewGameFontHandle(new GameFontStyle(GameFontFamilyAndSize.Axis18));
         numSmall = atlas.NewGameFontHandle(new GameFontStyle(GameFontFamilyAndSize.Axis14));
@@ -57,6 +59,7 @@ public sealed class Fonts : IDisposable
 
     public void Dispose()
     {
+        Tiny.Dispose();
         Title.Dispose();
         Heading.Dispose();
         Small.Dispose();

@@ -203,11 +203,11 @@ public sealed class DairyListing
         : HouseId != null && ulong.TryParse(HouseId, out var hid) && VelvetDairy.Game.Estate.FromId(hid) is { Ward: > 0 } home ? home.Describe
         : Ward is null ? "Private" : Room is > 0 && Plot is null ? $"{District}, Ward {Ward}, apartment {Room}" : $"{District}, Ward {Ward}, Plot {Plot}";
 
-    private static string AreaAddress(VelvetDairy.Game.DairyArea a, int ward)
+    private string AreaAddress(VelvetDairy.Game.DairyArea a, int ward)
     {
         // Outdoors in a residential district: the district and ward
         if (a.House.Length == 0 && ward > 0 && VelvetDairy.Game.Estate.DistrictKind(a.Territory) > 0)
-            return $"{VelvetDairy.Game.Estate.DistrictName(a.Territory)}, Ward {ward} (outside)";
+            return $"{VelvetDairy.Game.Estate.DistrictName(a.Territory)}, Ward {ward}" + (Plot is > 0 ? $", Plot {Plot}" : "") + " (outside)";
         if (a.House.Length == 0 || VelvetDairy.Game.Estate.SoloPlace(a.Territory) || VelvetDairy.Game.Estate.Island(a.Territory) || !ulong.TryParse(a.House, out var id)) return a.Zone;
         var addr = VelvetDairy.Game.Estate.FromId(id);
         return addr.Ward > 0 ? addr.Describe : a.Zone;
@@ -258,6 +258,16 @@ public sealed class DairyTank
     public List<Pumper> SeedPumpers { get; set; } = new();
 }
 
+/// <summary>The weekend milk contest (Saturday and Sunday, UTC): pumping into the tank also fills the contract.</summary>
+public sealed class ContestInfo
+{
+    public bool On { get; set; }
+    public long Start { get; set; }
+    public long End { get; set; }
+    public List<Pumper> Top { get; set; } = new();
+    public Pumper? LastChampion { get; set; }
+}
+
 public sealed class Pumper
 {
     public string Name { get; set; } = "";
@@ -301,6 +311,7 @@ public sealed class ContractInfo
     public int EarnedFund { get; set; }
     public bool Completed { get; set; }
     public List<Pumper> Shippers { get; set; } = new();
+    public ContestInfo? Contest { get; set; }
 
     public float Left => Math.Max(0, OzNeed - OzDone);
     public float Progress => OzNeed > 0 ? Math.Clamp(OzDone / OzNeed, 0, 1) : 0;
@@ -412,6 +423,7 @@ public sealed class MemberStatus
     public long BreedWait { get; set; }
     public string Scan { get; set; } = "anyone";
     public long W { get; set; }                         // when the server last stored this (unix seconds)
+    public List<int> Needs { get; set; } = new();       // minutes left on Fed, Watered, Comfy, Happy
     public bool StudTonic { get; set; }          // a bull who had a Stud draught: his next breeding is stronger
     public string Breeding { get; set; } = "";   // both cow and bull: the scene partner (Name@World) they chose to breed this scene
     public int Quality { get; set; }        // milk quality score (cows)

@@ -195,6 +195,22 @@ CREATE TABLE IF NOT EXISTS contracts (
   completed  INTEGER,                    -- time it was finished
   PRIMARY KEY (dairy_id, week)
 );
+-- Contracts got about three times bigger: open ones grow to match (once), and pay to match
+CREATE TABLE IF NOT EXISTS schema_flags (name TEXT PRIMARY KEY);
+UPDATE contracts SET oz_need = oz_need * 3, reward_xp = reward_xp * 3, reward_fund = reward_fund * 3
+  WHERE completed IS NULL AND NOT EXISTS (SELECT 1 FROM schema_flags WHERE name = 'contracts3x');
+INSERT OR IGNORE INTO schema_flags (name) VALUES ('contracts3x');
+
+-- The weekend milk contest: milk pumped into a dairy's tank on Saturday and Sunday (UTC), per player
+CREATE TABLE IF NOT EXISTS contest_pump (
+  dairy_id TEXT NOT NULL,
+  week     TEXT NOT NULL,                 -- the week (Monday) the weekend belongs to
+  install  TEXT NOT NULL,
+  name     TEXT NOT NULL DEFAULT '',
+  oz       REAL NOT NULL DEFAULT 0,
+  PRIMARY KEY (dairy_id, week, install)
+);
+
 CREATE TABLE IF NOT EXISTS contract_contrib (
   dairy_id TEXT NOT NULL,
   week     TEXT NOT NULL,

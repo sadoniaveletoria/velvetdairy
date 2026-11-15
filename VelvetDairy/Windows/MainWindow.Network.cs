@@ -250,7 +250,7 @@ public sealed partial class MainWindow
         if (d.Area is { House.Length: 0 } yard && d.Ward is > 0 && Estate.DistrictKind(yard.Territory) > 0 && Lifestream.Installed)
         {
             // Outdoors in a residential ward: Lifestream takes you to the ward, and the spot is flagged on your map
-            var why = Lifestream.GoTo(d.Name, yard.World, Estate.DistrictKind(yard.Territory), d.Ward.Value, 1, 0, false);
+            var why = Lifestream.GoTo(d.Name, yard.World, Estate.DistrictKind(yard.Territory), d.Ward.Value, d.Plot is > 0 ? d.Plot.Value : 1, 0, false);
             FlagArea(d, yard);
             G.Notify(why ?? $"Lifestream is taking you to {Estate.DistrictName(yard.Territory)}, Ward {d.Ward}; {d.Name} is flagged on your map.", why != null ? 2 : 0);
             return;
@@ -489,8 +489,31 @@ public sealed partial class MainWindow
             Ui.Wrapped("Shipped by: " + string.Join(", ", c.Shippers.Select(x => $"{x.Name.Split(' ')[0]} {Units.Oz(x.Oz, "N0")}")), Theme.InkSoft, width);
         }
 
+        // The weekend milk contest
+        if (c.Contest is { } k)
+        {
+            Gap(8);
+            var nowUnix = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            if (k.On)
+            {
+                var end = TimeSpan.FromSeconds(Math.Max(0, k.End - nowUnix));
+                ImGui.TextColored(Theme.RoseDeep, $"Weekend milk contest: on now (ends in {(int)end.TotalHours}h {end.Minutes}m)");
+                Ui.Wrapped("Milk pumped into the tank this weekend also fills the contract, so it counts twice: now, and again when it's shipped.", Theme.SageDeep, width);
+                if (k.Top.Count > 0)
+                    Ui.Wrapped("Top pumpers: " + string.Join(", ", k.Top.Select((x, i) => $"{i + 1}. {x.Name.Split(' ')[0]} {Units.Oz(x.Oz, "N0")}")), Theme.Ink, width);
+            }
+            else
+            {
+                var start = TimeSpan.FromSeconds(Math.Max(0, k.Start - nowUnix));
+                ImGui.TextColored(Theme.InkSoft, $"Weekend milk contest: starts in {(int)start.TotalDays}d {start.Hours}h (Saturday 00:00 UTC)");
+            }
+
+            if (k.LastChampion is { } champ)
+                ImGui.TextColored(Theme.HoneyDeep, $"Last weekend's champion: {champ.Name} ({Units.Oz(champ.Oz, "N0")})");
+        }
+
         Gap(6);
-        Ui.Wrapped($"Contracts are {Units.Oz(500, "N0")} at dairy level 1 and grow {Units.Oz(50)} a level, up to {Units.Oz(1500, "N0")}. Any milk counts.", Theme.InkSoft, width);
+        Ui.Wrapped($"Contracts are {Units.Oz(1500, "N0")} at dairy level 1 and grow {Units.Oz(250)} a level, up to {Units.Oz(6000, "N0")}. Any milk counts.", Theme.InkSoft, width);
     }
 
     private readonly Dictionary<CreameryInfo, Dalamud.Game.Text.SeStringHandling.Payloads.MapLinkPayload?> creameryLinks = new();

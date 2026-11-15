@@ -334,7 +334,8 @@ public static class Catalog
     public const float NeedMinutes = 60f;       // a full need bar (awake play only)
     public const float NeedFill = 50f;          // each use adds half a bar: 30 minutes
     public const double NeedCooldownMinutes = 15; // eat, drink, rest and treat each wait this long between uses
-    public const double RestSettleMinutes = 10;   // sit this long in your dairy and you get Comfy (each further stretch adds more)
+    public const double RestSettleMinutes = 10;
+    public const float InDairyDrain = 0.5f;   // need bars drain this much as fast while you're in a dairy   // sit this long in your dairy and you get Comfy (each further stretch adds more)
     public const float TroughBonus = 0.04f;     // Watered from the trough
     public const float ComfyBonus = 0.04f;      // Comfy from resting (Plush bedding 0.07, + Lavender bedding 0.03)
     public const float ComfyCushion = 0.07f;
