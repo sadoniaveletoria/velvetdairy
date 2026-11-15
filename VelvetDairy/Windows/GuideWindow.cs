@@ -132,6 +132,7 @@ public sealed class GuideWindow : Window
         new("Dairies and the network", new[]
         {
             "Dairies tab: how many people are playing right now, every dairy (public ones show where they are), and this week's top dairies.",
+            "Who's here (Dairies tab): for a dairy with people there now, lists who's there with roles and levels, members or visiting, and whether each cow can be bred. Players who don't share (scan setting) are only counted.",
             "Visit: with the Lifestream plugin it travels to a dairy in a house, or to the ward of an outdoor dairy in a residential district (and flags the spot on your map). Other outdoor dairies are flagged on your map. Without Lifestream it copies the address.",
             "You can turn the network off in Settings; the game then runs on its own.",
         }),

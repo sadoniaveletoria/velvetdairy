@@ -23,7 +23,7 @@ public sealed class ChangelogWindow : Window
     /// <summary>Newest first. Write these for players: what changed for them, not how.</summary>
     private static readonly Entry[] Entries =
     {
-        new("0.9.72", "Several dairies, guests, bull items and a fairer Shop", new[]
+        new("0.9.73", "Several dairies, guests, bull items and a fairer Shop", new[]
         {
             "# Several dairies",
             "You can belong to several dairies at once, and own one of your own as well. Joining another keeps the ones you're in. In someone else's dairy and want your own? Press Start my own dairy on the Dairy tab.",
@@ -50,6 +50,7 @@ public sealed class ChangelogWindow : Window
             "# Also",
             "The owner HUD is gone; the mini HUD and the Dairy tab cover it. Delivering in person to another dairy pays the same as delivering from your own.",
             "The main window shows your Eorzea Milkers version at the bottom left. The mini HUD is a little wider so nothing gets cut off, and the Kitchen button moved to Roles > Farmer.",
+            "Who's here: on the Dairies tab, see who's at a dairy right now with their roles and levels, handy for finding a dairy with a bull.",
             "The Dairies list shows the ward of a dairy outdoors in a residential district, and Visit takes you there with Lifestream (with the spot flagged on your map).",
         }),
         new("0.9.61", "Scanning, breeding choices and a tidier HUD", new[]

@@ -431,6 +431,30 @@ public sealed class ScanBonus
     public float P { get; set; }   // percent: +15 is 15% faster, -50 half speed
 }
 
+/// <summary>Who's at a dairy right now (Dairies list > Who's here).</summary>
+public sealed class HereReply
+{
+    public string Dairy { get; set; } = "";
+    public List<HerePerson> People { get; set; } = new();
+    public int Hidden { get; set; }   // there, but they don't share (scan setting) or aren't in a dairy
+    public long Now { get; set; }
+}
+
+public sealed class HerePerson
+{
+    public string Name { get; set; } = "";
+    public string World { get; set; } = "";
+    public List<string> Roles { get; set; } = new();
+    public bool Member { get; set; }      // a member of this dairy (else visiting, from From)
+    public string From { get; set; } = "";
+    public int CowLevel { get; set; }
+    public int BullLevel { get; set; }
+    public int FarmerLevel { get; set; }
+    public string Preg { get; set; } = "";
+    public long BredUntil { get; set; }
+    public long BreedWait { get; set; }
+}
+
 /// <summary>A scan of another player: their dairy and status, or why it can't be seen.</summary>
 public sealed class ScanReply
 {

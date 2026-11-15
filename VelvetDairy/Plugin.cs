@@ -52,6 +52,7 @@ public sealed class Plugin : IDalamudPlugin
     public HelperNoticeWindow Helpers { get; }
     public NoticeWindow Notices { get; }
     public ScanWindow Scanner { get; }
+    public WhoHereWindow WhoHere { get; }
     public CharacterClaimWindow Claim { get; }
 
     /// <summary>This build's version, sent to the network so old versions can be told to update.</summary>
@@ -132,6 +133,8 @@ public sealed class Plugin : IDalamudPlugin
         windowSystem.AddWindow(Notices);
         Scanner = new ScanWindow(this, fonts);
         windowSystem.AddWindow(Scanner);
+        WhoHere = new WhoHereWindow(this, fonts);
+        windowSystem.AddWindow(WhoHere);
         Claim = new CharacterClaimWindow(this, fonts);
         claimSystem.AddWindow(Claim);
         contextMenu = new ContextMenuHandler(this);

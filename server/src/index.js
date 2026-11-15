@@ -275,6 +275,7 @@ async function route(request, env) {
     ["GET", /^\/v1\/whoami$/, () => ({ charHash: me.char_hash || null })],
     ["GET", /^\/v1\/dairies$/, () => listDairies(env, me)],
     ["GET", /^\/v1\/dairy\/mine$/, () => myDairy(env, me)],
+    ["GET", /^\/v1\/dairies\/([A-Za-z0-9_-]{1,64})\/here$/, m => whoIsHere(env, me, m[1])],
     ["GET", /^\/v1\/scan\/([^/]{1,80})\/([^/]{1,80})$/, m => scanPlayer(env, me, decodeURIComponent(m[1]), decodeURIComponent(m[2]))],
     ["PUT", /^\/v1\/dairy$/, () => putDairy(env, me, request)],
     ["DELETE", /^\/v1\/dairy$/, () => deleteDairy(env, me)],
@@ -400,6 +401,43 @@ async function scanPlayer(env, me, world, name) {
     found: true, hidden: false, name: m.name, world: m.world_name, dairy: m.dairy_name, role: primaryRole(m.role), roles: roleList(m.role),
     online: (m.last_seen || 0) >= t - ONLINE_WINDOW, version: m.version || "", status: st, now: t,
   };
+}
+
+/**
+ * Who's at a dairy right now (for the Dairies list): name, roles and levels, and whether they're a member or visiting.
+ * Public dairies (and your own) only. Each player's scan setting applies: "nobody" and (to outsiders) "dairy only"
+ * players are counted but not named.
+ */
+async function whoIsHere(env, me, dairyId) {
+  const t = now();
+  const d = await env.DB.prepare("SELECT id, name, is_public FROM dairies WHERE id = ?").bind(dairyId).first();
+  if (!d) fail(404, "That dairy isn't on the network.");
+  const mineToo = await membershipIn(env, me.id, d.id);
+  if (!d.is_public && !mineToo) fail(403, "That dairy is private.");
+  const ids = (await env.DB.prepare("SELECT id FROM installs WHERE at_dairy = ? AND last_seen >= ? LIMIT 60").bind(d.id, t - ONLINE_WINDOW).all()).results.map(r => r.id);
+  const people = [];
+  let hidden = 0;
+  for (const id of ids) {
+    const here = await membershipIn(env, id, d.id);
+    const m = here || await membership(env, id);
+    if (!m) { hidden++; continue; }   // not in any dairy: nothing shared about them
+    const st = safeParse(m.status) || {};
+    const allow = st.scan || "anyone";
+    if (id !== me.id && allow !== "anyone") {
+      const shared = allow === "dairy" && await env.DB.prepare("SELECT 1 FROM memberships a JOIN memberships b ON a.dairy_id = b.dairy_id WHERE a.install = ? AND b.install = ? LIMIT 1").bind(me.id, id).first();
+      if (!shared) { hidden++; continue; }
+    }
+    const roles = roleList(m.role);
+    people.push({
+      name: m.name, world: m.world_name, roles, member: !!here, from: here ? "" : m.dairy_name,
+      cowLevel: roles.includes("cow") ? Math.max(1, Number(st.level) || 0) : 0,
+      bullLevel: roles.includes("bull") ? Math.max(1, Number(st.bullLevel) || 0) : 0,
+      farmerLevel: roles.includes("farmer") && here ? Math.max(1, Number(st.farmerLevel) || 0) : 0,
+      preg: clean(st.preg, 12), bredUntil: Math.max(0, Math.floor(Number(st.bredUntil) || 0)), breedWait: Math.max(0, Math.floor(Number(st.breedWait) || 0)),
+    });
+  }
+  people.sort((a, b) => (b.member - a.member) || a.name.localeCompare(b.name));
+  return { dairy: d.name, people, hidden, now: t };
 }
 
 async function ownedDairy(env, me) {

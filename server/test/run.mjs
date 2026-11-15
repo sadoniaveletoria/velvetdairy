@@ -206,6 +206,24 @@ await test("scan: anyone can see a member's bonuses and breeding, unless they sa
   await beat(carl, { status: { milk: 3.5, cap: 8, seed: 60 } });
 });
 
+await test("who's here: a public dairy lists the players there with roles and levels", async () => {
+  const d = (await call(alice, "GET", "/v1/dairies")).data.dairies.find(x => x.name === "Rose Hollow");
+  await beat(carl, { houseId: HOUSE, status: { milk: 3, cap: 8, level: 7, bullLevel: 3, farmerLevel: 1 } });
+  let r = await call(dana, "GET", `/v1/dairies/${d.id}/here`);
+  assert.equal(r.status, d.isPublic ? 200 : 403, JSON.stringify(r.data) + " " + d.id);
+  r = await call(alice, "GET", `/v1/dairies/${d.id}/here`);
+  assert.equal(r.status, 200, JSON.stringify(r.data));
+  const c = r.data.people.find(p => p.name === "Carl Bull");
+  assert.ok(c, JSON.stringify(r.data));
+  assert.equal(c.member, true);
+  assert.ok(c.bullLevel >= 1);
+  await beat(carl, { houseId: HOUSE, status: { milk: 3, cap: 8, scan: "nobody" } });
+  r = await call(alice, "GET", `/v1/dairies/${d.id}/here`);
+  assert.equal(r.data.people.find(p => p.name === "Carl Bull"), undefined, "scan nobody: not named");
+  assert.ok(r.data.hidden >= 1);
+  await beat(carl, { houseId: HOUSE, status: { milk: 3, cap: 8, scan: "anyone" } });
+});
+
 await test("several roles at once: self-add cow/bull, farmer is given, only the owner takes away", async () => {
   let r = await call(carl, "POST", `/v1/members/${carl.id}/roles`, { add: "cow" });
   assert.deepEqual(r.data.roles, ["cow", "bull"], "anyone can add cow to themselves");
