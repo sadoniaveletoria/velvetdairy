@@ -990,7 +990,7 @@ public sealed partial class DairyGame
         if (restPendingSince >= 0) return true;
         restPendingSince = now;
         Touch();
-        Say($"You sit down and start getting comfy. Stay seated {Catalog.RestSettleMinutes:0} minutes for Comfy +{ComfyNow * 100:0}%.", 0);
+        Say($"Getting comfy: stay seated {Catalog.RestSettleMinutes:0} min for 30 min of Comfy (+{ComfyNow * 100:0}%).", 0);
         return true;
     }
 
@@ -1027,7 +1027,7 @@ public sealed partial class DairyGame
             // Got up before it was done: no Comfy from this sit (nothing to take back)
             restPendingSince = -1;
             seatedSince = -1;
-            Say($"You got up before {Catalog.RestSettleMinutes:0} minutes, so no Comfy from that sit.", 0);
+            Say("Up too soon: no Comfy this time.", 0);
             return;
         }
 
@@ -1038,7 +1038,7 @@ public sealed partial class DairyGame
         Cow.Comfort = Fill(Cow.Comfort);
         Cow.ComfortBonus = ComfyNow;
         Cow.ComfyReadyUtc = DateTime.UtcNow;
-        CareDone($"You're comfy: +{ComfyNow * 100:0}% milk speed, {(int)Math.Round(Cow.Comfort * 0.6f)} minutes on your Comfy bar. Stay seated to add more (up to an hour).");
+        CareDone($"Comfy +{ComfyNow * 100:0}%: {(int)Math.Round(Cow.Comfort * 0.6f)} min on the bar. Stay seated to add more (up to 1 h).");
     }
 
     private void CareDone(string text)
