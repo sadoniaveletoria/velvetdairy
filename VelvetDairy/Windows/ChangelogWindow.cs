@@ -50,7 +50,7 @@ public sealed class ChangelogWindow : Window
             "# Also",
             "The owner HUD is gone; the mini HUD and the Dairy tab cover it. Delivering in person to another dairy pays the same as delivering from your own.",
             "The main window shows your Eorzea Milkers version at the bottom left. The mini HUD is a little wider so nothing gets cut off, and the Kitchen button moved to Roles > Farmer.",
-            "Who's here: on the Dairies tab, see who's at a dairy right now with their roles and levels, handy for finding a dairy with a bull.",
+            "Details: on the Dairies tab, see a dairy's tank, stalls and description, and who's there right now with their roles and levels (handy for finding a dairy with a bull). It replaces the Copy button.",
             "The Dairies list shows the ward of a dairy outdoors in a residential district, and Visit takes you there with Lifestream (with the spot flagged on your map).",
         }),
         new("0.9.61", "Scanning, breeding choices and a tidier HUD", new[]

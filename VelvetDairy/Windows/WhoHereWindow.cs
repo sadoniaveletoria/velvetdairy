@@ -9,22 +9,24 @@ using VelvetDairy.Network;
 namespace VelvetDairy.Windows;
 
 /// <summary>
-/// Who's at a dairy right now (Dairies list > Who's here): each player's name, roles and levels, whether they're a
-/// member or visiting, and for cows whether they can be bred. Handy for finding a dairy with a bull there. Players
-/// who don't share (their scan setting) are only counted.
+/// A dairy's details (Dairies list > Details): where it is, its owner, what it's looking for and its description,
+/// what's in its tank, and who's there right now: each player's name, roles and levels, member or visiting, and for
+/// cows whether they can be bred. Handy for finding a dairy with a bull. Players who don't share (their scan setting)
+/// are only counted.
 /// </summary>
 public sealed class WhoHereWindow : Window
 {
     private readonly Plugin plugin;
     private readonly Fonts fonts;
     private string dairyId = "", dairyName = "";
+    private DairyListing? listing;
     private HereReply? reply;
     private string error = "";
     private bool loading;
     private double askedAt = -100;
 
     public WhoHereWindow(Plugin plugin, Fonts fonts)
-        : base("Who's here##VelvetDairyWhoHere", ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoDocking)
+        : base("Dairy details##VelvetDairyWhoHere", ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoDocking)
     {
         this.plugin = plugin;
         this.fonts = fonts;
@@ -34,13 +36,14 @@ public sealed class WhoHereWindow : Window
 
     private static double Now => ImGui.GetTime();
 
-    public void Open(string id, string name)
+    public void Open(DairyListing d)
     {
         IsOpen = true;
-        if (id == dairyId && Now - askedAt < 10) return;
-        if (id != dairyId) reply = null;
-        dairyId = id;
-        dairyName = name;
+        listing = d;
+        if (d.Id == dairyId && Now - askedAt < 10) return;
+        if (d.Id != dairyId) reply = null;
+        dairyId = d.Id;
+        dairyName = d.Name;
         Ask();
     }
 
@@ -68,8 +71,29 @@ public sealed class WhoHereWindow : Window
     public override void Draw()
     {
         const float width = 380;
-        var title = $"At {dairyName} now";
+        var title = listing != null ? $"Lv {listing.Level}  {dairyName}" : dairyName;
         using (fonts.For(fonts.Heading, title)!.Push()) ImGui.TextColored(Theme.RoseDeep, title);
+        ImGui.PushTextWrapPos(width);
+        if (listing is { } d)
+        {
+            ImGui.TextColored(Theme.InkSoft, $"{d.Address} · {d.WorldName}" + (d.DcName.Length > 0 ? $" ({d.DcName})" : ""));
+            ImGui.TextColored(Theme.InkSoft, $"{d.Members} member{(d.Members == 1 ? "" : "s")}" + (d.Owner.Length > 0 ? $" · Owner: {d.Owner}" : ""));
+            if (d.LookingFor.Count > 0)
+                ImGui.TextColored(Theme.SageDeep, $"Looking for: {string.Join(", ", d.LookingFor.Select(r => char.ToUpperInvariant(r[0]) + r[1..] + "s"))}");
+            if (d.Description.Length > 0) ImGui.TextColored(Theme.Ink, d.Description);
+        }
+
+        if (reply is { } t)
+        {
+            ImGui.Spacing();
+            ImGui.TextColored(Theme.RoseDeep, "Tank and stalls");
+            ImGui.TextColored(Theme.Ink, $"Milk in the tank: {Units.Oz(t.TankMilk)}" + (t.TankSeed > 0 ? $" · Seed: {Units.Oz(t.TankSeed, "0.##")}" : ""));
+            ImGui.TextColored(Theme.Ink, $"{t.Stalls} stall{(t.Stalls == 1 ? "" : "s")}");
+            ImGui.Spacing();
+            ImGui.TextColored(Theme.RoseDeep, "Who's here now");
+        }
+
+        ImGui.PopTextWrapPos();
         if (error.Length > 0) ImGui.TextColored(Theme.Warn, error);
         if (reply == null)
         {
@@ -112,7 +136,7 @@ public sealed class WhoHereWindow : Window
         {
             ImGui.Separator();
             ImGui.PushTextWrapPos(width);
-            ImGui.TextColored(Theme.InkSoft, $"{r.Hidden} more here who don't share who they are.");
+            ImGui.TextColored(Theme.InkSoft, r.Hidden == 1 ? "1 more here who doesn't share who they are." : $"{r.Hidden} more here who don't share who they are.");
             ImGui.PopTextWrapPos();
         }
 

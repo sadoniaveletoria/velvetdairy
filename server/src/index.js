@@ -275,7 +275,7 @@ async function route(request, env) {
     ["GET", /^\/v1\/whoami$/, () => ({ charHash: me.char_hash || null })],
     ["GET", /^\/v1\/dairies$/, () => listDairies(env, me)],
     ["GET", /^\/v1\/dairy\/mine$/, () => myDairy(env, me)],
-    ["GET", /^\/v1\/dairies\/([A-Za-z0-9_-]{1,64})\/here$/, m => whoIsHere(env, me, m[1])],
+    ["GET", /^\/v1\/dairies\/([A-Za-z0-9_-]{1,64})\/(?:here|details)$/, m => whoIsHere(env, me, m[1])],
     ["GET", /^\/v1\/scan\/([^/]{1,80})\/([^/]{1,80})$/, m => scanPlayer(env, me, decodeURIComponent(m[1]), decodeURIComponent(m[2]))],
     ["PUT", /^\/v1\/dairy$/, () => putDairy(env, me, request)],
     ["DELETE", /^\/v1\/dairy$/, () => deleteDairy(env, me)],
@@ -437,7 +437,10 @@ async function whoIsHere(env, me, dairyId) {
     });
   }
   people.sort((a, b) => (b.member - a.member) || a.name.localeCompare(b.name));
-  return { dairy: d.name, people, hidden, now: t };
+  // The dairy's details: what's in its tank, its stalls
+  const tank = await tankOf(env, d.id);
+  const stalls = (await env.DB.prepare("SELECT COUNT(*) AS n FROM stalls WHERE dairy_id = ?").bind(d.id).first())?.n || 0;
+  return { dairy: d.name, people, hidden, now: t, tankMilk: tank.total, tankSeed: tank.seed, stalls };
 }
 
 async function ownedDairy(env, me) {

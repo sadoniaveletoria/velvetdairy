@@ -472,7 +472,7 @@ public sealed class NetClient : IDisposable
     /// <summary>Scan another player (anyone targeting them can, if they allow it).</summary>
     /// <summary>Who's at a dairy right now.</summary>
     public void WhoIsHere(string dairyId, Action<HereReply> ok, Action<string> failed) =>
-        Call<HereReply>("GET", $"/v1/dairies/{Uri.EscapeDataString(dairyId)}/here", null, ok, failed);
+        Call<HereReply>("GET", $"/v1/dairies/{Uri.EscapeDataString(dairyId)}/details", null, ok, failed);
 
     public void Scan(string name, string world, Action<ScanReply> ok, Action<string> failed) =>
         Call<ScanReply>("GET", $"/v1/scan/{Uri.EscapeDataString(world)}/{Uri.EscapeDataString(name)}", null, ok, failed);

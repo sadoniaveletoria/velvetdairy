@@ -438,6 +438,9 @@ public sealed class HereReply
     public List<HerePerson> People { get; set; } = new();
     public int Hidden { get; set; }   // there, but they don't share (scan setting) or aren't in a dairy
     public long Now { get; set; }
+    public float TankMilk { get; set; }
+    public float TankSeed { get; set; }
+    public int Stalls { get; set; }
 }
 
 public sealed class HerePerson

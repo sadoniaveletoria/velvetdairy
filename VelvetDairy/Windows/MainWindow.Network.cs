@@ -190,7 +190,7 @@ public sealed partial class MainWindow
             };
             if (d.Owner.Length > 0) lines.Add(new Line($"Owner: {d.Owner}", Theme.InkSoft));
             if (d.LookingFor.Count > 0) lines.Add(new Line($"Looking for: {string.Join(", ", d.LookingFor.Select(r => char.ToUpperInvariant(r[0]) + r[1..] + "s"))}", Theme.SageDeep));
-            if (d.Description.Length > 0) lines.Add(new Line(d.Description, Theme.Ink));
+            if (d.Description.Length > 0 && !d.IsPublic && !d.Mine) lines.Add(new Line(d.Description, Theme.Ink));   // public ones: in Details
 
             // Applying: only when you're not in a dairy yet, and it's looking for someone
             var app = apps.FirstOrDefault(a => a.DairyId == d.Id);
@@ -208,11 +208,10 @@ public sealed partial class MainWindow
             var canVisit = d.Area != null || (d.HouseId != null && d.World != null && d.Ward != null);
             var buttons = new List<Btn>();
             if (applyBtn is { } ab) buttons.Add(ab);
-            if (d.CowsHere > 0 && (d.IsPublic || inDairy))
-                buttons.Add(new Btn($"##here{d.Id}", "Who's here", "sage", true, $"See who's at {d.Name} now: their roles and levels, and who's a bull."));
+            if (d.IsPublic || inDairy)
+                buttons.Add(new Btn($"##details{d.Id}", "Details", "sage", true, $"{d.Name}: who's there now (roles and levels), its tank and stalls."));
             if (canVisit)
             {
-                buttons.Add(new Btn($"##copy{d.Id}", "Copy", "cream", true, "Copy the address."));
                 buttons.Add(new Btn($"##visit{d.Id}", "Visit", "blue", !Lifestream.Busy, Lifestream.Installed ? "Travel there with Lifestream." : "Copies the address (install Lifestream to travel automatically)."));
             }
 
@@ -222,9 +221,8 @@ public sealed partial class MainWindow
             var label = buttons[clicked].Label;
             if (label == "Apply") plugin.Apply.Open(d);
             else if (label == "Withdraw" && app != null) net.WithdrawApplication(app.Id, e => G.Notify(e, 2));
-            else if (label == "Copy") Copy(d);
             else if (label == "Visit") Visit(d);
-            else if (label == "Who's here") plugin.WhoHere.Open(d.Id, d.Name);
+            else if (label == "Details") plugin.WhoHere.Open(d);
         }
     }
 
