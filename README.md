@@ -109,7 +109,7 @@ Cow and bull are yours: you add or drop them, and they hold in every dairy you'r
 - **Deliveries:**
   - **Customer orders**, with a new one every 20 minutes.
   - **Other dairies' buy orders**, public or private. Fill them from inside your own dairy, or in person at a public dairy (same pay).
-  - **The weekly contract** (500 oz at dairy level 1, up to 1,500), delivered in person at any **Grand Creamery**. **Dairy → Contract** shows where they are. Fill it for the full reward; if it isn't full by Monday, your dairy still gets the share it delivered.
+  - **The weekly contract** (1,500 oz at dairy level 1, plus 250 a level, up to 6,000), delivered in person at any **Grand Creamery**. **Dairy → Contract** shows where they are. Fill it for the full reward; if it isn't full by Monday, your dairy still gets the share it delivered.
 
 ---
 
