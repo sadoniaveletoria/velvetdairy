@@ -94,7 +94,9 @@ public static class Grades
 /// <summary>A feed or treat you buy, keep in the pantry and use inside your dairy.</summary>
 public sealed record FeedItem(
     string Id, string Name, string Icon, int Price, int Unlock, string Desc,
-    float Fed = 0, float Water = 0, float Happy = 0, int BoostMinutes = 0, float Quality = 0, int HoldDays = 0, bool Baked = false);
+    float Fed = 0, float Water = 0, float Happy = 0, int BoostMinutes = 0, float Quality = 0, int HoldDays = 0, bool Baked = false,
+    // Bull and cow-and-bull foods: who can buy it ("" anyone, "bull", "both" = a cow who's also a bull), and what it does
+    string Role = "", float XpBoost = 0, int XpBoostMinutes = 0, int RestoreBreeds = 0, float NextSeedBonus = 0, bool StudTonic = false, int RestHours = 0);
 
 /// <summary>Something you buy once or in levels.</summary>
 public sealed record Upgrade(string Id, string Name, string Icon, int[] Prices, int[] Unlocks, string Desc, bool Cosmetic = false, bool Farmer = false, bool Bull = false)
@@ -196,6 +198,15 @@ public static class Catalog
         new FeedItem("cookies", "Butter cookies", "biscuit", 0, 1, "Baked by your dairy's farmers. Happy, and a milk boost for 15 minutes.", Happy: 0.06f, BoostMinutes: 15, Baked: true),
         new FeedItem("buns", "Cream buns", "biscuit", 0, 1, "Baked by your dairy's farmers. Filling, happy, and a milk boost for 20 minutes.", Fed: 0.05f, Happy: 0.07f, BoostMinutes: 20, Baked: true),
         // Going away: keeps your grade from slipping
+        // Bulls only (unlocked by bull level)
+        new FeedItem("ironoats", "Iron oats", "grain", 30, 8, "A hearty bull feed. Filling, and gives you back one breeding at full output today.", Fed: 0.10f, Role: "bull", RestoreBreeds: 1),
+        new FeedItem("bullsalt", "Bull's salt lick", "salt", 35, 12, "A coarse salt lick. Happy, and +25% bull xp for 30 minutes.", Happy: 0.05f, Role: "bull", XpBoost: 0.25f, XpBoostMinutes: 30),
+        new FeedItem("seedtea", "Seed tea", "water", 40, 15, "A warm herbal brew. Your next seed milking gives 25% more.", Role: "bull", NextSeedBonus: 0.25f),
+        new FeedItem("studtonic", "Stud draught", "water", 120, 20, "Your next breeding gives the cow 50% more bred bonus, and it lasts 15 minutes longer.", Role: "bull", StudTonic: true),
+        // Cows who are also bulls (unlocked by the lower of the two levels)
+        new FeedItem("twinblend", "Twin blend", "premium", 60, 10, "A feast for a cow and bull: filling and happy at once, and a 30 minute boost to milk and seed.", Fed: 0.10f, Happy: 0.06f, BoostMinutes: 30, Role: "both"),
+        new FeedItem("bonbon", "Velvet & brass bonbon", "biscuit", 50, 15, "A rich little sweet. Happy, and +20% cow and bull xp for 30 minutes.", Happy: 0.06f, Role: "both", XpBoost: 0.20f, XpBoostMinutes: 30),
+        new FeedItem("balancetea", "Balance tea", "water", 90, 20, "Takes 2 hours off your milking time today, so you tire later. Once a day.", Role: "both", RestHours: 2),
         new FeedItem("tonic", "Dry-off tonic", "water", 150, 1, "Going away? Your grade won't slip for 7 days, however long since you were milked. Use another to add 7 more.", HoldDays: 7),
     };
 

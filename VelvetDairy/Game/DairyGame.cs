@@ -822,6 +822,8 @@ public sealed partial class DairyGame
         if (p != null) return Fail(p);
         if (Count(id) <= 0) return Fail($"You're out of {item.Name}. Buy more in the Shop.");
 
+        if (!FeedForYou(item)) return Fail(item.Role == "bull" ? "That's for bulls." : "That's for cows who are also bulls.");
+        if (item.RestHours > 0 && F.RestTeaDay == DateTime.UtcNow.ToString("yyyy-MM-dd")) return Fail($"You've had {item.Name} today already.");
         if (item.Quality > 0 && QualityTreatWait > TimeSpan.Zero)
             return Fail($"You can have another quality treat in {Wait(QualityTreatWait)}.");
         var wait = FeedWait(item);
@@ -855,7 +857,42 @@ public sealed partial class DairyGame
             Cow.BoostUntilUtc = until > cap ? cap : until;
         }
 
-        CareDone($"You eat some {item.Name.ToLowerInvariant()}." + (item.BoostMinutes > 0 ? $" Milk boost for {BoostFor(item)} min." : ""));
+        // Bull and cow-and-bull foods
+        var extra = "";
+        if (item.XpBoostMinutes > 0)
+        {
+            F.XpBoost = item.XpBoost;
+            F.XpBoostUntilUtc = DateTime.UtcNow.AddMinutes(item.XpBoostMinutes);
+            extra += $" +{item.XpBoost * 100:0}% {(item.Role == "bull" ? "bull" : "cow and bull")} xp for {item.XpBoostMinutes} min.";
+        }
+
+        if (item.RestoreBreeds > 0 && F.DayBreeds > 0)
+        {
+            F.DayBreeds = Math.Max(0, F.DayBreeds - item.RestoreBreeds);
+            extra += $" Breeding output back to {SeedNow}%.";
+        }
+
+        if (item.NextSeedBonus > 0)
+        {
+            F.SeedTea = Math.Max(F.SeedTea, item.NextSeedBonus);
+            extra += $" Your next seed milking gives {item.NextSeedBonus * 100:0}% more.";
+        }
+
+        if (item.StudTonic)
+        {
+            F.StudTonic = true;
+            Net.BeatWithin(1);
+            extra += " Your next breeding is stronger.";
+        }
+
+        if (item.RestHours > 0)
+        {
+            F.DayAwakeMinutes = Math.Max(0, F.DayAwakeMinutes - item.RestHours * 60);
+            F.RestTeaDay = DateTime.UtcNow.ToString("yyyy-MM-dd");
+            extra += $" {item.RestHours} hours off your milking time today.";
+        }
+
+        CareDone($"You {(item.Icon == "water" ? "drink" : "eat")} some {item.Name.ToLowerInvariant()}." + (item.BoostMinutes > 0 ? $" Milk boost for {BoostFor(item)} min." : "") + extra);
         return true;
     }
 
@@ -2446,10 +2483,23 @@ public sealed partial class DairyGame
     public string? BuyFeedProblem(FeedItem item, int qty)
     {
         if (Blocked() != null) return Blocked();
-        if (ShopLevel < item.Unlock) return $"Unlocks at level {item.Unlock}.";
+        if (!FeedForYou(item)) return item.Role == "bull" ? "For bulls." : "For cows who are also bulls.";
+        if (FeedUnlockLevel(item) < item.Unlock) return $"Unlocks at {(item.Role == "bull" ? "bull " : item.Role == "both" ? "cow and bull " : "")}level {item.Unlock}.";
         if (F.Coins < item.Price * qty) return "Not enough coins.";
         return null;
     }
+
+    /// <summary>Bull foods are for bulls; cow-and-bull foods for those who are both.</summary>
+    public bool FeedForYou(FeedItem item) => item.Role switch { "bull" => IsBull, "both" => IsCow && IsBull, _ => true };
+
+    /// <summary>The level a food unlocks by: bull level, the lower of cow and bull level, or your shop level.</summary>
+    public int FeedUnlockLevel(FeedItem item) => item.Role switch { "bull" => BullLevel, "both" => Math.Min(Level, BullLevel), _ => ShopLevel };
+
+    /// <summary>In the Shop and Care for you: yours to buy, and unlocked.</summary>
+    public bool FeedUnlocked(FeedItem item) => FeedForYou(item) && FeedUnlockLevel(item) >= item.Unlock;
+
+    /// <summary>Bull's salt lick and the bonbon: more cow and bull xp for a while.</summary>
+    private int Boosted(int xp) => F.XpBoostUntilUtc > DateTime.UtcNow && xp > 0 ? (int)Math.Round(xp * (1f + F.XpBoost)) : xp;
 
     public bool BuyFeed(FeedItem item, int qty)
     {
@@ -3392,6 +3442,7 @@ public sealed partial class DairyGame
     private void AddXp(int amount)
     {
         if (!ProducesMilk) return;   // cow xp is only for cows; farmer work gives farmer xp
+        amount = Boosted(amount);
         var before = Level;
         F.Xp += amount;
         var after = Level;

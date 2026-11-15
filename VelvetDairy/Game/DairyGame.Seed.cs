@@ -205,6 +205,12 @@ public sealed partial class DairyGame
     {
         var hand = s.Kind == SessionKind.Hand;
         var collected = s.ExtractedSeed * s.SeedYield;
+        if (F.SeedTea > 0 && collected > 0)
+        {
+            collected *= 1f + F.SeedTea;   // Seed tea: this milking gives more
+            F.SeedTea = 0;
+        }
+
         var milkEquivalent = collected / SeedRatio;
         EaseSeedTaint(Catalog.TaintPerMilking);
         AddSeedQuality(milkEquivalent * (hand ? Grades.QualityPerOzHand : Grades.QualityPerOz));

@@ -70,7 +70,7 @@ public sealed partial class MainWindow
         var hiddenCount = 0;
         foreach (var item in Catalog.Feed)
         {
-            if (G.ShopLevel < item.Unlock) continue;
+            if (!G.FeedUnlocked(item)) continue;
             var hidden = F.HiddenFeed!.Contains(item.Id);
             if (hidden) hiddenCount++;
             if (hidden && !showHiddenFeed) continue;

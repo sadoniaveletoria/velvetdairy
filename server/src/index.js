@@ -562,6 +562,7 @@ async function heartbeat(env, me, request) {
       seedGrade: Math.max(0, Math.min(GRADES - 1, Math.floor(num(st.seedGrade)))), seedSpoiled: !!st.seedSpoiled,
       // Two players who are both cow and bull: the scene partner (Name@World) this player chose to breed this scene
       breeding: clean(st.breeding, 80),
+      studTonic: !!st.studTonic,         // a bull who had a Stud draught: his next breeding is stronger
       // For a scan (anyone targeting them, if they allow it): what speeds their milk or seed up now, and breeding
       bonuses: Array.isArray(st.bonuses) ? st.bonuses.slice(0, 16).map(x => ({ n: clean(x && x.n, 48), p: Math.max(-100, Math.min(1000, Math.round(num(x && x.p)))) })).filter(x => x.n) : [],
       speed: Math.max(0, Math.min(50, Math.round(Number(st.speed) * 100 || 0) / 100)),

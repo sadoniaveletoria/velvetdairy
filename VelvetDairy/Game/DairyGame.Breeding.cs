@@ -61,7 +61,7 @@ public sealed partial class DairyGame
     public TimeSpan BredLeft => F.BredUntilUtc > DateTime.UtcNow ? F.BredUntilUtc - DateTime.UtcNow : TimeSpan.Zero;
 
     /// <summary>The milk bonus from being bred right now (scaled by the bull's seed output).</summary>
-    public float BredBonusNow => BredLeft > TimeSpan.Zero ? BredBonus * Math.Clamp(F.BredStrength, 0.2f, 1f) : 0f;
+    public float BredBonusNow => BredLeft > TimeSpan.Zero ? BredBonus * Math.Clamp(F.BredStrength, 0.2f, 1.5f) : 0f;
 
     /// <summary>When another breeding will count again.</summary>
     public TimeSpan BreedCooldownLeft
@@ -548,12 +548,13 @@ public sealed partial class DairyGame
         }
 
         var seed = bull.Status?.Seed is > 0 and var s ? s : 100;
+        var stud = bull.Status?.StudTonic == true;   // the bull had a Stud draught: half again as strong, 15 minutes longer
         wasBredThisScene = true;
         F.BredAtUtc = DateTime.UtcNow;
-        F.BredUntilUtc = DateTime.UtcNow.AddMinutes(BredMinutesNow);
-        F.BredStrength = Math.Clamp(seed / 100f, 0.2f, 1f);
+        F.BredUntilUtc = DateTime.UtcNow.AddMinutes(BredMinutesNow + (stud ? 15 : 0));
+        F.BredStrength = Math.Clamp(seed / 100f, 0.2f, 1f) * (stud ? 1.5f : 1f);
         F.BredBy = bull.Name;
-        Say($"{bull.Name} bred you: +{BredBonusNow * 100:0.#}% milk for {BredMinutesNow} minutes{(seed < 100 ? $" (their breeding output is at {seed}% today)" : "")}.", 1);
+        Say($"{bull.Name} bred you: +{BredBonusNow * 100:0.#}% milk for {BredMinutesNow + (stud ? 15 : 0)} minutes{(stud ? " (they had a Stud draught)" : "")}{(seed < 100 ? $" (their breeding output is at {seed}% today)" : "")}.", 1);
         plugin.SaveConfig();
     }
 
@@ -622,6 +623,7 @@ public sealed partial class DairyGame
         }
 
         bredThemThisScene = true;
+        F.StudTonic = false;
         var output = SeedFor(F.DayBreeds);
         F.DayBreeds++;
         var xp = Math.Max(1, (int)Math.Round(BreedXp * output * (Owned("prizestud") > 0 ? 1.25f : 1f)));
@@ -651,7 +653,7 @@ public sealed partial class DairyGame
     private void AddBullXp(int amount)
     {
         var before = BullLevel;
-        F.BullXp += amount;
+        F.BullXp += Boosted(amount);
         for (var l = before + 1; l <= BullLevel; l++)
             Say($"Bull level {l}!" + (Leveling.BullRank(l) is { } t && l % 25 == 0 ? $" You're a {t}." : ""), 1);
     }

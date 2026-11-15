@@ -387,6 +387,7 @@ public sealed class NetClient : IDisposable
                 SeedOz = g.ProducesSeed ? (float)Math.Round(F.Cow.Seed, 2) : 0, SeedCap = g.ProducesSeed ? g.SeedCapacity : 0,
                 SeedGrade = g.ProducesSeed ? g.SeedGrade : 0, SeedSpoiled = g.ProducesSeed && g.SeedSpoiled,
                 Breeding = g.BreedingTarget,
+                StudTonic = g.IsBull && F.StudTonic,
                 Bonuses = g.ScanBonuses(out var speed), Speed = speed,
                 BredBy = g.BredLeft > TimeSpan.Zero ? F.BredBy : "", BredPct = g.BredLeft > TimeSpan.Zero ? (float)Math.Round(g.BredBonusNow * 100, 1) : 0,
                 BredUntil = g.BredLeft > TimeSpan.Zero ? new DateTimeOffset(F.BredUntilUtc, TimeSpan.Zero).ToUnixTimeSeconds() : 0,
@@ -474,7 +475,7 @@ public sealed class NetClient : IDisposable
     public void RefreshMine()
     {
         // A scene where you and your partner choose who breeds: their choice shows up quickly
-        nextMine = Now + (plugin.Game.EitherWayScene ? 10 : WatchingDairy ? 60 : 300);
+        nextMine = Now + (plugin.Game.InScene ? 10 : WatchingDairy ? 60 : 300);
         Call<MyDairyReply>("GET", "/v1/dairy/mine", null, r =>
         {
             Mine = r.Dairy == null ? null : r;

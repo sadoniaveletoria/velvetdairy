@@ -160,6 +160,11 @@ public class FarmSave
     public float BredStrength { get; set; } = 1f;      // ...scaled by that bull's seed output (0.2 to 1)
     public string BredBy { get; set; } = "";
     public int DayBreeds { get; set; }                 // a bull: cows bred today (seed output drops after a few)
+    public DateTime XpBoostUntilUtc { get; set; } = DateTime.MinValue;   // Bull's salt lick, bonbon: more cow and bull xp until then
+    public float XpBoost { get; set; }
+    public float SeedTea { get; set; }                 // Seed tea: the next seed milking gives this much more
+    public bool StudTonic { get; set; }                // Stud draught: the next breeding is stronger (the cow reads it from your status)
+    public string RestTeaDay { get; set; } = "";       // Balance tea: the day it was last drunk (once a day)
     public string PregStage { get; set; } = "none";    // last pregnancy stage read from Corruption (to announce changes)
 
     // ----- Progress -----

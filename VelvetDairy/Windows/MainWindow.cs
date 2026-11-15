@@ -991,7 +991,7 @@ public sealed partial class MainWindow : Window
             "Drink", "blue", ok && wcd <= TimeSpan.Zero, problem ?? $"Free. Watered +{Catalog.TroughBonus * 100:0}%, +30 minutes.", () => G.Drink()));
         foreach (var item in Catalog.Feed)
         {
-            if (G.ShopLevel < item.Unlock || F.HiddenFeed!.Contains(item.Id)) continue;
+            if (!G.FeedUnlocked(item) || F.HiddenFeed!.Contains(item.Id)) continue;
             var have = G.Count(item.Id);
             if (have <= 0) continue;
             var wait = item.HoldDays > 0 ? TimeSpan.Zero : G.FeedWait(item);
@@ -1079,7 +1079,7 @@ public sealed partial class MainWindow : Window
         var shown = 0;
         foreach (var item in Catalog.Feed)
         {
-            if (G.ShopLevel < item.Unlock || F.HiddenFeed!.Contains(item.Id)) continue;
+            if (!G.FeedUnlocked(item) || F.HiddenFeed!.Contains(item.Id)) continue;
             var have = G.Count(item.Id);
             if (have <= 0) continue;   // Care only lists what you have right now (the Pantry can show the rest)
             shown++;
@@ -1385,18 +1385,18 @@ public sealed partial class MainWindow : Window
         var hiddenCount = 0;
         foreach (var item in Catalog.Feed)
         {
-            if (item.Baked || (item.Quality > 0) != treats) continue;   // baked treats come off the dairy shelf
+            if (item.Baked || (item.Quality > 0) != treats || !G.FeedForYou(item)) continue;   // baked treats come off the dairy shelf
             var hidden = F.HiddenFeed!.Contains(item.Id);
             if (hidden) hiddenCount++;
             if (hidden && !showHiddenFeed) continue;
 
-            var locked = G.ShopLevel < item.Unlock;
+            var locked = G.FeedUnlockLevel(item) < item.Unlock;
             var have = G.Count(item.Id);
             var p1 = G.BuyFeedProblem(item, 1);
             var p5 = G.BuyFeedProblem(item, 5);
             var back = DairyGame.SellBackPrice(item);
             var lines = locked
-                ? new[] { new Line($"Unlocks at level {item.Unlock}", Theme.InkSoft) }
+                ? new[] { new Line($"Unlocks at {(item.Role == "bull" ? "bull " : item.Role == "both" ? "cow and bull " : "")}level {item.Unlock}", Theme.InkSoft) }
                 : new[]
                 {
                     new Line($"{item.Price} coins · you have {have}" + (have > 0 ? $" · sells back for {back}" : ""), Theme.InkSoft),
