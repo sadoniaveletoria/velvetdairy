@@ -598,6 +598,15 @@ public sealed partial class MainWindow : Window
     }
 
     /// <summary>Simple list row with one button.</summary>
+    /// <summary>What the Comfy care cell says: resting happens by itself when you sit on furniture in your dairy.</summary>
+    private string RestLine(TimeSpan settle, TimeSpan cooldown, string? restProblem, bool careOk) =>
+        settle > TimeSpan.Zero ? $"Comfy +{G.ComfyNow * 100:0}% · stay seated {DairyGame.Wait(settle)} for it to take effect"
+        : cooldown > TimeSpan.Zero ? $"Rested · again in {DairyGame.Wait(cooldown)}"
+        : !careOk ? "Sit on furniture in your dairy"
+        : restProblem != null ? "Sit on furniture in your dairy to get comfy"
+        : F.Cow.Comfort >= 99.5f ? "Fully comfy"
+        : "Settling in...";
+
     private bool Row(string id, string icon, string title, string sub, string button, string color, bool enabled, string? tip, float width)
     {
         var buttons = button.Length > 0 ? new[] { new Btn(id, button, color, enabled, tip) } : Array.Empty<Btn>();
@@ -891,7 +900,7 @@ public sealed partial class MainWindow : Window
         {
             ("hay", "Fed", cow.Hunger, cow.FedBonus, Theme.HoneyDeep, "Eat feed from your pantry. Better food gives a bigger bonus (wheat grain +4% up to Golden mash +15%)."),
             ("water", "Watered", cow.Thirst, cow.WaterBonus, Theme.BlueDeep, "Drink at the trough (free, +4%) or have a Mineral block (+8%)."),
-            ("cushion", "Comfy", cow.Comfort, cow.ComfortBonus, Theme.RoseDeep, "Sit on furniture in your dairy and press Rest, then stay seated 15 minutes: get up sooner and that rest doesn't count. Bedding upgrades make it bigger and last longer."),
+            ("cushion", "Comfy", cow.Comfort, cow.ComfortBonus, Theme.RoseDeep, "Sit on furniture in your dairy and you get comfy by yourself; stay seated 15 minutes: get up sooner and that rest doesn't count. Bedding upgrades make it bigger and last longer."),
             ("clover", "Happy", cow.Mood, cow.HappyBonus, Theme.SageDeep, "Have a treat: clover, salt lick, cream clover or a quality treat."),
         };
 
@@ -972,9 +981,9 @@ public sealed partial class MainWindow : Window
         var rcd = G.RestWait;
         var restProblem = G.RestProblem();
         var settle = G.RestSettleLeft;
-        cells.Add(("##rest", "cushion", "Rest",
-            settle > TimeSpan.Zero ? $"Stay seated {DairyGame.Wait(settle)}" : rcd > TimeSpan.Zero ? $"Ready in {DairyGame.Wait(rcd)}" : restProblem != null && ok ? "Sit on furniture first" : $"Free · Comfy +{G.ComfyNow * 100:0}%",
-            "Rest", "rose", restProblem == null && rcd <= TimeSpan.Zero, restProblem ?? $"Free. Comfy +{G.ComfyNow * 100:0}%, +30 minutes.", () => G.Rest()));
+        // Comfy: no button, sitting on furniture in your dairy rests you by itself
+        cells.Add(("##rest", "cushion", "Comfy", RestLine(settle, rcd, restProblem, ok),
+            "", "rose", true, null, () => { }));
         foreach (var item in Catalog.Feed)
         {
             if (G.ShopLevel < item.Unlock || F.HiddenFeed!.Contains(item.Id)) continue;
@@ -1015,9 +1024,10 @@ public sealed partial class MainWindow : Window
             {
                 var c = cells[i];
                 Ui.Icon(dl, c.Icon, new Vector2(c0.X + 24, midY), 15, c.Enabled ? 1f : 0.65f);
-                var bw = Math.Max(62f, Ui.Measure(fonts.Label, c.Btn.ToUpperInvariant()).X + 26);
-                if (Ui.Button(c.Id, c.Btn, new Vector2(bw, 28), c.Color, c.Enabled, c.Tip, new Vector2(c1.X - bw - 10, midY - 14))) c.Act();
-                var tw = c1.X - bw - 18 - (c0.X + 46);
+                // A cell with no button (Comfy: it happens by itself) uses the whole width for its text
+                var bw = c.Btn.Length > 0 ? Math.Max(62f, Ui.Measure(fonts.Label, c.Btn.ToUpperInvariant()).X + 26) : 0f;
+                if (bw > 0 && Ui.Button(c.Id, c.Btn, new Vector2(bw, 28), c.Color, c.Enabled, c.Tip, new Vector2(c1.X - bw - 10, midY - 14))) c.Act();
+                var tw = c1.X - (bw > 0 ? bw + 18 : 12) - (c0.X + 46);
                 var titleH = Ui.Measure(fonts.Label, "A").Y;
                 var subH = Ui.Measure(fonts.Small, "Ag").Y;
                 var ty = midY - (titleH + subH + 2) / 2;
@@ -1064,9 +1074,7 @@ public sealed partial class MainWindow : Window
         var rcd = G.RestWait;
         var restProblem = G.RestProblem();
         var settle = G.RestSettleLeft;
-        if (Row("##rest", "cushion", "Rest", settle > TimeSpan.Zero ? $"Stay seated {DairyGame.Wait(settle)} to keep it" : rcd > TimeSpan.Zero ? $"Ready in {DairyGame.Wait(rcd)}" : restProblem != null && ok ? "Sit on furniture first" : $"Free · Comfy +{G.ComfyNow * 100:0}%, +30m", "Rest", "rose",
-                restProblem == null && rcd <= TimeSpan.Zero, restProblem, width))
-            G.Rest();
+        Row("##rest", "cushion", "Comfy", RestLine(settle, rcd, restProblem, ok), "", "rose", true, null, width);
 
         var shown = 0;
         foreach (var item in Catalog.Feed)

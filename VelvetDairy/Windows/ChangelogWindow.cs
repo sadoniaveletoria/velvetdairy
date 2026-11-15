@@ -38,6 +38,7 @@ public sealed class ChangelogWindow : Window
             "At a Grand Creamery you see everyone else standing there on any world and data center, on Dairy > Contract, and the HUD says how many are there.",
             "Each Grand Creamery counts what's been shipped there today: \"Delivered here today: 1,240 oz by 9 dairies.\"",
             "# Also",
+            "Comfy has no Rest button any more: sit on furniture in your dairy (a stall seat counts) and you get comfy by yourself after a few seconds. Stay seated 15 minutes for it to take effect; the Care row shows how long is left.",
             "Bulls who aren't cows get the hand milking settings (milking emotes, ask first) on the Bull tab.",
             "The Dairies list shows each dairy's real data center (Lich on Light, Lamia on Primal).",
             "Milk levels on member lists refresh about every 90 seconds, so the server writes less. Everything you act on stays instant.",
