@@ -907,6 +907,9 @@ public sealed partial class MainWindow : Window
         {
             var left = r.Value / 100f * Catalog.NeedMinutes;
             var text = r.Value > 0 && r.Bonus > 0 ? $"+{r.Bonus * 100:0}% · {(left >= 1 ? $"{left:0}m" : "<1m")}" : "plain";
+            // Comfy while sitting for it: how much longer until it's yours
+            if (r.Label == "Comfy" && G.RestSettleLeft > TimeSpan.Zero)
+                text = $"sit {Math.Max(1, (int)Math.Ceiling(G.RestSettleLeft.TotalMinutes))}m more";
             var h = Ui.Gauge(dl, new Vector2(p.X, y), width, r.Icon, r.Label, r.Value, r.Color, text);
             if (ImGui.IsMouseHoveringRect(new Vector2(p.X, y), new Vector2(p.X + width, y + h)))
                 ImGui.SetTooltip(Units.Text(r.Label == "Comfy" && G.RestSettleLeft > TimeSpan.Zero ? $"Stay seated {DairyGame.Wait(G.RestSettleLeft)} more." : r.Tip));
