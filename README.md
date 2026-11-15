@@ -79,7 +79,7 @@ Only the owner can take a role away from someone.
 **Bonuses** (the Barn tab)
 - **Fed** (food), **Watered** (drink), **Comfy** (rest) and **Happy** (treats) each make milk come faster.
 - Each use adds 30 minutes to that bar, up to an hour, and each has a 15-minute cooldown. Better food and treats give bigger bonuses.
-- **Comfy:** sit on furniture in your dairy (a stall seat counts) and you get comfy by yourself after a few seconds; there's no button. Stay seated for 15 minutes or it doesn't stick. The Care row shows how long is left.
+- **Comfy:** sit on furniture in your dairy (a stall seat counts); there's no button. You get no Comfy until you've stayed seated **15 minutes**, then it adds 30 minutes to the bar. Keep sitting and every further 15 minutes adds another 30, up to a full hour. Get up sooner and that sit gives nothing. The Care row shows how long is left.
 - **All four at once** makes you **Contented**, a bit faster still.
 - Bars only drain while you're awake and playing. Running out never hurts you; you're just back to normal speed.
 

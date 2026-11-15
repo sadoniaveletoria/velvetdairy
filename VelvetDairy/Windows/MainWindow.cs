@@ -600,8 +600,7 @@ public sealed partial class MainWindow : Window
     /// <summary>Simple list row with one button.</summary>
     /// <summary>What the Comfy care cell says: resting happens by itself when you sit on furniture in your dairy.</summary>
     private string RestLine(TimeSpan settle, TimeSpan cooldown, string? restProblem, bool careOk) =>
-        settle > TimeSpan.Zero ? $"Comfy +{G.ComfyNow * 100:0}% · stay seated {DairyGame.Wait(settle)} for it to take effect"
-        : cooldown > TimeSpan.Zero ? $"Rested · again in {DairyGame.Wait(cooldown)}"
+        settle > TimeSpan.Zero ? $"Getting comfy · stay seated {DairyGame.Wait(settle)} for +{G.ComfyNow * 100:0}%"
         : !careOk ? "Sit on furniture in your dairy"
         : restProblem != null ? "Sit on furniture in your dairy to get comfy"
         : F.Cow.Comfort >= 99.5f ? "Fully comfy"
@@ -900,7 +899,7 @@ public sealed partial class MainWindow : Window
         {
             ("hay", "Fed", cow.Hunger, cow.FedBonus, Theme.HoneyDeep, "Eat feed from your pantry. Better food gives a bigger bonus (wheat grain +4% up to Golden mash +15%)."),
             ("water", "Watered", cow.Thirst, cow.WaterBonus, Theme.BlueDeep, "Drink at the trough (free, +4%) or have a Mineral block (+8%)."),
-            ("cushion", "Comfy", cow.Comfort, cow.ComfortBonus, Theme.RoseDeep, "Sit on furniture in your dairy and you get comfy by yourself; stay seated 15 minutes: get up sooner and that rest doesn't count. Bedding upgrades make it bigger and last longer."),
+            ("cushion", "Comfy", cow.Comfort, cow.ComfortBonus, Theme.RoseDeep, "Sit on furniture in your dairy and stay seated: after 15 minutes you get Comfy (30 minutes on the bar), and each further 15 minutes seated adds 30 more, up to an hour. Get up sooner and that sit gives nothing. Bedding upgrades make it bigger."),
             ("clover", "Happy", cow.Mood, cow.HappyBonus, Theme.SageDeep, "Have a treat: clover, salt lick, cream clover or a quality treat."),
         };
 
