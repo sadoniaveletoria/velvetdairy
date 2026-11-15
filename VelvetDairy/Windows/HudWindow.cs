@@ -277,7 +277,7 @@ public sealed class HudWindow : Window
         // A newer version is out
         if (G.Net.UpdateVersion is { } nv && s == null && !G.Spoiled && !G.SeedSpoiled && !overfull)
         {
-            status = $"Update {nv} is out · /xlplugins";
+            status = "Update needed";   // short so it fits; /xlplugins has the new version
             col = Theme.BlueDeep;
         }
 
