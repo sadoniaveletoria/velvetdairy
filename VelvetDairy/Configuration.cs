@@ -189,7 +189,7 @@ public class FarmSave
     public string ListDescription { get; set; } = "";
     public string OwnerRole { get; set; } = "cow";    // older single role (kept for old saves)
     public List<string>? OwnerRoles { get; set; }      // what you play in your own dairy: any of cow, farmer, bull
-    public bool ShowOwnerHud { get; set; } = true;
+    public bool ShowOwnerHud { get; set; } = true;   // no longer used (the owner HUD was removed); kept so old saves load
     public bool ShowStallMarkers { get; set; } = true;   // a colored box on the ground around each stall (only you see it)
     public string VisitDay { get; set; } = "";
     public float DayAwakeMinutes { get; set; }

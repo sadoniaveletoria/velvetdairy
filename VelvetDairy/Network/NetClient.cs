@@ -461,7 +461,7 @@ public sealed class NetClient : IDisposable
 
     /// <summary>
     /// Your dairy's members, stalls and status only change what you see while you're in the dairy, have one of the
-    /// windows open, or watch the owner HUD. Otherwise it's checked every 5 minutes instead of every minute
+    /// windows open. Otherwise it's checked every 5 minutes instead of every minute
     /// (every request counts against the server's daily allowance).
     /// </summary>
     private bool WatchingDairy =>
