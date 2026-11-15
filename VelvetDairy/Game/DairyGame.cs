@@ -2551,10 +2551,13 @@ public sealed partial class DairyGame
     public IEnumerable<Stall> StallsHere()
     {
         var me = Plugin.ObjectTable.LocalPlayer;
-        if (!AtHome || me == null) return Enumerable.Empty<Stall>();
+        if (me == null) return Enumerable.Empty<Stall>();
         var pos = me.Position;
         static Vector3 P(Stall s) => new(s.X, s.Y, s.Z);
         bool Near(Stall s, float range) => Vector3.Distance(P(s), pos) <= range;
+        // A guest at someone else's public dairy: its stalls
+        if (Where.Guest) return GuestStalls.Where(s => Near(s, 120));
+        if (!AtHome) return Enumerable.Empty<Stall>();
         var m = F.NetMember;
         if (!Networked || m == null) return Stalls.Where(s => Near(s, 120));
         if (InPrivatePlace && m.PrivateArea is { } priv) return Stalls.Where(s => priv.Contains(P(s)) && Near(s, 60));

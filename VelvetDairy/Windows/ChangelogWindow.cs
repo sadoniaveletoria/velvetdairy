@@ -23,7 +23,7 @@ public sealed class ChangelogWindow : Window
     /// <summary>Newest first. Write these for players: what changed for them, not how.</summary>
     private static readonly Entry[] Entries =
     {
-        new("0.9.79", "Feeding bell, weekend contest and bonuses that last in a dairy", new[]
+        new("0.9.80", "Feeding bell, weekend contest and bonuses that last in a dairy", new[]
         {
             "The feeding bell: farmers and the owner ring it from Herd Care (once an hour). Everyone in the dairy hears it, and each cow and bull picks a bar to fill right up, plus a 20 minute boost.",
             "Weekend milk contest, every Saturday and Sunday (UTC): milk pumped into your dairy's tank also fills the weekly contract. The Contract card shows the top pumpers and last weekend's champion.",

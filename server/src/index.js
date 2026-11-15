@@ -1074,7 +1074,9 @@ async function myDairy(env, me) {
     guests: d.is_public ? (await env.DB.prepare(`
         SELECT m.install, m.role, m.name, m.world_name, m.status, i.last_seen, i.version
         FROM installs i JOIN memberships m ON m.install = i.id
-        WHERE i.at_dairy = ? AND i.last_seen >= ? AND m.dairy_id != ?`).bind(d.id, t - ONLINE_WINDOW, d.id).all()).results
+        WHERE i.at_dairy = ? AND i.last_seen >= ?
+          AND NOT EXISTS (SELECT 1 FROM memberships x WHERE x.install = i.id AND x.dairy_id = ?)
+        GROUP BY i.id`).bind(d.id, t - ONLINE_WINDOW, d.id).all()).results
       .map(m => ({
         id: m.install, name: m.name, world: m.world_name, role: primaryRole(m.role), roles: roleList(m.role), isOwner: false,
         online: true, lastSeen: m.last_seen || 0, version: m.version || "", status: safeParse(m.status), guest: true,
