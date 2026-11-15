@@ -393,7 +393,7 @@ public sealed partial class MainWindow : Window
         // The helper plugins, at the bottom
         var all = plugin.Companions.All(G.Now);
         var lineH = Ui.Measure(fonts.Small, "Ag").Y + 3;
-        var top = o.Y + h - 12 - all.Count * lineH - 24;
+        var top = o.Y + h - 12 - all.Count * lineH - 24 - lineH - 4;   // the plugins, then this plugin's version
         if (top < y + 8) return;   // a very short window
         dl.AddLine(new Vector2(o.X + 14, top), new Vector2(o.X + SideW - 14, top), Ui.U(Theme.RoseDeep, 0.18f), 1f);
         Ui.Text(dl, fonts.Small, "PLUGINS", new Vector2(o.X + 18, top + 5), Theme.InkSoft);
@@ -418,6 +418,12 @@ public sealed partial class MainWindow : Window
 
             ly += lineH;
         }
+
+        // Which version of Eorzea Milkers this is (handy when asking for help)
+        var v = System.Version.TryParse(Plugin.Version, out var pv) ? $"{pv.Major}.{pv.Minor}.{pv.Build}" : Plugin.Version;
+        Ui.Text(dl, fonts.Small, $"Eorzea Milkers v{v}", new Vector2(o.X + 18, ly + 4), Theme.InkSoft);
+        if (ImGui.IsMouseHoveringRect(new Vector2(o.X + 12, ly + 4), new Vector2(o.X + SideW - 8, ly + 4 + lineH)))
+            ImGui.SetTooltip("Your Eorzea Milkers version. /milkers changes shows what's new.");
     }
 
     /// <summary>Link buttons in the header's bottom-right corner, from the right edge inwards (a Donate button can go here later).</summary>
