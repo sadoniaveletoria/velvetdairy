@@ -180,7 +180,6 @@ public sealed partial class DairyGame
     private void AddSeedQuality(float amount)
     {
         var before = Grades.Cap(F.SeedQuality);
-        if (amount > 0) amount *= 1f + (Owned("heifer") > 0 ? 0.1f : 0);
         F.SeedQuality += amount;
         var after = Grades.Cap(F.SeedQuality);
         for (var g = before + 1; g <= after; g++)
@@ -217,7 +216,7 @@ public sealed partial class DairyGame
 
         var paidOz = Math.Clamp(Catalog.DailyPaidOz * SeedRatio - F.DaySeedOz, 0, collected);
         var rateBefore = Catalog.TaperRate(F.DayEarned);
-        var pay = Earn((int)Math.Round(paidOz * PayRate(s.SeedGrade) * SeedPriceMult * SeedPayBonus));
+        var pay = Earn((int)Math.Round(paidOz * PayRate(s.SeedGrade, true) * SeedPriceMult));
         F.Stats.TotalSeedOz += collected;
         F.DaySeedOz += collected;
         EarnDairyXp(milkEquivalent * (hand ? 1.5f : 1f));

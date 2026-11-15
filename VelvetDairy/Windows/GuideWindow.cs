@@ -40,7 +40,7 @@ public sealed class GuideWindow : Window
         }),
         new("Your cow", new[]
         {
-            "Cows have four bonuses: Fed (eat food), Watered (drink), Comfy (sit on furniture in your dairy: you get nothing until you've sat 15 minutes, then 30 minutes of Comfy; each further 15 minutes seated adds 30 more, up to an hour) and Happy (have a treat). Each use fills half its bar (30 minutes, up to a full hour), then the bar drains as the bonus wears off. Eating, drinking, resting and treats each have a 15-minute cooldown. Using one again adds time, not a bigger bonus; better food and treats give bigger bonuses. All four at once makes you Contented, +10% more.",
+            "Cows have four bonuses: Fed (eat food), Watered (drink), Comfy (sit on furniture in your dairy: after 10 minutes seated you get 30 minutes of Comfy, and each further 10 minutes adds 30 more, up to an hour; the Comfy bar doesn't drain while you sit) and Happy (have a treat). Each use fills half its bar (30 minutes, up to a full hour), then the bar drains as the bonus wears off. Eating, drinking and treats each have a 15-minute cooldown. Using one again adds time, not a bigger bonus; better food and treats give bigger bonuses. All four at once makes you Contented, +10% more.",
             "Bonuses only count down while you're awake and playing; they wait while you're asleep or logged out. When one runs out you're just plain: it never slows you down or lowers your grade. The newest food or treat of a kind replaces the last.",
             "Care happens inside your dairy (Barn tab): Drink and Rest (sitting on furniture) are free; feed comes from your Pantry.",
             "Pantry tab: everything you own. Eat it, sell back what you don't need for half price, or hide it from your lists.",
@@ -58,7 +58,7 @@ public sealed class GuideWindow : Window
         new("Getting milked", new[]
         {
             "Stalls: sit on one of your dairy's stalls (on the seat itself, not next to it) and the milking machine starts by itself and empties your bottles (and a bull's seed vials). Better stall tiers get more milk out.",
-            "You don't have to get up between milkings: stay seated on the stall and it starts again by itself once half a bottle has refilled. Sitting on the stall counts as resting in your dairy, so you keep the resting milk bonus the whole time (not while milk is being drawn, since nothing fills then). Getting up stops a milking that's going.",
+            "You don't have to get up between milkings: stay seated on the stall and it starts again by itself once half a bottle has refilled. Sitting on the stall counts as sitting in your dairy, so it builds Comfy and holds off dozing. Getting up stops a milking that's going.",
             "One catch: if you sit without doing anything for 30 minutes you start dozing, and a dozing cow's stall doesn't start a new milking. Move, emote or click anything in Eorzea Milkers and it starts again.",
             "Hand milking: a farmer of your dairy stands within 3 yalms, targets you and presses Milk on you (HUD > Herd Care). Their plugin does their milking emote or pose (/beesknees, a sit pose like /groundsit, or whatever they picked) and tells yours they mean you; someone just doing an emote nearby never milks you. Milk then flows until you're empty, or until they stop, step away or change target. If they started with the Milk button, their emote ends by itself once you're empty (with a quick pat); a sit pose is left for them to get up from. Roles > Cow lets you allow any emote or sit pose (the default) or only the ones you list. It gets more out than a basic stall and pays the farmer a share on top of your pay. You can turn off 'Farmers can start milking me without asking' on Roles > Cow: then a farmer pressing Milk on you pops up a request, and milking (and their emote) only starts if you press Allow.",
             "Breeding needs 10 minutes in the scene: a finish before that doesn't breed. The HUD's bar fills with the time, then shows arousal. Whoever is breeding starts from 0 arousal (their plugin brings it down at the start of the scene, if Corruption's 'Let other plugins control Corruption' is on).",
@@ -112,13 +112,12 @@ public sealed class GuideWindow : Window
             "Dairy level: members earn dairy XP by milking and caring inside it (up to 300 each a day), and from filled buy orders and contracts. Higher levels give better stall tiers (3 from level 5, 4 from level 12), 2% more pay per level, and put the dairy higher in the Dairies list.",
             "Dairy fund: anyone in the dairy can donate coins. The owner spends them on new stalls and stall upgrades.",
             "Dairy tank: every milking inside the dairy adds that milk to the tank, by grade. Farmers and the owner fill jugs from it.",
-            "The owner HUD shows who's online, who's in the dairy, each cow's milk and grade, the contract and the tank.",
         }),
         new("Jugs and deliveries", new[]
         {
             "Farmers and the owner fill jugs from the dairy tank (top of the Kitchen window: Roles > Farmer > Kitchen), inside the dairy, up to what their farmer tank holds: a 32 oz milk pail at first, up to a 256 oz tanker cart (Shop > Farmer tank, unlocked by farmer level).",
             "Customer orders (Creamery tab): the creamery's customers want milk. Deliver from your jugs for coins and XP; better-paying customers come as your farmer level grows.",
-            "Deliveries: other dairies' buy orders (public or private) are listed on the Creamery tab. Fill them from inside your own dairy with milk in your jugs; it goes straight into the buying dairy's tank. Delivering in person at a public dairy pays 10% more. The creamery's two visitor orders a day per public dairy are still in person.",
+            "Deliveries: other dairies' buy orders (public or private) are listed on the Creamery tab. Fill them from inside your own dairy with milk in your jugs; it goes straight into the buying dairy's tank. The creamery's two visitor orders a day per public dairy are still in person.",
             "Any owner, public or private, can post buy orders (Creamery > Deliveries): the coins are held until a delivery fills it or you cancel.",
         }),
         new("Weekly contract", new[]
@@ -136,7 +135,7 @@ public sealed class GuideWindow : Window
         new("Commands and settings", new[]
         {
             "/milkers opens the main window. /milkers hud shows or hides the HUD. /milkers guide opens this guide. /milkers tutorial runs the walkthrough again.",
-            "Settings: HUD, chat echo, sounds and volume, the network, the owner HUD.",
+            "Settings: HUD, chat echo, sounds and volume, the network, who can scan you.",
             "Your save is protected; editing the plugin's files resets progress.",
         }),
     };

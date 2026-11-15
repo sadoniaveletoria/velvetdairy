@@ -120,7 +120,7 @@ public sealed partial class MainWindow
         SubHeading("How it works", width);
         Ui.Wrapped("Owners register their own estate as a dairy and invite farmers, cows and bulls. Farmers can invite cows and bulls. " +
                    "Public dairies show their address here so anyone can visit; private ones only show their name. " +
-                   "Farmers fill other dairies' buy orders from inside their own dairy (or in person at a public one for +10%), and the creamery's visitor orders in person at public dairies. " +
+                   "Farmers fill other dairies' buy orders from inside their own dairy (or in person at a public one), and the creamery's visitor orders in person at public dairies. " +
                    "Dairies level up from what their members do inside them; higher levels get more stalls and better stall tiers and list first.", Theme.InkSoft, width);
         if (!Lifestream.Installed)
         {
@@ -852,7 +852,7 @@ public sealed partial class MainWindow
                 var clicked = ListRow(Ico("coin"), $"{o.DairyName} · {Units.Oz(o.Oz)}", Theme.Ink,
                     new[]
                     {
-                        new Line(here ? $"Pays {o.Coins} + {(int)Math.Round(o.Coins * 0.1)} for coming in person" : $"Pays {o.Coins} coins{(o.DairyPublic ? " (+10% in person)" : "")}", Theme.HoneyDeep),
+                        new Line($"Pays {o.Coins} coins", Theme.HoneyDeep),
                     },
                     new[] { new Btn($"##bfill{o.Id}", "Deliver", "sage", p == null, p) }, width, Math.Min(1f, have / o.Oz), p == null ? Theme.SageDeep : Theme.BlueDeep);
                 if (clicked == 0) G.Deliver(o);

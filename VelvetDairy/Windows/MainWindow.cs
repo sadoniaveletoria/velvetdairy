@@ -296,7 +296,7 @@ public sealed partial class MainWindow : Window
         {
             if (G.Where.InDairy)
                 Pill(G.InPrivatePlace ? "PRIVATE" : G.Where.Seated ? "RESTING" : "HERE", Theme.SageDeep,
-                    (G.InPrivatePlace ? "In your dairy's private place. " : G.Where.Seated ? "Resting in your dairy. " : "In your dairy. ") + G.Where.Why);
+                    (G.InPrivatePlace ? "In your dairy's private place. " : G.Where.Seated ? "Sitting in your dairy. " : "In your dairy. ") + G.Where.Why);
             else if (G.CreameryHere is { } cr)
                 Pill("CREAMERY", Theme.BlueDeep, $"At {cr.Name}: ship your contract milk on Dairy > Contract. Milking, care and chores only work inside your dairy.");
             else Pill("AWAY", Theme.InkSoft, G.Where.Why + " Milking, care and chores only work inside the dairy.");
@@ -882,7 +882,7 @@ public sealed partial class MainWindow : Window
         if (seedOnly ? cow.SeedTaint > 0 : cow.Taint > 0) extras.Add("Off taste");
         var slip = seedOnly ? G.SeedSlip : G.GradeSlip;
         if (slip > 0) extras.Add($"Grade slipped {slip}");
-        if (G.Where.InDairy && G.Where.Seated && G.Active == null) extras.Add("Resting");
+        if (G.Where.InDairy && G.Where.Seated && G.Active == null) extras.Add(G.RestSettleLeft > TimeSpan.Zero ? $"Getting comfy {Mins(G.RestSettleLeft)}" : "Sitting");
         if (G.Contented) extras.Add("Contented");
         if (G.BoostLeft > TimeSpan.Zero) extras.Add($"Treat boost {Mins(G.BoostLeft)}");
         return string.Join(" · ", extras);
@@ -905,7 +905,7 @@ public sealed partial class MainWindow : Window
         {
             ("hay", "Fed", cow.Hunger, cow.FedBonus, Theme.HoneyDeep, "Eat feed from your pantry. Better food gives a bigger bonus (wheat grain +4% up to Golden mash +15%)."),
             ("water", "Watered", cow.Thirst, cow.WaterBonus, Theme.BlueDeep, "Drink at the trough (free, +4%) or have a Mineral block (+8%)."),
-            ("cushion", "Comfy", cow.Comfort, cow.ComfortBonus, Theme.RoseDeep, "Sit in your dairy 15 min for +30 min of Comfy (up to 1 h)."),
+            ("cushion", "Comfy", cow.Comfort, cow.ComfortBonus, Theme.RoseDeep, "Sit in your dairy 10 min for +30 min of Comfy (up to 1 h). It doesn't drain while you sit."),
             ("clover", "Happy", cow.Mood, cow.HappyBonus, Theme.SageDeep, "Have a treat: clover, salt lick, cream clover or a quality treat."),
         };
 
@@ -1449,7 +1449,7 @@ public sealed partial class MainWindow : Window
 
     private void DrawUpgradeShop(float width, bool looks)
     {
-        var list = Catalog.Upgrades.Where(u => u.Cosmetic == looks && !BottleUpgrades.Contains(u.Id) && !(u.Id == "stallkit" && G.Networked) && (!u.Bull || G.IsBull)).ToList();
+        var list = Catalog.Upgrades.Where(u => u.Cosmetic == looks && !BottleUpgrades.Contains(u.Id) && !(u.Id == "stallkit" && G.Networked) && (!u.Bull || G.IsBull) && (!u.Cow || G.IsCow)).ToList();
         var owned = list.Where(u => G.Owned(u.Id) >= u.MaxLevel).ToList();
         foreach (var u in list)
         {
@@ -1874,8 +1874,6 @@ public sealed partial class MainWindow : Window
         if (ImGui.Checkbox("Join the Eorzea Milkers Network (dairies, invites, deliveries, online count)", ref b)) { F.NetEnabled = b; changed = true; }
         if (ImGui.IsItemHovered())
             ImGui.SetTooltip(Units.Text("Shares only what the network needs: a random id for this install, your dairy's listing, and your character name with the dairy you join."));
-        b = F.ShowOwnerHud;
-        if (ImGui.Checkbox("Show the owner HUD when I own a dairy", ref b)) { F.ShowOwnerHud = b; changed = true; }
 
         // Who can scan you (target you and press Scan): your milk, bonuses, breeding and pregnancy
         ImGui.TextColored(Theme.Ink, "Who can scan me:");

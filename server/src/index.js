@@ -45,7 +45,6 @@ const FARMER_CUT_BIG = 0.30, FARMER_CUT_BIG_LEVEL = 45;   // ...and this much fr
 const FARMER_DAILY_COINS = 4500;
 const COW_DAILY_HAND_OZ = 800;
 const MAX_TAKE_OZ = 96;
-const IN_PERSON_BONUS = 0.1;
 // Baked treats members buy off their dairy's shelf: item -> default price and the owner's allowed range (coins each)
 const SHELF_ITEMS = {
   cookies: { name: "Butter cookies", price: 40, min: 10, max: 150 },
@@ -1972,8 +1971,8 @@ async function fillOrder(env, me, id, request) {
   const inPerson = !!here && here.id === d.id && !!d.is_public;
   const home = await membership(env, me.id);
   if (!inPerson && !(home && inOwnDairy(me, home)))
-    fail(400, d.is_public ? `Deliver from inside your own dairy, or in person at ${d.name} for a bonus.` : "Deliver from inside your own dairy.");
-  const bonus = inPerson ? Math.round(o.coins * IN_PERSON_BONUS) : 0;
+    fail(400, d.is_public ? `Deliver from inside your own dairy, or in person at ${d.name}.` : "Deliver from inside your own dairy.");
+  const bonus = 0;   // delivering in person pays the same (it used to add 10%)
 
   const day = today();
   const delivered = me.deliver_day === day ? me.deliver_oz : 0;

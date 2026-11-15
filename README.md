@@ -39,7 +39,7 @@ Only the owner can take a role away from someone.
 ## The HUD
 
 - The small HUD shows your bottle (and seed vials for bulls), your grade and what's happening now. Double-click or right-click it to open the main window.
-- Its buttons: **Herd Care** (farmers), and while you target another player close by, **Scan**, plus **Breed** if you're a bull and they're a cow of your dairy. The Kitchen is on **Roles → Farmer**.
+- Its buttons: **Herd Care** (farmers), and while you target another player close by, **Scan**, plus **Breed** if you're both cow and bull and so are they (members of your dairy). The Kitchen is on **Roles → Farmer**.
 - **It only shows while you're in a dairy** (yours, or one you're visiting), or while you're being milked or in a breeding scene. Elsewhere it hides to keep your screen clear. Want it everywhere? Untick **Only while I'm in a dairy** in Settings. `/milkers hud` (or the Settings box) hides it completely.
 
 ---
@@ -65,7 +65,7 @@ Only the owner can take a role away from someone.
 - No milk is made while you're logged out.
 
 **Getting milked** (only inside your dairy)
-- **At a stall:** sit on its seat and it starts by itself. You don't need to get up between milkings: stay seated and it starts again once half a bottle has refilled, and sitting there counts as resting, so you keep the resting bonus. (After 30 minutes without doing anything you start dozing and it won't start a new milking until you move, emote or click something.)
+- **At a stall:** sit on its seat and it starts by itself. You don't need to get up between milkings: stay seated and it starts again once half a bottle has refilled, and sitting there builds Comfy like any seat in your dairy. (After 30 minutes without doing anything you start dozing and it won't start a new milking until you move, emote or click something.)
 - **By hand:** a farmer of your dairy stands close, targets you and presses **Milk**. Hand milking is faster, pays more and makes up a lost grade.
 - You're **paid the moment you're milked**, by grade: C 6, B 8, A 10, S 12, S+ 14 coins an ounce, plus a bonus for your dairy's level.
 - **Daily earnings taper off:** everything the game pays you in a day (milking, farmer shares, orders, goals, awards) counts together. The first 3,000 coins are paid in full, then half up to 8,000, then a tenth. XP is never reduced, coins from other players don't count, and it resets each day.
@@ -79,7 +79,7 @@ Only the owner can take a role away from someone.
 **Bonuses** (the Barn tab)
 - **Fed** (food), **Watered** (drink), **Comfy** (rest) and **Happy** (treats) each make milk come faster.
 - Each use adds 30 minutes to that bar, up to an hour, and each has a 15-minute cooldown. Better food and treats give bigger bonuses.
-- **Comfy:** sit on furniture in your dairy (a stall seat counts); there's no button. You get no Comfy until you've stayed seated **15 minutes**, then it adds 30 minutes to the bar. Keep sitting and every further 15 minutes adds another 30, up to a full hour. Get up sooner and that sit gives nothing. The Care row shows how long is left.
+- **Comfy:** sit on furniture in your dairy (a stall seat counts); there's no button. You get no Comfy until you've stayed seated **10 minutes**, then it adds 30 minutes to the bar. Keep sitting and every further 10 minutes adds another 30, up to a full hour. Get up sooner and that sit gives nothing. The Comfy bar doesn't drain while you sit, and the bar and HUD show how long is left. Sitting itself doesn't speed up milk; Comfy does.
 - **All four at once** makes you **Contented**, a bit faster still.
 - Bars only drain while you're awake and playing. Running out never hurts you; you're just back to normal speed.
 
@@ -102,7 +102,7 @@ Only the owner can take a role away from someone.
 - **Jugs:** fill them from the dairy tank at the top of the **Kitchen** window. Bigger farmer tanks unlock as your farmer level grows.
 - **Deliveries:**
   - **Customer orders**, with a new one every 20 minutes.
-  - **Other dairies' buy orders**, public or private. Fill them from inside your own dairy, or in person at a public dairy for **+10%**.
+  - **Other dairies' buy orders**, public or private. Fill them from inside your own dairy, or in person at a public dairy (same pay).
   - **The weekly contract** (500 oz at dairy level 1, up to 1,500), delivered in person at any **Grand Creamery**. **Dairy → Contract** shows where they are. Fill it for the full reward; if it isn't full by Monday, your dairy still gets the share it delivered.
 
 ---
@@ -115,10 +115,10 @@ Breeding is new and still being tuned: numbers and details will change.
 - **A breeding needs 10 minutes in the scene:** a finish before that doesn't breed (the HUD's bar fills up with the time, then shows arousal). Whoever is breeding starts from 0 arousal: their plugin brings it down at the start, if their Corruption has **Let other plugins control Corruption** on.
 - **When a bull of your dairy finishes in a Corruption scene with a cow of your dairy, she's bred:** +5% milk for 30 minutes (less if the bull's seed output is low that day; 45 minutes with the Champion's ribbon). Once per scene, and a cow can be bred again 20 minutes after the last time. The bull gets up to 40 bull xp; after 20 breedings in a day his seed output (and xp) drops, resetting at midnight UTC.
 - **Who breeds whom** in Eorzea Milkers follows your roles in the dairy: a bull can breed a cow. Whether it can become a **pregnancy** is Corruption's: its Pregnancy settings (can carry, can breed) must allow it. If they don't, the scene note says so; the bred bonus and bull xp still count.
-- **Both cow and bull?** With a partner who's also both, whoever is doing the breeding targets the other and presses **Breed** on the HUD (or right-click them → Eorzea Milkers → Breed). Only that way counts, and finishing doesn't breed anyone until one of you has pressed it. Press it again to cancel. It's used up once you've bred them, so press it again next time. If you both press it, neither counts until one of you cancels.
-- **Ready again:** when a cow's bred bonus runs out, everyone with the HUD in the dairy she's standing in gets a small pop-up with a soft bell, and so does she.
+- **Both cow and bull?** With a partner who's also both (the **Breed** button only shows then), whoever is doing the breeding targets the other and presses **Breed** on the HUD (or right-click them → Eorzea Milkers → Breed). Only that way counts, and finishing doesn't breed anyone until one of you has pressed it. Press it again to cancel. It's used up once you've bred them, so press it again next time. If you both press it, neither counts until one of you cancels.
+- **Bred bonus over:** when a cow's bred bonus runs out, everyone with the HUD in the dairy she's standing in gets a small pop-up with a soft bell ("Rayla's bred bonus has run out"), and so does she. (She can be bred again 20 minutes after the last time, so by then she's ready.)
 - **Bull Shop items** (unlocked by bull level, only for bulls; a cow who's also a bull gets both sets): Nose ring (5, +3% seed pay), Stud book (10, 25 breedings a day at full output), Brass horn caps (20, +5% seed pay), Prize stud (25, +25% bull xp from breeding), Breeding pen (35, each breeding gives your dairy xp), Herd sire (50, seed fills 15% faster), Champion bull sash (75, +10% seed pay and breeding output never below 60%), Legendary stud (100, 30 breedings a day at full output).
-- **Bull foods** (Shop, by bull level): Iron oats (8: filling, and gives back one breeding at full output today), Bull's salt lick (12: Happy and +25% bull xp for 30 min), Seed tea (15: your next seed milking gives 25% more), Stud draught (20: your next breeding gives the cow 50% more bred bonus, 15 min longer).
+- **Bull foods** (Shop, by bull level): Iron oats (8: fills Fed and Watered at once), Bull's salt lick (12: Happy and +25% bull xp for 30 min), Seed tea (15: your next seed milking gives 25% more), Stud draught (20: your next breeding gives the cow 50% more bred bonus, 15 min longer).
 - **Cow-and-bull foods** (for those who are both; unlocked by the lower of the two levels): Twin blend (10: Fed and Happy at once, and a 30 min boost to milk and seed), Velvet & brass bonbon (15: Happy and +20% cow and bull xp for 30 min), Balance tea (20: 2 hours off your milking time today so you tire later; once a day).
 - **Pregnancy** comes from Corruption (a bull always finishes inside, so it rolls for conception). Once it's confirmed, a pregnant cow gives +5%, +10% and +15% milk by trimester until the birth. Roles → Cow shows the trimester, due date, Sire and past births.
 - During a scene the HUD shows who you're with, and its bar fills with the 10-minute breeding timer (then shows arousal); the main window says who breeds whom and why.
@@ -147,7 +147,6 @@ Target someone with Eorzea Milkers and press **Scan** on the HUD (or right-click
 - Invite people with **right-click → Eorzea Milkers**, or on **Dairy → Overview**.
 - Take **applications**: in **Members → Applications**, tick what you're looking for, then accept or deny. You can let your farmers answer applications too (off unless you turn it on).
 - **Manage members** shows everyone's levels, milk, quality, how much they've given and when they were last online.
-- The **owner HUD** shows who's online, who's in the dairy and how full each cow is.
 - Post **buy orders** to bring milk into your tank from other dairies. This works even if your dairy is private.
 - Fill the **weekly contract** together for dairy XP and fund coins.
 
@@ -159,7 +158,8 @@ Target someone with Eorzea Milkers and press **Scan** on the HUD (or right-click
 - **Cow levels** make milk faster (up to level 50) and unlock feed and upgrades. **Farmer levels** unlock bigger tanks and better orders.
 - **Daily goals** (Progress tab): four for cows and four for farmers, with a bonus for finishing a set.
 - **Awards:** collect them for coins.
-- **The Shop** sells feed, treats, bottles, comfort upgrades and things to wear. Bulls get their own items and foods by bull level (see Bulls and breeding).
+- **The Shop** sells feed, treats, bottles, comfort upgrades and things to wear, and only shows what's for your roles. Cow items (and wearables, which raise **milk** pay) are for cows; bull items and foods (wearables raise **seed** pay) unlock by bull level and are for bulls (see Bulls and breeding). Bottles, bedding, troughs and other comfort items are for both.
+- **Comfort items:** Plush bedding (Comfy +7% instead of +4%, Comfy bar drains half as fast), Lavender bedding (Comfy +3% more, Happy bar drains half as fast), Silk cushion (Comfy bar drains 15% slower on top), Bell collar (Happy drains a little slower), Clean trough (Watered lasts half again as long), Endless spring (Watered drains 20% slower).
 - **Champion's ribbon** (cow level 28): farmers who hand milk you earn 10% more; being bred lasts 45 minutes; pregnancy gives 5% more milk.
 - The main window shows your Eorzea Milkers version at the bottom of the left side (handy when asking for help).
 

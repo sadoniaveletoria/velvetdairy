@@ -223,9 +223,12 @@ public sealed partial class DairyGame
     /// <summary>You both pressed Breed on the other: neither counts until one of you cancels.</summary>
     public bool BothChoseToBreed => EitherWayScene && IChoseToBreed && PartnerChoseToBreed;
 
-    /// <summary>You can press Breed on this player: you're a bull and they're a cow of your dairy.</summary>
+    /// <summary>
+    /// You can press Breed on this player: you're both cow and bull, and so are they (that's when it decides who breeds;
+    /// a bull and a cow who aren't both breed the one way without it).
+    /// </summary>
     public bool CanBreedPlayer(string name, string world) =>
-        IsBull && Networked && DairyMember(name, world) is { } m && m.Has("cow");
+        IsBull && IsCow && Networked && DairyMember(name, world) is { } m && m.Has("cow") && m.Has("bull");
 
     /// <summary>You've pressed Breed on this player (until it's done, or you press it again).</summary>
     public bool BreedingPlayer(string name, string world) =>
@@ -450,7 +453,7 @@ public sealed partial class DairyGame
     public void OnNotice(DairyNotice n)
     {
         if (n.Kind == "breedReady")
-            plugin.Notices.Show("Ready to be bred", $"{n.Name} can be bred again.");
+            plugin.Notices.Show("Ready to be bred", $"{n.Name}'s bred bonus has run out.");
     }
 
     private DateTime? readyToldFor;
@@ -465,7 +468,7 @@ public sealed partial class DairyGame
         if (!IsCow || at <= DateTime.MinValue || readyToldFor == at || BredLeft > TimeSpan.Zero) return;
         readyToldFor = at;
         if (DateTime.UtcNow - at > TimeSpan.FromMinutes(BredMinutesNow + 5)) return;
-        plugin.Notices.Show("Ready to be bred", "You can be bred again.");
+        plugin.Notices.Show("Ready to be bred", "Your bred bonus has run out.");
         if (Networked && F.NetMember != null) Net.PostNotice("breedReady");
     }
 

@@ -466,7 +466,7 @@ public sealed class NetClient : IDisposable
     /// </summary>
     private bool WatchingDairy =>
         plugin.Game.Where.InDairy || plugin.MainWindow.IsOpen || plugin.Members.IsOpen || plugin.Kitchen.IsOpen ||
-        plugin.Milking.IsOpen || (F.ShowHud && F.ShowOwnerHud && F.NetMember?.IsOwner == true);
+        plugin.Milking.IsOpen;
 
     /// <summary>Scan another player (anyone targeting them can, if they allow it).</summary>
     public void Scan(string name, string world, Action<ScanReply> ok, Action<string> failed) =>

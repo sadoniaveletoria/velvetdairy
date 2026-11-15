@@ -526,7 +526,7 @@ await test("delivery pays the seller and gives the owner the milk, once", async 
   assert.equal((await call(carl, "POST", `/v1/orders/${orderId}/fill`, { grade: 2, houseId: HOUSE })).status, 409);
   const d = (await call(dana, "POST", "/v1/inbox/claim")).data.items;
   assert.equal(d[0].kind, "payout");
-  assert.equal(d[0].coins, 220, "in person pays 10% more");
+  assert.equal(d[0].coins, 200, "in person pays the same as from your own dairy");
   assert.equal((await call(dana, "POST", "/v1/inbox/claim")).data.items.length, 0);
   const a = (await call(alice, "POST", "/v1/inbox/claim")).data.items;
   assert.ok(a.some(i => i.kind === "notice"), "owner is told");

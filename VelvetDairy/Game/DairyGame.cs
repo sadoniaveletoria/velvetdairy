@@ -331,7 +331,9 @@ public sealed partial class DairyGame
     public float DairyPayBonus => Networked ? Net.Progress?.PayBonus ?? 1f : 1f;
 
     /// <summary>Coins per oz for milk of this grade.</summary>
-    public float PayRate(int grade) => Grades.All[Math.Clamp(grade, 0, Grades.Count - 1)].Price * PriceBonus * DairyPayBonus;
+    /// <summary>Pay per ounce: milk with your cow wearables, seed (×10 elsewhere) with your bull wearables.</summary>
+    public float PayRate(int grade, bool seed = false) =>
+        Grades.All[Math.Clamp(grade, 0, Grades.Count - 1)].Price * (seed ? SeedPayBonus : PriceBonus) * DairyPayBonus;
 
     /// <summary>Farmers and owners carry jugs from the dairy's tank and deliver them; cows just get milked.</summary>
     public bool CanCarry => Networked && F.NetMember != null && (F.NetMember.IsOwner || IsFarmer);
@@ -546,7 +548,6 @@ public sealed partial class DairyGame
         if (BoostLeft > TimeSpan.Zero) parts.Add(new RatePart("Treat boost", 1f + Catalog.TreatBonus));
         if (!seed && BredLeft > TimeSpan.Zero) parts.Add(new RatePart($"Bred by {F.BredBy}", 1f + BredBonusNow));
         if (!seed && PregnancyBonus > 0) parts.Add(new RatePart($"Pregnant ({StageName(Preg.Stage)})", 1f + PregnancyBonus));
-        if (includeResting && Where.InDairy && Where.Seated && Wake == Wakefulness.Awake) parts.Add(new RatePart("Resting in your dairy", 1f + (Owned("deeprest") > 0 ? 0.75f : Catalog.RestBonus)));
         if (includeResting && Wake == Wakefulness.Dozing) parts.Add(new RatePart("Dozing (no activity for 15 min)", 0.5f));
         if (includeResting && Wake == Wakefulness.Asleep) parts.Add(new RatePart("Asleep (no activity for 30 min)", 0f));
         if (Tired) parts.Add(new RatePart($"Tired ({TiredHours} h milking today)", 0.5f));
@@ -783,7 +784,8 @@ public sealed partial class DairyGame
             Cow.Hunger = Clamp(Cow.Hunger - step);
             Cow.Thirst = Clamp(Cow.Thirst - step / (Owned("trough") > 0 ? 1.5f : 1f) * (Owned("spring") > 0 ? 0.8f : 1f));
             Cow.Mood = Clamp(Cow.Mood - step / ((Owned("lavender") > 0 ? 2f : 1f) * (Owned("bell") > 0 ? 1.2f : 1f)));
-            Cow.Comfort = Clamp(Cow.Comfort - step / (cushion ? 2f : 1f) * (Owned("silkcushion") > 0 ? 0.85f : 1f));
+            // Comfy holds while you sit in your dairy (that's where it comes from)
+            if (!(Where.InDairy && Where.Seated)) Cow.Comfort = Clamp(Cow.Comfort - step / (cushion ? 2f : 1f) * (Owned("silkcushion") > 0 ? 0.85f : 1f));
         }
 
         if (!Overfull && Active == null && ProducesMilk)
@@ -1223,7 +1225,7 @@ public sealed partial class DairyGame
             }
             else return;
 
-            Draw(Catalog.StallSpeed[Math.Clamp(s.Stall!.Tier, 1, 4)] * (Owned("letdown") > 0 ? 1.1f : 1f) * (Fresh(s.Stall) ? 1f + Catalog.CleanBonus : 1f) * dt);
+            Draw(Catalog.StallSpeed[Math.Clamp(s.Stall!.Tier, 1, 4)] * (Fresh(s.Stall) ? 1f + Catalog.CleanBonus : 1f) * dt, milkOnly: Owned("letdown") > 0 ? 1.1f : 1f);
         }
         else
         {
@@ -1235,7 +1237,7 @@ public sealed partial class DairyGame
 
             if (handFlowing)
             {
-                Draw(Catalog.HandSpeed * (Owned("udderbalm") > 0 ? 1.15f : 1f) * dt);
+                Draw(Catalog.HandSpeed * dt, milkOnly: Owned("udderbalm") > 0 ? 1.15f : 1f);
                 if (now >= nextSquirt)
                 {
                     nextSquirt = now + 2.5;
@@ -1254,13 +1256,14 @@ public sealed partial class DairyGame
     }
 
     /// <summary>Draws milk (and a bull's seed, at a tenth the speed) for one step; each sped up by its own grade.</summary>
-    private void Draw(float baseOz, bool graded = true)
+    // milkOnly: cow perks (Easy let-down, Udder balm) that speed up drawing milk but not seed
+    private void Draw(float baseOz, bool graded = true, float milkOnly = 1f)
     {
         var s = Active;
         if (s == null || baseOz <= 0) return;
         if (ProducesMilk)
         {
-            var oz = Math.Min(baseOz * (graded ? Catalog.GradeMult(s.Grade) : 1f), Cow.Milk);
+            var oz = Math.Min(baseOz * milkOnly * (graded ? Catalog.GradeMult(s.Grade) : 1f), Cow.Milk);
             Cow.Milk -= oz;
             s.Extracted += oz;
         }
@@ -2551,6 +2554,7 @@ public sealed partial class DairyGame
         if (have >= u.MaxLevel) return "Owned.";
         if (u.Farmer && !CanCarry) return "For farmers and dairy owners.";
         if (u.Bull && !IsBull) return "For bulls.";
+        if (u.Cow && !IsCow) return "For cows.";
         var lvl = UnlockLevel(u);
         if (lvl < u.Unlocks[have]) return $"Unlocks at {(u.Farmer ? "farmer " : u.Bull ? "bull " : "")}level {u.Unlocks[have]}.";
         if (F.Coins < u.Prices[have]) return "Not enough coins.";
@@ -3233,7 +3237,7 @@ public sealed partial class DairyGame
         if (!CanCarry) return "Only farmers and owners deliver milk.";
         // From inside your own dairy, or in person at the buyer's public area (which pays a bonus)
         if (VisitingDairy?.Id != o.DairyId && !Where.InDairy)
-            return o.DairyPublic ? $"Deliver from inside your own dairy, or in person at {o.DairyName} for +10%." : "Deliver from inside your own dairy.";
+            return o.DairyPublic ? $"Deliver from inside your own dairy, or in person at {o.DairyName}." : "Deliver from inside your own dairy.";
         if (Carried < o.Oz) return $"You need {Units.Oz(o.Oz)} of milk in your jugs.";
         return null;
     }
@@ -3431,7 +3435,6 @@ public sealed partial class DairyGame
     private void AddQuality(float amount)
     {
         var before = Grades.Cap(F.Quality);
-        if (amount > 0) amount *= 1f + (Owned("heifer") > 0 ? 0.1f : 0);
         F.Quality += amount;
         var after = Grades.Cap(F.Quality);
         for (var g = before + 1; g <= after; g++)

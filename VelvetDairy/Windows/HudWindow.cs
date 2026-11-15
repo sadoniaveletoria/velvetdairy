@@ -245,7 +245,7 @@ public sealed class HudWindow : Window
         }
         else if (G.Where.InDairy)
         {
-            status = G.Where.Seated ? "Resting in the dairy" : "In the dairy";
+            status = G.Where.Seated ? (G.RestSettleLeft > TimeSpan.Zero ? $"Getting comfy · {Math.Max(1, (int)Math.Ceiling(G.RestSettleLeft.TotalMinutes))}m" : "Sitting in the dairy") : "In the dairy";
             col = Theme.SageDeep;
         }
         else
