@@ -172,7 +172,7 @@ public sealed partial class DairyGame
     private void AddSeedQuality(float amount)
     {
         var before = Grades.Cap(F.SeedQuality);
-        if (amount > 0) amount *= 1f + (Owned("heifer") > 0 ? 0.1f : 0) + (Owned("champion") > 0 ? 0.2f : 0);
+        if (amount > 0) amount *= 1f + (Owned("heifer") > 0 ? 0.1f : 0);
         F.SeedQuality += amount;
         var after = Grades.Cap(F.SeedQuality);
         for (var g = before + 1; g <= after; g++)
@@ -216,7 +216,7 @@ public sealed partial class DairyGame
                                  (Fresh(s.Stall) ? 1f + Catalog.CleanBonus : 1f));
         else
         {
-            if (Networked && !s.Hand!.IsTest) Net.HandPay(s.Hand.Name, s.Hand.WorldName, collected, s.SeedGrade, true);   // the farmer's share
+            if (Networked && !s.Hand!.IsTest) Net.HandPay(s.Hand.Name, s.Hand.WorldName, collected, s.SeedGrade, true, Prized);   // the farmer's share
             xp = (int)Math.Round(milkEquivalent * Leveling.XpPerOzHand * Leveling.GradeBonus(s.SeedGrade)) + Leveling.XpHandSession;
         }
 

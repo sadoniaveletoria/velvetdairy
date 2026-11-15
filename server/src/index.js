@@ -1537,7 +1537,8 @@ async function handPay(env, me, request) {
   if (counted <= 0) return { ok: true, coins: 0 };
   const p = await progressOf(env, mem.dairy_id);
   // Farmer level 45 and up get a bigger share (the farmer's plugin shares its level with the dairy)
-  const cut = (safeParse(farmer.status)?.farmerLevel || 0) >= FARMER_CUT_BIG_LEVEL ? FARMER_CUT_BIG : FARMER_CUT;
+  // A prized cow (Champion's ribbon) earns her farmer 10% more
+  const cut = ((safeParse(farmer.status)?.farmerLevel || 0) >= FARMER_CUT_BIG_LEVEL ? FARMER_CUT_BIG : FARMER_CUT) * (b.prized === true ? 1.1 : 1);
   const coins = Math.min(Math.round(counted * GRADE_PRICE[grade] * (seed ? SEED_PRICE_MULT : 1) * payBonus(p.level) * cut), FARMER_DAILY_COINS - farmUsed);
   if (coins <= 0) return { ok: true, coins: 0 };
   await env.DB.batch([

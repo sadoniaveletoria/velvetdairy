@@ -16,6 +16,12 @@ public sealed partial class DairyGame
     public const float BredBonus = 0.05f;
     public const int BredMinutes = 30, BredCooldownMinutes = 20;
 
+    /// <summary>The Champion's ribbon: a prized cow (farmers who hand milk her earn 10% more; bred 45 minutes; pregnancy +5%).</summary>
+    public bool Prized => Owned("champion") > 0;
+
+    /// <summary>How long being bred lasts for you: 30 minutes, 45 with the Champion's ribbon.</summary>
+    public int BredMinutesNow => Prized ? 45 : BredMinutes;
+
     /// <summary>A finish only breeds after this long in the scene (so a scene doesn't end in a breeding a minute in).</summary>
     public const int BreedSceneMinutes = 10;
 
@@ -67,7 +73,15 @@ public sealed partial class DairyGame
     public bool Pregnant => Preg.Stage is "first" or "second" or "third";
 
     /// <summary>+5% / +10% / +15% milk in the first, second and third trimester. Nothing after the birth.</summary>
-    public float PregnancyBonus => !IsCow ? 0f : Preg.Stage switch { "first" => 0.05f, "second" => 0.10f, "third" => 0.15f, _ => 0f };
+    public float PregnancyBonus
+    {
+        get
+        {
+            if (!IsCow) return 0f;
+            var b = Preg.Stage switch { "first" => 0.05f, "second" => 0.10f, "third" => 0.15f, _ => 0f };
+            return b > 0 && Prized ? b + 0.05f : b;   // the Champion's ribbon: +5% more
+        }
+    }
 
     public static string StageName(string stage) => stage switch
     {
@@ -447,7 +461,7 @@ public sealed partial class DairyGame
         var at = F.BredAtUtc;
         if (!IsCow || at <= DateTime.MinValue || readyToldFor == at || BredLeft > TimeSpan.Zero) return;
         readyToldFor = at;
-        if (DateTime.UtcNow - at > TimeSpan.FromMinutes(BredMinutes + 5)) return;
+        if (DateTime.UtcNow - at > TimeSpan.FromMinutes(BredMinutesNow + 5)) return;
         plugin.Notices.Show("Ready to be bred", "You can be bred again.");
         if (Networked && F.NetMember != null) Net.PostNotice("breedReady");
     }
@@ -533,10 +547,10 @@ public sealed partial class DairyGame
         var seed = bull.Status?.Seed is > 0 and var s ? s : 100;
         wasBredThisScene = true;
         F.BredAtUtc = DateTime.UtcNow;
-        F.BredUntilUtc = DateTime.UtcNow.AddMinutes(BredMinutes);
+        F.BredUntilUtc = DateTime.UtcNow.AddMinutes(BredMinutesNow);
         F.BredStrength = Math.Clamp(seed / 100f, 0.2f, 1f);
         F.BredBy = bull.Name;
-        Say($"{bull.Name} bred you: +{BredBonusNow * 100:0.#}% milk for {BredMinutes} minutes{(seed < 100 ? $" (their breeding output is at {seed}% today)" : "")}.", 1);
+        Say($"{bull.Name} bred you: +{BredBonusNow * 100:0.#}% milk for {BredMinutesNow} minutes{(seed < 100 ? $" (their breeding output is at {seed}% today)" : "")}.", 1);
         plugin.SaveConfig();
     }
 

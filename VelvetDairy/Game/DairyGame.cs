@@ -1304,7 +1304,7 @@ public sealed partial class DairyGame
         else
         {
             s.Hand!.OzMilked += collected;
-            if (Networked && !s.Hand.IsTest) Net.HandPay(s.Hand.Name, s.Hand.WorldName, collected, s.Grade);   // the farmer's share
+            if (Networked && !s.Hand.IsTest) Net.HandPay(s.Hand.Name, s.Hand.WorldName, collected, s.Grade, prized: Prized);   // the farmer's share
             xp = (int)Math.Round(collected * Leveling.XpPerOzHand * Leveling.GradeBonus(s.Grade)) + Leveling.XpHandSession;
         }
 
@@ -3353,7 +3353,7 @@ public sealed partial class DairyGame
     private void AddQuality(float amount)
     {
         var before = Grades.Cap(F.Quality);
-        if (amount > 0) amount *= 1f + (Owned("heifer") > 0 ? 0.1f : 0) + (Owned("champion") > 0 ? 0.2f : 0);
+        if (amount > 0) amount *= 1f + (Owned("heifer") > 0 ? 0.1f : 0);
         F.Quality += amount;
         var after = Grades.Cap(F.Quality);
         for (var g = before + 1; g <= after; g++)

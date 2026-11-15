@@ -533,8 +533,8 @@ public sealed class NetClient : IDisposable
         }, failed);
 
     /// <summary>Tells the server a farmer hand milked you, so they get their share.</summary>
-    public void HandPay(string farmer, string world, float oz, int grade, bool seed = false) =>
-        Call<HandPayReply>("POST", "/v1/handpay", new { farmer, world, oz = Math.Round(oz, 3), grade, seed }, _ => { }, e => Plugin.Log.Debug($"Hand pay: {e}"));
+    public void HandPay(string farmer, string world, float oz, int grade, bool seed = false, bool prized = false) =>
+        Call<HandPayReply>("POST", "/v1/handpay", new { farmer, world, oz = Math.Round(oz, 3), grade, seed, prized }, _ => { }, e => Plugin.Log.Debug($"Hand pay: {e}"));
 
     public void Donate(int coins, Action<int> ok, Action<string> failed) =>
         Call<FundReply>("POST", "/v1/dairy/fund", new { coins }, r =>

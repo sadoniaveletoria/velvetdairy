@@ -470,7 +470,7 @@ public sealed partial class MainWindow
             ImGui.TextColored(Theme.RoseDeep, $"Bred by {F.BredBy}: +{G.BredBonusNow * 100:0.#}% milk for {(int)G.BredLeft.TotalMinutes + 1} more min");
         else if (G.BreedCooldownLeft > TimeSpan.Zero)
             ImGui.TextColored(Theme.InkSoft, $"Another breeding counts in {(int)G.BreedCooldownLeft.TotalMinutes + 1} min");
-        else Ui.Wrapped($"When a bull of your dairy finishes in a Corruption scene with you, you're bred: +{DairyGame.BredBonus * 100:0}% milk for {DairyGame.BredMinutes} minutes (less if they're tired), once every {DairyGame.BredCooldownMinutes} minutes.", Theme.InkSoft, width);
+        else Ui.Wrapped($"When a bull of your dairy finishes in a Corruption scene with you, you're bred: +{DairyGame.BredBonus * 100:0}% milk for {G.BredMinutesNow} minutes (less if they're tired), once every {DairyGame.BredCooldownMinutes} minutes.", Theme.InkSoft, width);
 
         Ui.Wrapped("A bull of your dairy always finishes inside: their climaxes count as a pussy creampie, so Corruption rolls for conception each time (your Cummy blocks still apply).", Theme.InkSoft, width);
 
