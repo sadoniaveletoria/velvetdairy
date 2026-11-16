@@ -241,6 +241,7 @@ public sealed class DairyProgress
     public List<int> TierPrices { get; set; } = new();
     public List<Donor> Donors { get; set; } = new();
     public DairyTank? Tank { get; set; }
+    public BellInfo? Bell { get; set; }
     public float PayBonus { get; set; } = 1f;
     public ContractInfo? Contract { get; set; }
 
@@ -600,4 +601,61 @@ public sealed class ErrorReply
 public sealed class PantryReply
 {
     public Dictionary<string, int>? Items { get; set; }
+}
+
+// ----- Cloud backup and restore -----
+
+public sealed class BackupPutReply
+{
+    public bool Ok { get; set; }
+    public long Saved { get; set; }
+    public bool Skipped { get; set; }
+    public bool Kept { get; set; }     // the server kept a backup with more progress (this save was reset)
+}
+
+public sealed class BackupReply
+{
+    public bool Found { get; set; }
+    public string Save { get; set; } = "";
+    public long Saved { get; set; }
+    public string Prev { get; set; } = "";
+    public long PrevSaved { get; set; }
+    public int Memberships { get; set; }
+}
+
+public sealed class RestoreAvailableReply
+{
+    public bool Available { get; set; }
+    public long Saved { get; set; }
+    public bool HasSave { get; set; }
+}
+
+public sealed class RestoreStartReply
+{
+    public string Code { get; set; } = "";
+    public long Expires { get; set; }
+}
+
+public sealed class RestoreCheckReply
+{
+    public bool Ok { get; set; }
+    public string Why { get; set; } = "";
+    public string NetId { get; set; } = "";
+    public string Save { get; set; } = "";
+    public long Saved { get; set; }
+    public string Prev { get; set; } = "";
+    public long PrevSaved { get; set; }
+}
+
+public sealed class OkReply
+{
+    public bool Ok { get; set; }
+}
+
+/// <summary>The dairy's feeding bell: who rang it last and when it can ring again (unix seconds).</summary>
+public sealed class BellInfo
+{
+    public string By { get; set; } = "";
+    public long At { get; set; }
+    public long ReadyAt { get; set; }
 }

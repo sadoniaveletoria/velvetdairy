@@ -23,6 +23,23 @@ public sealed class ChangelogWindow : Window
     /// <summary>Newest first. Write these for players: what changed for them, not how.</summary>
     private static readonly Entry[] Entries =
     {
+        new("0.9.87", "Cloud backup for your save, and fixes", new[]
+        {
+            "# IMPORTANT: protect your save",
+            "Before you play, this update asks you to set up a cloud backup of your save. It takes a minute, once. Your save is then backed up on the Eorzea Milkers server every few minutes, so a new PC, a reinstall or a lost settings file never costs you your progress or your dairy.",
+            "WARNING: if you choose \"Play without backups\", the network is turned off and NOTHING can be recovered if your save is ever lost. Your levels, coins, upgrades, pantry, and your place in your dairy are gone for good, and the developer can't restore them for you. Please keep backups on.",
+            "Screenshot your recovery code and keep it private: anyone with it can sign in as you. If it gets out, press Make a new code in Backup and restore (/milkers restore) and the old one stops working.",
+            "# Getting your save back",
+            "On a new install, paste your recovery code in /milkers restore. Lost the code? Go to #restore-save in the Discord: it walks you through putting a code in your Lodestone Character Profile, verifies your character, and gives you a restore key to paste in. The plugin can also check the Lodestone itself.",
+            "A brand new save offers the restore by itself when that character has played on another install. Your dairy, memberships and roles come back too.",
+            "If a save ever fails its check and has to start over, it keeps your dairy, keeps the old save on your PC, and offers your cloud backup back.",
+            "# Food, treats and the bell",
+            "Food and treats are greyed out while the bars they fill are over an hour, so nothing gets used up for less than it says. The exception: a better treat still works, and its bigger bonus takes over (Cream clover's +8% becomes Star clover's +10%) without adding time. Its row warns you first.",
+            "The feeding bell button is greyed out while it's on its hourly cooldown (\"Bell ready in 23m\", and hovering says who rang it), and while you're idle.",
+            "# Other fixes",
+            "The Kitchen shows how many of each the dairy already has on the shelf or in the pantry.",
+            "Fill up in the Kitchen takes the last bit of the dairy tank (it said 5 oz but couldn't take it when the tank had 4.96).",
+        }),
         new("0.9.82", "Feeding bell, weekend contest and bonuses that last in a dairy", new[]
         {
             "The feeding bell: farmers and the owner ring it from Herd Care (once an hour). Everyone in the dairy hears it, and each cow and bull picks a bar to fill right up, plus a 20 minute boost.",
@@ -269,7 +286,7 @@ public sealed class ChangelogWindow : Window
     /// <summary>Opens by itself once after an update, with what changed since you last looked.</summary>
     public void CheckAfterUpdate()
     {
-        if (checkedThisSession || IsOpen || !F.Confirmed18 || Plugin.ObjectTable.LocalPlayer == null) return;
+        if (checkedThisSession || IsOpen || !F.Confirmed18 || plugin.BackupSetupNeeded || Plugin.ObjectTable.LocalPlayer == null) return;
         checkedThisSession = true;
         var now = Current.ToString(3);
         if (F.SeenChanges == now) return;

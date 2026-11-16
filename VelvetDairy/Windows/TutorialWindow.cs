@@ -47,7 +47,7 @@ public sealed class TutorialWindow : Window
     /// <summary>Opens on its own the first time (after the 18+ check).</summary>
     public void CheckFirstRun()
     {
-        if (!IsOpen && F.Confirmed18 && !F.TutorialDone && Plugin.ObjectTable.LocalPlayer != null) Start();
+        if (!IsOpen && F.Confirmed18 && !F.TutorialDone && !plugin.BackupSetupNeeded && Plugin.ObjectTable.LocalPlayer != null) Start();
     }
 
     public override void OnClose()

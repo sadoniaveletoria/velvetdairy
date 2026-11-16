@@ -107,8 +107,12 @@ public sealed class KitchenWindow : Window
             G.CancelBake();
     }
 
+    /// <summary>How many the dairy has of what a recipe makes: on the shelf (treats) or in the pantry (ingredients).</summary>
+    private int Have(Catalog.Recipe r) => r.ToShelf ? G.Net.Shelf.FirstOrDefault(x => x.Item == r.Makes)?.Qty ?? 0 : G.IngredientCount(r.Makes);
+
     private void DrawList(float width)
     {
+        G.Net.RefreshShelf();   // the shelf counts (at most every 30 seconds)
         ImGui.SetNextItemWidth(-1);
         ImGui.InputTextWithHint("##kitchensearch", "Search recipes", ref search, 40);
         ImGui.Spacing();
@@ -131,6 +135,11 @@ public sealed class KitchenWindow : Window
                 if (locked) ImGui.PushStyleColor(ImGuiCol.Text, Theme.InkSoft with { W = 0.6f });
                 if (ImGui.Selectable(locked ? $"{r.Name}  (Lv {r.FarmerLevel})##kr{r.Id}" : $"{r.Name}##kr{r.Id}", selected == r.Id)) selected = r.Id;
                 if (locked) ImGui.PopStyleColor();
+                // How many the dairy has: on the shelf, or in the pantry
+                var have = Have(r);
+                var count = $"{have}";
+                var cw = ImGui.CalcTextSize(count).X;
+                dl.AddText(new Vector2(p.X + ImGui.GetContentRegionAvail().X - cw - 4, p.Y), ImGui.ColorConvertFloat4ToU32(have > 0 ? Theme.Ink : Theme.InkSoft with { W = 0.6f }), count);
                 if (ImGui.IsItemHovered()) ImGui.SetTooltip(Units.Text(ready ? "You can make this now." : G.MakeProblem(r) ?? ""));
             }
 
@@ -150,6 +159,8 @@ public sealed class KitchenWindow : Window
         ImGui.TextColored(Theme.Ink, r.Name);
         ImGui.SetCursorScreenPos(p + new Vector2(44, ImGui.GetTextLineHeightWithSpacing()));
         ImGui.TextColored(Theme.InkSoft, $"{Group(r)} · {(r.ToShelf ? "goes on the dairy shelf" : "goes in the dairy pantry, for every farmer")}");
+        ImGui.SameLine();
+        ImGui.TextColored(Theme.SageDeep, $"· {Have(r)} {(r.ToShelf ? "on the shelf" : "in the pantry")} now");
         ImGui.SetCursorScreenPos(p + new Vector2(0, 44));
         Ui.Wrapped(r.Desc, Theme.InkSoft, width);
         ImGui.Spacing();

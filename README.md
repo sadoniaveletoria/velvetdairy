@@ -47,7 +47,7 @@ Cow and bull are yours: you add or drop them, and they hold in every dairy you'r
 ## Your dairy
 
 - **The public area** is a box you mark out anywhere: a field, a corner of a city, or a room in a house. Visitors can find it and deliver to it in person.
-- **The feeding bell:** farmers and the owner can ring it from **Herd Care**, inside the dairy, once an hour. Everyone in the dairy hears it chime; each cow and bull gets a pop-up to pick one bar (Fed, Watered, Comfy or Happy) to fill right up, plus a 20 minute boost. The ringer gets 10 farmer xp.
+- **The feeding bell:** farmers and the owner can ring it from **Herd Care**, inside the dairy and while active (not idle), once an hour. Until it can ring again the button is greyed out and shows "Bell ready in …"; hover it to see who rang it last. Everyone in the dairy hears it chime; each cow and bull gets a pop-up to pick one bar (Fed, Watered, Comfy or Happy) to fill right up, plus a 20 minute boost. The ringer gets 10 farmer xp.
 - **Weekly contract:** 1,500 oz at dairy level 1, growing 250 oz a level up to 6,000 oz.
 - **Weekend milk contest** (all of Saturday and Sunday, UTC): milk pumped into your dairy's tank also fills the weekly contract, so it counts twice (now, and again when it's shipped). The Contract card shows the weekend's top pumpers and last weekend's champion.
 - **Details:** on the **Dairies** tab, each public dairy (and your own) has a **Details** button: where it is, its owner, what it's looking for and its description, how much milk (and seed) is in its tank, how many stalls it has, and **who's there right now** with their roles and levels (cow, bull, farmer), member or visiting, and whether each cow can be bred. Handy for finding a dairy with a bull. Players whose scan setting is "My dairy only" or "Nobody" are counted but not named.
@@ -84,7 +84,7 @@ Cow and bull are yours: you add or drop them, and they hold in every dairy you'r
 **Bonuses** (the Barn tab)
 - **Fed** (food), **Watered** (drink), **Comfy** (rest) and **Happy** (treats) each make milk come faster.
 - Each use adds 30 minutes to that bar, up to an hour, and each has a 15-minute cooldown. Better food and treats give bigger bonuses.
-- **Over an hour is full enough:** while a bar has more than an hour left (at the rate it drains right now), you can't top it up: eating, drinking, a farmer's grooming, the feeding bell and sitting for Comfy all wait until it's under an hour. (In a dairy bars drain half as fast, so a full bar shows up to 2 hours.)
+- **Over an hour is full enough:** while a bar has more than an hour left (at the rate it drains right now), you can't top it up: eating, drinking, a farmer's grooming, the feeding bell and sitting for Comfy all wait until it's under an hour. Food and treats that fill those bars are greyed out too, even ones that also do something else (a boost, quality), so nothing is used up for less than it says. The exception: a treat with a **bigger bonus** than the one going can still be eaten. Its bonus takes over (for example Cream clover's +8% becomes Star clover's +10%), but it adds no time; its row warns "bonus only, no time" first. A bar that's already full to the top counts as full as well. (In a dairy bars drain half as fast, so a full bar shows up to 2 hours.)
 - **In a dairy your bars last longer:** while you're in a dairy (yours, or a public one you're visiting), Fed, Watered, Comfy and Happy drain **half as fast**. Out of a dairy they drain at the normal rate.
 - **Comfy:** sit on furniture in your dairy (a stall seat counts); there's no button. You get no Comfy until you've stayed seated **10 minutes**, then it adds 30 minutes to the bar. Keep sitting and every further 10 minutes adds another 30, up to a full hour. Get up sooner and that sit gives nothing. The Comfy bar doesn't drain while you sit, and the bar and HUD show how long is left. Sitting itself doesn't speed up milk; Comfy does.
 - **All four at once** makes you **Contented**, a bit faster still.
@@ -192,6 +192,31 @@ Milk is for people who are actually playing.
 
 ---
 
+## Backup and restore (new PC, reinstall, lost settings)
+
+Your save is backed up on the Eorzea Milkers server every few minutes while you play (with the network on). The backup never includes your network key or developer phrase. If you lose your save, you get everything back: progress, coins, pantry and upgrades, plus your dairy, memberships and roles.
+
+**Backup setup comes first.** Before you play (right after the 18+ check, and once for existing players after updating), the plugin backs up your save and shows your recovery code. Type its last 5 characters to show you saved it, then press **Done, let me play**. Until then the game is paused and the HUD is hidden. If you'd rather not use the network, tick "I understand that if I lose my save, it can't be recovered" and press **Play without backups**. That turns the network off. You can set backups up later in Settings.
+
+**Settings → Backup and restore**, or `/milkers restore`:
+- **Recovery code:** press **Show my recovery code** and write it down or screenshot it. It starts with `EMR1-`. On a new install, paste it under **Restore with a recovery code** and press **Restore** twice. Anyone with this code can sign in as you, so keep it private.
+- **No code? Verify in the Discord.** Go to **#restore-save** in the Eorzea Milkers Discord (or type `/restore` there) and press **Start**:
+  1. Type your character's name and home world.
+  2. Put the code you get (like `MILK-ABCD2345`) anywhere in your Lodestone **Character Profile** and save.
+  3. Press **Verify**. The bot gives you a **restore key** (`MILKR-...`) that only you can see.
+  4. In game, log in as that character, open `/milkers restore`, paste the key under **Restore with a code** and press **Restore** twice.
+
+  The key works once, for a day, and only for that character. Take the code out of your Lodestone profile afterwards.
+- **Without Discord:** the same window can verify on the Lodestone itself. Press **Get a code**, put it in your profile, then press **Check the Lodestone and restore** twice.
+- When a brand new save starts on a character that has played on another install, the window opens by itself and offers the restore.
+- **Make a new code:** if your recovery code got out (a screenshot, a shared file), press **Make a new code** twice. Your old code stops working; save the new one.
+- Restoring replaces the save on this character. The save it replaces is kept on your PC as `before-restore-*.json`, in the plugin's settings folder.
+- Players from before version 0.9.84 have no cloud backup of their progress yet. The Lodestone restore still brings back their dairy, memberships and roles.
+
+**If a save fails its check:** saves are signed, so editing the plugin's files is caught. When that happens, the last good local backup is used. If there's none, progress starts over, but your dairy and network identity are kept. The rejected save is kept as `rejected-save-*.json`, and your cloud backup is offered back. A save that started over never replaces your cloud backup.
+
+**Dev builds** (loaded from Dev Plugin Locations) keep their own save (`dev-config.json`) and never upload a backup, so trying one can't touch your real progress.
+
 ## Privacy and safety
 
 - Nothing is ever said in public chat. The plugin never moves your character.
@@ -210,6 +235,8 @@ Milk is for people who are actually playing.
 | `/milkers guide` | Open the how-to guide |
 | `/milkers tutorial` | Run the first-time walkthrough again |
 | `/milkers changes` | See what's new in recent updates |
+| `/milkers restore` | Backup and restore: your recovery code, or get your save back on a new install |
+| `/milkers support` | Copy your support info for #bug-reports |
 
 ---
 

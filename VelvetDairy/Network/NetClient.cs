@@ -99,7 +99,15 @@ public sealed class NetClient : IDisposable
             return;
         }
 
+        // A new recovery code was being made when the game closed: find out which key the server has before anything else
+        if (F.PendingNetKey.Length > 0)
+        {
+            if (!checkingPending) CheckPendingKey();
+            return;
+        }
+
         if (t >= nextBeat && !beating) Heartbeat();
+        if (Last != null && t >= nextBackup) Backup();
         if (Membership != null && t >= nextMine) RefreshMine();
         if (WantDirectory && t >= nextDirectory) RefreshDirectory();
         WantDirectory = false;   // the Dairies tab sets it again each frame it's open
@@ -263,7 +271,8 @@ public sealed class NetClient : IDisposable
     // Calls
     // =================================================================
 
-    private void Call<T>(string method, string path, object? body, Action<T> ok, Action<string>? failed = null, bool dev = false) where T : class
+    private void Call<T>(string method, string path, object? body, Action<T> ok, Action<string>? failed = null, bool dev = false,
+                         string? asId = null, string? asKey = null) where T : class
     {
         var devPhrase = dev ? F.DevKey : "";
         var api = Api;
@@ -273,8 +282,9 @@ public sealed class NetClient : IDisposable
             return;
         }
 
-        var id = F.NetId;
-        var key = F.NetKey;
+        // A recovery code signs in as the old install for one request
+        var id = asId ?? F.NetId;
+        var key = asKey ?? F.NetKey;
         Task.Run(async () =>
         {
             try
@@ -348,6 +358,189 @@ public sealed class NetClient : IDisposable
     }
 
     private void Toast(string text, int kind) => plugin.Game.Notify(text, kind);
+
+    // ----- Cloud backup and restore -----
+    // Every few minutes the save goes to the server (without the network key or developer phrase), so a rebuilt PC or a
+    // lost settings file doesn't lose anything. A new install gets it back with the recovery code, or by putting a code
+    // in the character's Lodestone profile. Dev builds never upload.
+
+    private double nextBackup = 90;
+    public DateTime? LastBackupUtc { get; private set; }
+    public string BackupNote { get; private set; } = "";
+
+    /// <summary>Back up now (after a restore, or the Back up now button).</summary>
+    public void BackupSoon(double seconds = 3) => nextBackup = Math.Min(nextBackup, Now + seconds);
+
+    private void Backup(bool now = false)
+    {
+        nextBackup = Now + 300;
+        if (!plugin.CloudBackupAllowed) return;
+        var hash = MyCharHash();
+        if (hash == null) return;
+        plugin.SaveConfig();   // sealed with the newest progress first
+        string text;
+        try
+        {
+            var node = System.Text.Json.Nodes.JsonNode.Parse(JsonSerializer.Serialize(F))!.AsObject();
+            node.Remove("NetKey");
+            node.Remove("DevKey");
+            text = node.ToJsonString();
+        }
+        catch (Exception e)
+        {
+            Diag.Warn("backup", "Couldn't prepare the cloud backup", e);
+            return;
+        }
+
+        Call<BackupPutReply>("POST", "/v1/backup", new { charHash = hash, save = text, now }, r =>
+        {
+            if (r.Skipped) return;
+            LastBackupUtc = DateTime.UtcNow;
+            BackupNote = r.Kept ? "The server kept your older backup: it has more progress than this save." : "";
+            if (r.Kept) Diag.Info("backup", "Server kept the backup with more progress");
+        }, e => BackupNote = e);
+    }
+
+    public void BackupNow() => Backup(true);
+
+    private bool checkingPending;
+
+    /// <summary>
+    /// A new recovery code: a new key for this install, so the old code stops working. The new key is saved as pending
+    /// first, so if the game closes before the server answers, the next start finds out which key the server kept.
+    /// </summary>
+    public void NewRecoveryCode(Action ok, Action<string> failed)
+    {
+        var next = Convert.ToHexString(RandomNumberGenerator.GetBytes(32)).ToLowerInvariant();
+        F.PendingNetKey = next;
+        plugin.SaveConfig();
+        Call<OkReply>("POST", "/v1/rekey", new { newKey = next }, _ =>
+        {
+            F.NetKey = next;
+            F.PendingNetKey = "";
+            plugin.SaveConfig();
+            Diag.Info("backup", "Made a new recovery code");
+            ok();
+        }, e =>
+        {
+            // It may still have gone through: check which key works
+            CheckPendingKey();
+            failed(e);
+        });
+    }
+
+    private void CheckPendingKey()
+    {
+        if (F.PendingNetKey.Length == 0 || checkingPending) return;
+        checkingPending = true;
+        var pending = F.PendingNetKey;
+        Call<BackupReply>("GET", "/v1/backup", null, _ =>
+        {
+            checkingPending = false;
+            F.NetKey = pending;
+            F.PendingNetKey = "";
+            plugin.SaveConfig();
+            Diag.Info("backup", "The new recovery code was kept by the server");
+        }, e =>
+        {
+            checkingPending = false;
+            if (!e.Contains("key", StringComparison.OrdinalIgnoreCase)) return;   // offline: try again later
+            F.PendingNetKey = "";
+            plugin.SaveConfig();
+            Diag.Info("backup", "The new recovery code didn't reach the server: kept the old one");
+        }, asKey: pending);
+    }
+
+    /// <summary>A recovery code: this install's id and key in one string, to sign in as it again on a new install.</summary>
+    public string RecoveryCode()
+    {
+        try
+        {
+            var bytes = Convert.FromHexString(F.NetId).Concat(Convert.FromHexString(F.NetKey)).ToArray();
+            var b32 = Base32(bytes);
+            return "EMR1-" + string.Join("-", Enumerable.Range(0, (b32.Length + 4) / 5).Select(i => b32.Substring(i * 5, Math.Min(5, b32.Length - i * 5))));
+        }
+        catch
+        {
+            return "";
+        }
+    }
+
+    public static bool TryReadRecoveryCode(string code, out string id, out string key)
+    {
+        id = key = "";
+        var s = new string(code.ToUpperInvariant().Where(char.IsLetterOrDigit).ToArray());
+        if (!s.StartsWith("EMR1")) return false;
+        var bytes = FromBase32(s[4..].Replace('O', '0').Replace('I', '1').Replace('L', '1'));
+        if (bytes == null || bytes.Length != 48) return false;
+        id = Convert.ToHexString(bytes, 0, 16).ToLowerInvariant();
+        key = Convert.ToHexString(bytes, 16, 32).ToLowerInvariant();
+        return true;
+    }
+
+    private const string B32 = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";   // Crockford: no I, L, O or U
+
+    private static string Base32(byte[] data)
+    {
+        var sb = new StringBuilder();
+        int buffer = 0, bits = 0;
+        foreach (var b in data)
+        {
+            buffer = (buffer << 8) | b;
+            bits += 8;
+            while (bits >= 5)
+            {
+                sb.Append(B32[(buffer >> (bits - 5)) & 31]);
+                bits -= 5;
+            }
+        }
+
+        if (bits > 0) sb.Append(B32[(buffer << (5 - bits)) & 31]);
+        return sb.ToString();
+    }
+
+    private static byte[]? FromBase32(string s)
+    {
+        var out_ = new List<byte>();
+        int buffer = 0, bits = 0;
+        foreach (var c in s)
+        {
+            var v = B32.IndexOf(c);
+            if (v < 0) return null;
+            buffer = (buffer << 5) | v;
+            bits += 5;
+            if (bits >= 8)
+            {
+                out_.Add((byte)((buffer >> (bits - 8)) & 255));
+                bits -= 8;
+            }
+        }
+
+        return out_.ToArray();
+    }
+
+    public void GetBackupAs(string id, string key, Action<BackupReply> ok, Action<string> failed) =>
+        Call("GET", "/v1/backup", null, ok, failed, asId: id, asKey: key);
+
+    public void GetMyBackup(Action<BackupReply> ok, Action<string> failed) => Call("GET", "/v1/backup", null, ok, failed);
+
+    public void RestoreAvailable(Action<RestoreAvailableReply> ok) => Call<RestoreAvailableReply>("GET", "/v1/restore/available", null, ok, _ => { });
+
+    public void RestoreStart(string name, string world, Action<RestoreStartReply> ok, Action<string> failed) =>
+        Call("POST", "/v1/restore/start", new { name, world }, ok, failed);
+
+    /// <summary>A restore key from the Discord walkthrough (MILKR-...).</summary>
+    public static bool LooksLikeRestoreKey(string code)
+    {
+        var s = new string(code.ToUpperInvariant().Where(char.IsLetterOrDigit).ToArray());
+        return s.StartsWith("MILKR") && s.Length == 25;
+    }
+
+    public void RestoreRedeem(string key, string name, string world, uint worldId, Action<RestoreCheckReply> ok, Action<string> failed) =>
+        Call("POST", "/v1/restore/redeem", new { key, name, world, worldId }, ok, failed);
+
+    public void RestoreCheck(string name, string world, uint worldId, string code, Action<RestoreCheckReply> ok, Action<string> failed) =>
+        Call("POST", "/v1/restore/check", new { name, world, worldId, code }, ok, failed);
 
     /// <summary>The innermost reason a request failed, in one line (no stack trace, so support info stays readable).</summary>
     private static string Why(Exception e)

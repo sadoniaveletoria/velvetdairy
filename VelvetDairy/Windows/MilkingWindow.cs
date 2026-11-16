@@ -1,3 +1,4 @@
+using System;
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Windowing;
@@ -45,9 +46,11 @@ public sealed class MilkingWindow : Window
         if (G.CanCarry)
         {
             ImGui.Spacing();
-            if (Ui.Button("##ringbell", "Ring the feeding bell", new Vector2(210, 30), "honey", G.CanRingBell,
-                    G.CanRingBell ? "Everyone in the dairy hears it: each cow and bull picks a bar to fill right up, and gets a 20 minute boost. Once an hour."
-                                  : "Ring it from inside your dairy."))
+            // Grey until the bell is off its hourly cooldown (and you're in the dairy, active)
+            var why = G.BellProblem();
+            var wait = G.BellWait;
+            if (Ui.Button("##ringbell", wait > TimeSpan.Zero ? $"Bell ready in {DairyGame.Wait(wait)}" : "Ring the feeding bell", new Vector2(210, 30), "honey", why == null,
+                    why ?? "Everyone in the dairy hears it: each cow and bull picks a bar to fill right up, and gets a 20 minute boost. Once an hour."))
                 G.RingFeedingBell();
         }
 

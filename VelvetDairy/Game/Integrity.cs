@@ -26,9 +26,34 @@ public static partial class Integrity
     /// <summary>True when this build has no real key (CI fell back to the testing key).</summary>
     public static bool UsingTestingKey => KeyHex == TestingKeyHex;
 
-    /// <summary>Each character's last good save sits next to the settings; null is the save from before saves were per character.</summary>
+    /// <summary>
+    /// Each character's last good save sits next to the settings; null is the save from before saves were per character.
+    /// Dev builds (loaded from Dev Plugin Locations) keep their own, so they can never touch a live save.
+    /// </summary>
     public static string BackupPath(string? key) =>
-        Path.Combine(Plugin.PluginInterface.ConfigDirectory.FullName, key == null ? "save-backup.json" : $"save-backup-{key[..Math.Min(16, key.Length)]}.json");
+        Path.Combine(Plugin.PluginInterface.ConfigDirectory.FullName, (Plugin.PluginInterface.IsDev ? "dev-" : "") +
+                                                                       (key == null ? "save-backup.json" : $"save-backup-{key[..Math.Min(16, key.Length)]}.json"));
+
+    /// <summary>True when this save's signature checks out with this build's key (a cloud backup before restoring it).</summary>
+    public static bool IsGood(FarmSave f) => Valid(f);
+
+    /// <summary>
+    /// Keeps a copy of a save that's about to be replaced (a rejected one, or the one a restore replaces), so nothing
+    /// is ever lost for good: rejected-save-*.json / before-restore-*.json next to the settings.
+    /// </summary>
+    public static void KeepAside(FarmSave f, string? key, string kind)
+    {
+        try
+        {
+            var name = $"{(Plugin.PluginInterface.IsDev ? "dev-" : "")}{kind}-{(key == null ? "old" : key[..Math.Min(16, key.Length)])}-{DateTime.Now:yyyyMMdd-HHmmss}.json";
+            File.WriteAllText(Path.Combine(Plugin.PluginInterface.ConfigDirectory.FullName, name), JsonSerializer.Serialize(f));
+            Diag.Info("save", $"Kept a copy of the save as {name}");
+        }
+        catch (Exception e)
+        {
+            Plugin.Log.Warning(e, "Eorzea Milkers couldn't keep a copy of the save");
+        }
+    }
 
     /// <summary>A stable text version of everything worth cheating on. Numbers are rounded so tiny float differences never matter.</summary>
     private static string Canonical(FarmSave f)
@@ -116,6 +141,7 @@ public static partial class Integrity
         if (!UsingTestingKey && Valid(f, TestingKeyHex)) return Result.NewSave;
 
         Plugin.Log.Warning("Eorzea Milkers: the save doesn't match its signature (edited outside the game).");
+        KeepAside(f, key, "rejected-save");
         try
         {
             var path = BackupPath(key);
@@ -135,9 +161,15 @@ public static partial class Integrity
             Plugin.Log.Warning(e, "Eorzea Milkers couldn't read the save backup");
         }
 
-        // No good backup: start progress over, but keep the dairy, stalls, farmhands and preferences
+        // No good backup: start progress over, but keep the dairy, stalls, farmhands, preferences and the network
+        // identity (so the dairy, memberships and the cloud backup still belong to this player)
         var fresh = new FarmSave
         {
+            NetId = f.NetId, NetKey = f.NetKey, NetEnabled = f.NetEnabled, NetServerOverride = f.NetServerOverride,
+            CharName = f.CharName, CharWorld = f.CharWorld, OwnerRole = f.OwnerRole, OwnerRoles = f.OwnerRoles,
+            ListPublic = f.ListPublic, ListShowName = f.ListShowName, ListDescription = f.ListDescription, ScanAllow = f.ScanAllow,
+            HudOnlyInDairy = f.HudOnlyInDairy, Metric = f.Metric, TutorialDone = f.TutorialDone, SeenChanges = f.SeenChanges,
+            BackupReady = f.BackupReady, BackupOptOut = f.BackupOptOut,
             Confirmed18 = f.Confirmed18, ShowHud = f.ShowHud, LockHud = f.LockHud, ChatEcho = f.ChatEcho,
             SoundOn = f.SoundOn, SoundVolume = f.SoundVolume, DevKey = f.DevKey,
             Dairy = f.Dairy, DairyRadius = f.DairyRadius, HandEmotes = f.HandEmotes,
