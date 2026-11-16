@@ -23,6 +23,15 @@ public sealed class ChangelogWindow : Window
     /// <summary>Newest first. Write these for players: what changed for them, not how.</summary>
     private static readonly Entry[] Entries =
     {
+        new("0.9.84", "Cloud backup and restore", new[]
+        {
+            "Your save is backed up on the Eorzea Milkers server every few minutes (never your network key or developer phrase). New PC, reinstall or lost settings? You get everything back, with your dairy, memberships and roles.",
+            "Restore with your recovery code (Settings > Backup and restore: write it down or screenshot it), or prove the character is yours by putting a code in your Lodestone Character Profile. The code comes from the plugin or from the Discord bot with /restore.",
+            "A brand new save offers the restore by itself when that character has played on another install. /milkers restore opens it any time.",
+            "If a save ever fails its check and has to start over, it keeps your dairy and network identity, the old save is kept on your PC, and your cloud backup is offered back (a reset save never replaces it).",
+            "Builds loaded from Dev Plugin Locations keep their own save, so trying one can never touch your real progress.",
+            "The Kitchen shows how many of each the dairy already has on the shelf or in the pantry.",
+        }),
         new("0.9.82", "Feeding bell, weekend contest and bonuses that last in a dairy", new[]
         {
             "The feeding bell: farmers and the owner ring it from Herd Care (once an hour). Everyone in the dairy hears it, and each cow and bull picks a bar to fill right up, plus a 20 minute boost.",

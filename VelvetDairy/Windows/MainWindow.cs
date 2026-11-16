@@ -1880,7 +1880,7 @@ public sealed partial class MainWindow : Window
         b = F.NetEnabled;
         if (ImGui.Checkbox("Join the Eorzea Milkers Network (dairies, invites, deliveries, online count)", ref b)) { F.NetEnabled = b; changed = true; }
         if (ImGui.IsItemHovered())
-            ImGui.SetTooltip(Units.Text("Shares only what the network needs: a random id for this install, your dairy's listing, and your character name with the dairy you join."));
+            ImGui.SetTooltip(Units.Text("Shares only what the network needs: a random id for this install, your dairy's listing, your character name with the dairy you join, and a backup of your save (never your network key or developer phrase)."));
 
         // Who can scan you (target you and press Scan): your milk, bonuses, breeding and pregnancy
         ImGui.TextColored(Theme.Ink, "Who can scan me:");
@@ -1933,6 +1933,10 @@ public sealed partial class MainWindow : Window
 
         ImGui.NewLine();
 
+
+        SubHeading("Backup and restore", width);
+        Ui.Wrapped("Your save is backed up on the Eorzea Milkers server every few minutes. New PC or lost settings? Get everything back with your recovery code or your Lodestone profile.", Theme.InkSoft, width);
+        if (ImGui.Button("Backup and restore...")) plugin.Restore.IsOpen = true;
 
         SubHeading("Privacy and safety", width);
         Ui.Wrapped("Everything stays in this window and your own chat log. Nothing is posted in public chat, and the plugin never moves your character, and only does an emote for you when you press a button for it (like Milk on the farmer page). " +

@@ -805,5 +805,82 @@ await test("guests: milked in someone else's public dairy, their milk goes into 
   assert.equal((await call(hana, "GET", "/v1/player?name=Nobody%20Here&world=Gilgamesh")).data.found, false);
 });
 
+await test("cloud backup: a rebuilt PC gets its save and dairy back with the Lodestone", async () => {
+  // Faye owns a dairy and backs up her save; the key and the developer phrase never leave her PC
+  const alice = player("Faye Restore");
+  await beat(alice);
+  const reg = await call(alice, "PUT", "/v1/dairy", dairyBody({ houseId: "7770001112229", name: "Faye Farm", ownerName: "Faye Restore", ward: 23, plot: 41, world: 77, worldName: "Lamia", district: "The Goblet", districtKind: 9 }));
+  assert.equal(reg.status, 200, JSON.stringify(reg.data));
+  const before = (await beat(alice)).data.membership;
+  assert.equal(before?.dairy, "Faye Farm");
+  const save = JSON.stringify({ Xp: 5000, BullXp: 10, FarmerXp: 20, Coins: 900, NetKey: alice.key, DevKey: "secret", Seal: "AB" });
+  assert.equal((await call(alice, "POST", "/v1/backup", { charHash: alice.hash, save })).data.ok, true);
+  const mine = (await call(alice, "GET", "/v1/backup")).data;
+  assert.equal(mine.found, true);
+  assert.equal(JSON.parse(mine.save).Coins, 900);
+  assert.ok(!mine.save.includes(alice.key) && !mine.save.includes("secret"));
+  // A second upload right away is skipped (one every two minutes)
+  assert.equal((await call(alice, "POST", "/v1/backup", { charHash: alice.hash, save })).data.skipped, true);
+  // A reset save (less XP) never replaces the backup
+  sqlite.prepare("UPDATE cloud_saves SET saved = saved - 1000").run();
+  const reset = JSON.stringify({ Xp: 2, BullXp: 0, FarmerXp: 0, Coins: 60, Seal: "CD" });
+  assert.equal((await call(alice, "POST", "/v1/backup", { charHash: alice.hash, save: reset })).data.kept, true);
+  assert.equal(JSON.parse((await call(alice, "GET", "/v1/backup")).data.save).Coins, 900);
+
+  // Her PC is rebuilt: a brand new install on the same character
+  const fresh = { ...player("Faye Restore"), hash: alice.hash };
+  await beat(fresh);
+  assert.equal((await call(fresh, "GET", "/v1/restore/available")).data.available, true);
+  const { code } = (await call(fresh, "POST", "/v1/restore/start", { name: "Faye Restore", world: "Gilgamesh" })).data;
+  assert.match(code, /^MILK-[A-Z0-9]{8}$/);
+  // Asking again gives the same code
+  assert.equal((await call(fresh, "POST", "/v1/restore/start", { name: "Faye Restore", world: "Gilgamesh" })).data.code, code);
+
+  // Someone else can't use her code, even claiming to be her
+  const thief = { ...player("Faye Restore"), hash: alice.hash };
+  await beat(thief);
+  let profile = "";
+  env.LODESTONE_FETCH = async u => u.includes("?q=")
+    ? `<a href="/lodestone/character/4242/" class="entry__link"><p class="entry__name">Faye Restore</p></a>`
+    : u.endsWith("/4242/") ? `<div class="character__selfintroduction">${profile}</div>` : "";
+  const steal = await call(thief, "POST", "/v1/restore/check", { name: "Faye Restore", world: "Gilgamesh", worldId: 40, code });
+  assert.equal(steal.status, 400);
+
+  // Not in the profile yet
+  const early = await call(fresh, "POST", "/v1/restore/check", { name: "Faye Restore", world: "Gilgamesh", worldId: 40, code });
+  assert.equal(early.data.ok, false);
+  assert.match(early.data.why, /isn't in/);
+  // Checking again straight away is too soon
+  assert.equal((await call(fresh, "POST", "/v1/restore/check", { name: "Faye Restore", world: "Gilgamesh", worldId: 40, code })).status, 429);
+
+  sqlite.prepare("UPDATE restore_codes SET checked = 0").run();
+  profile = `Hi! ${code.toLowerCase()} cows forever`;
+  const ok = (await call(fresh, "POST", "/v1/restore/check", { name: "Faye Restore", world: "Gilgamesh", worldId: 40, code })).data;
+  assert.equal(ok.ok, true);
+  assert.equal(ok.netId, alice.id);
+  assert.equal(JSON.parse(ok.save).Coins, 900);
+  delete env.LODESTONE_FETCH;
+
+  // The new install now signs in as her old one with its own key: still the owner of her dairy
+  const back = { id: alice.id, key: fresh.key, name: "Faye Restore", hash: alice.hash };
+  const hb = await beat(back);
+  assert.equal(hb.status, 200);
+  assert.deepEqual(hb.data.membership, before);
+  // ...and the old key doesn't work any more
+  assert.equal((await beat(alice)).status, 401);
+});
+
+await test("restore codes from the Discord bot need the bot key", async () => {
+  env.BOT_KEY = "bot-key-for-tests-0123456789";
+  const ask = (key, b) => worker.fetch(new Request("https://x/v1/bot/restore/start", { method: "POST",
+    headers: { "content-type": "application/json", "X-Bot-Key": key }, body: JSON.stringify(b) }), env);
+  assert.equal((await ask("wrong-key-wrong-key-wrong", { name: "Bob Hand", world: "Gilgamesh", discordUser: "123456789" })).status, 401);
+  const r = await ask(env.BOT_KEY, { name: "Bob Hand", world: "Gilgamesh", discordUser: "123456789" });
+  assert.equal(r.status, 200);
+  assert.match((await r.json()).code, /^MILK-/);
+  assert.equal((await ask(env.BOT_KEY, { name: "Bob", world: "Gilgamesh", discordUser: "123456789" })).status, 400);
+  delete env.BOT_KEY;
+});
+
 
 console.log(`\n${passed} passed`);

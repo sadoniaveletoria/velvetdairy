@@ -601,3 +601,47 @@ public sealed class PantryReply
 {
     public Dictionary<string, int>? Items { get; set; }
 }
+
+// ----- Cloud backup and restore -----
+
+public sealed class BackupPutReply
+{
+    public bool Ok { get; set; }
+    public long Saved { get; set; }
+    public bool Skipped { get; set; }
+    public bool Kept { get; set; }     // the server kept a backup with more progress (this save was reset)
+}
+
+public sealed class BackupReply
+{
+    public bool Found { get; set; }
+    public string Save { get; set; } = "";
+    public long Saved { get; set; }
+    public string Prev { get; set; } = "";
+    public long PrevSaved { get; set; }
+    public int Memberships { get; set; }
+}
+
+public sealed class RestoreAvailableReply
+{
+    public bool Available { get; set; }
+    public long Saved { get; set; }
+    public bool HasSave { get; set; }
+}
+
+public sealed class RestoreStartReply
+{
+    public string Code { get; set; } = "";
+    public long Expires { get; set; }
+}
+
+public sealed class RestoreCheckReply
+{
+    public bool Ok { get; set; }
+    public string Why { get; set; } = "";
+    public string NetId { get; set; } = "";
+    public string Save { get; set; } = "";
+    public long Saved { get; set; }
+    public string Prev { get; set; } = "";
+    public long PrevSaved { get; set; }
+}

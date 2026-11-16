@@ -278,6 +278,8 @@ async function route(request, env) {
   const method = request.method;
 
   if (method === "GET" && path === "/v1/stats") return json(await stats(env));
+  // The Discord bot hands out Lodestone restore codes too. It has no install, only the shared bot key.
+  if (method === "POST" && path === "/v1/bot/restore/start") return json(await botRestoreStart(env, request));
 
   const me = await auth(request, env);
   await expireOrders(env);
@@ -341,6 +343,11 @@ async function route(request, env) {
     ["GET", /^\/v1\/leaderboard$/, () => leaderboard(env, me)],
     ["GET", /^\/v1\/inbox$/, () => inbox(env, me)],
     ["POST", /^\/v1\/inbox\/claim$/, () => claim(env, me)],
+    ["POST", /^\/v1\/backup$/, () => putBackup(env, me, request)],
+    ["GET", /^\/v1\/backup$/, () => getBackup(env, me)],
+    ["GET", /^\/v1\/restore\/available$/, () => restoreAvailable(env, me)],
+    ["POST", /^\/v1\/restore\/start$/, () => restoreStart(env, me, request)],
+    ["POST", /^\/v1\/restore\/check$/, () => restoreCheck(env, me, request)],
   ];
   for (const [verb, re, fn] of routes) {
     const m = method === verb && path.match(re);
@@ -2238,4 +2245,174 @@ async function claim(env, me) {
   const rows = await env.DB.prepare("UPDATE inbox SET claimed = ? WHERE install = ? AND claimed IS NULL RETURNING *")
     .bind(now(), me.id).all();
   return { items: rows.results.map(itemOut) };
+}
+
+// ---------------------------------------------------------------- cloud backup and restore
+// Each install uploads its last good save every few minutes. On a new install (a rebuilt PC, a lost settings file) the
+// player gets it back with their recovery code, or by proving they own the character on the Lodestone. Restoring also
+// gives them back their old network identity, so their dairy, memberships and roles come back too.
+
+const BACKUP_GAP = 120;              // seconds between stored uploads
+const BACKUP_MAX = 200_000;          // characters
+const PREV_AFTER = 20 * 3600;        // the latest backup becomes the "day before" one once it's this old
+const RESTORE_CODE_LIFE = 3600;
+const RESTORE_CHECK_GAP = 20;
+const CODE_ABC = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+
+/** The parts of a save that never leave the player's PC: the network key and the developer phrase. */
+function stripSave(text) {
+  const s = safeParse(text);
+  if (!s || typeof s !== "object" || Array.isArray(s)) fail(400, "That isn't a save.");
+  delete s.NetKey;
+  delete s.DevKey;
+  const progress = ["Xp", "BullXp", "FarmerXp"].reduce((a, k) => a + Math.max(0, Math.floor(Number(s[k]) || 0)), 0);
+  return { save: JSON.stringify(s), progress };
+}
+
+async function putBackup(env, me, request) {
+  const b = await body(request);
+  const text = String(b.save ?? "");
+  if (!text || text.length > BACKUP_MAX) fail(400, "That save is too big.");
+  const charHash = isHash(b.charHash) ? b.charHash : me.char_hash;
+  if (!isHash(charHash)) fail(400, "Log in to a character first.");
+  const t = now();
+  const old = await env.DB.prepare("SELECT saved, save, prev_saved, progress FROM cloud_saves WHERE install = ?").bind(me.id).first();
+  if (old && t - old.saved < BACKUP_GAP && !b.now) return { ok: true, saved: old.saved, skipped: true };
+  const { save, progress } = stripSave(text);
+  // XP only ever goes up: a save with less than the backup (one that was reset) never replaces it, so it can still be restored
+  if (old && progress < old.progress) return { ok: true, saved: old.saved, kept: true };
+  // Once a day the previous backup is kept as well, in case the newest one is somehow bad
+  const keepPrev = old && t - (old.prev_saved || 0) >= PREV_AFTER;
+  await env.DB.prepare(
+    `INSERT INTO cloud_saves (install, char_hash, save, progress, saved) VALUES (?, ?, ?, ?, ?)
+     ON CONFLICT(install) DO UPDATE SET char_hash = excluded.char_hash, save = excluded.save, progress = excluded.progress, saved = excluded.saved,
+       prev_save = CASE WHEN ? THEN cloud_saves.save ELSE cloud_saves.prev_save END,
+       prev_saved = CASE WHEN ? THEN cloud_saves.saved ELSE cloud_saves.prev_saved END`)
+    .bind(me.id, charHash, save, progress, t, keepPrev ? 1 : 0, keepPrev ? 1 : 0).run();
+  return { ok: true, saved: t };
+}
+
+/** This install's own backup (a recovery code signs in as the old install, then fetches this). */
+async function getBackup(env, me) {
+  const r = await env.DB.prepare("SELECT save, saved, prev_save, prev_saved FROM cloud_saves WHERE install = ?").bind(me.id).first();
+  const mships = await env.DB.prepare("SELECT COUNT(*) AS n FROM memberships WHERE install = ?").bind(me.id).first();
+  return { found: !!r, save: r?.save || "", saved: r?.saved || 0, prev: r?.prev_save || "", prevSaved: r?.prev_saved || 0, memberships: mships?.n || 0 };
+}
+
+/** The best other install that played this character: the most progress, then the most recent. */
+async function restoreCandidate(env, me, charHash) {
+  const withSave = await env.DB.prepare(
+    "SELECT install, save, saved, prev_save, prev_saved, progress FROM cloud_saves WHERE char_hash = ? AND install != ? ORDER BY progress DESC, saved DESC LIMIT 1")
+    .bind(charHash, me.id).first();
+  if (withSave) return withSave;
+  // From before backups existed: no save to bring back, but the network identity (dairy, memberships) still can
+  const old = await env.DB.prepare(
+    `SELECT i.id AS install FROM installs i WHERE i.char_hash = ? AND i.id != ? AND EXISTS (SELECT 1 FROM memberships m WHERE m.install = i.id)
+     ORDER BY i.last_seen DESC LIMIT 1`).bind(charHash, me.id).first();
+  return old ? { install: old.install, save: "", saved: 0, prev_save: "", prev_saved: 0, progress: 0 } : null;
+}
+
+/** For a new save: has this character played on another install? (So the plugin can offer to restore.) */
+async function restoreAvailable(env, me) {
+  if (!isHash(me.char_hash)) return { available: false };
+  const c = await restoreCandidate(env, me, me.char_hash);
+  return { available: !!c, saved: c?.saved || 0, hasSave: !!c?.save };
+}
+
+const restoreWho = (name, world) => `${clean(name, 40).toLowerCase()}@${clean(world, 40).toLowerCase()}`;
+
+function newRestoreCode() {
+  const r = crypto.getRandomValues(new Uint8Array(8));
+  return "MILK-" + [...r].map(b => CODE_ABC[b % CODE_ABC.length]).join("");
+}
+
+async function makeRestoreCode(env, name, world, owner) {
+  if (!/^[A-Za-z'\-]{2,15} [A-Za-z'\-]{2,15}$/.test(clean(name, 40))) fail(400, "That doesn't look like a character name (first and last name).");
+  if (!/^[A-Za-z]{3,20}$/.test(clean(world, 40))) fail(400, "That doesn't look like a world name.");
+  const who = restoreWho(name, world), t = now();
+  await env.DB.prepare("DELETE FROM restore_codes WHERE expires < ?").bind(t).run();
+  // Asking again within a few minutes gives the same code, so a code already in the profile keeps working
+  const old = await env.DB.prepare("SELECT code, expires FROM restore_codes WHERE owner = ? AND who = ?").bind(owner, who).first();
+  if (old && old.expires > t + RESTORE_CODE_LIFE - 600) return { code: old.code, expires: old.expires };
+  const code = newRestoreCode();
+  await env.DB.batch([
+    env.DB.prepare("DELETE FROM restore_codes WHERE owner = ? AND who = ?").bind(owner, who),
+    env.DB.prepare("INSERT INTO restore_codes (code, who, owner, created, expires) VALUES (?, ?, ?, ?, ?)").bind(code, who, owner, t, t + RESTORE_CODE_LIFE),
+  ]);
+  return { code, expires: t + RESTORE_CODE_LIFE };
+}
+
+async function restoreStart(env, me, request) {
+  const b = await body(request);
+  return await makeRestoreCode(env, b.name, b.world, me.id);
+}
+
+async function botRestoreStart(env, request) {
+  const key = request.headers.get("X-Bot-Key") || "";
+  if (!env.BOT_KEY || key.length < 20 || key !== env.BOT_KEY) fail(401, "Not the bot.");
+  const b = await body(request);
+  const user = clean(b.discordUser, 24);
+  if (!/^\d{5,24}$/.test(user)) fail(400, "Missing the Discord user.");
+  return await makeRestoreCode(env, b.name, b.world, `discord:${user}`);
+}
+
+const decodeHtml = s => s.replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n))).replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCharCode(parseInt(n, 16)))
+  .replace(/&apos;/g, "'").replace(/&quot;/g, '"').replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
+
+/** Is this code in the character's Lodestone profile? Searches the character by name and world, then reads the profile. */
+async function lodestoneHasCode(env, name, world, code) {
+  const get = env.LODESTONE_FETCH || (async u => {
+    const r = await fetch(u, { headers: { "user-agent": "EorzeaMilkers-Restore/1.0", "accept-language": "en" } });
+    return r.ok ? await r.text() : "";
+  });
+  const base = "https://na.finalfantasyxiv.com/lodestone/character/";
+  const search = await get(`${base}?q=${encodeURIComponent(name)}&worldname=${encodeURIComponent(world)}`);
+  if (!search) return { ok: false, why: "The Lodestone didn't answer. Try again in a minute." };
+  const want = name.toLowerCase();
+  const ids = [];
+  for (const m of search.matchAll(/\/lodestone\/character\/(\d+)\//g)) {
+    const near = decodeHtml(search.slice(m.index, m.index + 1500)).toLowerCase();
+    if (near.includes(`>${want}<`) && !ids.includes(m[1])) ids.push(m[1]);
+    if (ids.length >= 3) break;
+  }
+  if (ids.length === 0) return { ok: false, why: `The Lodestone has no ${name} on ${world}.` };
+  for (const id of ids) {
+    const page = await get(`${base}${id}/`);
+    if (page && page.toUpperCase().includes(code)) return { ok: true, id };
+  }
+  return { ok: false, why: `${code} isn't in ${name}'s Lodestone profile yet. Put it in Character Profile and save, then try again (the Lodestone can take a minute).` };
+}
+
+/**
+ * The player put the code in their Lodestone profile: bring back their old install. This install takes over the old
+ * one's network identity (the old id now answers to this install's key) and gets its last backup.
+ */
+async function restoreCheck(env, me, request) {
+  const b = await body(request);
+  const name = clean(b.name, 40), world = clean(b.world, 40), code = clean(b.code, 20).toUpperCase();
+  const worldId = Math.floor(Number(b.worldId) || 0);
+  if (!name || !world || worldId <= 0) fail(400, "Log in to the character you want back first.");
+  const who = restoreWho(name, world), t = now();
+  const row = await env.DB.prepare("SELECT * FROM restore_codes WHERE code = ?").bind(code).first();
+  if (!row || row.expires < t) fail(404, "That code ran out or was never made. Get a new one.");
+  // A code made in the plugin only works on the install that made it; one from Discord works for whoever has it
+  if (row.who !== who || (!row.owner.startsWith("discord:") && row.owner !== me.id))
+    fail(400, "That isn't a code for this character. Check it, or get a new one.");
+  if (t - row.checked < RESTORE_CHECK_GAP) fail(429, `Wait ${RESTORE_CHECK_GAP - (t - row.checked)} seconds before checking again.`);
+  await env.DB.prepare("UPDATE restore_codes SET checked = ? WHERE code = ?").bind(t, code).run();
+
+  const charHash = await sha256(`${name.toLowerCase()}@${worldId}`);
+  const cand = await restoreCandidate(env, me, charHash);
+  if (!cand) return { ok: false, why: `There's no backup or dairy for ${name} on another install.` };
+
+  const lode = await lodestoneHasCode(env, name, world, code);
+  if (!lode.ok) return { ok: false, why: lode.why };
+
+  await env.DB.batch([
+    env.DB.prepare("UPDATE installs SET key_hash = ? WHERE id = ?").bind(me.key_hash, cand.install),
+    env.DB.prepare("DELETE FROM restore_codes WHERE who = ?").bind(who),
+    // The new install's own empty backup isn't wanted any more
+    env.DB.prepare("DELETE FROM cloud_saves WHERE install = ?").bind(me.id),
+  ]);
+  return { ok: true, netId: cand.install, save: cand.save || "", saved: cand.saved || 0, prev: cand.prev_save || "", prevSaved: cand.prev_saved || 0 };
 }

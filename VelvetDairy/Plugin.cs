@@ -54,6 +54,7 @@ public sealed class Plugin : IDalamudPlugin
     public ScanWindow Scanner { get; }
     public WhoHereWindow WhoHere { get; }
     public FeedingBellWindow FeedingBell { get; }
+    public RestoreWindow Restore { get; }
     public CharacterClaimWindow Claim { get; }
 
     /// <summary>This build's version, sent to the network so old versions can be told to update.</summary>
@@ -71,7 +72,8 @@ public sealed class Plugin : IDalamudPlugin
         Configuration? cfg = null;
         try
         {
-            cfg = PluginInterface.GetPluginConfig() as Configuration;
+            // A dev build (loaded from Dev Plugin Locations) never reads or writes the live save: it has its own file
+            cfg = PluginInterface.IsDev ? LoadDevConfig() : PluginInterface.GetPluginConfig() as Configuration;
         }
         catch (Exception e)
         {
@@ -138,6 +140,8 @@ public sealed class Plugin : IDalamudPlugin
         windowSystem.AddWindow(WhoHere);
         FeedingBell = new FeedingBellWindow(this, fonts);
         windowSystem.AddWindow(FeedingBell);
+        Restore = new RestoreWindow(this, fonts);
+        windowSystem.AddWindow(Restore);
         Claim = new CharacterClaimWindow(this, fonts);
         claimSystem.AddWindow(Claim);
         contextMenu = new ContextMenuHandler(this);
@@ -179,6 +183,7 @@ public sealed class Plugin : IDalamudPlugin
         Tutorial.CheckFirstRun();
         if (!Tutorial.IsOpen) Changes.CheckAfterUpdate();
         Helpers.Check(dt);
+        Restore.Tick();
 
         // Needs and milk change every second; write them out now and then
         saveTimer += dt;
@@ -216,7 +221,35 @@ public sealed class Plugin : IDalamudPlugin
     {
         // The blank save shown before a character logs in is never written out
         if (Config.ActiveKey != null) Integrity.Seal(Config.Farm, Config.ActiveKey);
-        PluginInterface.SavePluginConfig(Config);
+        if (PluginInterface.IsDev) SaveDevConfig();
+        else PluginInterface.SavePluginConfig(Config);
+    }
+
+    // ----- Dev builds keep their own save -----
+    // A build of your own (from Dev Plugin Locations) is signed with a different key, so the live save would look
+    // edited to it. It uses dev-config.json instead and never touches the live save or its backups.
+
+    private static string DevConfigPath => System.IO.Path.Combine(PluginInterface.ConfigDirectory.FullName, "dev-config.json");
+
+    private static Configuration? LoadDevConfig()
+    {
+        if (!System.IO.File.Exists(DevConfigPath)) return null;
+        return Newtonsoft.Json.JsonConvert.DeserializeObject<Configuration>(System.IO.File.ReadAllText(DevConfigPath));
+    }
+
+    private void SaveDevConfig()
+    {
+        try
+        {
+            System.IO.Directory.CreateDirectory(PluginInterface.ConfigDirectory.FullName);
+            var tmp = DevConfigPath + ".tmp";
+            System.IO.File.WriteAllText(tmp, Newtonsoft.Json.JsonConvert.SerializeObject(Config, Newtonsoft.Json.Formatting.Indented));
+            System.IO.File.Move(tmp, DevConfigPath, true);
+        }
+        catch (Exception e)
+        {
+            Log.Warning(e, "Eorzea Milkers couldn't write the dev save");
+        }
     }
 
     /// <summary>Copies the support info (setup + recent log) to the clipboard and saves it next to the settings.</summary>
@@ -352,6 +385,27 @@ public sealed class Plugin : IDalamudPlugin
 
         var r = Integrity.Check(Config.Farm, key, out var save);
         Config.Farm = save;
+        FreshSave = fresh;
+        LastCheck = r;
+        Reload(key);
+        TellIntegrity(r);
+        SaveConfig();
+        // A brand new save, or one that had to start over: offer the cloud backup once the server knows this character
+        if (fresh || r == Integrity.Result.Reset) Restore.OfferSoon(r == Integrity.Result.Reset);
+    }
+
+    /// <summary>The save check's result when this character's save loaded.</summary>
+    public Integrity.Result LastCheck { get; private set; } = Integrity.Result.Fine;
+
+    /// <summary>This character's save was made new this session (a new install, or a new character).</summary>
+    public bool FreshSave { get; private set; }
+
+    /// <summary>Cloud backups go up from live installs only: a dev build's save stays on this PC.</summary>
+    public bool CloudBackupAllowed => !PluginInterface.IsDev && Config.ActiveKey != null && Config.Farm.Confirmed18 && Config.Farm.NetEnabled;
+
+    /// <summary>Starts the game and network over on the current character's save (after switching or restoring).</summary>
+    private void Reload(string key)
+    {
         Config.EnsureDefaults();
         devCache = null;
 
@@ -381,7 +435,7 @@ public sealed class Plugin : IDalamudPlugin
             if (world.Length > 0) f.CharWorld = world;
         }
 
-        // Everything the game and network remember belongs to the old character: start both over
+        // Everything the game and network remember belongs to the old save: start both over
         Net.Dispose();
         Net = new NetClient(this);
         Game = new DairyGame(this);
@@ -390,9 +444,63 @@ public sealed class Plugin : IDalamudPlugin
         Kitchen.IsOpen = false;
         Milking.IsOpen = false;
         Members.IsOpen = false;
+    }
 
-        TellIntegrity(r);
+    /// <summary>
+    /// Puts a cloud backup in place of this character's save. The backup must pass this build's signature check (or
+    /// the one from the day before is used); with neither, only the network identity comes back (dairy, memberships).
+    /// The save it replaces is kept as before-restore-*.json. Returns what happened, for the player.
+    /// </summary>
+    public string ApplyRestore(string saveJson, string prevJson, string netId, string netKey)
+    {
+        if (Config.ActiveKey is not { } key) return "Log in to the character first.";
+        FarmSave? pick = null;
+        var usedPrev = false;
+        foreach (var (text, prev) in new[] { (saveJson, false), (prevJson, true) })
+        {
+            if (string.IsNullOrEmpty(text)) continue;
+            try
+            {
+                var s = System.Text.Json.JsonSerializer.Deserialize<FarmSave>(text);
+                if (s != null && Integrity.IsGood(s))
+                {
+                    pick = s;
+                    usedPrev = prev;
+                    break;
+                }
+
+                Diag.Warn("restore", $"The {(prev ? "day-before" : "latest")} cloud backup didn't pass the save check");
+            }
+            catch (Exception e)
+            {
+                Diag.Warn("restore", "A cloud backup couldn't be read", e);
+            }
+        }
+
+        var cur = Config.Farm;
+        Integrity.KeepAside(cur, key, "before-restore");
+        Game.Stop("Restoring a backup.");
+        Game.EndMilkMod();
+
+        var f = pick ?? cur;
+        f.NetId = netId;
+        f.NetKey = netKey;
+        f.DevKey = cur.DevKey;
+        f.NetEnabled = true;
+        f.NetServerOverride = cur.NetServerOverride;
+        f.Confirmed18 = cur.Confirmed18 || f.Confirmed18;
+        Config.Farm = f;
+        LastCheck = Integrity.Result.Fine;
+        FreshSave = false;
+        Reload(key);
         SaveConfig();
+        Net.BackupSoon(30);
+        Diag.Info("restore", pick != null ? $"Restored the {(usedPrev ? "day-before" : "latest")} cloud backup" : "Restored the network identity only");
+
+        return pick != null
+            ? usedPrev ? "Your save is back (the backup from the day before: the newest one didn't pass the save check)." : "Your save is back."
+            : saveJson.Length > 0 ? "Your dairy and memberships are back, but the backup didn't pass the save check, so your progress couldn't be restored."
+            : "Your dairy and memberships are back. There was no cloud backup of your progress yet (it started in version 0.9.84).";
     }
 
     // ----- Developer mode -----
@@ -424,6 +532,8 @@ public sealed class Plugin : IDalamudPlugin
         var a = args.Trim();
         if (a.Equals("guide", StringComparison.OrdinalIgnoreCase) || a.Equals("help", StringComparison.OrdinalIgnoreCase))
             Guide.Open();
+        else if (a.Equals("restore", StringComparison.OrdinalIgnoreCase) || a.Equals("backup", StringComparison.OrdinalIgnoreCase))
+            Restore.IsOpen = true;
         else if (a.Equals("support", StringComparison.OrdinalIgnoreCase) || a.Equals("log", StringComparison.OrdinalIgnoreCase))
             CopySupportInfo();
         else if (a.Equals("tutorial", StringComparison.OrdinalIgnoreCase))
