@@ -15,5 +15,4 @@ jobs:
         run: |
           set -e
           mkdir w && cd w && printf 'name="x"\n' > wrangler.toml
-          npx --yes wrangler@4 d1 execute velvet-dairy --remote --json --command "SELECT substr(id,1,8) AS inst, last_seen, version, (SELECT COUNT(*) FROM memberships m WHERE m.install=i.id) AS mships, (SELECT name FROM dairies d WHERE d.owner=i.id) AS owns FROM installs i WHERE char_hash='8f93b8aa3ac5f56d16fba688cb9aaaf8f240341c275042af1cabefc013c3039b' OR substr(id,1,8) IN ('c7eda918','5340a356')" | grep '"inst"\|last_seen\|version\|mships\|owns'
-          date -u +%s
+          npx --yes wrangler@4 d1 execute velvet-dairy --remote --json --command "SELECT id, last_seen, version, (SELECT COUNT(*) FROM memberships m WHERE m.install=i.id) AS mships FROM installs i WHERE key_hash='14455c1c35381ebd348995d27ab2ec8268c8c75d42a93f4ae6b9e14bf0e17039'" | grep '"id"\|last_seen\|version\|mships'
