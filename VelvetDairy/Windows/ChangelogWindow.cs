@@ -23,30 +23,22 @@ public sealed class ChangelogWindow : Window
     /// <summary>Newest first. Write these for players: what changed for them, not how.</summary>
     private static readonly Entry[] Entries =
     {
-        new("0.9.87", "Better treats, Fill up, the bell", new[]
+        new("0.9.87", "Cloud backup for your save, and fixes", new[]
         {
-            "A better treat still works when its bar is over an hour: its bigger bonus takes over (Cream clover's +8% becomes Star clover's +10%), but no time is added. Its row warns you first: \"bonus only, no time\".",
-            "Fill up in the Kitchen takes the last bit of the dairy tank too (it said 5 oz but couldn't take it when the tank had 4.96).",
+            "# IMPORTANT: protect your save",
+            "Before you play, this update asks you to set up a cloud backup of your save. It takes a minute, once. Your save is then backed up on the Eorzea Milkers server every few minutes, so a new PC, a reinstall or a lost settings file never costs you your progress or your dairy.",
+            "WARNING: if you choose \"Play without backups\", the network is turned off and NOTHING can be recovered if your save is ever lost. Your levels, coins, upgrades, pantry, and your place in your dairy are gone for good, and the developer can't restore them for you. Please keep backups on.",
+            "Screenshot your recovery code and keep it private: anyone with it can sign in as you. If it gets out, press Make a new code in Backup and restore (/milkers restore) and the old one stops working.",
+            "# Getting your save back",
+            "On a new install, paste your recovery code in /milkers restore. Lost the code? Go to #restore-save in the Discord: it walks you through putting a code in your Lodestone Character Profile, verifies your character, and gives you a restore key to paste in. The plugin can also check the Lodestone itself.",
+            "A brand new save offers the restore by itself when that character has played on another install. Your dairy, memberships and roles come back too.",
+            "If a save ever fails its check and has to start over, it keeps your dairy, keeps the old save on your PC, and offers your cloud backup back.",
+            "# Food, treats and the bell",
+            "Food and treats are greyed out while the bars they fill are over an hour, so nothing gets used up for less than it says. The exception: a better treat still works, and its bigger bonus takes over (Cream clover's +8% becomes Star clover's +10%) without adding time. Its row warns you first.",
             "The feeding bell button is greyed out while it's on its hourly cooldown (\"Bell ready in 23m\", and hovering says who rang it), and while you're idle.",
-        }),
-        new("0.9.86", "Full bars", new[]
-        {
-            "Food and treats are greyed out while every bar they fill is over an hour (or full), even ones that also do something else, so nothing gets used up for less than it says. A treat a farmer feeds you doesn't overfill a bar either.",
-        }),
-        new("0.9.85", "Backup setup before you play", new[]
-        {
-            "Before playing, everyone sets up their save backup once (existing players too): the first backup goes up, and you confirm your recovery code by typing its last 5 characters. Or choose to play without the network, knowing a lost save can't be recovered.",
-            "Make a new recovery code (Backup and restore) if yours got out: the old one stops working.",
-            "Restoring onto the install that's already yours now says so, instead of \"no backup on another install\".",
-        }),
-        new("0.9.84", "Cloud backup and restore", new[]
-        {
-            "Your save is backed up on the Eorzea Milkers server every few minutes (never your network key or developer phrase). New PC, reinstall or lost settings? You get everything back, with your dairy, memberships and roles.",
-            "Restore with your recovery code (Settings > Backup and restore: write it down or screenshot it). No code? #restore-save in the Discord walks you through verifying your character on the Lodestone and gives you a restore key to paste in. The plugin can also verify on the Lodestone itself.",
-            "A brand new save offers the restore by itself when that character has played on another install. /milkers restore opens it any time.",
-            "If a save ever fails its check and has to start over, it keeps your dairy and network identity, the old save is kept on your PC, and your cloud backup is offered back (a reset save never replaces it).",
-            "Builds loaded from Dev Plugin Locations keep their own save, so trying one can never touch your real progress.",
+            "# Other fixes",
             "The Kitchen shows how many of each the dairy already has on the shelf or in the pantry.",
+            "Fill up in the Kitchen takes the last bit of the dairy tank (it said 5 oz but couldn't take it when the tank had 4.96).",
         }),
         new("0.9.82", "Feeding bell, weekend contest and bonuses that last in a dairy", new[]
         {
