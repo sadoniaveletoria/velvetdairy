@@ -1,0 +1,23 @@
+name: Ops lookup (temporary, read-only)
+on:
+  push:
+    branches: [ ops-lookup ]
+permissions:
+  contents: read
+jobs:
+  look:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Read one player's stored levels (read-only)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -e
+          mkdir w && cd w && printf 'name="x"\n' > wrangler.toml
+          ID=5340a35685b12bd18bac5109c754c7b3
+          Q="SELECT 'memberships' AS t, role, json_extract(status,'\$.level') AS cow, json_extract(status,'\$.bullLevel') AS bull, json_extract(status,'\$.farmerLevel') AS farmer, json_extract(status,'\$.quality') AS quality, json_extract(status,'\$.totalOz') AS totalOz, json_extract(status,'\$.w') AS written FROM memberships WHERE install='$ID' UNION ALL SELECT 'members_old', role, json_extract(status,'\$.level'), json_extract(status,'\$.bullLevel'), json_extract(status,'\$.farmerLevel'), json_extract(status,'\$.quality'), json_extract(status,'\$.totalOz'), json_extract(status,'\$.w') FROM members WHERE install='$ID'"
+          npx --yes wrangler@4 d1 execute velvet-dairy --remote --json --command "$Q"
+          echo "---- time travel ----"
+          npx --yes wrangler@4 d1 time-travel info velvet-dairy || true
+          npx --yes wrangler@4 d1 time-travel info velvet-dairy --timestamp=2026-11-16T00:30:00Z || true
