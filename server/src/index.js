@@ -1104,9 +1104,16 @@ async function progressOut(env, dairyId, stallCount) {
     stallSlots: stallSlots(p.level), maxTier: maxTier(p.level), nextStallPrice: stallPrice(stallCount), tierPrices: TIER_PRICE,
     donors: donors.map(x => ({ name: x.name, coins: x.coins })),
     tank: await tankOf(env, dairyId),
+    bell: await bellOf(env, dairyId),
     payBonus: payBonus(p.level),
     contract: await contractOut(env, dairyId, p.level),
   };
+}
+
+/** The feeding bell: who rang it last, and when it can ring again (the Ring button stays grey until then). */
+async function bellOf(env, dairyId) {
+  const rung = await env.DB.prepare("SELECT created, name FROM dairy_notice WHERE dairy_id = ? AND kind = 'feedingBell' ORDER BY id DESC LIMIT 1").bind(dairyId).first();
+  return { by: rung?.name || "", at: rung?.created || 0, readyAt: rung ? rung.created + BELL_GAP : 0 };
 }
 
 /** The dairy's milk tank by grade, and its top pumpers. */
@@ -1727,7 +1734,8 @@ async function takeFromTank(env, me, request) {
   const oz = int(b.oz, 1, MAX_TAKE_OZ, "oz");
   // Plain milk: older graded milk was merged into the grade 0 row
   await mergeTank(env, mem.dairy_id);
-  const r = await env.DB.prepare("UPDATE dairy_tank SET oz = oz - ? WHERE dairy_id = ? AND grade = 0 AND oz >= ? RETURNING oz")
+  // The tank shows to a tenth of an ounce (4.96 shows as 5.0), so "Fill up" asks for what it shows: allow that much over
+  const r = await env.DB.prepare("UPDATE dairy_tank SET oz = MAX(0, oz - ?) WHERE dairy_id = ? AND grade = 0 AND oz >= ? - 0.05 RETURNING oz")
     .bind(oz, mem.dairy_id, oz).first();
   if (!r) fail(400, `The tank doesn't have ${oz} oz.`);
   await env.DB.prepare(`INSERT INTO carried (install, oz) VALUES (?, ?) ON CONFLICT(install) DO UPDATE SET oz = oz + excluded.oz`).bind(me.id, oz).run();

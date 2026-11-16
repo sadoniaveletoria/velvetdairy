@@ -342,20 +342,54 @@ public sealed partial class DairyGame
     // ----- The feeding bell -----
 
     /// <summary>Farmers and the owner can ring it in their own dairy, once an hour.</summary>
-    public bool CanRingBell => CanCarry && Where.InDairy && !Where.Guest;
+    public bool CanRingBell => CanCarry && Where.InDairy && !Where.Guest && Wake == Wakefulness.Awake && BellWait <= TimeSpan.Zero;
+
+    /// <summary>How long until the dairy's bell can ring again (it rings once an hour).</summary>
+    public TimeSpan BellWait
+    {
+        get
+        {
+            var ready = Net.Progress?.Bell?.ReadyAt ?? 0;
+            var left = ready - DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            return left > 0 ? TimeSpan.FromSeconds(left) : TimeSpan.Zero;
+        }
+    }
+
+    /// <summary>Why the bell can't ring right now (for the greyed-out button), or null.</summary>
+    public string? BellProblem()
+    {
+        if (!CanCarry) return "Farmers and the owner ring the feeding bell.";
+        if (!Where.InDairy || Where.Guest) return "Ring it from inside your dairy.";
+        if (BellWait > TimeSpan.Zero)
+        {
+            var b = Net.Progress?.Bell;
+            var ago = b != null && b.At > 0 ? Math.Max(1, (DateTimeOffset.UtcNow.ToUnixTimeSeconds() - b.At) / 60) : 0;
+            return (b != null && b.By.Length > 0 ? $"{b.By} rang it {ago} min ago. " : "") + $"It can ring again in {Wait(BellWait)}.";
+        }
+
+        if (Wake != Wakefulness.Awake) return "You've been idle: move or do something first.";
+        return null;
+    }
 
     /// <summary>Ring the dairy's feeding bell: everyone in the dairy hears it, and each cow and bull picks a bar to fill.</summary>
     public void RingFeedingBell()
     {
-        if (!CanRingBell)
+        if (BellProblem() is { } why)
         {
-            Fail("Farmers and the owner ring the feeding bell, from inside their dairy.");
+            Fail(why);
             return;
         }
 
         Touch();
+        Diag.Info("bell", "Rang the feeding bell (in the dairy, active)");
         Net.RingBell(() =>
         {
+            // Grey the button right away (the next dairy refresh confirms it)
+            if (Net.Progress != null)
+            {
+                var t = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                Net.Progress.Bell = new BellInfo { By = Plugin.ObjectTable.LocalPlayer?.Name.TextValue ?? "", At = t, ReadyAt = t + 3600 };
+            }
             Say("You ring the feeding bell. Everyone in the dairy comes running. +10 farmer xp", 1);
             AddFarmerXp(10);
             HeardFeedingBell(Plugin.ObjectTable.LocalPlayer?.Name.TextValue ?? "You");
@@ -901,6 +935,7 @@ public sealed partial class DairyGame
 
         if (!FeedForYou(item)) return Fail(item.Role == "bull" ? "That's for bulls." : "That's for cows who are also bulls.");
         if (NeedsFullFor(item) is { } full) return Fail(full);
+        var upgradeOnly = UpgradeOnly(item);
         if (item.RestHours > 0 && F.RestTeaDay == DateTime.UtcNow.ToString("yyyy-MM-dd")) return Fail($"You've had {item.Name} today already.");
         if (item.Quality > 0 && QualityTreatWait > TimeSpan.Zero)
             return Fail($"You can have another quality treat in {Wait(QualityTreatWait)}.");
@@ -911,6 +946,8 @@ public sealed partial class DairyGame
         if (item.Fed > 0 && !NeedFull(Cow.Hunger)) { Cow.Hunger = Fill(Cow.Hunger); Cow.FedBonus = item.Fed; Cow.FedReadyUtc = cd; }
         if (item.Water > 0 && !NeedFull(Cow.Thirst)) { Cow.Thirst = Fill(Cow.Thirst); Cow.WaterBonus = item.Water; Cow.WaterReadyUtc = cd; }
         if (item.Happy > 0 && !NeedFull(Cow.Mood)) { Cow.Mood = Fill(Cow.Mood); Cow.HappyBonus = item.Happy; Cow.HappyReadyUtc = cd; }
+        // A bar over an hour: a bigger bonus still takes over, without adding time
+        RaiseBonusIfFull(item);
         if (item.HoldDays > 0)
         {
             var from = Cow.FreshHoldUntilUtc > DateTime.UtcNow ? Cow.FreshHoldUntilUtc : DateTime.UtcNow;
@@ -970,8 +1007,17 @@ public sealed partial class DairyGame
             extra += $" {item.RestHours} hours off your milking time today.";
         }
 
-        CareDone($"You {(item.Icon == "water" ? "drink" : "eat")} some {item.Name.ToLowerInvariant()}." + (item.BoostMinutes > 0 ? $" Milk boost for {BoostFor(item)} min." : "") + extra);
+        CareDone($"You {(item.Icon == "water" ? "drink" : "eat")} some {item.Name.ToLowerInvariant()}." + (item.BoostMinutes > 0 ? $" Milk boost for {BoostFor(item)} min." : "") + extra
+                 + (upgradeOnly != null ? " " + upgradeOnly.Replace("this only raises", "it only raised").Replace("it doesn't add time", "no time was added") : ""));
         return true;
+    }
+
+    /// <summary>For each bar over an hour that this food fills: its bonus takes over if it's bigger (the time stays).</summary>
+    private void RaiseBonusIfFull(FeedItem item)
+    {
+        if (item.Fed > 0 && NeedFull(Cow.Hunger) && Cow.Hunger > 0 && item.Fed > Cow.FedBonus) Cow.FedBonus = item.Fed;
+        if (item.Water > 0 && NeedFull(Cow.Thirst) && Cow.Thirst > 0 && item.Water > Cow.WaterBonus) Cow.WaterBonus = item.Water;
+        if (item.Happy > 0 && NeedFull(Cow.Mood) && Cow.Mood > 0 && item.Happy > Cow.HappyBonus) Cow.HappyBonus = item.Happy;
     }
 
     /// <summary>A treat a farmer fed you: its Happy bonus (a bigger one already going is kept) and its milk boost.</summary>
@@ -981,7 +1027,8 @@ public sealed partial class DairyGame
         var cd = DateTime.UtcNow.AddMinutes(Catalog.NeedCooldownMinutes);
         if (item.Happy > 0) Cow.HappyReadyUtc = cd;
         if (item.Fed > 0) Cow.FedReadyUtc = cd;
-        // A bar over an hour doesn't take more (the same as eating it yourself)
+        RaiseBonusIfFull(item);
+        // A bar over an hour doesn't take more time (the same as eating it yourself)
         if (item.Fed > 0 && !NeedFull(Cow.Hunger))
         {
             Cow.FedBonus = Cow.Hunger <= 0 ? item.Fed : Math.Max(Cow.FedBonus, item.Fed);
@@ -2609,17 +2656,38 @@ public sealed partial class DairyGame
     }
 
     /// <summary>
-    /// A food that fills bars, all of them over an hour: it's greyed out until one is under an hour, even if it does
-    /// something else too (so it's never eaten for less than it says).
+    /// A food that fills bars, all of them over an hour, and doesn't give a bigger bonus than the one going: it's
+    /// greyed out until one is under an hour, even if it does something else too (so it's never eaten for less than
+    /// it says). A food with a bigger bonus can still be eaten: see <see cref="UpgradeOnly"/>.
     /// </summary>
     public string? NeedsFullFor(FeedItem item)
     {
-        var fills = new List<(string Bar, float V)>();
-        if (item.Fed > 0) fills.Add(("Fed", Cow.Hunger));
-        if (item.Water > 0) fills.Add(("Watered", Cow.Thirst));
-        if (item.Happy > 0) fills.Add(("Happy", Cow.Mood));
-        if (fills.Count == 0 || fills.Any(f => !NeedFull(f.V))) return null;
+        var fills = FillsOf(item);
+        if (fills.Count == 0 || fills.Any(f => !NeedFull(f.V) || f.Gives > f.Has + 0.001f)) return null;
         return fills.Count == 1 ? FullText(fills[0].Bar, fills[0].V) : $"Your {string.Join(" and ", fills.Select(f => f.Bar))} bars are over an hour. Eat again once one is under an hour.";
+    }
+
+    private List<(string Bar, float V, float Has, float Gives)> FillsOf(FeedItem item)
+    {
+        var fills = new List<(string, float, float, float)>();
+        if (item.Fed > 0) fills.Add(("Fed", Cow.Hunger, Cow.Hunger > 0 ? Cow.FedBonus : 0, item.Fed));
+        if (item.Water > 0) fills.Add(("Watered", Cow.Thirst, Cow.Thirst > 0 ? Cow.WaterBonus : 0, item.Water));
+        if (item.Happy > 0) fills.Add(("Happy", Cow.Mood, Cow.Mood > 0 ? Cow.HappyBonus : 0, item.Happy));
+        return fills;
+    }
+
+    /// <summary>
+    /// Every bar this food fills is over an hour, but it has a bigger bonus than the one going: eating it raises the
+    /// bonus and adds no time. The warning shown on its row (null when it would add time as usual).
+    /// </summary>
+    public string? UpgradeOnly(FeedItem item)
+    {
+        var fills = FillsOf(item);
+        if (fills.Count == 0 || fills.Any(f => !NeedFull(f.V))) return null;
+        var up = fills.Where(f => f.Gives > f.Has + 0.001f).ToList();
+        if (up.Count == 0) return null;
+        return $"{string.Join(" and ", up.Select(f => f.Bar))} {(up.Count == 1 ? "is" : "are")} over an hour: this only raises the bonus to " +
+               string.Join(", ", up.Select(f => $"+{f.Gives * 100:0}%")) + ", it doesn't add time.";
     }
 
     /// <summary>Bull foods are for bulls; cow-and-bull foods for those who are both.</summary>

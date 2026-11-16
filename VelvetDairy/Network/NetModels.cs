@@ -241,6 +241,7 @@ public sealed class DairyProgress
     public List<int> TierPrices { get; set; } = new();
     public List<Donor> Donors { get; set; } = new();
     public DairyTank? Tank { get; set; }
+    public BellInfo? Bell { get; set; }
     public float PayBonus { get; set; } = 1f;
     public ContractInfo? Contract { get; set; }
 
@@ -649,4 +650,12 @@ public sealed class RestoreCheckReply
 public sealed class OkReply
 {
     public bool Ok { get; set; }
+}
+
+/// <summary>The dairy's feeding bell: who rang it last and when it can ring again (unix seconds).</summary>
+public sealed class BellInfo
+{
+    public string By { get; set; } = "";
+    public long At { get; set; }
+    public long ReadyAt { get; set; }
 }

@@ -1110,11 +1110,13 @@ public sealed partial class MainWindow : Window
             var qualityHeld = qwait > wait;
             if (qualityHeld) wait = qwait;
             var full = G.NeedsFullFor(item);
+            var upOnly = G.UpgradeOnly(item);
             var waiting = wait > TimeSpan.Zero || full != null;
             var tip = problem ?? full ?? (qualityHeld ? $"Quality treats share a {Grades.QualityTreatHours:0}-hour cooldown." :
-                waiting ? $"Eating, drinking and treats each wait {Catalog.NeedCooldownMinutes:0} minutes between uses." : $"{item.Desc}\n{Effects(item)}");
+                waiting ? $"Eating, drinking and treats each wait {Catalog.NeedCooldownMinutes:0} minutes between uses." : upOnly ?? $"{item.Desc}\n{Effects(item)}");
             var id = item.Id;
-            cells.Add(($"##feed{id}", item.Icon, item.Name, full != null ? $"{have} left · bar over an hour" : waiting ? $"{have} left · ready in {DairyGame.Wait(wait)}" : $"{have} left · {Effects(item, true)}",
+            cells.Add(($"##feed{id}", item.Icon, item.Name, full != null ? $"{have} left · bar over an hour" : waiting ? $"{have} left · ready in {DairyGame.Wait(wait)}"
+                    : upOnly != null ? $"{have} left · bonus only, no time" : $"{have} left · {Effects(item, true)}",
                 "Eat", "honey", ok && !waiting, tip, () => G.UseFeed(id)));
         }
 
@@ -1200,10 +1202,12 @@ public sealed partial class MainWindow : Window
             var qualityHeld = qwait > wait;
             if (qualityHeld) wait = qwait;
             var full = G.NeedsFullFor(item);
+            var upOnly = G.UpgradeOnly(item);
             var waiting = wait > TimeSpan.Zero || full != null;
             var tip = problem ?? full ?? (have <= 0 ? "Buy more in the Shop." : qualityHeld ? $"Quality treats share a {Grades.QualityTreatHours:0}-hour cooldown." :
-                waiting ? $"Eating, drinking and treats each wait {Catalog.NeedCooldownMinutes:0} minutes between uses." : item.Desc);
-            var sub = full != null ? $"{have} left · bar over an hour" : waiting ? $"{have} left · ready in {DairyGame.Wait(wait)}" : $"{have} left · {Effects(item)}";
+                waiting ? $"Eating, drinking and treats each wait {Catalog.NeedCooldownMinutes:0} minutes between uses." : upOnly ?? item.Desc);
+            var sub = full != null ? $"{have} left · bar over an hour" : waiting ? $"{have} left · ready in {DairyGame.Wait(wait)}"
+                : upOnly != null ? $"{have} left · {upOnly}" : $"{have} left · {Effects(item)}";
             if (Row($"##feed{item.Id}", item.Icon, item.Name, sub, "Eat", "honey", ok && have > 0 && !waiting, tip, width))
                 G.UseFeed(item.Id);
         }

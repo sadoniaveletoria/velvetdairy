@@ -294,6 +294,15 @@ await test("dairy XP: only in the dairy, capped per member per day", async () =>
   assert.equal((await call(bob, "POST", "/v1/dairy/tank/take", { grade: 0, oz: 4 })).data.left, 8.5);
   assert.equal((await call(bob, "POST", "/v1/dairy/tank/take", { grade: 0, oz: 50 })).status, 400, "not that much");
   assert.equal((await call(carl, "POST", "/v1/dairy/tank/take", { grade: 0, oz: 1 })).status, 403, "bulls can't");
+  // "Fill up" asks for what the tank shows, rounded: 4.96 oz shows as 5.0, and 5 can be taken (the tank goes to 0)
+  const tankBefore = sqlite.prepare("SELECT oz FROM dairy_tank WHERE grade = 0").get().oz;
+  sqlite.prepare("UPDATE dairy_tank SET oz = 4.96 WHERE grade = 0").run();
+  const up = await call(bob, "POST", "/v1/dairy/tank/take", { grade: 0, oz: 5 });
+  assert.equal(up.status, 200);
+  assert.equal(up.data.left, 0);
+  assert.equal((await call(bob, "POST", "/v1/dairy/tank/take", { grade: 0, oz: 1 })).status, 400, "empty now");
+  sqlite.prepare("UPDATE dairy_tank SET oz = ? WHERE grade = 0").run(tankBefore);
+  sqlite.prepare("UPDATE carried SET oz = oz - 5 WHERE install = ?").run(bob.id);
   // A cow's hand milking pays the farmer a share
   await beat(alice, { houseId: HOUSE, awake: true });
   const hp = await call(alice, "POST", "/v1/handpay", { farmer: "Bob Hand", world: "Gilgamesh", oz: 10, grade: 1 });
@@ -468,6 +477,10 @@ await test("weekend contest: pumping fills the contract too and ranks pumpers; t
   const rung = await call(alice, "POST", "/v1/dairy/notice", { kind: "feedingBell" });
   assert.equal(rung.status, 200, JSON.stringify(rung.data));
   assert.equal((await call(alice, "POST", "/v1/dairy/notice", { kind: "feedingBell" })).status, 429, "once an hour");
+  // The dairy's progress says when it can ring again (the button stays grey until then)
+  const bell = (await call(alice, "GET", "/v1/dairy/mine")).data.progress.bell;
+  assert.ok(bell.by.length > 0);
+  assert.equal(bell.readyAt - bell.at, 3600);
   const heard = (await beat(carl, { houseId: HOUSE, noticeAfter: 0 })).data.notices;
   assert.ok(heard.some(n => n.kind === "feedingBell"), "everyone in the dairy hears it");
   // The contest

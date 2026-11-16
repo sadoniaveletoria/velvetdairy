@@ -23,6 +23,12 @@ public sealed class ChangelogWindow : Window
     /// <summary>Newest first. Write these for players: what changed for them, not how.</summary>
     private static readonly Entry[] Entries =
     {
+        new("0.9.87", "Better treats, Fill up, the bell", new[]
+        {
+            "A better treat still works when its bar is over an hour: its bigger bonus takes over (Cream clover's +8% becomes Star clover's +10%), but no time is added. Its row warns you first: \"bonus only, no time\".",
+            "Fill up in the Kitchen takes the last bit of the dairy tank too (it said 5 oz but couldn't take it when the tank had 4.96).",
+            "The feeding bell button is greyed out while it's on its hourly cooldown (\"Bell ready in 23m\", and hovering says who rang it), and while you're idle.",
+        }),
         new("0.9.86", "Full bars", new[]
         {
             "Food and treats are greyed out while every bar they fill is over an hour (or full), even ones that also do something else, so nothing gets used up for less than it says. A treat a farmer feeds you doesn't overfill a bar either.",
