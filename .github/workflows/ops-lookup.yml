@@ -8,11 +8,15 @@ jobs:
   look:
     runs-on: ubuntu-latest
     steps:
-      - name: Read-only check of her installs
+      - name: Read-only check
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           set -e
           mkdir w && cd w && printf 'name="x"\n' > wrangler.toml
-          npx --yes wrangler@4 d1 execute velvet-dairy --remote --json --command "SELECT id, last_seen, version, (SELECT COUNT(*) FROM memberships m WHERE m.install=i.id) AS mships FROM installs i WHERE key_hash='14455c1c35381ebd348995d27ab2ec8268c8c75d42a93f4ae6b9e14bf0e17039'" | grep '"id"\|last_seen\|version\|mships'
+          echo "== installs that played as Rayla Velvet =="
+          npx --yes wrangler@4 d1 execute velvet-dairy --remote --json --command "WITH r AS (SELECT DISTINCT install FROM memberships WHERE name='Rayla Velvet' UNION SELECT i.id FROM installs i WHERE i.char_hash IN (SELECT i2.char_hash FROM installs i2 JOIN memberships m ON m.install=i2.id WHERE m.name='Rayla Velvet')) SELECT substr(i.id,1,8) AS inst, datetime(i.created,'unixepoch') AS created, datetime(i.last_seen,'unixepoch') AS last_seen, i.version, (SELECT COUNT(*) FROM memberships m WHERE m.install=i.id) AS mships, (SELECT group_concat(d.name||':'||m.role) FROM memberships m JOIN dairies d ON d.id=m.dairy_id WHERE m.install=i.id) AS dairies, datetime(c.saved,'unixepoch') AS backup_saved, c.progress, length(c.save) AS backup_size, datetime(NULLIF(c.prev_saved,0),'unixepoch') AS prev_saved FROM installs i JOIN r ON r.install=i.id LEFT JOIN cloud_saves c ON c.install=i.id ORDER BY i.last_seen DESC" | grep -v '"served\|"timings\|sql_duration\|"duration\|size_after\|total_attempts\|last_row_id\|rows_read\|rows_written\|changed_db\|"changes\|"success\|"meta'
+          echo "== restore codes / keys for rayla =="
+          npx --yes wrangler@4 d1 execute velvet-dairy --remote --json --command "SELECT 'code' AS kind, substr(owner,1,8) AS owner, datetime(created,'unixepoch') AS created, datetime(expires,'unixepoch') AS expires, checked FROM restore_codes WHERE who LIKE 'rayla velvet@%' UNION ALL SELECT 'key', substr(discord,1,4), datetime(created,'unixepoch'), datetime(expires,'unixepoch'), CASE WHEN used>0 THEN datetime(used,'unixepoch') ELSE 'unused' END FROM restore_keys WHERE who LIKE 'rayla velvet@%'" | grep -v '"served\|"timings\|sql_duration\|"duration\|size_after\|total_attempts\|last_row_id\|rows_read\|rows_written\|changed_db\|"changes\|"success\|"meta'
+          date -u
