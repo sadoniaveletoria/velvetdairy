@@ -15,9 +15,6 @@ jobs:
         run: |
           set -e
           mkdir w && cd w && printf 'name="x"\n' > wrangler.toml
-          ID=5340a35685b12bd18bac5109c754c7b3
-          Q="SELECT 'memberships' AS t, role, json_extract(status,'\$.level') AS cow, json_extract(status,'\$.bullLevel') AS bull, json_extract(status,'\$.farmerLevel') AS farmer, json_extract(status,'\$.quality') AS quality, json_extract(status,'\$.totalOz') AS totalOz, json_extract(status,'\$.w') AS written FROM memberships WHERE install='$ID' UNION ALL SELECT 'members_old', role, json_extract(status,'\$.level'), json_extract(status,'\$.bullLevel'), json_extract(status,'\$.farmerLevel'), json_extract(status,'\$.quality'), json_extract(status,'\$.totalOz'), json_extract(status,'\$.w') FROM members WHERE install='$ID'"
-          npx --yes wrangler@4 d1 execute velvet-dairy --remote --json --command "$Q"
-          echo "---- time travel ----"
-          npx --yes wrangler@4 d1 time-travel info velvet-dairy || true
-          npx --yes wrangler@4 d1 time-travel info velvet-dairy --timestamp=2026-11-16T00:30:00Z || true
+          H=8f93b8aa3ac5f56d16fba688cb9aaaf8f240341c275042af1cabefc013c3039b
+          npx --yes wrangler@4 d1 execute velvet-dairy --remote --json --command "SELECT substr(id,1,8) AS inst, created, last_seen, version, (SELECT COUNT(*) FROM memberships m WHERE m.install=i.id) AS mships, (SELECT name FROM dairies d WHERE d.owner=i.id) AS owns FROM installs i WHERE char_hash='$H' OR id IN (SELECT install FROM memberships WHERE name='Sadonia Velvet') OR id='5340a35685b12bd18bac5109c754c7b3'" | grep -v '"served\|"timings\|sql_duration\|"duration\|size_after\|total_attempts\|last_row_id'
+          npx --yes wrangler@4 d1 execute velvet-dairy --remote --json --command "SELECT substr(m.install,1,8) AS inst, d.name AS dairy, m.role, json_extract(m.status,'\$.level') AS cow, json_extract(m.status,'\$.bullLevel') AS bull, json_extract(m.status,'\$.farmerLevel') AS farmer, json_extract(m.status,'\$.quality') AS quality, json_extract(m.status,'\$.totalOz') AS totalOz, json_extract(m.status,'\$.w') AS written FROM memberships m LEFT JOIN dairies d ON d.id=m.dairy_id WHERE m.name='Sadonia Velvet'" | grep -v '"served\|"timings\|sql_duration\|"duration\|size_after\|total_attempts\|last_row_id'
