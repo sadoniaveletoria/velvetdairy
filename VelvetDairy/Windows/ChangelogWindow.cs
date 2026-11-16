@@ -23,6 +23,10 @@ public sealed class ChangelogWindow : Window
     /// <summary>Newest first. Write these for players: what changed for them, not how.</summary>
     private static readonly Entry[] Entries =
     {
+        new("0.9.86", "Full bars", new[]
+        {
+            "Food and treats are greyed out while every bar they fill is over an hour (or full), even ones that also do something else, so nothing gets used up for less than it says. A treat a farmer feeds you doesn't overfill a bar either.",
+        }),
         new("0.9.85", "Backup setup before you play", new[]
         {
             "Before playing, everyone sets up their save backup once (existing players too): the first backup goes up, and you confirm your recovery code by typing its last 5 characters. Or choose to play without the network, knowing a lost save can't be recovered.",

@@ -981,13 +981,14 @@ public sealed partial class DairyGame
         var cd = DateTime.UtcNow.AddMinutes(Catalog.NeedCooldownMinutes);
         if (item.Happy > 0) Cow.HappyReadyUtc = cd;
         if (item.Fed > 0) Cow.FedReadyUtc = cd;
-        if (item.Fed > 0)
+        // A bar over an hour doesn't take more (the same as eating it yourself)
+        if (item.Fed > 0 && !NeedFull(Cow.Hunger))
         {
             Cow.FedBonus = Cow.Hunger <= 0 ? item.Fed : Math.Max(Cow.FedBonus, item.Fed);
             Cow.Hunger = Fill(Cow.Hunger);
         }
 
-        if (item.Happy > 0)
+        if (item.Happy > 0 && !NeedFull(Cow.Mood))
         {
             Cow.HappyBonus = Cow.Mood <= 0 ? item.Happy : Math.Max(Cow.HappyBonus, item.Happy);
             Cow.Mood = Fill(Cow.Mood);
@@ -1034,10 +1035,12 @@ public sealed partial class DairyGame
 
     public const float NeedTopUpLimit = 60f;
 
-    /// <summary>A bar that's over an hour: no more until it's under.</summary>
-    public bool NeedFull(float bar) => NeedMinutesLeft(bar) > NeedTopUpLimit;
+    /// <summary>A bar that's over an hour, or already full to the top: no more until it's under.</summary>
+    public bool NeedFull(float bar) => NeedMinutesLeft(bar) > NeedTopUpLimit || bar >= 99.5f;
 
-    private string FullText(string bar, float v) => $"Your {bar} bar is over an hour ({NeedMinutesLeft(v):0} min). Top it up once it's under an hour.";
+    private string FullText(string bar, float v) => NeedMinutesLeft(v) > NeedTopUpLimit
+        ? $"Your {bar} bar is over an hour ({NeedMinutesLeft(v):0} min). Top it up once it's under an hour."
+        : $"Your {bar} bar is full. Top it up once it's gone down.";
 
     /// <summary>For your status: minutes left on each bar (so farmers know whether grooming or feeding would help).</summary>
     public int[] NeedMinutesNow => new[] { Cow.Hunger, Cow.Thirst, Cow.Comfort, Cow.Mood }.Select(v => (int)Math.Round(NeedMinutesLeft(v))).ToArray();
@@ -2605,15 +2608,17 @@ public sealed partial class DairyGame
         return null;
     }
 
-    /// <summary>A food that only fills bars, all of them over an hour: there's nothing for it to do yet.</summary>
+    /// <summary>
+    /// A food that fills bars, all of them over an hour: it's greyed out until one is under an hour, even if it does
+    /// something else too (so it's never eaten for less than it says).
+    /// </summary>
     public string? NeedsFullFor(FeedItem item)
     {
         var fills = new List<(string Bar, float V)>();
         if (item.Fed > 0) fills.Add(("Fed", Cow.Hunger));
         if (item.Water > 0) fills.Add(("Watered", Cow.Thirst));
         if (item.Happy > 0) fills.Add(("Happy", Cow.Mood));
-        var onlyBars = item.BoostMinutes == 0 && item.Quality == 0 && item.HoldDays == 0 && item.XpBoostMinutes == 0 && item.NextSeedBonus == 0 && !item.StudTonic && item.RestHours == 0;
-        if (fills.Count == 0 || !onlyBars || fills.Any(f => !NeedFull(f.V))) return null;
+        if (fills.Count == 0 || fills.Any(f => !NeedFull(f.V))) return null;
         return fills.Count == 1 ? FullText(fills[0].Bar, fills[0].V) : $"Your {string.Join(" and ", fills.Select(f => f.Bar))} bars are over an hour. Eat again once one is under an hour.";
     }
 
