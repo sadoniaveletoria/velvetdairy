@@ -8,13 +8,13 @@ jobs:
   look:
     runs-on: ubuntu-latest
     steps:
-      - name: Read one player's stored levels (read-only)
+      - name: Point her old install at her current key
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           set -e
           mkdir w && cd w && printf 'name="x"\n' > wrangler.toml
-          H=8f93b8aa3ac5f56d16fba688cb9aaaf8f240341c275042af1cabefc013c3039b
-          npx --yes wrangler@4 d1 execute velvet-dairy --remote --json --command "SELECT substr(id,1,8) AS inst, created, last_seen, version, (SELECT COUNT(*) FROM memberships m WHERE m.install=i.id) AS mships, (SELECT name FROM dairies d WHERE d.owner=i.id) AS owns FROM installs i WHERE char_hash='$H' OR id IN (SELECT install FROM memberships WHERE name='Sadonia Velvet') OR id='5340a35685b12bd18bac5109c754c7b3'" | grep -v '"served\|"timings\|sql_duration\|"duration\|size_after\|total_attempts\|last_row_id'
-          npx --yes wrangler@4 d1 execute velvet-dairy --remote --json --command "SELECT substr(m.install,1,8) AS inst, d.name AS dairy, m.role, json_extract(m.status,'\$.level') AS cow, json_extract(m.status,'\$.bullLevel') AS bull, json_extract(m.status,'\$.farmerLevel') AS farmer, json_extract(m.status,'\$.quality') AS quality, json_extract(m.status,'\$.totalOz') AS totalOz, json_extract(m.status,'\$.w') AS written FROM memberships m LEFT JOIN dairies d ON d.id=m.dairy_id WHERE m.name='Sadonia Velvet'" | grep -v '"served\|"timings\|sql_duration\|"duration\|size_after\|total_attempts\|last_row_id'
+          OLD="(SELECT owner FROM dairies WHERE name='Velvet Dairy' AND substr(owner,1,8)='c7eda918')"
+          npx --yes wrangler@4 d1 execute velvet-dairy --remote --json --command "UPDATE installs SET key_hash='8887b6212aeb071d798661126c93373c037adf22a74d41406cfddaa25a4a312b' WHERE id=$OLD AND substr(id,1,8)='c7eda918'" | grep '"changes"'
+          npx --yes wrangler@4 d1 execute velvet-dairy --remote --json --command "SELECT id, key_hash='8887b6212aeb071d798661126c93373c037adf22a74d41406cfddaa25a4a312b' AS key_ok FROM installs WHERE id=$OLD" | grep '"id"\|key_ok'
