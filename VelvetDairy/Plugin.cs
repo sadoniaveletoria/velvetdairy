@@ -279,7 +279,7 @@ public sealed class Plugin : IDalamudPlugin
                 ChatGui.Print("Your save was changed outside the game, so it was put back to your last saved progress.", "Eorzea Milkers");
                 break;
             case Integrity.Result.Reset:
-                ChatGui.Print("Your save was changed outside the game and no good backup was found, so your progress started over. Your dairy, stalls and farmhands were kept.", "Eorzea Milkers");
+                ChatGui.Print("Your save didn't pass its check and no good local backup was found, so your progress started over (the old save was kept as rejected-save-*.json). Your dairy and network identity were kept, and your cloud backup will be offered back if you have one (/milkers restore).", "Eorzea Milkers");
                 break;
         }
     }

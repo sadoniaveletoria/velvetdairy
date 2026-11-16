@@ -192,6 +192,21 @@ Milk is for people who are actually playing.
 
 ---
 
+## Backup and restore (new PC, reinstall, lost settings)
+
+Your save is backed up on the Eorzea Milkers server every few minutes while you play (with the network on). The backup never includes your network key or developer phrase. If you lose your save, you get everything back: progress, coins, pantry and upgrades, plus your dairy, memberships and roles.
+
+**Settings → Backup and restore**, or `/milkers restore`:
+- **Recovery code:** press **Show my recovery code** and write it down or screenshot it. It starts with `EMR1-`. On a new install, paste it under **Restore with a recovery code** and press **Restore** twice. Anyone with this code can sign in as you, so keep it private.
+- **No code? Use the Lodestone.** Log in as the character and press **Get a code** (or use `/restore` in the Discord: `/restore character:Your Name world:YourWorld`). You get a code like `MILK-ABCD2345`. Put it anywhere in your Lodestone **Character Profile** (**Open my Lodestone profile** takes you there) and save. Then press **Check the Lodestone and restore** twice. When it's back, take the code out of your profile. A code lasts an hour and only works for whoever asked for it.
+- When a brand new save starts on a character that has played on another install, the window opens by itself and offers the restore.
+- Restoring replaces the save on this character. The save it replaces is kept on your PC as `before-restore-*.json`, in the plugin's settings folder.
+- Players from before version 0.9.84 have no cloud backup of their progress yet. The Lodestone restore still brings back their dairy, memberships and roles.
+
+**If a save fails its check:** saves are signed, so editing the plugin's files is caught. When that happens, the last good local backup is used. If there's none, progress starts over, but your dairy and network identity are kept. The rejected save is kept as `rejected-save-*.json`, and your cloud backup is offered back. A save that started over never replaces your cloud backup.
+
+**Dev builds** (loaded from Dev Plugin Locations) keep their own save (`dev-config.json`) and never upload a backup, so trying one can't touch your real progress.
+
 ## Privacy and safety
 
 - Nothing is ever said in public chat. The plugin never moves your character.
@@ -210,6 +225,8 @@ Milk is for people who are actually playing.
 | `/milkers guide` | Open the how-to guide |
 | `/milkers tutorial` | Run the first-time walkthrough again |
 | `/milkers changes` | See what's new in recent updates |
+| `/milkers restore` | Backup and restore: your recovery code, or get your save back on a new install |
+| `/milkers support` | Copy your support info for #bug-reports |
 
 ---
 
