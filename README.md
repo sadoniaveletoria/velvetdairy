@@ -196,6 +196,8 @@ Milk is for people who are actually playing.
 
 Your save is backed up on the Eorzea Milkers server every few minutes while you play (with the network on). The backup never includes your network key or developer phrase. If you lose your save, you get everything back: progress, coins, pantry and upgrades, plus your dairy, memberships and roles.
 
+**Backup setup comes first.** Before you play (right after the 18+ check, and once for existing players after updating), the plugin backs up your save and shows your recovery code. Type its last 5 characters to show you saved it, then press **Done, let me play**. Until then the game is paused and the HUD is hidden. If you'd rather not use the network, tick "I understand that if I lose my save, it can't be recovered" and press **Play without backups**. That turns the network off. You can set backups up later in Settings.
+
 **Settings → Backup and restore**, or `/milkers restore`:
 - **Recovery code:** press **Show my recovery code** and write it down or screenshot it. It starts with `EMR1-`. On a new install, paste it under **Restore with a recovery code** and press **Restore** twice. Anyone with this code can sign in as you, so keep it private.
 - **No code? Verify in the Discord.** Go to **#restore-save** in the Eorzea Milkers Discord (or type `/restore` there) and press **Start**:
@@ -207,6 +209,7 @@ Your save is backed up on the Eorzea Milkers server every few minutes while you 
   The key works once, for a day, and only for that character. Take the code out of your Lodestone profile afterwards.
 - **Without Discord:** the same window can verify on the Lodestone itself. Press **Get a code**, put it in your profile, then press **Check the Lodestone and restore** twice.
 - When a brand new save starts on a character that has played on another install, the window opens by itself and offers the restore.
+- **Make a new code:** if your recovery code got out (a screenshot, a shared file), press **Make a new code** twice. Your old code stops working; save the new one.
 - Restoring replaces the save on this character. The save it replaces is kept on your PC as `before-restore-*.json`, in the plugin's settings folder.
 - Players from before version 0.9.84 have no cloud backup of their progress yet. The Lodestone restore still brings back their dairy, memberships and roles.
 

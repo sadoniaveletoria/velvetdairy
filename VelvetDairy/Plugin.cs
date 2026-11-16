@@ -184,6 +184,13 @@ public sealed class Plugin : IDalamudPlugin
         if (!Tutorial.IsOpen) Changes.CheckAfterUpdate();
         Helpers.Check(dt);
         Restore.Tick();
+        // Backup setup needed (new players, and everyone once after the update): open the window to it once
+        if (BackupSetupNeeded && !setupShown && ObjectTable.LocalPlayer != null)
+        {
+            setupShown = true;
+            MainWindow.IsOpen = true;
+            ChatGui.Print("[Eorzea Milkers] Before you play: set up your save backup (it takes a minute). It's open in the Eorzea Milkers window.");
+        }
 
         // Needs and milk change every second; write them out now and then
         saveTimer += dt;
@@ -399,6 +406,15 @@ public sealed class Plugin : IDalamudPlugin
 
     /// <summary>This character's save was made new this session (a new install, or a new character).</summary>
     public bool FreshSave { get; private set; }
+
+    /// <summary>
+    /// Backup setup comes before playing (after the 18+ check): back up once and confirm the recovery code, or choose to
+    /// play without the network. Existing players do it once too. Dev builds don't upload, so they skip it.
+    /// </summary>
+    public bool BackupSetupNeeded =>
+        !PluginInterface.IsDev && Config.ActiveKey != null && Config.Farm.Confirmed18 && !Config.Farm.BackupReady && !Config.Farm.BackupOptOut;
+
+    private bool setupShown;
 
     /// <summary>Cloud backups go up from live installs only: a dev build's save stays on this PC.</summary>
     public bool CloudBackupAllowed => !PluginInterface.IsDev && Config.ActiveKey != null && Config.Farm.Confirmed18 && Config.Farm.NetEnabled;

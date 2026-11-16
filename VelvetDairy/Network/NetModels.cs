@@ -645,3 +645,8 @@ public sealed class RestoreCheckReply
     public string Prev { get; set; } = "";
     public long PrevSaved { get; set; }
 }
+
+public sealed class OkReply
+{
+    public bool Ok { get; set; }
+}

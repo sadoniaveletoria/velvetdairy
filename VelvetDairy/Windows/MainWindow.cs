@@ -38,6 +38,9 @@ public sealed partial class MainWindow : Window
     private static readonly string[] Tabs = { "Barn", "Roles", "Pantry", "Shop", "Creamery", "Dairy", "Dairies", "Progress", "Settings" };
     private int tab;
     private bool ticked18;
+    private bool tickedNoBackup;
+    private string typedCode = "";
+    private double setupAskedAt = -100;
     private string dairyName = "";
     private string newEmote = "";
     private float shownMilk = -1;
@@ -221,6 +224,7 @@ public sealed partial class MainWindow : Window
         var bodyMax = origin + avail - new Vector2(Pad, Pad);
 
         if (!F.Confirmed18) DrawGate(bodyMin, bodyMax);
+        else if (plugin.BackupSetupNeeded) DrawBackupSetup(bodyMin, bodyMax);
         else
         {
             switch (tab)
@@ -688,6 +692,108 @@ public sealed partial class MainWindow : Window
                 plugin.SaveConfig();
             }
         });
+    }
+
+    /// <summary>
+    /// Before playing: back up once and confirm the recovery code (type its last 5 characters), so a lost save can
+    /// always come back. Or choose to play without the network, knowing a lost save can't be recovered.
+    /// </summary>
+    private void DrawBackupSetup(Vector2 min, Vector2 max)
+    {
+        var w = Math.Min(620f, max.X - min.X);
+        var h = Math.Min(F.NetEnabled ? 470f : 330f, max.Y - min.Y);
+        var c = (min + max) / 2;
+        var pmin = c - new Vector2(w / 2, h / 2);
+        Panel("##backupsetup", pmin, pmin + new Vector2(w, h), "Protect your save", width =>
+        {
+            Ui.Wrapped("Before you play: your save is backed up on the Eorzea Milkers server, so a new PC, a reinstall or a lost settings file " +
+                       "never costs you your progress or your dairy. This takes a minute, once.", Theme.Ink, width);
+            Gap(10);
+
+            if (!F.NetEnabled)
+            {
+                Ui.Wrapped("Backups need the Eorzea Milkers Network, which is off.", Theme.InkSoft, width);
+                Gap(6);
+                if (Ui.Button("##setupneton", "Turn on the network", new Vector2(220, 34), "rose"))
+                {
+                    F.NetEnabled = true;
+                    plugin.SaveConfig();
+                }
+
+                DrawNoBackupChoice(width);
+                return;
+            }
+
+            // 1. The first backup
+            var net = plugin.Net;
+            var backedUp = net.LastBackupUtc.HasValue;
+            if (!backedUp && net.Active && ImGui.GetTime() - setupAskedAt > 30)
+            {
+                setupAskedAt = ImGui.GetTime();
+                net.BackupNow();
+            }
+
+            ImGui.TextColored(backedUp ? Theme.SageDeep : Theme.Ink,
+                backedUp ? "1. Backed up." : net.Active ? "1. Backing up your save..." : "1. Connecting to the network...");
+            if (!backedUp && net.BackupNote.Length > 0) Ui.Wrapped(net.BackupNote, Theme.Warn, width);
+            Gap(8);
+
+            // 2. The recovery code
+            var code = net.RecoveryCode();
+            ImGui.TextColored(Theme.Ink, "2. Your recovery code. Screenshot it or write it down: with it, any new install gets everything back.");
+            Ui.Wrapped(code, Theme.RoseDeep, width);
+            if (Ui.Button("##setupcopy", "Copy", new Vector2(80, 26), "cream", code.Length > 0)) ImGui.SetClipboardText(code);
+            ImGui.SameLine();
+            ImGui.TextColored(Theme.InkSoft, "Keep it private: anyone with it can sign in as you.");
+            Gap(8);
+
+            // 3. Prove it was saved
+            var tail = new string(code.Where(char.IsLetterOrDigit).ToArray());
+            tail = tail.Length >= 5 ? tail[^5..] : tail;
+            ImGui.TextColored(Theme.Ink, "3. To show you saved it, type its last 5 characters:");
+            ImGui.SetNextItemWidth(120);
+            ImGui.InputText("##setuptail", ref typedCode, 12);
+            var typed = new string(typedCode.Where(char.IsLetterOrDigit).ToArray()).ToUpperInvariant();
+            var match = tail.Length == 5 && typed == tail;
+            if (typed.Length >= 5 && !match)
+            {
+                ImGui.SameLine();
+                ImGui.TextColored(Theme.Warn, "That doesn't match.");
+            }
+
+            Gap(10);
+            if (Ui.Button("##setupdone", "Done, let me play", new Vector2(220, 38), "rose", backedUp && match,
+                    !backedUp ? "Waiting for the first backup." : !match ? "Type the last 5 characters of your recovery code." : "You're protected."))
+            {
+                F.BackupReady = true;
+                typedCode = "";
+                plugin.SaveConfig();
+                plugin.Tutorial.CheckFirstRun();
+            }
+
+            ImGui.SameLine();
+            ImGui.TextColored(Theme.InkSoft, "Lost the code later? #restore-save in the Discord.");
+            DrawNoBackupChoice(width);
+        });
+    }
+
+    private void DrawNoBackupChoice(float width)
+    {
+        Gap(14);
+        ImGui.Separator();
+        Gap(4);
+        ImGui.TextColored(Theme.InkSoft, "Rather play without the network?");
+        ImGui.Checkbox("I understand that if I lose my save, it can't be recovered##setupnobackup", ref tickedNoBackup);
+        ImGui.SameLine();
+        if (Ui.Button("##setupoptout", "Play without backups", new Vector2(180, 26), "cream", tickedNoBackup,
+                "Turns the network off: no backups, no dairies with other players. You can set backups up later in Settings."))
+        {
+            F.BackupOptOut = true;
+            F.NetEnabled = false;
+            tickedNoBackup = false;
+            plugin.SaveConfig();
+            plugin.Tutorial.CheckFirstRun();
+        }
     }
 
     // =====================================================================
@@ -1935,7 +2041,18 @@ public sealed partial class MainWindow : Window
 
 
         SubHeading("Backup and restore", width);
-        Ui.Wrapped("Your save is backed up on the Eorzea Milkers server every few minutes. New PC or lost settings? Get everything back with your recovery code or your Lodestone profile.", Theme.InkSoft, width);
+        if (F.BackupOptOut)
+        {
+            Ui.Wrapped("Backups are off: you chose to play without them, so a lost save can't be recovered.", Theme.Warn, width);
+            if (ImGui.Button("Set up backups"))
+            {
+                F.BackupOptOut = false;
+                F.NetEnabled = true;
+                plugin.SaveConfig();
+            }
+        }
+        else
+            Ui.Wrapped("Your save is backed up on the Eorzea Milkers server every few minutes. New PC or lost settings? Get everything back with your recovery code, or a restore key from #restore-save in the Discord.", Theme.InkSoft, width);
         if (ImGui.Button("Backup and restore...")) plugin.Restore.IsOpen = true;
 
         SubHeading("Privacy and safety", width);

@@ -33,7 +33,7 @@ public sealed class HelperNoticeWindow : Window
     public void Check(float dt)
     {
         var f = plugin.Config.Farm;
-        if (checkedThisSession || IsOpen || !f.Confirmed18 || !f.TutorialDone || Plugin.ObjectTable.LocalPlayer == null) return;
+        if (checkedThisSession || IsOpen || !f.Confirmed18 || !f.TutorialDone || plugin.BackupSetupNeeded || Plugin.ObjectTable.LocalPlayer == null) return;
         loggedInFor += dt;
         if (loggedInFor < 15 || plugin.Tutorial.IsOpen || plugin.Changes.IsOpen) return;
         checkedThisSession = true;

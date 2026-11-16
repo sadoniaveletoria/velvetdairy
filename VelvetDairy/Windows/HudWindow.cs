@@ -58,7 +58,7 @@ public sealed class HudWindow : Window
     }
 
     public override bool DrawConditions() =>
-        F.ShowHud && F.Confirmed18 && Plugin.ObjectTable.LocalPlayer != null && !DairyGame.IsLalafell() && (!F.HudOnlyInDairy || G.HudPlaceNow);
+        F.ShowHud && F.Confirmed18 && !plugin.BackupSetupNeeded && Plugin.ObjectTable.LocalPlayer != null && !DairyGame.IsLalafell() && (!F.HudOnlyInDairy || G.HudPlaceNow);
 
     public override void PreDraw()
     {

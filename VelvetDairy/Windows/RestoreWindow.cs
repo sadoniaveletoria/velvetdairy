@@ -92,7 +92,8 @@ public sealed class RestoreWindow : Window
     {
         if (unix <= 0) return "a while ago";
         var s = DateTimeOffset.UtcNow.ToUnixTimeSeconds() - unix;
-        return s < 90 ? "just now" : s < 5400 ? $"{s / 60} minutes ago" : s < 129600 ? $"{s / 3600} hours ago" : $"{s / 86400} days ago";
+        static string N(long n, string unit) => $"{n} {unit}{(n == 1 ? "" : "s")} ago";
+        return s < 60 ? "just now" : s < 5400 ? N(s / 60, "minute") : s < 129600 ? N(s / 3600, "hour") : N(s / 86400, "day");
     }
 
     private static void Heading(string text)
@@ -103,10 +104,10 @@ public sealed class RestoreWindow : Window
     }
 
     /// <summary>Restoring replaces this character's save: the button has to be pressed twice.</summary>
-    private bool Confirmed(string id, string label, float w, bool enabled, string tip)
+    private bool Confirmed(string id, string label, float w, bool enabled, string tip, string armedText = "Press again to replace my save")
     {
         var armed = confirming == id && Now < confirmUntil;
-        if (!Ui.Button($"##{id}", armed ? "Press again to replace my save" : label, new Vector2(armed ? 240 : w, 28), armed ? "honey" : "rose", enabled && !busy, tip))
+        if (!Ui.Button($"##{id}", armed ? armedText : label, new Vector2(armed ? 240 : w, 28), armed ? "honey" : "rose", enabled && !busy, tip))
             return false;
         if (armed)
         {
@@ -179,6 +180,19 @@ public sealed class RestoreWindow : Window
             if (Ui.Button("##rscopy", "Copy", new Vector2(80, 26), "cream", code.Length > 0)) ImGui.SetClipboardText(code);
             ImGui.SameLine();
             if (Ui.Button("##rshide", "Hide", new Vector2(80, 26), "cream")) showCode = false;
+        }
+
+        // A code that got out (a screenshot, a shared file): make a new one, and the old one stops working
+        ImGui.SameLine();
+        if (Confirmed("rsnewcode", "Make a new code", 150, Net.Active && f.NetId.Length > 0,
+                "Changes your network key: your old recovery code stops working. Save the new one afterwards.", "Press again: old code stops working"))
+        {
+            busy = true;
+            Net.NewRecoveryCode(() =>
+            {
+                showCode = true;
+                Done("New recovery code made. The old one doesn't work any more: save this one.", true);
+            }, e => Done(e, false));
         }
 
         // ----- Restoring on this install -----

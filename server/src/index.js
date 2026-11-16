@@ -350,6 +350,7 @@ async function route(request, env) {
     ["POST", /^\/v1\/restore\/start$/, () => restoreStart(env, me, request)],
     ["POST", /^\/v1\/restore\/check$/, () => restoreCheck(env, me, request)],
     ["POST", /^\/v1\/restore\/redeem$/, () => restoreRedeem(env, me, request)],
+    ["POST", /^\/v1\/rekey$/, () => rekey(env, me, request)],
   ];
   for (const [verb, re, fn] of routes) {
     const m = method === verb && path.match(re);
@@ -2409,7 +2410,7 @@ async function restoreCheck(env, me, request) {
 
   const charHash = await sha256(`${name.toLowerCase()}@${worldId}`);
   const cand = await restoreCandidate(env, me, charHash);
-  if (!cand) return { ok: false, why: `There's no backup or dairy for ${name} on another install.` };
+  if (!cand) return { ok: false, why: await nothingToRestore(env, me, name, charHash) };
 
   const lode = await lodestoneHasCode(env, name, world, code);
   if (!lode.ok) return { ok: false, why: lode.why };
@@ -2425,6 +2426,15 @@ async function takeOver(env, me, cand, more = []) {
     ...more,
   ]);
   return { ok: true, netId: cand.install, save: cand.save || "", saved: cand.saved || 0, prev: cand.prev_save || "", prevSaved: cand.prev_saved || 0 };
+}
+
+/** Why a restore found nothing: usually this install already is that character's (nothing was lost). */
+async function nothingToRestore(env, me, name, hash) {
+  const mine = await env.DB.prepare("SELECT 1 FROM cloud_saves WHERE install = ? AND char_hash = ?").bind(me.id, hash).first();
+  const member = await env.DB.prepare("SELECT 1 FROM memberships WHERE install = ? LIMIT 1").bind(me.id).first();
+  return mine || member
+    ? `You're already signed in as ${name}: this install has the backup and the dairy, so there's nothing to restore.`
+    : `There's no backup or dairy for ${name} on another install.`;
 }
 
 const RESTORE_KEY_LIFE = 24 * 3600;
@@ -2462,6 +2472,15 @@ async function botRestoreVerify(env, request) {
   return { ok: true, key, expires: t + RESTORE_KEY_LIFE, name: row.name, world: row.world, lodestone: lode.id };
 }
 
+/** A new recovery code: this install's key changes, so the old code (and the old key) stop working. */
+async function rekey(env, me, request) {
+  const b = await body(request);
+  const key = String(b.newKey || "");
+  if (!/^[0-9a-f]{64}$/.test(key)) fail(400, "That isn't a key.");
+  await env.DB.prepare("UPDATE installs SET key_hash = ? WHERE id = ?").bind(await sha256(key), me.id).run();
+  return { ok: true };
+}
+
 /** The plugin on the new install pastes the restore key from Discord while logged in as that character. */
 async function restoreRedeem(env, me, request) {
   const b = await body(request);
@@ -2470,7 +2489,8 @@ async function restoreRedeem(env, me, request) {
   const row = await env.DB.prepare("SELECT * FROM restore_keys WHERE key_hash = ?").bind(await sha256(normKey(b.key))).first();
   if (!row || row.used || row.expires < t) fail(404, "That restore key isn't valid any more. Get a new one in the Discord.");
   if (row.who !== restoreWho(name, world)) fail(400, "That restore key is for a different character. Log in as the character you verified.");
-  const cand = await restoreCandidate(env, me, await sha256(`${name.toLowerCase()}@${worldId}`));
-  if (!cand) return { ok: false, why: `There's no backup or dairy for ${name} on another install.` };
+  const hash = await sha256(`${name.toLowerCase()}@${worldId}`);
+  const cand = await restoreCandidate(env, me, hash);
+  if (!cand) return { ok: false, why: await nothingToRestore(env, me, name, hash) };
   return await takeOver(env, me, cand, [env.DB.prepare("UPDATE restore_keys SET used = ? WHERE key_hash = ?").bind(t, row.key_hash)]);
 }

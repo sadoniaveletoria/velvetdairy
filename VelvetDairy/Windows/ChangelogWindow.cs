@@ -23,6 +23,12 @@ public sealed class ChangelogWindow : Window
     /// <summary>Newest first. Write these for players: what changed for them, not how.</summary>
     private static readonly Entry[] Entries =
     {
+        new("0.9.85", "Backup setup before you play", new[]
+        {
+            "Before playing, everyone sets up their save backup once (existing players too): the first backup goes up, and you confirm your recovery code by typing its last 5 characters. Or choose to play without the network, knowing a lost save can't be recovered.",
+            "Make a new recovery code (Backup and restore) if yours got out: the old one stops working.",
+            "Restoring onto the install that's already yours now says so, instead of \"no backup on another install\".",
+        }),
         new("0.9.84", "Cloud backup and restore", new[]
         {
             "Your save is backed up on the Eorzea Milkers server every few minutes (never your network key or developer phrase). New PC, reinstall or lost settings? You get everything back, with your dairy, memberships and roles.",
@@ -278,7 +284,7 @@ public sealed class ChangelogWindow : Window
     /// <summary>Opens by itself once after an update, with what changed since you last looked.</summary>
     public void CheckAfterUpdate()
     {
-        if (checkedThisSession || IsOpen || !F.Confirmed18 || Plugin.ObjectTable.LocalPlayer == null) return;
+        if (checkedThisSession || IsOpen || !F.Confirmed18 || plugin.BackupSetupNeeded || Plugin.ObjectTable.LocalPlayer == null) return;
         checkedThisSession = true;
         var now = Current.ToString(3);
         if (F.SeenChanges == now) return;

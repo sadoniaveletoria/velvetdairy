@@ -99,6 +99,13 @@ public sealed class NetClient : IDisposable
             return;
         }
 
+        // A new recovery code was being made when the game closed: find out which key the server has before anything else
+        if (F.PendingNetKey.Length > 0)
+        {
+            if (!checkingPending) CheckPendingKey();
+            return;
+        }
+
         if (t >= nextBeat && !beating) Heartbeat();
         if (Last != null && t >= nextBackup) Backup();
         if (Membership != null && t >= nextMine) RefreshMine();
@@ -395,6 +402,54 @@ public sealed class NetClient : IDisposable
     }
 
     public void BackupNow() => Backup(true);
+
+    private bool checkingPending;
+
+    /// <summary>
+    /// A new recovery code: a new key for this install, so the old code stops working. The new key is saved as pending
+    /// first, so if the game closes before the server answers, the next start finds out which key the server kept.
+    /// </summary>
+    public void NewRecoveryCode(Action ok, Action<string> failed)
+    {
+        var next = Convert.ToHexString(RandomNumberGenerator.GetBytes(32)).ToLowerInvariant();
+        F.PendingNetKey = next;
+        plugin.SaveConfig();
+        Call<OkReply>("POST", "/v1/rekey", new { newKey = next }, _ =>
+        {
+            F.NetKey = next;
+            F.PendingNetKey = "";
+            plugin.SaveConfig();
+            Diag.Info("backup", "Made a new recovery code");
+            ok();
+        }, e =>
+        {
+            // It may still have gone through: check which key works
+            CheckPendingKey();
+            failed(e);
+        });
+    }
+
+    private void CheckPendingKey()
+    {
+        if (F.PendingNetKey.Length == 0 || checkingPending) return;
+        checkingPending = true;
+        var pending = F.PendingNetKey;
+        Call<BackupReply>("GET", "/v1/backup", null, _ =>
+        {
+            checkingPending = false;
+            F.NetKey = pending;
+            F.PendingNetKey = "";
+            plugin.SaveConfig();
+            Diag.Info("backup", "The new recovery code was kept by the server");
+        }, e =>
+        {
+            checkingPending = false;
+            if (!e.Contains("key", StringComparison.OrdinalIgnoreCase)) return;   // offline: try again later
+            F.PendingNetKey = "";
+            plugin.SaveConfig();
+            Diag.Info("backup", "The new recovery code didn't reach the server: kept the old one");
+        }, asKey: pending);
+    }
 
     /// <summary>A recovery code: this install's id and key in one string, to sign in as it again on a new install.</summary>
     public string RecoveryCode()

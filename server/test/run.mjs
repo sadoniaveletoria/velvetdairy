@@ -913,6 +913,19 @@ await test("Discord walkthrough: verify on the Lodestone, then paste the restore
   assert.equal((await call(fresh, "POST", "/v1/restore/redeem", { key: v.key, name: "Gail Discord", world: "Gilgamesh", worldId: 40 })).status, 404);
   assert.equal((await beat({ id: gail.id, key: fresh.key, hash: gail.hash })).status, 200);
   delete env.BOT_KEY;
+
+  // Restoring onto the install that already is the character's says so
+  const self = { id: gail.id, key: fresh.key, hash: gail.hash };
+  const { code: own } = (await call(self, "POST", "/v1/restore/start", { name: "Gail Discord", world: "Gilgamesh" })).data;
+  const why = (await call(self, "POST", "/v1/restore/check", { name: "Gail Discord", world: "Gilgamesh", worldId: 40, code: own })).data.why;
+  assert.match(why, /already signed in/);
+
+  // A new recovery code: the old key stops working
+  const newKey = "ab".repeat(32);
+  assert.equal((await call(self, "POST", "/v1/rekey", { newKey })).data.ok, true);
+  assert.equal((await beat(self)).status, 401);
+  assert.equal((await beat({ ...self, key: newKey })).status, 200);
+  assert.equal((await call({ ...self, key: newKey }, "POST", "/v1/rekey", { newKey: "nope" })).status, 400);
 });
 
 console.log(`\n${passed} passed`);

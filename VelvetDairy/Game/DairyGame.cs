@@ -584,6 +584,7 @@ public sealed partial class DairyGame
         if (!F.Confirmed18) return "Confirm you're 18+ in Settings to start.";
         if (Plugin.ObjectTable.LocalPlayer == null) return "Not logged in.";
         if (IsLalafell()) return "Eorzea Milkers isn't available for Lalafell characters.";
+        if (plugin.BackupSetupNeeded) return "Set up your save backup first (Eorzea Milkers window).";
         return null;
     }
 

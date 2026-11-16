@@ -169,6 +169,7 @@ public static partial class Integrity
             CharName = f.CharName, CharWorld = f.CharWorld, OwnerRole = f.OwnerRole, OwnerRoles = f.OwnerRoles,
             ListPublic = f.ListPublic, ListShowName = f.ListShowName, ListDescription = f.ListDescription, ScanAllow = f.ScanAllow,
             HudOnlyInDairy = f.HudOnlyInDairy, Metric = f.Metric, TutorialDone = f.TutorialDone, SeenChanges = f.SeenChanges,
+            BackupReady = f.BackupReady, BackupOptOut = f.BackupOptOut,
             Confirmed18 = f.Confirmed18, ShowHud = f.ShowHud, LockHud = f.LockHud, ChatEcho = f.ChatEcho,
             SoundOn = f.SoundOn, SoundVolume = f.SoundVolume, DevKey = f.DevKey,
             Dairy = f.Dairy, DairyRadius = f.DairyRadius, HandEmotes = f.HandEmotes,

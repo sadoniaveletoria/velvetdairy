@@ -179,6 +179,7 @@ public class FarmSave
     // ----- Eorzea Milkers Network -----
     public string NetId { get; set; } = "";          // random id for this character's save (the server knows each character by it)
     public string NetKey { get; set; } = "";         // secret that proves it's this save
+    public string PendingNetKey { get; set; } = "";  // a new key being set (new recovery code), until the server confirms it
     public string CharName { get; set; } = "";         // the character this save belongs to, as last seen (to notice name changes and world transfers)
     public string CharWorld { get; set; } = "";
     public bool NetEnabled { get; set; } = true;
@@ -205,6 +206,8 @@ public class FarmSave
     // ----- Save protection -----
     public string Seal { get; set; } = "";            // signature of the progress above (see Game/Integrity.cs)
     public int EditsCaught { get; set; }              // times an edited save was caught and undone
+    public bool BackupReady { get; set; }             // backup setup done: backed up once and the recovery code confirmed
+    public bool BackupOptOut { get; set; }            // chose to play without the network and backups
 
     public static readonly string[] DefaultHandEmotes = { "/beesknees" };
 
