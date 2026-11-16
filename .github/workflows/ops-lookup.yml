@@ -8,13 +8,12 @@ jobs:
   look:
     runs-on: ubuntu-latest
     steps:
-      - name: Point her old install at her current key
+      - name: Read-only check of her installs
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           set -e
           mkdir w && cd w && printf 'name="x"\n' > wrangler.toml
-          OLD="(SELECT owner FROM dairies WHERE name='Velvet Dairy' AND substr(owner,1,8)='c7eda918')"
-          npx --yes wrangler@4 d1 execute velvet-dairy --remote --json --command "UPDATE installs SET key_hash='8887b6212aeb071d798661126c93373c037adf22a74d41406cfddaa25a4a312b' WHERE id=$OLD AND substr(id,1,8)='c7eda918'" | grep '"changes"'
-          npx --yes wrangler@4 d1 execute velvet-dairy --remote --json --command "SELECT id, key_hash='8887b6212aeb071d798661126c93373c037adf22a74d41406cfddaa25a4a312b' AS key_ok FROM installs WHERE id=$OLD" | grep '"id"\|key_ok'
+          npx --yes wrangler@4 d1 execute velvet-dairy --remote --json --command "SELECT substr(id,1,8) AS inst, last_seen, version, (SELECT COUNT(*) FROM memberships m WHERE m.install=i.id) AS mships, (SELECT name FROM dairies d WHERE d.owner=i.id) AS owns FROM installs i WHERE char_hash='8f93b8aa3ac5f56d16fba688cb9aaaf8f240341c275042af1cabefc013c3039b' OR substr(id,1,8) IN ('c7eda918','5340a356')" | grep '"inst"\|last_seen\|version\|mships\|owns'
+          date -u +%s
