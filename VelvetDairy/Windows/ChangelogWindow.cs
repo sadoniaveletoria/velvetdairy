@@ -26,7 +26,7 @@ public sealed class ChangelogWindow : Window
         new("0.9.84", "Cloud backup and restore", new[]
         {
             "Your save is backed up on the Eorzea Milkers server every few minutes (never your network key or developer phrase). New PC, reinstall or lost settings? You get everything back, with your dairy, memberships and roles.",
-            "Restore with your recovery code (Settings > Backup and restore: write it down or screenshot it), or prove the character is yours by putting a code in your Lodestone Character Profile. The code comes from the plugin or from the Discord bot with /restore.",
+            "Restore with your recovery code (Settings > Backup and restore: write it down or screenshot it). No code? #restore-save in the Discord walks you through verifying your character on the Lodestone and gives you a restore key to paste in. The plugin can also verify on the Lodestone itself.",
             "A brand new save offers the restore by itself when that character has played on another install. /milkers restore opens it any time.",
             "If a save ever fails its check and has to start over, it keeps your dairy and network identity, the old save is kept on your PC, and your cloud backup is offered back (a reset save never replaces it).",
             "Builds loaded from Dev Plugin Locations keep their own save, so trying one can never touch your real progress.",

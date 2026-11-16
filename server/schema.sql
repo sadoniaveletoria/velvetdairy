@@ -400,9 +400,23 @@ CREATE INDEX IF NOT EXISTS cloud_saves_char ON cloud_saves(char_hash);
 CREATE TABLE IF NOT EXISTS restore_codes (
   code     TEXT PRIMARY KEY,
   who      TEXT NOT NULL,                 -- "name@world", lower case
+  name     TEXT NOT NULL DEFAULT '',      -- as typed, for the Lodestone search
+  world    TEXT NOT NULL DEFAULT '',
   owner    TEXT NOT NULL,                 -- installs.id, or "discord:<user id>"
   created  INTEGER NOT NULL,
   expires  INTEGER NOT NULL,
   checked  INTEGER NOT NULL DEFAULT 0     -- last Lodestone check (one every 20 seconds)
 );
 CREATE INDEX IF NOT EXISTS restore_codes_owner ON restore_codes(owner, who);
+
+-- A restore key from the Discord bot: the character was verified on the Lodestone there, and the player pastes this
+-- into the plugin on the new install. Only its hash is stored; it works once, within a day, for that character.
+CREATE TABLE IF NOT EXISTS restore_keys (
+  key_hash  TEXT PRIMARY KEY,
+  who       TEXT NOT NULL,
+  lodestone TEXT NOT NULL DEFAULT '',
+  discord   TEXT NOT NULL DEFAULT '',
+  created   INTEGER NOT NULL,
+  expires   INTEGER NOT NULL,
+  used      INTEGER NOT NULL DEFAULT 0
+);

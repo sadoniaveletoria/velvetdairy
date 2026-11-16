@@ -280,6 +280,7 @@ async function route(request, env) {
   if (method === "GET" && path === "/v1/stats") return json(await stats(env));
   // The Discord bot hands out Lodestone restore codes too. It has no install, only the shared bot key.
   if (method === "POST" && path === "/v1/bot/restore/start") return json(await botRestoreStart(env, request));
+  if (method === "POST" && path === "/v1/bot/restore/verify") return json(await botRestoreVerify(env, request));
 
   const me = await auth(request, env);
   await expireOrders(env);
@@ -348,6 +349,7 @@ async function route(request, env) {
     ["GET", /^\/v1\/restore\/available$/, () => restoreAvailable(env, me)],
     ["POST", /^\/v1\/restore\/start$/, () => restoreStart(env, me, request)],
     ["POST", /^\/v1\/restore\/check$/, () => restoreCheck(env, me, request)],
+    ["POST", /^\/v1\/restore\/redeem$/, () => restoreRedeem(env, me, request)],
   ];
   for (const [verb, re, fn] of routes) {
     const m = method === verb && path.match(re);
@@ -2337,7 +2339,8 @@ async function makeRestoreCode(env, name, world, owner) {
   const code = newRestoreCode();
   await env.DB.batch([
     env.DB.prepare("DELETE FROM restore_codes WHERE owner = ? AND who = ?").bind(owner, who),
-    env.DB.prepare("INSERT INTO restore_codes (code, who, owner, created, expires) VALUES (?, ?, ?, ?, ?)").bind(code, who, owner, t, t + RESTORE_CODE_LIFE),
+    env.DB.prepare("INSERT INTO restore_codes (code, who, name, world, owner, created, expires) VALUES (?, ?, ?, ?, ?, ?, ?)")
+      .bind(code, who, clean(name, 40), clean(world, 40), owner, t, t + RESTORE_CODE_LIFE),
   ]);
   return { code, expires: t + RESTORE_CODE_LIFE };
 }
@@ -2347,9 +2350,13 @@ async function restoreStart(env, me, request) {
   return await makeRestoreCode(env, b.name, b.world, me.id);
 }
 
-async function botRestoreStart(env, request) {
+function botOnly(env, request) {
   const key = request.headers.get("X-Bot-Key") || "";
   if (!env.BOT_KEY || key.length < 20 || key !== env.BOT_KEY) fail(401, "Not the bot.");
+}
+
+async function botRestoreStart(env, request) {
+  botOnly(env, request);
   const b = await body(request);
   const user = clean(b.discordUser, 24);
   if (!/^\d{5,24}$/.test(user)) fail(400, "Missing the Discord user.");
@@ -2395,9 +2402,8 @@ async function restoreCheck(env, me, request) {
   const who = restoreWho(name, world), t = now();
   const row = await env.DB.prepare("SELECT * FROM restore_codes WHERE code = ?").bind(code).first();
   if (!row || row.expires < t) fail(404, "That code ran out or was never made. Get a new one.");
-  // A code made in the plugin only works on the install that made it; one from Discord works for whoever has it
-  if (row.who !== who || (!row.owner.startsWith("discord:") && row.owner !== me.id))
-    fail(400, "That isn't a code for this character. Check it, or get a new one.");
+  // A code made in the plugin only works on the install that made it (Discord's are checked in Discord)
+  if (row.who !== who || row.owner !== me.id) fail(400, "That isn't a code for this character. Check it, or get a new one.");
   if (t - row.checked < RESTORE_CHECK_GAP) fail(429, `Wait ${RESTORE_CHECK_GAP - (t - row.checked)} seconds before checking again.`);
   await env.DB.prepare("UPDATE restore_codes SET checked = ? WHERE code = ?").bind(t, code).run();
 
@@ -2407,12 +2413,64 @@ async function restoreCheck(env, me, request) {
 
   const lode = await lodestoneHasCode(env, name, world, code);
   if (!lode.ok) return { ok: false, why: lode.why };
+  return await takeOver(env, me, cand, [env.DB.prepare("DELETE FROM restore_codes WHERE who = ?").bind(who)]);
+}
 
+/** This install takes over the old one's network identity (the old id now answers to this install's key) and gets its backup. */
+async function takeOver(env, me, cand, more = []) {
   await env.DB.batch([
     env.DB.prepare("UPDATE installs SET key_hash = ? WHERE id = ?").bind(me.key_hash, cand.install),
-    env.DB.prepare("DELETE FROM restore_codes WHERE who = ?").bind(who),
     // The new install's own empty backup isn't wanted any more
     env.DB.prepare("DELETE FROM cloud_saves WHERE install = ?").bind(me.id),
+    ...more,
   ]);
   return { ok: true, netId: cand.install, save: cand.save || "", saved: cand.saved || 0, prev: cand.prev_save || "", prevSaved: cand.prev_saved || 0 };
+}
+
+const RESTORE_KEY_LIFE = 24 * 3600;
+
+function newRestoreKey() {
+  const r = crypto.getRandomValues(new Uint8Array(20));
+  const s = [...r].map(b => CODE_ABC[b % CODE_ABC.length]).join("");
+  return `MILKR-${s.slice(0, 5)}-${s.slice(5, 10)}-${s.slice(10, 15)}-${s.slice(15, 20)}`;
+}
+
+const normKey = k => clean(k, 60).toUpperCase().replace(/[^A-Z0-9]/g, "");
+
+/**
+ * The Discord walkthrough: the player put their code in their Lodestone profile and pressed Verify. If it's there,
+ * they get a restore key (shown only to them) to paste into the plugin on the new install.
+ */
+async function botRestoreVerify(env, request) {
+  botOnly(env, request);
+  const b = await body(request);
+  const user = clean(b.discordUser, 24), code = clean(b.code, 20).toUpperCase(), t = now();
+  const row = await env.DB.prepare("SELECT * FROM restore_codes WHERE code = ?").bind(code).first();
+  if (!row || row.expires < t || row.owner !== `discord:${user}`) return { ok: false, why: "That code ran out. Start again for a new one." };
+  if (t - row.checked < RESTORE_CHECK_GAP) return { ok: false, why: `Give it ${RESTORE_CHECK_GAP - (t - row.checked)} more seconds, then press Verify again.` };
+  await env.DB.prepare("UPDATE restore_codes SET checked = ? WHERE code = ?").bind(t, code).run();
+  const lode = await lodestoneHasCode(env, row.name, row.world, code);
+  if (!lode.ok) return { ok: false, why: lode.why };
+
+  const key = newRestoreKey();
+  await env.DB.batch([
+    env.DB.prepare("DELETE FROM restore_keys WHERE expires < ? OR (who = ? AND used = 0)").bind(t, row.who),
+    env.DB.prepare("INSERT INTO restore_keys (key_hash, who, lodestone, discord, created, expires) VALUES (?, ?, ?, ?, ?, ?)")
+      .bind(await sha256(normKey(key)), row.who, lode.id, user, t, t + RESTORE_KEY_LIFE),
+    env.DB.prepare("DELETE FROM restore_codes WHERE code = ?").bind(code),
+  ]);
+  return { ok: true, key, expires: t + RESTORE_KEY_LIFE, name: row.name, world: row.world, lodestone: lode.id };
+}
+
+/** The plugin on the new install pastes the restore key from Discord while logged in as that character. */
+async function restoreRedeem(env, me, request) {
+  const b = await body(request);
+  const name = clean(b.name, 40), world = clean(b.world, 40), worldId = Math.floor(Number(b.worldId) || 0), t = now();
+  if (!name || !world || worldId <= 0) fail(400, "Log in to the character you want back first.");
+  const row = await env.DB.prepare("SELECT * FROM restore_keys WHERE key_hash = ?").bind(await sha256(normKey(b.key))).first();
+  if (!row || row.used || row.expires < t) fail(404, "That restore key isn't valid any more. Get a new one in the Discord.");
+  if (row.who !== restoreWho(name, world)) fail(400, "That restore key is for a different character. Log in as the character you verified.");
+  const cand = await restoreCandidate(env, me, await sha256(`${name.toLowerCase()}@${worldId}`));
+  if (!cand) return { ok: false, why: `There's no backup or dairy for ${name} on another install.` };
+  return await takeOver(env, me, cand, [env.DB.prepare("UPDATE restore_keys SET used = ? WHERE key_hash = ?").bind(t, row.key_hash)]);
 }

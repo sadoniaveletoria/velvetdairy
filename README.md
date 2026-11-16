@@ -198,7 +198,14 @@ Your save is backed up on the Eorzea Milkers server every few minutes while you 
 
 **Settings → Backup and restore**, or `/milkers restore`:
 - **Recovery code:** press **Show my recovery code** and write it down or screenshot it. It starts with `EMR1-`. On a new install, paste it under **Restore with a recovery code** and press **Restore** twice. Anyone with this code can sign in as you, so keep it private.
-- **No code? Use the Lodestone.** Log in as the character and press **Get a code** (or use `/restore` in the Discord: `/restore character:Your Name world:YourWorld`). You get a code like `MILK-ABCD2345`. Put it anywhere in your Lodestone **Character Profile** (**Open my Lodestone profile** takes you there) and save. Then press **Check the Lodestone and restore** twice. When it's back, take the code out of your profile. A code lasts an hour and only works for whoever asked for it.
+- **No code? Verify in the Discord.** Go to **#restore-save** in the Eorzea Milkers Discord (or type `/restore` there) and press **Start**:
+  1. Type your character's name and home world.
+  2. Put the code you get (like `MILK-ABCD2345`) anywhere in your Lodestone **Character Profile** and save.
+  3. Press **Verify**. The bot gives you a **restore key** (`MILKR-...`) that only you can see.
+  4. In game, log in as that character, open `/milkers restore`, paste the key under **Restore with a code** and press **Restore** twice.
+
+  The key works once, for a day, and only for that character. Take the code out of your Lodestone profile afterwards.
+- **Without Discord:** the same window can verify on the Lodestone itself. Press **Get a code**, put it in your profile, then press **Check the Lodestone and restore** twice.
 - When a brand new save starts on a character that has played on another install, the window opens by itself and offers the restore.
 - Restoring replaces the save on this character. The save it replaces is kept on your PC as `before-restore-*.json`, in the plugin's settings folder.
 - Players from before version 0.9.84 have no cloud backup of their progress yet. The Lodestone restore still brings back their dairy, memberships and roles.

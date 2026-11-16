@@ -10,8 +10,8 @@ namespace VelvetDairy.Windows;
 /// <summary>
 /// Backup and restore (Settings, or /milkers restore). Your save is backed up on the Eorzea Milkers server every few
 /// minutes. On a new install (a rebuilt PC, a lost settings file) you get it back, with your dairy and memberships,
-/// either with your recovery code or by putting a code in your character's Lodestone profile. The code can come from
-/// here or from the Discord bot (/restore).
+/// with your recovery code, with a restore key from the Discord walkthrough (#restore-save: verify the character on the
+/// Lodestone there), or by verifying on the Lodestone right here.
 /// </summary>
 public sealed class RestoreWindow : Window
 {
@@ -76,8 +76,8 @@ public sealed class RestoreWindow : Window
             {
                 if (!r.Available) return;
                 offer = r.HasSave
-                    ? $"This character has a cloud backup from {Ago(r.Saved)} on another install. Restore it with your recovery code or the Lodestone below."
-                    : "This character has a dairy on another install. Get it back with the Lodestone below (there's no cloud backup of the progress yet).";
+                    ? $"This character has a cloud backup from {Ago(r.Saved)} on another install. Paste your recovery code below, or get a restore key in #restore-save on the Discord."
+                    : "This character has a dairy on another install. Get it back with a restore key from #restore-save on the Discord, or the Lodestone below (there's no cloud backup of the progress yet).";
                 IsOpen = true;
             });
         }
@@ -182,34 +182,56 @@ public sealed class RestoreWindow : Window
         }
 
         // ----- Restoring on this install -----
-        Heading("Restore with a recovery code");
-        ImGui.SetNextItemWidth(width);
-        ImGui.InputTextWithHint("##rscode", "EMR1-...", ref recovery, 120);
-        var readable = NetClient.TryReadRecoveryCode(recovery, out var rid, out var rkey);
-        if (recovery.Length > 0 && !readable) ImGui.TextColored(Theme.Warn, "That isn't a whole recovery code yet.");
-        if (readable && rid == f.NetId) ImGui.TextColored(Theme.InkSoft, "That's this install's own code: it's already signed in.");
-        if (Confirmed("rsbycode", "Restore", 110, readable && rid != f.NetId && Net.Active,
-                "Signs this install in as the old one and puts its cloud backup in place of this save. The save it replaces is kept on your PC."))
-        {
-            busy = true;
-            Net.GetBackupAs(rid, rkey, r =>
-            {
-                if (!r.Found && r.Memberships == 0) Done("That code works, but there's nothing on the server for it (no backup and no dairy).", false);
-                else
-                {
-                    recovery = "";
-                    Done(plugin.ApplyRestore(r.Save, r.Prev, rid, rkey), true);
-                }
-            }, e => Done(e.Contains("key", StringComparison.OrdinalIgnoreCase) ? "That recovery code doesn't match any install." : e, false));
-        }
-
-        Heading("Restore with the Lodestone");
         var me = Plugin.ObjectTable.LocalPlayer;
         var name = me?.Name.TextValue ?? "";
         var world = me?.HomeWorld.ValueNullable?.Name.ExtractText() ?? "";
         var worldId = me?.HomeWorld.RowId ?? 0;
-        Ui.Wrapped($"Lost your recovery code? Prove {(name.Length > 0 ? name : "your character")} is yours: put a code in your Lodestone Character Profile, then check it here. " +
-                   "You can get the code here, or from the Discord bot with /restore.", Theme.Ink, width);
+
+        Heading("Restore with a code");
+        Ui.Wrapped("Paste your recovery code (EMR1-...) or the restore key the Discord gave you (MILKR-...). " +
+                   "No code? Go to #restore-save in the Eorzea Milkers Discord: it walks you through verifying your character on the Lodestone and gives you a restore key.", Theme.Ink, width);
+        if (Ui.Button("##rsdiscord", "Open the Discord", new Vector2(150, 26), "cream", true, Plugin.DiscordUrl)) Plugin.OpenDiscord();
+        ImGui.SetNextItemWidth(width);
+        ImGui.InputTextWithHint("##rscode", "EMR1-... or MILKR-...", ref recovery, 120);
+        var isKey = NetClient.LooksLikeRestoreKey(recovery);
+        string rid = "", rkey = "";
+        var readable = !isKey && NetClient.TryReadRecoveryCode(recovery, out rid, out rkey);
+        if (recovery.Length > 0 && !readable && !isKey) ImGui.TextColored(Theme.Warn, "That isn't a whole recovery code or restore key yet.");
+        if (readable && rid == f.NetId) ImGui.TextColored(Theme.InkSoft, "That's this install's own code: it's already signed in.");
+        if (isKey && name.Length == 0) ImGui.TextColored(Theme.Warn, "Log in as the character you verified first.");
+        if (Confirmed("rsbycode", "Restore", 110, ((readable && rid != f.NetId) || (isKey && name.Length > 0)) && Net.Active,
+                "Brings back your save, dairy and memberships in place of this save. The save it replaces is kept on your PC."))
+        {
+            busy = true;
+            if (isKey)
+            {
+                var myKey = f.NetKey;
+                Net.RestoreRedeem(recovery.Trim(), name, world, worldId, r =>
+                {
+                    if (!r.Ok) Done(r.Why, false);
+                    else
+                    {
+                        recovery = "";
+                        Done(plugin.ApplyRestore(r.Save, r.Prev, r.NetId, myKey) + " You can take the code out of your Lodestone profile now.", true);
+                    }
+                }, e => Done(e, false));
+            }
+            else
+            {
+                Net.GetBackupAs(rid, rkey, r =>
+                {
+                    if (!r.Found && r.Memberships == 0) Done("That code works, but there's nothing on the server for it (no backup and no dairy).", false);
+                    else
+                    {
+                        recovery = "";
+                        Done(plugin.ApplyRestore(r.Save, r.Prev, rid, rkey), true);
+                    }
+                }, e => Done(e.Contains("key", StringComparison.OrdinalIgnoreCase) ? "That recovery code doesn't match any install." : e, false));
+            }
+        }
+
+        Heading("Or verify on the Lodestone here");
+        Ui.Wrapped($"Prove {(name.Length > 0 ? name : "your character")} is yours without Discord: get a code, put it in your Lodestone Character Profile, then check it here.", Theme.Ink, width);
         if (Ui.Button("##rsget", "Get a code", new Vector2(110, 26), "cream", Net.Active && name.Length > 0 && !busy, "A code for your Lodestone profile. It lasts an hour."))
         {
             busy = true;
@@ -225,10 +247,10 @@ public sealed class RestoreWindow : Window
             Dalamud.Utility.Util.OpenLink(LodestoneProfile);
 
         ImGui.SetNextItemWidth(200);
-        ImGui.InputTextWithHint("##rslodecode", "MILK-...", ref lodeCode, 20);
+        ImGui.InputTextWithHint("##rslodecode", "Get a code first", ref lodeCode, 20);
         ImGui.SameLine();
         if (Ui.Button("##rslodecopy", "Copy", new Vector2(70, 26), "cream", lodeCode.Length > 0)) ImGui.SetClipboardText(lodeCode);
-        if (Confirmed("rscheck", "Check the Lodestone and restore", 250, Net.Active && name.Length > 0 && lodeCode.Trim().Length >= 8,
+        if (Confirmed("rscheck", "Check the Lodestone and restore", 250, Net.Active && name.Length > 0 && lodeCode.Trim().Length >= 13,
                 "Checks your Lodestone profile for the code, then brings back your old install's backup, dairy and memberships. The save it replaces is kept on your PC."))
         {
             busy = true;

@@ -144,7 +144,7 @@ public sealed class GuideWindow : Window
             "/milkers opens the main window. /milkers hud shows or hides the HUD. /milkers guide opens this guide. /milkers tutorial runs the walkthrough again.",
             "Settings: HUD, chat echo, sounds and volume, the network, who can scan you.",
             "Your save is protected: editing the plugin's files is caught, and a save that fails its check is kept aside instead of lost.",
-            "Backup and restore (Settings, or /milkers restore): your save is backed up on the server every few minutes. On a new PC or install, get it all back (with your dairy) with your recovery code, or by putting a code in your Lodestone Character Profile. The code comes from the plugin or from the Discord bot's /restore.",
+            "Backup and restore (Settings, or /milkers restore): your save is backed up on the server every few minutes. On a new PC or install, get it all back (with your dairy) with your recovery code, or with a restore key from #restore-save in the Discord (it verifies your character on the Lodestone). The plugin can also verify on the Lodestone itself.",
         }),
     };
 

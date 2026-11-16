@@ -474,6 +474,16 @@ public sealed class NetClient : IDisposable
     public void RestoreStart(string name, string world, Action<RestoreStartReply> ok, Action<string> failed) =>
         Call("POST", "/v1/restore/start", new { name, world }, ok, failed);
 
+    /// <summary>A restore key from the Discord walkthrough (MILKR-...).</summary>
+    public static bool LooksLikeRestoreKey(string code)
+    {
+        var s = new string(code.ToUpperInvariant().Where(char.IsLetterOrDigit).ToArray());
+        return s.StartsWith("MILKR") && s.Length == 25;
+    }
+
+    public void RestoreRedeem(string key, string name, string world, uint worldId, Action<RestoreCheckReply> ok, Action<string> failed) =>
+        Call("POST", "/v1/restore/redeem", new { key, name, world, worldId }, ok, failed);
+
     public void RestoreCheck(string name, string world, uint worldId, string code, Action<RestoreCheckReply> ok, Action<string> failed) =>
         Call("POST", "/v1/restore/check", new { name, world, worldId, code }, ok, failed);
 

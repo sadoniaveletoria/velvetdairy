@@ -870,17 +870,49 @@ await test("cloud backup: a rebuilt PC gets its save and dairy back with the Lod
   assert.equal((await beat(alice)).status, 401);
 });
 
-await test("restore codes from the Discord bot need the bot key", async () => {
+await test("Discord walkthrough: verify on the Lodestone, then paste the restore key in the plugin", async () => {
   env.BOT_KEY = "bot-key-for-tests-0123456789";
-  const ask = (key, b) => worker.fetch(new Request("https://x/v1/bot/restore/start", { method: "POST",
-    headers: { "content-type": "application/json", "X-Bot-Key": key }, body: JSON.stringify(b) }), env);
-  assert.equal((await ask("wrong-key-wrong-key-wrong", { name: "Bob Hand", world: "Gilgamesh", discordUser: "123456789" })).status, 401);
-  const r = await ask(env.BOT_KEY, { name: "Bob Hand", world: "Gilgamesh", discordUser: "123456789" });
-  assert.equal(r.status, 200);
-  assert.match((await r.json()).code, /^MILK-/);
-  assert.equal((await ask(env.BOT_KEY, { name: "Bob", world: "Gilgamesh", discordUser: "123456789" })).status, 400);
+  const bot = async (path, key, b) => {
+    const r = await worker.fetch(new Request("https://x" + path, { method: "POST",
+      headers: { "content-type": "application/json", "X-Bot-Key": key }, body: JSON.stringify(b) }), env);
+    return { status: r.status, data: await r.json() };
+  };
+  const gail = player("Gail Discord");
+  await beat(gail);
+  await call(gail, "POST", "/v1/backup", { charHash: gail.hash, save: JSON.stringify({ Xp: 777, Coins: 321 }) });
+
+  assert.equal((await bot("/v1/bot/restore/start", "wrong-key-wrong-key-wrong", { name: "Gail Discord", world: "Gilgamesh", discordUser: "123456789" })).status, 401);
+  assert.equal((await bot("/v1/bot/restore/start", env.BOT_KEY, { name: "Gail", world: "Gilgamesh", discordUser: "123456789" })).status, 400);
+  const { code } = (await bot("/v1/bot/restore/start", env.BOT_KEY, { name: "Gail Discord", world: "Gilgamesh", discordUser: "123456789" })).data;
+  assert.match(code, /^MILK-/);
+
+  let profile = "";
+  env.LODESTONE_FETCH = async u => u.includes("?q=")
+    ? `<a href="/lodestone/character/777/" class="entry__link"><p class="entry__name">Gail Discord</p></a>`
+    : u.endsWith("/777/") ? `<div class="character__selfintroduction">${profile}</div>` : "";
+  // Another Discord user can't verify it, and it isn't in the profile yet
+  assert.equal((await bot("/v1/bot/restore/verify", env.BOT_KEY, { discordUser: "999999999", code })).data.ok, false);
+  sqlite.prepare("UPDATE restore_codes SET checked = 0").run();
+  assert.match((await bot("/v1/bot/restore/verify", env.BOT_KEY, { discordUser: "123456789", code })).data.why, /isn't in/);
+  sqlite.prepare("UPDATE restore_codes SET checked = 0").run();
+  profile = code;
+  const v = (await bot("/v1/bot/restore/verify", env.BOT_KEY, { discordUser: "123456789", code })).data;
+  assert.equal(v.ok, true);
+  assert.match(v.key, /^MILKR-[A-Z0-9]{5}-[A-Z0-9]{5}-[A-Z0-9]{5}-[A-Z0-9]{5}$/);
+  delete env.LODESTONE_FETCH;
+
+  const fresh = { ...player("Gail Discord"), hash: gail.hash };
+  await beat(fresh);
+  // The key only works for that character
+  assert.equal((await call(fresh, "POST", "/v1/restore/redeem", { key: v.key, name: "Other Person", world: "Gilgamesh", worldId: 40 })).status, 400);
+  const r = (await call(fresh, "POST", "/v1/restore/redeem", { key: v.key.toLowerCase().replaceAll("-", " "), name: "Gail Discord", world: "Gilgamesh", worldId: 40 })).data;
+  assert.equal(r.ok, true);
+  assert.equal(r.netId, gail.id);
+  assert.equal(JSON.parse(r.save).Coins, 321);
+  // Used once only
+  assert.equal((await call(fresh, "POST", "/v1/restore/redeem", { key: v.key, name: "Gail Discord", world: "Gilgamesh", worldId: 40 })).status, 404);
+  assert.equal((await beat({ id: gail.id, key: fresh.key, hash: gail.hash })).status, 200);
   delete env.BOT_KEY;
 });
-
 
 console.log(`\n${passed} passed`);
