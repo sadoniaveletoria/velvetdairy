@@ -44,7 +44,7 @@ const FARMER_CUT = 0.25;            // a farmer gets this share of what the cow 
 const FARMER_CUT_BIG = 0.30, FARMER_CUT_BIG_LEVEL = 45;   // ...and this much from farmer level 45
 const FARMER_DAILY_COINS = 4500;
 const COW_DAILY_HAND_OZ = 800;
-const MAX_TAKE_OZ = 96;
+const MAX_TAKE_OZ = 400;   // the biggest farmer tank (Catalog.FarmerTankSizes): Fill up can take that much at once
 // Baked treats members buy off their dairy's shelf: item -> default price and the owner's allowed range (coins each)
 const SHELF_ITEMS = {
   cookies: { name: "Butter cookies", price: 40, min: 10, max: 150 },
