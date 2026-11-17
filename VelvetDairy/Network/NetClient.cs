@@ -540,6 +540,12 @@ public sealed class NetClient : IDisposable
             ok(r);
         }, failed);
 
+    public void LoadBreedingStall(string stallId, Action<StallLoadReply> ok, Action<string> failed) =>
+        Call<StallLoadReply>("POST", $"/v1/stalls/{stallId}/load", null, r => { nextMine = 0; ok(r); }, failed);
+
+    public void UnloadBreedingStall(string stallId, Action<StallLoadReply> ok, Action<string> failed) =>
+        Call<StallLoadReply>("POST", $"/v1/stalls/{stallId}/unload", null, r => { nextMine = 0; ok(r); }, failed);
+
     public SeedMarketReply? SeedMarket { get; private set; }
     private double seedMarketAt = -100;
 

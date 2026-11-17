@@ -1714,9 +1714,9 @@ public sealed partial class MainWindow : Window
         {
             Gap(4);
             var seed = G.Net.Progress?.Tank?.Seed ?? 0;
-            Ui.Wrapped($"Breeding stalls: switch a stall to breeding and a cow who sits in it for {DairyGame.BreedStallMinutes} minutes is bred (the same bonus as a scene, " +
-                       $"no pregnancy). Each breeding uses {Units.Oz(DairyGame.BreedStallSeedOz)} from the seed tank, which has {Units.Oz(seed, "0.#")} now. " +
-                       "Bulls fill it, or buy seed from other dairies on the Creamery tab.", seed < DairyGame.BreedStallSeedOz ? Theme.RoseDeep : Theme.InkSoft, width);
+            Ui.Wrapped($"Breeding stalls: the owner switches a stall to breeding, and farmers or the owner load it with breedings ({Units.Oz(DairyGame.BreedStallSeedOz)} " +
+                       $"of seed each, up to {DairyGame.BreedStallMaxLoaded}). A cow who sits in it for {DairyGame.BreedStallMinutes} minutes uses one and is bred (the same bonus as a scene, " +
+                       $"no pregnancy). The seed tank has {Units.Oz(seed, "0.#")} now: bulls fill it, or buy seed on Creamery > Seed market.", seed < DairyGame.BreedStallSeedOz ? Theme.RoseDeep : Theme.InkSoft, width);
         }
 
         Gap(6);
@@ -1736,14 +1736,33 @@ public sealed partial class MainWindow : Window
                         s.Breed ? "Switch it back to a milking stall." : $"Switch it to a breeding stall: it stops milking, and a cow who sits in it for {DairyGame.BreedStallMinutes} minutes is bred, using {Units.Oz(DairyGame.BreedStallSeedOz)} of the dairy's seed."));
             }
 
+            // Farmers and the owner load breeding stalls (and the owner can empty one)
+            var loadAt = -1;
+            var unloadAt = -1;
+            if (G.Networked && s.Breed && G.CanCarry)
+            {
+                var lp = G.LoadStallProblem(s);
+                loadAt = buttons.Count;
+                buttons.Add(new Btn($"##ldstall{s.Id}", "Load 1", "sage", lp == null,
+                    lp ?? $"Load one breeding: {Units.Oz(DairyGame.BreedStallSeedOz)} from the seed tank. Cows can only use loaded breedings (up to {DairyGame.BreedStallMaxLoaded}). +{DairyGame.BreedStallLoadXp} farmer xp."));
+                if (G.IsOwner && s.Loaded > 0)
+                {
+                    unloadAt = buttons.Count;
+                    buttons.Add(new Btn($"##ulstall{s.Id}", "Unload", "cream", true, "Put its loaded seed back into the tank."));
+                }
+            }
+
             var clicked = ListRow(Ico(s.Breed ? "ribbon" : "bucket"), s.Name + (s.Breed ? "  ·  breeding stall" : "") + (here ? "  ·  you're here" : ""), inArea ? Theme.Ink : Theme.InkSoft,
                 new[]
                 {
-                    new Line(s.Breed ? $"Breeds a cow who sits {DairyGame.BreedStallMinutes} min · {Units.Oz(DairyGame.BreedStallSeedOz)} seed each · doesn't milk"
-                                     : $"{Catalog.StallTierNames[s.Tier]} · milked you {s.Sessions} time(s)", s.Breed ? Theme.RoseDeep : Theme.InkSoft),
+                    new Line(s.Breed ? $"{s.Loaded} of {DairyGame.BreedStallMaxLoaded} breedings loaded · a cow sits {DairyGame.BreedStallMinutes} min · doesn't milk"
+                                     : $"{Catalog.StallTierNames[s.Tier]} · milked you {s.Sessions} time(s)", s.Breed ? (s.Loaded > 0 ? Theme.RoseDeep : Theme.Warn) : Theme.InkSoft),
                     new Line(inArea ? "" : "Outside the dairy's area: it won't work until you move it.", Theme.RoseDeep),
                 }, buttons, width);
-            if (clicked == 0) G.MoveStall(s);
+            if (clicked >= 0 && clicked == loadAt) G.LoadBreedingStall(s);
+            else if (clicked >= 0 && clicked == unloadAt) G.UnloadBreedingStall(s);
+            else if (!owner) { }
+            else if (clicked == 0) G.MoveStall(s);
             else if (clicked == 1) G.RemoveStall(s);
             else if (clicked == 2) G.Net.SetBreedingStall(s.Id, !s.Breed, () => G.Notify(s.Breed ? $"{s.Name} milks again." : $"{s.Name} is a breeding stall now.", 0), e => G.Notify(e, 2));
         }
@@ -2024,7 +2043,7 @@ public sealed partial class MainWindow : Window
 
         b = F.ShowStallMarkers;
         if (ImGui.Checkbox("Show stall markers (only you see them)", ref b)) { F.ShowStallMarkers = b; changed = true; }
-        if (ImGui.IsItemHovered()) ImGui.SetTooltip(Units.Text("A small green dot above each of your dairy's stalls while you're in the dairy, so you can see which seats milk you."));
+        if (ImGui.IsItemHovered()) ImGui.SetTooltip(Units.Text("A small dot above each of your dairy's stalls while you're in the dairy: green for a stall that milks you, orange for a breeding stall."));
         if (F.ShowStallMarkers)
         {
             var here = G.StallsHere().Count();

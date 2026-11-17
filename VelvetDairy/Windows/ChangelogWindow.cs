@@ -26,7 +26,9 @@ public sealed class ChangelogWindow : Window
         new("0.9.89", "Breeding stalls and the seed market", new[]
         {
             "Breeding stalls: the owner can switch any stall to breeding (Dairy > Stalls > Make it breed). It stops milking; a cow who sits in it for 5 minutes is bred, with the same bonus as a scene. A stall doesn't get you pregnant: that's only from a Corruption scene.",
-            "Each breeding uses 3 oz from the dairy's seed tank, which bulls fill when they're milked. No bull? Buy seed from other dairies.",
+            "Farmers and the owner load breeding stalls (Load 1: 3 oz from the seed tank each, up to 5 loaded, +8 farmer xp). Cows can only use loaded breedings, so the seed tank is never emptied by accident. The owner can unload a stall to put the seed back.",
+            "Bulls fill the seed tank when they're milked. No bull? Buy seed from other dairies.",
+            "Stall markers: green for a milking stall, orange for a breeding stall.",
             "The seed market (Creamery > Seed market): owners sell their spare seed from the seed tank (coins go to the dairy fund as it sells) and buy other dairies' seed from the dairy fund.",
         }),
         new("0.9.88", "Kitchen fixes", new[]

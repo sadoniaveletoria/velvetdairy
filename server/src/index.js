@@ -317,6 +317,8 @@ async function route(request, env) {
     ["POST", /^\/v1\/stalls\/([0-9a-f]{24})\/clean$/, m => cleanStall(env, me, m[1])],
     ["POST", /^\/v1\/stalls\/([0-9a-f]{24})\/breeding$/, m => setBreedingStall(env, me, m[1], request)],
     ["POST", /^\/v1\/stalls\/([0-9a-f]{24})\/breed$/, m => breedAtStall(env, me, m[1])],
+    ["POST", /^\/v1\/stalls\/([0-9a-f]{24})\/load$/, m => loadBreedingStall(env, me, m[1])],
+    ["POST", /^\/v1\/stalls\/([0-9a-f]{24})\/unload$/, m => unloadBreedingStall(env, me, m[1])],
     ["GET", /^\/v1\/seed\/market$/, () => seedMarket(env, me)],
     ["POST", /^\/v1\/seed\/sell$/, () => sellSeed(env, me, request)],
     ["POST", /^\/v1\/seed\/sales\/(\d+)\/buy$/, m => buySeed(env, me, Number(m[1]), request)],
@@ -649,7 +651,7 @@ const withWritten = (json, t) => JSON.stringify({ ...(safeParse(json) || {}), w:
  */
 async function guestInfo(env, d, t) {
   const stalls = (await env.DB.prepare(
-    "SELECT s.*, COALESCE(c.until, 0) AS clean_until, (b.stall_id IS NOT NULL) AS breed FROM stalls s LEFT JOIN stall_clean c ON c.stall_id = s.id LEFT JOIN breed_stalls b ON b.stall_id = s.id WHERE s.dairy_id = ? ORDER BY s.created")
+    "SELECT s.*, COALESCE(c.until, 0) AS clean_until, (b.stall_id IS NOT NULL) AS breed, COALESCE(b.loaded, 0) AS loaded FROM stalls s LEFT JOIN stall_clean c ON c.stall_id = s.id LEFT JOIN breed_stalls b ON b.stall_id = s.id WHERE s.dairy_id = ? ORDER BY s.created")
     .bind(d.id).all()).results;
   const farmers = (await env.DB.prepare(`
       SELECT m.name, m.world_name, m.status FROM memberships m JOIN installs i ON i.id = m.install
@@ -658,7 +660,7 @@ async function guestInfo(env, d, t) {
     guest: true,
     houseId: d.house_id || "",
     area: areaRow(await env.DB.prepare("SELECT * FROM dairy_area WHERE dairy_id = ?").bind(d.id).first()),
-    stalls: stalls.map(s => ({ id: s.id, name: s.name, x: s.x, y: s.y, z: s.z, tier: s.tier, cleanUntil: s.clean_until > t ? s.clean_until : 0, breed: !!s.breed })),
+    stalls: stalls.map(s => ({ id: s.id, name: s.name, x: s.x, y: s.y, z: s.z, tier: s.tier, cleanUntil: s.clean_until > t ? s.clean_until : 0, breed: !!s.breed, loaded: s.loaded || 0 })),
     farmers: farmers.map(f => {
       const st = safeParse(f.status) || {};
       return { name: f.name, world: f.world_name, milking: st.milking || "", refused: st.refused || "" };
@@ -1063,7 +1065,7 @@ async function myDairy(env, me) {
       SELECT m.install, m.role, m.name, m.world_name, m.status, i.last_seen, i.version
       FROM memberships m LEFT JOIN installs i ON i.id = m.install WHERE m.dairy_id = ? ORDER BY m.joined`).bind(d.id).all()).results;
   const stalls = (await env.DB.prepare(
-    "SELECT s.*, COALESCE(c.until, 0) AS clean_until, (b.stall_id IS NOT NULL) AS breed FROM stalls s LEFT JOIN stall_clean c ON c.stall_id = s.id LEFT JOIN breed_stalls b ON b.stall_id = s.id WHERE s.dairy_id = ? ORDER BY s.created")
+    "SELECT s.*, COALESCE(c.until, 0) AS clean_until, (b.stall_id IS NOT NULL) AS breed, COALESCE(b.loaded, 0) AS loaded FROM stalls s LEFT JOIN stall_clean c ON c.stall_id = s.id LEFT JOIN breed_stalls b ON b.stall_id = s.id WHERE s.dairy_id = ? ORDER BY s.created")
     .bind(d.id).all()).results;
   const canInvite = mem.is_owner || hasRole(mem, "farmer");
   const invites = canInvite ? (await env.DB.prepare(
@@ -1082,7 +1084,7 @@ async function myDairy(env, me) {
       id: m.install, name: m.name, world: m.world_name, role: primaryRole(m.role), roles: roleList(m.role), isOwner: m.install === d.owner,
       online: (m.last_seen || 0) >= t - ONLINE_WINDOW, lastSeen: m.last_seen || 0, version: m.version || "", status: safeParse(m.status),
     })),
-    stalls: stalls.map(s => ({ id: s.id, name: s.name, x: s.x, y: s.y, z: s.z, tier: s.tier, cleanUntil: s.clean_until > t ? s.clean_until : 0, breed: !!s.breed })),
+    stalls: stalls.map(s => ({ id: s.id, name: s.name, x: s.x, y: s.y, z: s.z, tier: s.tier, cleanUntil: s.clean_until > t ? s.clean_until : 0, breed: !!s.breed, loaded: s.loaded || 0 })),
     progress: await progressOut(env, d.id, stalls.length),
     invites: invites.map(i => ({ id: i.id, name: i.to_name, role: i.role, expires: i.expires })),
     applying: await applyingOut(env, d.id, mem),
@@ -2515,6 +2517,7 @@ async function restoreRedeem(env, me, request) {
 // needs seed: a bull of its own, or seed bought from other dairies, who sell their spare from their seed tank.
 
 const BREED_STALL_OZ = 3;
+const BREED_STALL_MAX_LOADED = 5;
 const BREED_STALL_GAP = 20 * 60;     // the usual wait between breedings
 const SEED_PRICE_MIN = 10, SEED_PRICE_MAX = 2000;
 const SEED_SALE_MAX_OZ = 500;
@@ -2541,8 +2544,39 @@ async function setBreedingStall(env, me, id, request) {
   const s = await env.DB.prepare("SELECT id FROM stalls WHERE id = ? AND dairy_id = ?").bind(id, d.id).first();
   if (!s) fail(404, "That stall isn't in your dairy.");
   if (b.on) await env.DB.prepare("INSERT OR IGNORE INTO breed_stalls (stall_id, dairy_id) VALUES (?, ?)").bind(id, d.id).run();
-  else await env.DB.prepare("DELETE FROM breed_stalls WHERE stall_id = ?").bind(id).run();
+  else {
+    // Back to milking: its loaded seed goes back into the tank
+    const r = await env.DB.prepare("DELETE FROM breed_stalls WHERE stall_id = ? RETURNING loaded").bind(id).first();
+    if (r?.loaded > 0) await addSeed(env, d.id, r.loaded * BREED_STALL_OZ);
+  }
   return { ok: true, breed: !!b.on };
+}
+
+/** A farmer or the owner, in the dairy, loads one breeding (3 oz from the seed tank) into a breeding stall. */
+async function loadBreedingStall(env, me, id) {
+  const st = await env.DB.prepare("SELECT b.dairy_id, b.loaded FROM breed_stalls b WHERE b.stall_id = ?").bind(id).first();
+  if (!st) fail(404, "That isn't a breeding stall.");
+  const mem = await membership(env, me.id);
+  if (!mem || mem.dairy_id !== st.dairy_id) fail(403, "That stall isn't in your dairy.");
+  if (!mem.is_owner && !hasRole(mem, "farmer")) fail(403, "Farmers and the owner load breeding stalls.");
+  if (!inOwnDairy(me, mem)) fail(400, "Be in the dairy to load its breeding stall.");
+  if (st.loaded >= BREED_STALL_MAX_LOADED) fail(400, `It's full: ${BREED_STALL_MAX_LOADED} breedings loaded.`);
+  if (!(await takeSeed(env, st.dairy_id, BREED_STALL_OZ)))
+    fail(400, `The seed tank needs ${BREED_STALL_OZ} oz to load a breeding. It needs a bull, or seed bought from another dairy.`);
+  const r = await env.DB.prepare("UPDATE breed_stalls SET loaded = loaded + 1 WHERE stall_id = ? RETURNING loaded").bind(id).first();
+  return { ok: true, loaded: r.loaded, tank: Math.round((await seedTank(env, st.dairy_id)) * 100) / 100 };
+}
+
+/** The owner empties a breeding stall: its loaded seed goes back into the tank. */
+async function unloadBreedingStall(env, me, id) {
+  const d = await ownedDairy(env, me);
+  const st = await env.DB.prepare("SELECT loaded FROM breed_stalls WHERE stall_id = ? AND dairy_id = ?").bind(id, d.id).first();
+  if (!st) fail(404, "That isn't one of your breeding stalls.");
+  const n = st.loaded || 0;
+  // Only what's still loaded (a cow may have just used one)
+  const r = n > 0 ? await env.DB.prepare("UPDATE breed_stalls SET loaded = loaded - ? WHERE stall_id = ? AND loaded >= ? RETURNING loaded").bind(n, id, n).first() : null;
+  if (r) await addSeed(env, d.id, n * BREED_STALL_OZ);
+  return { ok: true, returned: r ? n * BREED_STALL_OZ : 0, tank: Math.round((await seedTank(env, d.id)) * 100) / 100 };
 }
 
 /**
@@ -2565,12 +2599,12 @@ async function breedAtStall(env, me, id) {
   const t = now();
   const last = await env.DB.prepare("SELECT last FROM breed_stall_uses WHERE install = ?").bind(me.id).first();
   if (last && t - last.last < BREED_STALL_GAP) fail(429, `You were bred less than 20 minutes ago. Try again in ${Math.ceil((BREED_STALL_GAP - (t - last.last)) / 60)} min.`);
-  if (!(await takeSeed(env, st.dairy_id, BREED_STALL_OZ)))
-    fail(400, `The seed tank needs ${BREED_STALL_OZ} oz for a breeding. It needs a bull, or seed bought from another dairy.`);
+  const used = await env.DB.prepare("UPDATE breed_stalls SET loaded = loaded - 1 WHERE stall_id = ? AND loaded > 0 RETURNING loaded").bind(id).first();
+  if (!used) fail(400, "This stall has no breedings loaded. Ask a farmer or the owner to load it.");
   await env.DB.prepare("INSERT INTO breed_stall_uses (install, last) VALUES (?, ?) ON CONFLICT(install) DO UPDATE SET last = excluded.last").bind(me.id, t).run();
   // Whose seed it was: the dairy's top seed maker
   const top = await env.DB.prepare("SELECT name FROM tank_contrib WHERE dairy_id = ? AND install LIKE 'seed:%' ORDER BY oz DESC LIMIT 1").bind(st.dairy_id).first();
-  return { ok: true, oz: BREED_STALL_OZ, left: Math.round((await seedTank(env, st.dairy_id)) * 100) / 100, bull: top?.name || "" };
+  return { ok: true, oz: BREED_STALL_OZ, loaded: used.loaded, bull: top?.name || "" };
 }
 
 /** Seed for sale from other dairies, and this dairy's own listings and seed tank. */

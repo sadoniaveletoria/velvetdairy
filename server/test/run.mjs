@@ -967,16 +967,39 @@ await test("breeding stalls use the seed tank, and dairies sell spare seed to ea
   // Sitting in it: needs to be there, and seed in the tank
   assert.equal((await call(hana, "POST", `/v1/stalls/${stall}/breed`)).status, 400, "not in the dairy");
   await beat(hana, { houseId: H1 });
+  // Not loaded: a cow can't use it
   const empty = await call(hana, "POST", `/v1/stalls/${stall}/breed`);
   assert.equal(empty.status, 400);
-  assert.match(empty.data.error, /seed tank/);
-  sqlite.prepare("INSERT INTO dairy_tank (dairy_id, grade, oz) VALUES (?, -1, 10) ON CONFLICT(dairy_id, grade) DO UPDATE SET oz = 10").run(dh);
+  assert.match(empty.data.error, /no breedings loaded/);
+  // Loading takes 3 oz from the seed tank each
+  const noSeed = await call(hana, "POST", `/v1/stalls/${stall}/load`);
+  assert.match(noSeed.data.error, /seed tank/);
+  sqlite.prepare("INSERT INTO dairy_tank (dairy_id, grade, oz) VALUES (?, -1, 13) ON CONFLICT(dairy_id, grade) DO UPDATE SET oz = 13").run(dh);
+  let l = (await call(hana, "POST", `/v1/stalls/${stall}/load`)).data;
+  assert.equal(l.loaded, 1);
+  assert.equal(l.tank, 10);
+  l = (await call(hana, "POST", `/v1/stalls/${stall}/load`)).data;
+  assert.equal(l.loaded, 2);
+  assert.equal(l.tank, 7);
+  assert.equal((await call(ivo, "POST", `/v1/stalls/${stall}/load`)).status, 403, "only that dairy's farmers and owner");
+  assert.equal((await call(hana, "GET", "/v1/dairy/mine")).data.stalls.find(x => x.id === stall).loaded, 2);
+
   const bred = (await call(hana, "POST", `/v1/stalls/${stall}/breed`)).data;
   assert.equal(bred.ok, true);
-  assert.equal(bred.left, 7);
+  assert.equal(bred.loaded, 1);
   assert.equal((await call(hana, "POST", `/v1/stalls/${stall}/breed`)).status, 429, "20 minutes between breedings");
-  // A milking stall can't breed
+  // Unloading puts the rest back in the tank
+  assert.equal((await call(hana, "POST", `/v1/stalls/${stall}/unload`)).data.tank, 10);
+  // Five at most
+  for (let i = 0; i < 3; i++) await call(hana, "POST", `/v1/stalls/${stall}/load`);
+  sqlite.prepare("UPDATE dairy_tank SET oz = 30 WHERE dairy_id = ? AND grade = -1").run(dh);
+  await call(hana, "POST", `/v1/stalls/${stall}/load`);
+  await call(hana, "POST", `/v1/stalls/${stall}/load`);
+  assert.match((await call(hana, "POST", `/v1/stalls/${stall}/load`)).data.error, /full/);
+  // Back to milking: its loaded seed goes back too, and it can't breed
   assert.equal((await call(hana, "POST", `/v1/stalls/${stall}/breeding`, { on: false })).data.breed, false);
+  assert.equal((await call(hana, "GET", "/v1/seed/market")).data.tank, 39);
+  sqlite.prepare("UPDATE dairy_tank SET oz = 7 WHERE dairy_id = ? AND grade = -1").run(dh);
   assert.equal((await call(hana, "POST", `/v1/stalls/${stall}/breed`)).status, 404);
 
   // Selling spare seed: it leaves the tank while it's listed

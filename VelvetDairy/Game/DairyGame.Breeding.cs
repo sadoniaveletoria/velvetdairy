@@ -627,6 +627,8 @@ public sealed partial class DairyGame
 
     public const int BreedStallMinutes = 5;
     public const float BreedStallSeedOz = 3f;
+    public const int BreedStallMaxLoaded = 5;
+    public const int BreedStallLoadXp = 8;
     private Stall? breedSitAt;
     private DateTime breedSitStart;
     private bool breedAsking;
@@ -654,11 +656,45 @@ public sealed partial class DairyGame
         if (!IsCow) return "Breeding stalls are for cows.";
         if (Blocked() is { } blocked) return blocked;
         if (BreedCooldownLeft > TimeSpan.Zero) return $"You were bred recently: you can be bred again in {Wait(BreedCooldownLeft)}.";
-        // Your own dairy's seed tank (a visited dairy's is checked by the server)
-        if (!Where.Guest && Net.Progress?.Tank is { } tank && tank.Seed < BreedStallSeedOz - 0.05f)
-            return $"The seed tank has {Units.Oz(tank.Seed, "0.#")}; a breeding needs {Units.Oz(BreedStallSeedOz)}. It needs a bull, or seed bought from another dairy (Creamery tab).";
+        if (Where.AtStall is { Breed: true, Loaded: <= 0 }) return "This breeding stall has no breedings loaded. Ask a farmer or the owner to load it.";
         return null;
     }
+
+    /// <summary>Why a farmer or the owner can't load this breeding stall now, or null.</summary>
+    public string? LoadStallProblem(Stall s)
+    {
+        if (!Networked || !s.Breed) return "Only breeding stalls are loaded.";
+        if (!CanCarry) return "Farmers and the owner load breeding stalls.";
+        if (!Where.InDairy || Where.Guest) return "Be in your dairy to load it.";
+        if (s.Loaded >= BreedStallMaxLoaded) return $"It's full: {BreedStallMaxLoaded} breedings loaded.";
+        var seed = Net.Progress?.Tank?.Seed ?? 0;
+        if (seed < BreedStallSeedOz - 0.05f) return $"The seed tank has {Units.Oz(seed, "0.#")}; a breeding needs {Units.Oz(BreedStallSeedOz)}. It needs a bull, or seed from the Seed market.";
+        return null;
+    }
+
+    /// <summary>A farmer or the owner loads one breeding (3 oz from the seed tank) into a breeding stall.</summary>
+    public void LoadBreedingStall(Stall s)
+    {
+        if (LoadStallProblem(s) is { } why)
+        {
+            Fail(why);
+            return;
+        }
+
+        Net.LoadBreedingStall(s.Id, r =>
+        {
+            s.Loaded = r.Loaded;
+            AddFarmerXp(BreedStallLoadXp);
+            Say($"Loaded {s.Name}: {r.Loaded} breeding{(r.Loaded == 1 ? "" : "s")} ready. The seed tank has {Units.Oz(r.Tank, "0.#")} left. +{BreedStallLoadXp} farmer xp.", 1);
+        }, e => Fail(e));
+    }
+
+    public void UnloadBreedingStall(Stall s) =>
+        Net.UnloadBreedingStall(s.Id, r =>
+        {
+            s.Loaded = 0;
+            Say($"Unloaded {s.Name}: {Units.Oz(r.Returned, "0.#")} of seed went back into the tank.", 1);
+        }, e => Fail(e));
 
     private void BreedStallUpdate()
     {
@@ -704,7 +740,8 @@ public sealed partial class DairyGame
             F.BredUntilUtc = DateTime.UtcNow.AddMinutes(BredMinutesNow);
             F.BredStrength = 1f;
             F.BredBy = r.Bull.Length > 0 ? $"{r.Bull} (breeding stall)" : "the breeding stall";
-            Diag.Info("breed", $"Bred at breeding stall {st.Name} ({r.Oz} oz seed, {r.Left} left)");
+            st.Loaded = r.Loaded;
+            Diag.Info("breed", $"Bred at breeding stall {st.Name} ({r.Oz} oz seed, {r.Loaded} breedings left in it)");
             Say($"The breeding stall bred you{(r.Bull.Length > 0 ? $" with {r.Bull}'s seed" : "")}: +{BredBonusNow * 100:0.#}% milk for {BredMinutesNow} minutes. " +
                 "(A stall doesn't get you pregnant: that's only from a scene.)", 1);
             plugin.SaveConfig();

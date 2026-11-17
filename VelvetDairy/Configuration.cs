@@ -278,6 +278,8 @@ public class Stall
     public long CleanUntil { get; set; }  // unix seconds: freshly cleaned by a farmer until then (networked dairies)
     [Newtonsoft.Json.JsonIgnore, System.Text.Json.Serialization.JsonIgnore]
     public bool Breed { get; set; }       // a breeding stall (networked dairies, from the server): breeds instead of milking
+    [Newtonsoft.Json.JsonIgnore, System.Text.Json.Serialization.JsonIgnore]
+    public int Loaded { get; set; }       // breedings loaded into it by a farmer or the owner
 }
 
 [Serializable]

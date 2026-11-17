@@ -498,6 +498,7 @@ public sealed class StallInfo
     public int Tier { get; set; }
     public long CleanUntil { get; set; }   // unix seconds; a farmer cleaned it and it's fresh until then (0 = not fresh)
     public bool Breed { get; set; }        // a breeding stall: it breeds cows instead of milking
+    public int Loaded { get; set; }        // breedings a farmer or the owner loaded into it (3 oz of seed each)
 }
 
 public sealed class ShelfItem
@@ -665,7 +666,7 @@ public sealed class BreedStallReply
 {
     public bool Ok { get; set; }
     public float Oz { get; set; }
-    public float Left { get; set; }
+    public int Loaded { get; set; }     // breedings left in the stall
     public string Bull { get; set; } = "";
 }
 
@@ -693,4 +694,12 @@ public sealed class SeedBuyReply
     public int Oz { get; set; }
     public int Cost { get; set; }
     public float Tank { get; set; }
+}
+
+public sealed class StallLoadReply
+{
+    public bool Ok { get; set; }
+    public int Loaded { get; set; }
+    public float Tank { get; set; }
+    public float Returned { get; set; }
 }

@@ -29,7 +29,8 @@ public static class AreaOverlay
         var dl = ImGui.GetBackgroundDrawList();
         const float r = 6f;
         dl.AddCircleFilled(c + new Vector2(0, 1.5f), r + 2f, ImGui.ColorConvertFloat4ToU32(new Vector4(0.08f, 0.06f, 0.06f, 0.55f)));
-        dl.AddCircleFilled(c, r, ImGui.ColorConvertFloat4ToU32(new Vector4(0.25f, 0.85f, 0.4f, 0.95f)));
+        // Green: a milking stall. Orange: a breeding stall
+        dl.AddCircleFilled(c, r, ImGui.ColorConvertFloat4ToU32(s.Breed ? new Vector4(1f, 0.55f, 0.12f, 0.95f) : new Vector4(0.25f, 0.85f, 0.4f, 0.95f)));
         dl.AddCircle(c, r, ImGui.ColorConvertFloat4ToU32(new Vector4(1f, 1f, 1f, 0.8f)), 0, 1.2f);
     }
 

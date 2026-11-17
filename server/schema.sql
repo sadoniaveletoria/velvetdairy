@@ -421,11 +421,13 @@ CREATE TABLE IF NOT EXISTS restore_keys (
   used      INTEGER NOT NULL DEFAULT 0
 );
 
--- Breeding stalls: a stall the owner switched from milking to breeding. A cow who sits in it for 5 minutes is bred
--- (the same bred bonus as a scene, no pregnancy), using seed from the dairy's seed tank.
+-- Breeding stalls: a stall the owner switched from milking to breeding. A farmer or the owner loads it with seed from
+-- the seed tank (3 oz a breeding, up to 5 loaded); a cow who sits in it for 5 minutes uses one breeding and is bred
+-- (the same bred bonus as a scene, no pregnancy). So cows can't empty the seed tank by themselves.
 CREATE TABLE IF NOT EXISTS breed_stalls (
   stall_id  TEXT PRIMARY KEY,
-  dairy_id  TEXT NOT NULL
+  dairy_id  TEXT NOT NULL,
+  loaded    INTEGER NOT NULL DEFAULT 0
 );
 
 -- When each cow last used a breeding stall (the usual wait between breedings).
