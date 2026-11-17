@@ -210,7 +210,8 @@ public sealed partial class DairyGame
             s.Y = si.Y;
             s.Z = si.Z;
             s.Tier = Math.Clamp(si.Tier, 1, 4);
-            s.CleanUntil = si.CleanUntil;
+            // A clean only ever moves forward: never let a slow reply undo one we just did
+            s.CleanUntil = Math.Max(si.CleanUntil, s.CleanUntil);
             s.Breed = si.Breed;
             s.Loaded = si.Loaded;
             stalls.Add(s);
@@ -3711,9 +3712,16 @@ public sealed partial class DairyGame
         }
     }
 
+    private string lastFail = "";
+    private DateTime lastFailAt;
+
     private bool Fail(string text)
     {
         text = Units.Text(text);
+        // The same problem again within a few seconds (clicking a button repeatedly) shows once, not stacked
+        if (text == lastFail && DateTime.UtcNow - lastFailAt < TimeSpan.FromSeconds(4)) return false;
+        lastFail = text;
+        lastFailAt = DateTime.UtcNow;
         Diag.Info("game", "Problem: " + text);
         Toast?.Invoke(text, 2);
         return false;

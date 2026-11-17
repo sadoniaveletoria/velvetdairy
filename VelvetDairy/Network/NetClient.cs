@@ -717,12 +717,17 @@ public sealed class NetClient : IDisposable
     public void LookupPlayer(string name, string world, Action<PlayerLookup> done) =>
         Call<PlayerLookup>("GET", $"/v1/player?name={Uri.EscapeDataString(name)}&world={Uri.EscapeDataString(world)}", null, done, _ => done(new PlayerLookup()));
 
+    private int mineSeq;
+
     public void RefreshMine()
     {
         // A scene where you and your partner choose who breeds: their choice shows up quickly
         nextMine = Now + (plugin.Game.InScene ? 10 : WatchingDairy ? 60 : 300);
+        var seq = ++mineSeq;
         Call<MyDairyReply>("GET", "/v1/dairy/mine", null, r =>
         {
+            // An older refresh that answers after a newer one (say, from before you cleaned a stall) is ignored
+            if (seq != mineSeq) return;
             Mine = r.Dairy == null ? null : r;
             plugin.Game.OnMyDairy(Mine);
             if (r.You?.IsOwner == true) RefreshMyOrders();
@@ -988,7 +993,12 @@ public sealed class NetClient : IDisposable
         {
             RefreshMine();
             ok(r.Until);
-        }, failed);
+        }, e =>
+        {
+            // Someone else may have cleaned it: get the stalls' real state so the button greys out
+            RefreshMine();
+            failed(e);
+        });
 
     // ----- The dairy shelf -----
     public List<ShelfItem> Shelf { get; private set; } = new();

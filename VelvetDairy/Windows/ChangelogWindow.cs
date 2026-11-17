@@ -26,6 +26,8 @@ public sealed class ChangelogWindow : Window
         new("0.9.90", "HUD only in a dairy", new[]
         {
             "With \"Only while I'm in a dairy\" on, the HUD now only shows in a dairy (yours or one you're visiting), even when you're full or being milked somewhere else.",
+            "Cleaning stalls: a stall you just cleaned no longer goes back to \"Not cleaned lately\" with a working Clean button, and a stall someone else cleaned greys out as soon as you try it.",
+            "The same warning no longer stacks up when you press a button several times.",
         }),
         new("0.9.89", "Breeding stalls and the seed market", new[]
         {
