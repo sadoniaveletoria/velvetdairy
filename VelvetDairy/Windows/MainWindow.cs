@@ -1891,7 +1891,7 @@ public sealed partial class MainWindow : Window
             (Leveling.FarmerRank(G.FarmerLevel) is { } ft ? ft + " · " : "") + $"{G.FarmerTankName} · carries {Units.Oz(G.MaxCarry)}" +
             (nextPerk.Name != null ? $" · next at {nextPerk.Level}: {nextPerk.Name}" : ""), width);
         DrawRoleLevel("Bull level", F.BullXp, Theme.HoneyDeep,
-            Leveling.BullRank(G.BullLevel) is { } bt ? $"{bt} · titles at 25, 50, 75 and 100" : "Titles at 25, 50, 75 and 100. More is coming in new updates.", width);
+            Leveling.BullRank(G.BullLevel) is { } bt ? $"{bt} · titles at 25, 50, 75 and 100" : "Bull items unlock in the Shop as you level. Titles at 25, 50, 75 and 100.", width);
         Gap(4);
         if (ImGui.SmallButton("Details on the Roles tab##toroles")) tab = TabRoles;
 

@@ -30,7 +30,7 @@ You can hold several roles at once, and each role levels up on its own. Your pro
 | **Cow** | Make milk, get milked, earn pay for every ounce | Add it to yourself, or be invited |
 | **Farmer** | Hand milk cows, groom them, clean stalls, carry and deliver milk | Given by the owner or another farmer |
 | **Owner** | Run the dairy: place stalls, invite people, post buy orders | Start your own dairy |
-| **Bull** | Make seed and get milked (like milk, but much less), breed your dairy's cows with the [Corruption](https://github.com/RaylaPetal/corruption) plugin. *Still in testing: details will change.* | Add it to yourself |
+| **Bull** | Make seed and get milked (like milk, but much less), breed your dairy's cows with the [Corruption](https://github.com/RaylaPetal/corruption) plugin. | Add it to yourself |
 
 Cow and bull are yours: you add or drop them, and they hold in every dairy you're in. Farmer is given by each dairy, and only that dairy's owner can take it away.
 
@@ -114,9 +114,9 @@ Cow and bull are yours: you add or drop them, and they hold in every dairy you'r
 
 ---
 
-## Bulls and breeding (still in testing)
+## Bulls and breeding
 
-Breeding is new and still being tuned: numbers and details will change.
+Breeding needs the Corruption plugin for both of you; balance may still change as we see how it plays.
 - **Bulls** make seed and get milked, the way cows make milk, with the same four bonuses. Seed fills small vials and pays ten times milk's price per ounce. Add the Bull role to yourself on the Roles tab.
 - **Breeding needs** the [Corruption](https://github.com/RaylaPetal/corruption) plugin (0.3.5 or newer) and Cummy, for both of you. The bull's Corruption needs **Let other plugins control Corruption** turned on (Settings → Other plugins). The cow's Cummy blocks always apply.
 - **When a bull of your dairy finishes in a Corruption scene with a cow of your dairy, she's bred:** +5% milk for 30 minutes (less if the bull's seed output is low that day; 45 minutes with the Champion's ribbon). Once per scene, and a cow can be bred again 20 minutes after the last time. The bull gets up to 40 bull xp; after 20 breedings in a day his seed output (and xp) drops, resetting at midnight UTC.

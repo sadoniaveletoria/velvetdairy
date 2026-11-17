@@ -72,17 +72,36 @@ public sealed class KitchenWindow : Window
         ImGui.PushStyleColor(ImGuiCol.PlotHistogram, Theme.BlueDeep);
         ImGui.ProgressBar(frac, new Vector2(Math.Min(ImGui.GetContentRegionAvail().X, 260), 8), "");
         ImGui.PopStyleColor();
-        ImGui.SameLine();
+        // The buttons follow the bar while they fit, and wrap to the next line in a narrow window
+        var w8 = Units.Metric ? 104f : 84f;
+        var w32 = Units.Metric ? 104f : 90f;
+        SameLineIfFits(w8);
         var p8 = G.TakeJugProblem(8);
-        if (Ui.Button("##kjug8", $"Fill {Units.Oz(8)}", new Vector2(Units.Metric ? 104 : 84, 24), "cream", p8 == null, p8)) G.TakeJug(8);
-        ImGui.SameLine();
+        if (Ui.Button("##kjug8", $"Fill {Units.Oz(8)}", new Vector2(w8, 24), "cream", p8 == null, p8)) G.TakeJug(8);
+        SameLineIfFits(w32);
         var p32 = G.TakeJugProblem(32);
-        if (Ui.Button("##kjug32", $"Fill {Units.Oz(32)}", new Vector2(Units.Metric ? 104 : 90, 24), "cream", p32 == null, p32)) G.TakeJug(32);
-        ImGui.SameLine();
+        if (Ui.Button("##kjug32", $"Fill {Units.Oz(32)}", new Vector2(w32, 24), "cream", p32 == null, p32)) G.TakeJug(32);
+        SameLineIfFits(80);
         var up = G.FillUpOz;
         var pUp = up < 1 ? (G.Carried >= G.MaxCarry - 0.5f ? "Your jugs are full." : "The dairy tank is empty.") : G.TakeJugProblem(up);
         if (Ui.Button("##kjugup", "Fill up", new Vector2(80, 24), "blue", pUp == null, pUp ?? $"Take {Units.Oz(up)}")) G.TakeJug(up);
         ImGui.Spacing();
+    }
+
+    /// <summary>Puts the next item on this line if it fits (with the gap), otherwise on the next line.</summary>
+    private static void SameLineIfFits(float nextWidth)
+    {
+        var lastRight = ImGui.GetItemRectMax().X;
+        var right = ImGui.GetWindowPos().X + ImGui.GetWindowContentRegionMax().X;
+        if (lastRight + ImGui.GetStyle().ItemSpacing.X + nextWidth <= right) ImGui.SameLine();
+    }
+
+    /// <summary>Text cut to fit a width, with "..." when it doesn't.</summary>
+    private static string Fit(string text, float width)
+    {
+        if (ImGui.CalcTextSize(text).X <= width) return text;
+        while (text.Length > 1 && ImGui.CalcTextSize(text + "...").X > width) text = text[..^1];
+        return text.TrimEnd() + "...";
     }
 
     /// <summary>What's baking: a progress bar for the current one, the time left for the batch, and Stop.</summary>
@@ -131,16 +150,20 @@ public sealed class KitchenWindow : Window
                 var p = ImGui.GetCursorScreenPos();
                 var h = ImGui.GetTextLineHeight();
                 dl.AddCircleFilled(p + new Vector2(5, h / 2 + 1), 3.5f, ImGui.ColorConvertFloat4ToU32(ready ? Theme.SageDeep : Theme.InkSoft with { W = 0.4f }));
+                // On the right: how many the dairy has (on the shelf, or in the pantry), or the level a locked one needs
+                var have = Have(r);
+                var right = locked ? $"Lv {r.FarmerLevel}" : $"{have}";
+                var rowW = ImGui.GetContentRegionAvail().X;
+                var cw = ImGui.CalcTextSize(right).X;
                 ImGui.SetCursorScreenPos(p + new Vector2(14, 0));
                 if (locked) ImGui.PushStyleColor(ImGuiCol.Text, Theme.InkSoft with { W = 0.6f });
-                if (ImGui.Selectable(locked ? $"{r.Name}  (Lv {r.FarmerLevel})##kr{r.Id}" : $"{r.Name}##kr{r.Id}", selected == r.Id)) selected = r.Id;
+                // The name is cut to leave room for the number, so they never overlap
+                var name = Fit(r.Name, rowW - 14 - cw - 12);
+                if (ImGui.Selectable($"{name}##kr{r.Id}", selected == r.Id, ImGuiSelectableFlags.None, new Vector2(rowW - 14, 0))) selected = r.Id;
                 if (locked) ImGui.PopStyleColor();
-                // How many the dairy has: on the shelf, or in the pantry
-                var have = Have(r);
-                var count = $"{have}";
-                var cw = ImGui.CalcTextSize(count).X;
-                dl.AddText(new Vector2(p.X + ImGui.GetContentRegionAvail().X - cw - 4, p.Y), ImGui.ColorConvertFloat4ToU32(have > 0 ? Theme.Ink : Theme.InkSoft with { W = 0.6f }), count);
-                if (ImGui.IsItemHovered()) ImGui.SetTooltip(Units.Text(ready ? "You can make this now." : G.MakeProblem(r) ?? ""));
+                dl.AddText(new Vector2(p.X + rowW - cw - 4, p.Y), ImGui.ColorConvertFloat4ToU32(!locked && have > 0 ? Theme.Ink : Theme.InkSoft with { W = 0.6f }), right);
+                if (ImGui.IsItemHovered())
+                    ImGui.SetTooltip((name != r.Name ? r.Name + "\n" : "") + Units.Text(ready ? "You can make this now." : G.MakeProblem(r) ?? ""));
             }
 
             ImGui.Spacing();
@@ -157,11 +180,13 @@ public sealed class KitchenWindow : Window
         Ui.Icon(dl, Catalog.MadeIcon(r.Makes), p + new Vector2(18, 18), 18);
         ImGui.SetCursorScreenPos(p + new Vector2(44, 0));
         ImGui.TextColored(Theme.Ink, r.Name);
+        // The subtitle wraps in a narrow window instead of running off the edge
         ImGui.SetCursorScreenPos(p + new Vector2(44, ImGui.GetTextLineHeightWithSpacing()));
-        ImGui.TextColored(Theme.InkSoft, $"{Group(r)} · {(r.ToShelf ? "goes on the dairy shelf" : "goes in the dairy pantry, for every farmer")}");
-        ImGui.SameLine();
-        ImGui.TextColored(Theme.SageDeep, $"· {Have(r)} {(r.ToShelf ? "on the shelf" : "in the pantry")} now");
-        ImGui.SetCursorScreenPos(p + new Vector2(0, 44));
+        var sub = $"{Group(r)} · {(r.ToShelf ? "goes on the dairy shelf" : "goes in the dairy pantry, for every farmer")} · {Have(r)} {(r.ToShelf ? "on the shelf" : "in the pantry")} now";
+        ImGui.PushTextWrapPos(ImGui.GetCursorPosX() + Math.Max(60, width - 44));
+        ImGui.TextColored(Theme.InkSoft, sub);
+        ImGui.PopTextWrapPos();
+        ImGui.SetCursorScreenPos(new Vector2(p.X, Math.Max(p.Y + 44, ImGui.GetCursorScreenPos().Y + 4)));
         Ui.Wrapped(r.Desc, Theme.InkSoft, width);
         ImGui.Spacing();
 

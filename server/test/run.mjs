@@ -303,6 +303,12 @@ await test("dairy XP: only in the dairy, capped per member per day", async () =>
   assert.equal((await call(bob, "POST", "/v1/dairy/tank/take", { grade: 0, oz: 1 })).status, 400, "empty now");
   sqlite.prepare("UPDATE dairy_tank SET oz = ? WHERE grade = 0").run(tankBefore);
   sqlite.prepare("UPDATE carried SET oz = oz - 5 WHERE install = ?").run(bob.id);
+  // A big farmer tank fills up in one go (up to 400 oz)
+  sqlite.prepare("UPDATE dairy_tank SET oz = 500 WHERE grade = 0").run();
+  assert.equal((await call(bob, "POST", "/v1/dairy/tank/take", { grade: 0, oz: 144 })).status, 200, "a 144 oz tank");
+  assert.equal((await call(bob, "POST", "/v1/dairy/tank/take", { grade: 0, oz: 401 })).status, 400, "more than the biggest tank");
+  sqlite.prepare("UPDATE dairy_tank SET oz = ? WHERE grade = 0").run(tankBefore);
+  sqlite.prepare("UPDATE carried SET oz = oz - 144 WHERE install = ?").run(bob.id);
   // A cow's hand milking pays the farmer a share
   await beat(alice, { houseId: HOUSE, awake: true });
   const hp = await call(alice, "POST", "/v1/handpay", { farmer: "Bob Hand", world: "Gilgamesh", oz: 10, grade: 1 });

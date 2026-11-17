@@ -143,22 +143,22 @@ public static class Catalog
 
     public static readonly IReadOnlyList<Recipe> Recipes = new[]
     {
-        new Recipe("butter", "Churn butter", "butter", 1, 16, 0, 1, 12, 30, "Churn 16 oz of milk from your jugs into a pat of butter."),
-        new Recipe("flour", "Mill flour", "flour", 1, 0, 0, 6, 6, 20, "Mill 2 wheat grain (from the Shop) into flour for the dairy pantry.",
+        new Recipe("butter", "Butter", "butter", 1, 16, 0, 1, 12, 30, "Churn 16 oz of milk from your jugs into a pat of butter."),
+        new Recipe("flour", "Flour", "flour", 1, 0, 0, 6, 6, 20, "Mill 2 wheat grain (from the Shop) into flour for the dairy pantry.",
             Uses: "hay", UsesCount: 2),
-        new Recipe("cheese", "Make cheese", "cheese", 2, 16, 0, 1, 10, 40,
+        new Recipe("cheese", "Cheese", "cheese", 2, 16, 0, 1, 10, 40,
             "16 oz of milk makes 2 cheese for the dairy shelf: the simplest treat, nothing else needed. Members buy them; you get 80% of the price.",
             ToShelf: true),
-        new Recipe("cookies", "Bake butter cookies", "cookies", 3, 8, 0, 3, 15, 45,
+        new Recipe("cookies", "Butter cookies", "cookies", 3, 8, 0, 3, 15, 45,
             "1 butter and 8 oz of milk make 3 butter cookies for the dairy shelf. Members buy them; you get 80% of the price.",
             Uses: "butter", UsesCount: 1, ToShelf: true),
-        new Recipe("buns", "Bake cream buns", "buns", 2, 12, 0, 10, 25, 75,
+        new Recipe("buns", "Cream buns", "buns", 2, 12, 0, 10, 25, 75,
             "1 flour, 1 butter and 12 oz of milk make 2 cream buns for the dairy shelf: a bigger treat than cookies. Members buy them; you get 80% of the price.",
             Uses: "flour", UsesCount: 1, ToShelf: true, Uses2: "butter", UsesCount2: 1),
-        new Recipe("cake", "Bake honey cream cake", "cake", 2, 16, 0, 35, 40, 100,
+        new Recipe("cake", "Honey cream cake", "cake", 2, 16, 0, 35, 40, 100,
             "1 flour, 2 butter and 16 oz of milk make 2 honey cream cakes for the dairy shelf: a big treat. Members buy them; you get 80% of the price.",
             Uses: "flour", UsesCount: 1, ToShelf: true, Uses2: "butter", UsesCount2: 2),
-        new Recipe("tart", "Bake velvet tart", "tart", 2, 24, 0, 70, 60, 130,
+        new Recipe("tart", "Velvet tart", "tart", 2, 24, 0, 70, 60, 130,
             "2 flour, 2 butter and 24 oz of milk make 2 velvet tarts for the dairy shelf: the best treat there is. Members buy them; you get 80% of the price.",
             Uses: "flour", UsesCount: 2, ToShelf: true, Uses2: "butter", UsesCount2: 2),
     };
@@ -172,7 +172,7 @@ public static class Catalog
 
     /// <summary>Treats are baked; ingredients (butter, flour) are made.</summary>
     // Cookies and buns are baked; butter, flour and cheese are made
-    public static bool IsBaked(Recipe r) => r.Name.StartsWith("Bake ", StringComparison.Ordinal);
+    public static bool IsBaked(Recipe r) => r.Id is "cookies" or "buns" or "cake" or "tart";
     public static string Verb(Recipe r) => IsBaked(r) ? "Bake" : "Make";
     public static string Doing(Recipe r) => IsBaked(r) ? "Baking" : "Making";
 
