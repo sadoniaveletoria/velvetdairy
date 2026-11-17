@@ -524,6 +524,42 @@ public sealed class NetClient : IDisposable
 
     public void GetMyBackup(Action<BackupReply> ok, Action<string> failed) => Call("GET", "/v1/backup", null, ok, failed);
 
+    // ----- Breeding stalls and the seed market -----
+
+    public void SetBreedingStall(string stallId, bool on, Action ok, Action<string> failed) =>
+        Call<OkReply>("POST", $"/v1/stalls/{stallId}/breeding", new { on }, _ =>
+        {
+            nextMine = 0;
+            ok();
+        }, failed);
+
+    public void BreedAtStall(string stallId, Action<BreedStallReply> ok, Action<string> failed) =>
+        Call<BreedStallReply>("POST", $"/v1/stalls/{stallId}/breed", null, r =>
+        {
+            nextMine = 0;
+            ok(r);
+        }, failed);
+
+    public SeedMarketReply? SeedMarket { get; private set; }
+    private double seedMarketAt = -100;
+
+    /// <summary>The seed for sale (at most every 20 seconds unless forced).</summary>
+    public void RefreshSeedMarket(bool force = false)
+    {
+        if (!force && Now - seedMarketAt < 20) return;
+        seedMarketAt = Now;
+        Call<SeedMarketReply>("GET", "/v1/seed/market", null, r => SeedMarket = r, _ => { });
+    }
+
+    public void SellSeed(int oz, int price, Action ok, Action<string> failed) =>
+        Call<OkReply>("POST", "/v1/seed/sell", new { oz, price }, _ => { RefreshSeedMarket(true); nextMine = 0; ok(); }, failed);
+
+    public void BuySeed(long id, int oz, Action<SeedBuyReply> ok, Action<string> failed) =>
+        Call<SeedBuyReply>("POST", $"/v1/seed/sales/{id}/buy", new { oz }, r => { RefreshSeedMarket(true); nextMine = 0; ok(r); }, failed);
+
+    public void CloseSeedSale(long id, Action ok, Action<string> failed) =>
+        Call<OkReply>("POST", $"/v1/seed/sales/{id}/close", null, _ => { RefreshSeedMarket(true); nextMine = 0; ok(); }, failed);
+
     public void RestoreAvailable(Action<RestoreAvailableReply> ok) => Call<RestoreAvailableReply>("GET", "/v1/restore/available", null, ok, _ => { });
 
     public void RestoreStart(string name, string world, Action<RestoreStartReply> ok, Action<string> failed) =>

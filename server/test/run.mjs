@@ -947,4 +947,64 @@ await test("Discord walkthrough: verify on the Lodestone, then paste the restore
   assert.equal((await call({ ...self, key: newKey }, "POST", "/v1/rekey", { newKey: "nope" })).status, 400);
 });
 
+await test("breeding stalls use the seed tank, and dairies sell spare seed to each other", async () => {
+  const hana = player("Hana Breeder"), ivo = player("Ivo Buyer");
+  await beat(hana);
+  await beat(ivo);
+  const H1 = "4440001112221", H2 = "4440001112222";
+  assert.equal((await call(hana, "PUT", "/v1/dairy", dairyBody({ houseId: H1, name: "Hana Hollow", ownerName: "Hana Breeder", ward: 21, plot: 7 }))).status, 200);
+  assert.equal((await call(ivo, "PUT", "/v1/dairy", dairyBody({ houseId: H2, name: "Ivo Acres", ownerName: "Ivo Buyer", ward: 22, plot: 8 }))).status, 200);
+  const dh = (await beat(hana)).data.membership.dairyId, di = (await beat(ivo)).data.membership.dairyId;
+  const stall = (await call(hana, "POST", "/v1/stalls", { name: "Breeding pen", x: 1, y: 0, z: 1 })).data.id;
+  assert.ok(stall);
+
+  // Only the owner switches it; then it shows as a breeding stall
+  assert.equal((await call(ivo, "POST", `/v1/stalls/${stall}/breeding`, { on: true })).status, 404);
+  assert.equal((await call(hana, "POST", `/v1/stalls/${stall}/breeding`, { on: true })).data.breed, true);
+  const listed = (await call(hana, "GET", "/v1/dairy/mine")).data.stalls.find(x => x.id === stall);
+  assert.equal(listed.breed, true);
+
+  // Sitting in it: needs to be there, and seed in the tank
+  assert.equal((await call(hana, "POST", `/v1/stalls/${stall}/breed`)).status, 400, "not in the dairy");
+  await beat(hana, { houseId: H1 });
+  const empty = await call(hana, "POST", `/v1/stalls/${stall}/breed`);
+  assert.equal(empty.status, 400);
+  assert.match(empty.data.error, /seed tank/);
+  sqlite.prepare("INSERT INTO dairy_tank (dairy_id, grade, oz) VALUES (?, -1, 10) ON CONFLICT(dairy_id, grade) DO UPDATE SET oz = 10").run(dh);
+  const bred = (await call(hana, "POST", `/v1/stalls/${stall}/breed`)).data;
+  assert.equal(bred.ok, true);
+  assert.equal(bred.left, 7);
+  assert.equal((await call(hana, "POST", `/v1/stalls/${stall}/breed`)).status, 429, "20 minutes between breedings");
+  // A milking stall can't breed
+  assert.equal((await call(hana, "POST", `/v1/stalls/${stall}/breeding`, { on: false })).data.breed, false);
+  assert.equal((await call(hana, "POST", `/v1/stalls/${stall}/breed`)).status, 404);
+
+  // Selling spare seed: it leaves the tank while it's listed
+  assert.equal((await call(hana, "POST", "/v1/seed/sell", { oz: 50, price: 40 })).status, 400, "not that much in the tank");
+  const sale = (await call(hana, "POST", "/v1/seed/sell", { oz: 5, price: 40 })).data.id;
+  assert.equal((await call(hana, "GET", "/v1/seed/market")).data.tank, 2);
+  const market = (await call(ivo, "GET", "/v1/seed/market")).data;
+  const row = market.sales.find(x => x.id === sale);
+  assert.equal(row.dairy, "Hana Hollow");
+  assert.equal(row.price, 40);
+  assert.equal((await call(hana, "GET", "/v1/seed/market")).data.sales.some(x => x.id === sale), false, "not your own in the list");
+
+  // Buying from the dairy fund, into the seller's fund
+  assert.equal((await call(ivo, "POST", `/v1/seed/sales/${sale}/buy`, { oz: 2 })).status, 400, "no coins in the fund");
+  sqlite.prepare("INSERT INTO dairy_progress (dairy_id, fund, week) VALUES (?, 500, 'w') ON CONFLICT(dairy_id) DO UPDATE SET fund = 500").run(di);
+  const fundBefore = sqlite.prepare("SELECT fund FROM dairy_progress WHERE dairy_id = ?").get(dh)?.fund || 0;
+  const bought = (await call(ivo, "POST", `/v1/seed/sales/${sale}/buy`, { oz: 2 })).data;
+  assert.equal(bought.cost, 80);
+  assert.equal(bought.tank, 2);
+  assert.equal(sqlite.prepare("SELECT fund FROM dairy_progress WHERE dairy_id = ?").get(di).fund, 420);
+  assert.equal(sqlite.prepare("SELECT fund FROM dairy_progress WHERE dairy_id = ?").get(dh).fund, fundBefore + 80);
+  assert.equal((await call(hana, "POST", `/v1/seed/sales/${sale}/buy`, { oz: 1 })).status, 400, "not your own");
+  assert.equal((await call(ivo, "POST", `/v1/seed/sales/${sale}/buy`, { oz: 4 })).status, 400, "only 3 left");
+
+  // Taking it down: the rest goes back into the seed tank
+  assert.equal((await call(ivo, "POST", `/v1/seed/sales/${sale}/close`)).status, 404, "not theirs");
+  assert.equal((await call(hana, "POST", `/v1/seed/sales/${sale}/close`)).data.returned, 3);
+  assert.equal((await call(hana, "GET", "/v1/seed/market")).data.tank, 5);
+});
+
 console.log(`\n${passed} passed`);

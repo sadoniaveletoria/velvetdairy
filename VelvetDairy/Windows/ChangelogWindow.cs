@@ -23,6 +23,12 @@ public sealed class ChangelogWindow : Window
     /// <summary>Newest first. Write these for players: what changed for them, not how.</summary>
     private static readonly Entry[] Entries =
     {
+        new("0.9.89", "Breeding stalls and the seed market", new[]
+        {
+            "Breeding stalls: the owner can switch any stall to breeding (Dairy > Stalls > Make it breed). It stops milking; a cow who sits in it for 5 minutes is bred, with the same bonus as a scene. A stall doesn't get you pregnant: that's only from a Corruption scene.",
+            "Each breeding uses 3 oz from the dairy's seed tank, which bulls fill when they're milked. No bull? Buy seed from other dairies.",
+            "The seed market (Creamery > Seed market): owners sell their spare seed from the seed tank (coins go to the dairy fund as it sells) and buy other dairies' seed from the dairy fund.",
+        }),
         new("0.9.88", "Kitchen fixes", new[]
         {
             "Fill up in the Kitchen fills big farmer tanks in one go (it said \"Bad oz\" for more than 96 oz).",

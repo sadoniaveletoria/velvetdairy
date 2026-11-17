@@ -420,3 +420,29 @@ CREATE TABLE IF NOT EXISTS restore_keys (
   expires   INTEGER NOT NULL,
   used      INTEGER NOT NULL DEFAULT 0
 );
+
+-- Breeding stalls: a stall the owner switched from milking to breeding. A cow who sits in it for 5 minutes is bred
+-- (the same bred bonus as a scene, no pregnancy), using seed from the dairy's seed tank.
+CREATE TABLE IF NOT EXISTS breed_stalls (
+  stall_id  TEXT PRIMARY KEY,
+  dairy_id  TEXT NOT NULL
+);
+
+-- When each cow last used a breeding stall (the usual wait between breedings).
+CREATE TABLE IF NOT EXISTS breed_stall_uses (
+  install   TEXT PRIMARY KEY,
+  last      INTEGER NOT NULL
+);
+
+-- Seed for sale: a dairy owner sells spare seed from their seed tank to other dairies. The seed is held here until it
+-- sells or the listing is taken down; buyers pay from their dairy fund, into the seller's dairy fund.
+CREATE TABLE IF NOT EXISTS seed_sales (
+  id        INTEGER PRIMARY KEY AUTOINCREMENT,
+  dairy_id  TEXT NOT NULL,
+  oz        REAL NOT NULL,             -- left to sell
+  sold      REAL NOT NULL DEFAULT 0,
+  price     INTEGER NOT NULL,          -- coins per oz
+  created   INTEGER NOT NULL,
+  status    TEXT NOT NULL DEFAULT 'open'   -- open | closed
+);
+CREATE INDEX IF NOT EXISTS seed_sales_open ON seed_sales(status, dairy_id);

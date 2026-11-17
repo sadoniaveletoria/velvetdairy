@@ -620,4 +620,99 @@ public sealed partial class DairyGame
         for (var l = before + 1; l <= BullLevel; l++)
             Say($"Bull level {l}!" + (Leveling.BullRank(l) is { } t && l % 25 == 0 ? $" You're a {t}." : ""), 1);
     }
+
+    // ----- Breeding stalls -----
+    // A stall the owner switched to breeding. A cow sits in it for 5 minutes and is bred: the same bred bonus as a
+    // scene, but no pregnancy (that only comes from Corruption). It uses 3 oz from the dairy's seed tank.
+
+    public const int BreedStallMinutes = 5;
+    public const float BreedStallSeedOz = 3f;
+    private Stall? breedSitAt;
+    private DateTime breedSitStart;
+    private bool breedAsking;
+    private string breedWarnedFor = "";
+
+    /// <summary>Sitting in a breeding stall, waiting for it to finish.</summary>
+    public bool OnBreedStall => breedSitAt != null;
+
+    public TimeSpan BreedStallLeft
+    {
+        get
+        {
+            if (breedSitAt == null) return TimeSpan.Zero;
+            var left = TimeSpan.FromMinutes(BreedStallMinutes) - (DateTime.UtcNow - breedSitStart);
+            return left > TimeSpan.Zero ? left : TimeSpan.Zero;
+        }
+    }
+
+    public float BreedStallProgress => breedSitAt == null ? 0f : Math.Clamp((float)((DateTime.UtcNow - breedSitStart).TotalMinutes / BreedStallMinutes), 0f, 1f);
+
+    /// <summary>Why this cow can't use a breeding stall right now, or null.</summary>
+    public string? BreedStallProblem()
+    {
+        if (!Networked) return "Breeding stalls need the Eorzea Milkers Network.";
+        if (!IsCow) return "Breeding stalls are for cows.";
+        if (Blocked() is { } blocked) return blocked;
+        if (BreedCooldownLeft > TimeSpan.Zero) return $"You were bred recently: you can be bred again in {Wait(BreedCooldownLeft)}.";
+        // Your own dairy's seed tank (a visited dairy's is checked by the server)
+        if (!Where.Guest && Net.Progress?.Tank is { } tank && tank.Seed < BreedStallSeedOz - 0.05f)
+            return $"The seed tank has {Units.Oz(tank.Seed, "0.#")}; a breeding needs {Units.Oz(BreedStallSeedOz)}. It needs a bull, or seed bought from another dairy (Creamery tab).";
+        return null;
+    }
+
+    private void BreedStallUpdate()
+    {
+        var st = Where.AtStall;
+        if (st == null || !st.Breed || !Where.Seated)
+        {
+            if (breedSitAt != null && !breedAsking)
+            {
+                Say("You got up before the breeding stall finished.", 2);
+                breedSitAt = null;
+            }
+
+            if (st == null) breedWarnedFor = "";
+            return;
+        }
+
+        if (breedAsking) return;
+        if (breedSitAt != st)
+        {
+            if (BreedStallProblem() is { } why)
+            {
+                // Said once per sit, not every frame
+                if (breedWarnedFor != st.Id) Fail(why);
+                breedWarnedFor = st.Id;
+                breedSitAt = null;
+                return;
+            }
+
+            breedSitAt = st;
+            breedSitStart = DateTime.UtcNow;
+            breedWarnedFor = st.Id;
+            Say($"You settle into {st.Name}. Stay seated for {BreedStallMinutes} minutes to be bred.", 0);
+            return;
+        }
+
+        if (DateTime.UtcNow - breedSitStart < TimeSpan.FromMinutes(BreedStallMinutes)) return;
+        breedAsking = true;
+        Net.BreedAtStall(st.Id, r =>
+        {
+            breedAsking = false;
+            breedSitAt = null;
+            F.BredAtUtc = DateTime.UtcNow;
+            F.BredUntilUtc = DateTime.UtcNow.AddMinutes(BredMinutesNow);
+            F.BredStrength = 1f;
+            F.BredBy = r.Bull.Length > 0 ? $"{r.Bull} (breeding stall)" : "the breeding stall";
+            Diag.Info("breed", $"Bred at breeding stall {st.Name} ({r.Oz} oz seed, {r.Left} left)");
+            Say($"The breeding stall bred you{(r.Bull.Length > 0 ? $" with {r.Bull}'s seed" : "")}: +{BredBonusNow * 100:0.#}% milk for {BredMinutesNow} minutes. " +
+                "(A stall doesn't get you pregnant: that's only from a scene.)", 1);
+            plugin.SaveConfig();
+        }, e =>
+        {
+            breedAsking = false;
+            breedSitAt = null;
+            Fail(e);
+        });
+    }
 }

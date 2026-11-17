@@ -1324,14 +1324,19 @@ public sealed partial class MainWindow : Window
 
     private void DrawCreamery(Vector2 min, Vector2 max)
     {
-        var labels = G.CanCarry ? new[] { "Your pay", "Customer orders", "Deliveries" } : new[] { "Your pay" };
-        var top = SubTabs("creamery", labels, min, max.X - min.X);
+        // The seed market is for every member (owners buy and sell; others can see it)
+        var labels = new List<string> { "Your pay" };
+        if (G.CanCarry) labels.AddRange(new[] { "Customer orders", "Deliveries" });
+        if (G.Networked && F.NetMember != null) labels.Add("Seed market");
+        var top = SubTabs("creamery", labels.ToArray(), min, max.X - min.X);
         var (cmin, cmax) = Column(top, max, 760);
-        switch (G.CanCarry ? Sub("creamery") : 0)
+        var pick = labels[Math.Clamp(Sub("creamery"), 0, labels.Count - 1)];
+        switch (pick)
         {
-            case 0: Panel("##pay", cmin, cmax, "Your pay", DrawPay); return;
-            case 1: Panel("##orders", cmin, cmax, "Creamery orders", DrawOrders, true); return;
-            default: Panel("##netorders", cmin, cmax, "Deliveries to other dairies", DrawNetOrders, true); return;
+            case "Customer orders": Panel("##orders", cmin, cmax, "Creamery orders", DrawOrders, true); return;
+            case "Deliveries": Panel("##netorders", cmin, cmax, "Deliveries to other dairies", DrawNetOrders, true); return;
+            case "Seed market": Panel("##seedmarket", cmin, cmax, "Seed market", DrawSeedMarket, true); return;
+            default: Panel("##pay", cmin, cmax, "Your pay", DrawPay); return;
         }
     }
 
@@ -1705,6 +1710,15 @@ public sealed partial class MainWindow : Window
                 : "Your dairy's stalls. Sit on one to get milked.", Theme.InkSoft, width);
         }
         else Ui.Wrapped($"A stall is a seat in your dairy: a chair, bench or bed. Sit on it and press Add. You can have {G.MaxStalls}.", Theme.InkSoft, width);
+        if (G.Networked)
+        {
+            Gap(4);
+            var seed = G.Net.Progress?.Tank?.Seed ?? 0;
+            Ui.Wrapped($"Breeding stalls: switch a stall to breeding and a cow who sits in it for {DairyGame.BreedStallMinutes} minutes is bred (the same bonus as a scene, " +
+                       $"no pregnancy). Each breeding uses {Units.Oz(DairyGame.BreedStallSeedOz)} from the seed tank, which has {Units.Oz(seed, "0.#")} now. " +
+                       "Bulls fill it, or buy seed from other dairies on the Creamery tab.", seed < DairyGame.BreedStallSeedOz ? Theme.RoseDeep : Theme.InkSoft, width);
+        }
+
         Gap(6);
         foreach (var s in G.Stalls.ToList())
         {
@@ -1717,16 +1731,21 @@ public sealed partial class MainWindow : Window
                 var mp = G.MoveStallProblem(s);
                 buttons.Add(new Btn($"##mvstall{s.Id}", "Move here", "blue", mp == null, mp ?? "Move this stall to the seat you're sitting on. It keeps its name and tier."));
                 buttons.Add(new Btn($"##rmstall{s.Id}", "Remove", "cream", true, "Forget this stall."));
+                if (G.Networked)
+                    buttons.Add(new Btn($"##brstall{s.Id}", s.Breed ? "Make it milk" : "Make it breed", s.Breed ? "cream" : "rose", true,
+                        s.Breed ? "Switch it back to a milking stall." : $"Switch it to a breeding stall: it stops milking, and a cow who sits in it for {DairyGame.BreedStallMinutes} minutes is bred, using {Units.Oz(DairyGame.BreedStallSeedOz)} of the dairy's seed."));
             }
 
-            var clicked = ListRow(Ico("bucket"), s.Name + (here ? "  ·  you're here" : ""), inArea ? Theme.Ink : Theme.InkSoft,
+            var clicked = ListRow(Ico(s.Breed ? "ribbon" : "bucket"), s.Name + (s.Breed ? "  ·  breeding stall" : "") + (here ? "  ·  you're here" : ""), inArea ? Theme.Ink : Theme.InkSoft,
                 new[]
                 {
-                    new Line($"{Catalog.StallTierNames[s.Tier]} · milked you {s.Sessions} time(s)", Theme.InkSoft),
+                    new Line(s.Breed ? $"Breeds a cow who sits {DairyGame.BreedStallMinutes} min · {Units.Oz(DairyGame.BreedStallSeedOz)} seed each · doesn't milk"
+                                     : $"{Catalog.StallTierNames[s.Tier]} · milked you {s.Sessions} time(s)", s.Breed ? Theme.RoseDeep : Theme.InkSoft),
                     new Line(inArea ? "" : "Outside the dairy's area: it won't work until you move it.", Theme.RoseDeep),
                 }, buttons, width);
             if (clicked == 0) G.MoveStall(s);
             else if (clicked == 1) G.RemoveStall(s);
+            else if (clicked == 2) G.Net.SetBreedingStall(s.Id, !s.Breed, () => G.Notify(s.Breed ? $"{s.Name} milks again." : $"{s.Name} is a breeding stall now.", 0), e => G.Notify(e, 2));
         }
 
         if (G.Networked && !G.IsOwner) return;

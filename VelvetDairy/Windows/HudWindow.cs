@@ -190,6 +190,13 @@ public sealed class HudWindow : Window
             status = "Paused";
             col = Theme.InkSoft;
         }
+        else if (G.OnBreedStall)
+        {
+            // In a breeding stall: a bar that fills over the 5 minutes
+            status = $"Breeding stall · {DairyGame.Wait(G.BreedStallLeft)} left";
+            col = Theme.RoseDeep;
+            Ui.Bar(dl, new Vector2(x, o.Y + size.Y - 26), new Vector2(x + bw, o.Y + size.Y - 22), G.BreedStallProgress, Theme.RoseDeep);
+        }
         else if (s != null)
         {
             status = seedOnly ? $"Milking · {Units.Oz(s.ExtractedSeed * s.SeedYield, "0.##")} seed" : $"Milking · {Units.Oz(s.Extracted * s.Yield, "0.#")}" + (s.ExtractedSeed > 0 ? $" + {Units.Oz(s.ExtractedSeed * s.SeedYield, "0.##")} seed" : "");

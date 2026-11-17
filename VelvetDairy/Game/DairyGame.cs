@@ -207,6 +207,7 @@ public sealed partial class DairyGame
             s.Z = si.Z;
             s.Tier = Math.Clamp(si.Tier, 1, 4);
             s.CleanUntil = si.CleanUntil;
+            s.Breed = si.Breed;
             stalls.Add(s);
         }
 
@@ -1265,6 +1266,7 @@ public sealed partial class DairyGame
         if (!Where.Seated) return Where.Guest ? "Sit down in one of this dairy's stalls." : "Sit down in one of your stalls.";
         if (Wake == Wakefulness.Asleep) return "You're asleep. Move, emote or click anything to wake up.";
         if (Where.AtStall == null) return Where.Seated ? "Sit on a stall's own seat to be milked (you're sitting somewhere else)." : "Sit on one of the dairy's stalls to be milked.";
+        if (Where.AtStall.Breed) return "This is a breeding stall: it breeds cows instead of milking.";
         if (!HasEnoughToMilk) return ProducesMilk ? "You don't have enough milk yet." : "You don't have enough seed yet.";
         return null;
     }
@@ -1339,6 +1341,7 @@ public sealed partial class DairyGame
         // Sitting in a stall starts it by itself
         if (s == null)
         {
+            BreedStallUpdate();
             if (Where.AtStall == null || HalfBottleWaiting) autoHold = false;
             if (AutoStall && !autoHold && Where.AtStall != null && HasEnoughForStall && Wake == Wakefulness.Awake && StallProblem() == null) StartStall();
             return;
@@ -1352,7 +1355,7 @@ public sealed partial class DairyGame
 
         if (s.Kind == SessionKind.Stall)
         {
-            if (Where.AtStall == s.Stall) s.LastActivity = now;
+            if (Where.AtStall == s.Stall && !s.Stall!.Breed) s.LastActivity = now;
             else if (now - s.LastActivity > 1)
             {
                 Finish("You got up.");

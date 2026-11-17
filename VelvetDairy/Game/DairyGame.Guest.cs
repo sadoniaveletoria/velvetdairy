@@ -64,6 +64,7 @@ public sealed partial class DairyGame
             s.Z = si.Z;
             s.Tier = Math.Clamp(si.Tier, 1, 4);
             s.CleanUntil = si.CleanUntil;
+            s.Breed = si.Breed;
             stalls.Add(s);
         }
 

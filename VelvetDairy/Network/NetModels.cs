@@ -497,6 +497,7 @@ public sealed class StallInfo
     public float Z { get; set; }
     public int Tier { get; set; }
     public long CleanUntil { get; set; }   // unix seconds; a farmer cleaned it and it's fresh until then (0 = not fresh)
+    public bool Breed { get; set; }        // a breeding stall: it breeds cows instead of milking
 }
 
 public sealed class ShelfItem
@@ -658,4 +659,38 @@ public sealed class BellInfo
     public string By { get; set; } = "";
     public long At { get; set; }
     public long ReadyAt { get; set; }
+}
+
+public sealed class BreedStallReply
+{
+    public bool Ok { get; set; }
+    public float Oz { get; set; }
+    public float Left { get; set; }
+    public string Bull { get; set; } = "";
+}
+
+public sealed class SeedSale
+{
+    public long Id { get; set; }
+    public string Dairy { get; set; } = "";
+    public float Oz { get; set; }
+    public float Sold { get; set; }
+    public int Price { get; set; }
+}
+
+public sealed class SeedMarketReply
+{
+    public List<SeedSale> Sales { get; set; } = new();
+    public List<SeedSale> Mine { get; set; } = new();
+    public float Tank { get; set; }
+    public int Fund { get; set; }
+    public bool IsOwner { get; set; }
+}
+
+public sealed class SeedBuyReply
+{
+    public bool Ok { get; set; }
+    public int Oz { get; set; }
+    public int Cost { get; set; }
+    public float Tank { get; set; }
 }

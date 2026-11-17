@@ -963,4 +963,111 @@ public sealed partial class MainWindow
     /// data center next to the right one: Lich came out Chaos, Lamia Aether.)
     /// </summary>
     private static string DcOf(DairyListing d) => d.DcName;
+
+    // ----- Seed market -----
+    // Dairies sell their spare seed to each other, for breeding stalls. Owners buy (from the dairy fund, into the seed
+    // tank) and sell (from the seed tank, coins to the dairy fund); everyone else can see it.
+
+    private int seedSellOz = 5, seedSellPrice = 60, seedBuyOz = 3;
+    private bool seedBusy;
+
+    private void DrawSeedMarket(float width)
+    {
+        G.Net.RefreshSeedMarket();
+        var m = G.Net.SeedMarket;
+        Ui.Wrapped($"Dairies sell their spare seed here. A breeding stall uses {Units.Oz(DairyGame.BreedStallSeedOz)} of seed for each cow it breeds, " +
+                   "so a dairy needs a bull of its own, or seed from another dairy. Owners buy from the dairy fund, and sell from the seed tank.", Theme.InkSoft, width);
+        Gap(6);
+        if (m == null)
+        {
+            ImGui.TextColored(Theme.InkSoft, "Loading...");
+            return;
+        }
+
+        var owner = m.IsOwner;
+        ImGui.TextColored(Theme.Ink, $"Your seed tank: {Units.Oz(m.Tank, "0.#")}  ·  dairy fund: {m.Fund:N0} coins");
+        Gap(8);
+
+        // ---- For sale ----
+        SubHeading("For sale", width);
+        if (m.Sales.Count == 0) Ui.Wrapped("No other dairy is selling seed right now.", Theme.InkSoft, width);
+        else if (owner)
+        {
+            ImGui.TextColored(Theme.InkSoft, "Buy");
+            ImGui.SameLine();
+            ImGui.SetNextItemWidth(110);
+            if (ImGui.InputInt("oz at a time##seedbuyoz", ref seedBuyOz)) seedBuyOz = Math.Clamp(seedBuyOz, 1, 500);
+            Gap(4);
+        }
+
+        foreach (var sale in m.Sales)
+        {
+            var oz = Math.Min(seedBuyOz, (int)Math.Floor(sale.Oz + 0.05f));
+            var cost = oz * sale.Price;
+            var why = !owner ? "Only the owner buys seed, from the dairy fund." : oz < 1 ? "Less than an ounce left." : cost > m.Fund ? $"That's {cost:N0} coins; the dairy fund has {m.Fund:N0}." : null;
+            var clicked = ListRow(Ico("bottle"), sale.Dairy, Theme.Ink,
+                new[]
+                {
+                    new Line($"{Units.Oz(sale.Oz, "0.#")} for sale · {Units.PerOz(sale.Price)}", Theme.HoneyDeep),
+                    new Line($"About {Math.Floor(sale.Oz / DairyGame.BreedStallSeedOz):0} breedings", Theme.InkSoft),
+                },
+                new[] { new Btn($"##seedbuy{sale.Id}", oz >= 1 ? $"Buy {oz} oz ({cost:N0})" : "Buy", "sage", why == null && !seedBusy, why ?? "From the dairy fund, into your seed tank.") }, width);
+            if (clicked == 0)
+            {
+                seedBusy = true;
+                G.Net.BuySeed(sale.Id, oz, r =>
+                {
+                    seedBusy = false;
+                    G.Notify($"Bought {r.Oz} oz of seed from {sale.Dairy} for {r.Cost:N0} coins. Your seed tank has {Units.Oz(r.Tank, "0.#")}.", 1);
+                }, e =>
+                {
+                    seedBusy = false;
+                    G.Notify(e, 2);
+                });
+            }
+        }
+
+        // ---- Your listings ----
+        if (!owner) return;
+        Gap(8);
+        SubHeading("Sell your spare seed", width);
+        Ui.Wrapped("The seed leaves your tank while it's listed, and the coins go to your dairy fund as it sells. Take a listing down to get the rest back.", Theme.InkSoft, width);
+        Gap(4);
+        ImGui.SetNextItemWidth(110);
+        if (ImGui.InputInt("oz##seedselloz", ref seedSellOz)) seedSellOz = Math.Clamp(seedSellOz, 1, 500);
+        ImGui.SameLine();
+        ImGui.SetNextItemWidth(110);
+        if (ImGui.InputInt("coins per oz##seedsellprice", ref seedSellPrice)) seedSellPrice = Math.Clamp(seedSellPrice, 10, 2000);
+        var sellWhy = seedSellOz > m.Tank + 0.05f ? $"Your seed tank has {Units.Oz(m.Tank, "0.#")}." : m.Mine.Count >= 3 ? "You can have 3 listings at a time." : null;
+        if (Ui.Button("##seedsell", $"Sell {seedSellOz} oz for {seedSellOz * seedSellPrice:N0}", new Vector2(240, 30), "rose", sellWhy == null && !seedBusy, sellWhy))
+        {
+            seedBusy = true;
+            G.Net.SellSeed(seedSellOz, seedSellPrice, () =>
+            {
+                seedBusy = false;
+                G.Notify($"{seedSellOz} oz of seed is up for sale at {seedSellPrice} coins an ounce.", 1);
+            }, e =>
+            {
+                seedBusy = false;
+                G.Notify(e, 2);
+            });
+        }
+
+        Gap(6);
+        foreach (var mine in m.Mine)
+        {
+            var clicked = ListRow(Ico("coin"), $"{Units.Oz(mine.Oz, "0.#")} left at {Units.PerOz(mine.Price)}", Theme.Ink,
+                new[] { new Line(mine.Sold > 0 ? $"Sold {Units.Oz(mine.Sold, "0.#")} so far: {mine.Sold * mine.Price:N0} coins to your fund" : "Nothing sold yet", Theme.InkSoft) },
+                new[] { new Btn($"##seedclose{mine.Id}", "Take down", "cream", !seedBusy, "The rest goes back into your seed tank.") }, width);
+            if (clicked == 0)
+            {
+                seedBusy = true;
+                G.Net.CloseSeedSale(mine.Id, () => seedBusy = false, e =>
+                {
+                    seedBusy = false;
+                    G.Notify(e, 2);
+                });
+            }
+        }
+    }
 }
