@@ -26,6 +26,7 @@ public sealed class ChangelogWindow : Window
         new("0.9.88", "Kitchen fixes", new[]
         {
             "Fill up in the Kitchen fills big farmer tanks in one go (it said \"Bad oz\" for more than 96 oz).",
+            "The Bull role's descriptions are up to date now that bulls are live.",
             "The Kitchen fits a narrow window: recipe names are shorter (Butter cookies instead of Bake butter cookies) and are cut to fit beside their count, locked ones show the level they need on the right, and the Fill buttons move to the next line when there's no room.",
         }),
         new("0.9.87", "Cloud backup for your save, and fixes", new[]

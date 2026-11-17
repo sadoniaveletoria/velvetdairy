@@ -798,7 +798,7 @@ public sealed partial class MainWindow
             {
                 "cow" => "Make milk and get milked here; paid per ounce.",
                 "farmer" => "Hand milk cows, fill jugs, deliver, invite.",
-                _ => "A role only for now; more is coming.",
+                _ => "Make seed, get milked and breed cows (Corruption).",
             };
             var buttons = new List<Btn>();
             if (!has)
