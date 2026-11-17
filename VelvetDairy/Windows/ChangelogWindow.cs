@@ -23,6 +23,10 @@ public sealed class ChangelogWindow : Window
     /// <summary>Newest first. Write these for players: what changed for them, not how.</summary>
     private static readonly Entry[] Entries =
     {
+        new("0.9.90", "HUD only in a dairy", new[]
+        {
+            "With \"Only while I'm in a dairy\" on, the HUD now only shows in a dairy (yours or one you're visiting), even when you're full or being milked somewhere else.",
+        }),
         new("0.9.89", "Breeding stalls and the seed market", new[]
         {
             "Breeding stalls: the owner can switch any stall to breeding (Dairy > Stalls > Make it breed). It stops milking; a cow who sits in it for 5 minutes is bred, with the same bonus as a scene. A stall doesn't get you pregnant: that's only from a Corruption scene.",

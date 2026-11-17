@@ -51,7 +51,11 @@ public sealed partial class DairyGame
     /// Somewhere the HUD is for (with "only in a dairy" on): in your dairy, in one you're visiting, or while
     /// something is going on (being milked, a breeding scene).
     /// </summary>
-    public bool HudPlaceNow => Where.InDairy || Net.Last?.Here != null || Active != null || InScene;
+    /// <summary>
+    /// Where the HUD shows with "Only while I'm in a dairy": in a dairy (yours, or a public one you're visiting), and
+    /// nowhere else, even when you're full or being milked by hand elsewhere.
+    /// </summary>
+    public bool HudPlaceNow => Where.InDairy;
     public event Action<string, int>? Toast;   // message, kind (0 info, 1 good, 2 warn)
     public event Action? Stroked;              // a farmhand stroke drew milk (for the squirt sound)
 

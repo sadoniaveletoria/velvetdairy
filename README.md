@@ -40,7 +40,7 @@ Cow and bull are yours: you add or drop them, and they hold in every dairy you'r
 
 - The small HUD shows your bottle (and seed vials for bulls), your grade and what's happening now. Double-click or right-click it to open the main window.
 - Its buttons: **Herd Care** (farmers), and while you target another player close by, **Scan**, plus **Breed** if you're both cow and bull and so are they (members of your dairy). The Kitchen is on **Roles → Farmer**.
-- **It only shows while you're in a dairy** (yours, or one you're visiting), or while you're being milked or in a breeding scene. Elsewhere it hides to keep your screen clear. Want it everywhere? Untick **Only while I'm in a dairy** in Settings. `/milkers hud` (or the Settings box) hides it completely.
+- **It only shows while you're in a dairy** (yours, or one you're visiting). Elsewhere it hides to keep your screen clear, even when you're full or being milked by hand. Want it everywhere? Untick **Only while I'm in a dairy** in Settings. `/milkers hud` (or the Settings box) hides it completely.
 
 ---
 

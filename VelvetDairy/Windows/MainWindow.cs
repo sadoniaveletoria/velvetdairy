@@ -2018,7 +2018,7 @@ public sealed partial class MainWindow : Window
             b = F.HudOnlyInDairy;
             if (ImGui.Checkbox("Only while I'm in a dairy", ref b)) { F.HudOnlyInDairy = b; changed = true; }
             if (ImGui.IsItemHovered())
-                ImGui.SetTooltip(Units.Text("Hides the HUD everywhere else: it shows in your dairy, in a dairy you're visiting, and while you're being milked or in a breeding scene."));
+                ImGui.SetTooltip(Units.Text("Hides the HUD everywhere else: it only shows in your dairy or a dairy you're visiting, even when you're full or being milked somewhere else."));
             ImGui.Unindent();
         }
         b = F.LockHud;
