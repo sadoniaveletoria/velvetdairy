@@ -850,7 +850,7 @@ public sealed partial class MainWindow
         // A short summary here; the full list lives in the Members pop-out (better with 10+ people)
         var all = mine.Members;
         var online = all.Where(x => x.Online).ToList();
-        var inside = online.Where(x => x.Status?.InDairy == true).ToList();
+        var inside = online.Where(x => x.Here).ToList();
         ImGui.TextColored(Theme.Ink, $"{all.Count} member{(all.Count == 1 ? "" : "s")} · {online.Count} online · {inside.Count} in the dairy");
         ImGui.TextColored(Theme.InkSoft,
             $"{all.Count(x => x.Has("cow"))} cows · {all.Count(x => x.Has("farmer"))} farmers · {all.Count(x => x.Has("bull"))} bulls" +

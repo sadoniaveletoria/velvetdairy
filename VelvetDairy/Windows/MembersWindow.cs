@@ -103,7 +103,7 @@ public sealed class MembersWindow : Window
 
         var members = mine.Members;
         var online = members.Count(m => m.Online);
-        var here = members.Count(m => m.Online && m.Status?.InDairy == true);
+        var here = members.Count(m => m.Online && m.Here);
         using (fonts.For(fonts.Heading, mine.Dairy?.Name ?? "")!.Push()) ImGui.TextColored(Theme.Ink, mine.Dairy?.Name ?? G.DairyName);
         ImGui.TextColored(Theme.InkSoft,
             $"{members.Count} members · {online} online · {here} in the dairy · " +
@@ -175,7 +175,7 @@ public sealed class MembersWindow : Window
             {
                 1 => m => m.RoleText,
                 2 => m => TopLevel(m),
-                3 => m => m.Online ? (m.Status?.InDairy == true ? long.MinValue : long.MinValue + 1) : -m.LastSeen,
+                3 => m => m.Online ? (m.Here ? long.MinValue : long.MinValue + 1) : -m.LastSeen,
                 4 => m => m.Has("cow") && m.Status is { Cap: > 0 } s ? s.Milk / s.Cap : m.Has("bull") && m.Status is { SeedCap: > 0 } b ? b.SeedOz / b.SeedCap : -1f,
                 5 => m => m.Has("cow") ? m.Status?.Quality ?? 0 : -1,
                 6 => m => m.Status?.TotalOz ?? 0,
@@ -223,7 +223,8 @@ public sealed class MembersWindow : Window
                     if (m.LastSeen > 0 && ImGui.IsItemHovered())
                         ImGui.SetTooltip(Units.Text($"Last online {DateTimeOffset.FromUnixTimeSeconds(m.LastSeen).ToLocalTime():MMM d, h:mm tt}"));
                 }
-                else if (m.Status?.InDairy == true) ImGui.TextColored(Theme.SageDeep, "In the dairy");
+                else if (m.Here) ImGui.TextColored(Theme.SageDeep, "In the dairy");
+                else if (m.Status?.InDairy == true) ImGui.TextColored(Theme.HoneyDeep, "In another dairy");
                 else ImGui.TextColored(Theme.HoneyDeep, "Online");
                 if (m.Online && m.Status is { Preg.Length: > 0 } ps)
                 {

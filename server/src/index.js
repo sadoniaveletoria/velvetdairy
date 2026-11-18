@@ -1062,7 +1062,7 @@ async function myDairy(env, me) {
   const d = await env.DB.prepare("SELECT * FROM dairies WHERE id = ?").bind(mem.dairy_id).first();
   const t = now();
   const members = (await env.DB.prepare(`
-      SELECT m.install, m.role, m.name, m.world_name, m.status, i.last_seen, i.version
+      SELECT m.install, m.role, m.name, m.world_name, m.status, i.last_seen, i.version, i.at_dairy
       FROM memberships m LEFT JOIN installs i ON i.id = m.install WHERE m.dairy_id = ? ORDER BY m.joined`).bind(d.id).all()).results;
   const stalls = (await env.DB.prepare(
     "SELECT s.*, COALESCE(c.until, 0) AS clean_until, (b.stall_id IS NOT NULL) AS breed, COALESCE(b.loaded, 0) AS loaded FROM stalls s LEFT JOIN stall_clean c ON c.stall_id = s.id LEFT JOIN breed_stalls b ON b.stall_id = s.id WHERE s.dairy_id = ? ORDER BY s.created")
@@ -1083,6 +1083,8 @@ async function myDairy(env, me) {
     members: members.map(m => ({
       id: m.install, name: m.name, world: m.world_name, role: primaryRole(m.role), roles: roleList(m.role), isOwner: m.install === d.owner,
       online: (m.last_seen || 0) >= t - ONLINE_WINDOW, lastSeen: m.last_seen || 0, version: m.version || "", status: safeParse(m.status),
+      // In THIS dairy right now (their plugin's own "in a dairy" can mean another dairy they're visiting)
+      here: (m.last_seen || 0) >= t - ONLINE_WINDOW && m.at_dairy === d.id,
     })),
     stalls: stalls.map(s => ({ id: s.id, name: s.name, x: s.x, y: s.y, z: s.z, tier: s.tier, cleanUntil: s.clean_until > t ? s.clean_until : 0, breed: !!s.breed, loaded: s.loaded || 0 })),
     progress: await progressOut(env, d.id, stalls.length),
@@ -1097,7 +1099,7 @@ async function myDairy(env, me) {
         GROUP BY i.id`).bind(d.id, t - ONLINE_WINDOW, d.id).all()).results
       .map(m => ({
         id: m.install, name: m.name, world: m.world_name, role: primaryRole(m.role), roles: roleList(m.role), isOwner: false,
-        online: true, lastSeen: m.last_seen || 0, version: m.version || "", status: safeParse(m.status), guest: true,
+        online: true, lastSeen: m.last_seen || 0, version: m.version || "", status: safeParse(m.status), guest: true, here: true,
       })) : [],
   };
 }

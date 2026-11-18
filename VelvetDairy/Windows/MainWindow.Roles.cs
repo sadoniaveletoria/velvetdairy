@@ -251,7 +251,9 @@ public sealed partial class MainWindow
             if (!c.Online) lines.Add(new Line("Offline", Theme.InkSoft));
             else
             {
-                lines.Add(new Line(near < 0 ? (st?.InDairy == true ? "In the dairy, not near you" : "Not in the dairy") : near <= G.HandRange ? $"Right here ({near:0.#} y)" : $"{near:0} y away",
+                // Where they are: in this dairy (the server knows), or somewhere else (maybe another dairy they're visiting)
+                var where = c.Here ? "In the dairy, not near you" : st?.InDairy == true ? "In another dairy" : "Not in the dairy";
+                lines.Add(new Line(near < 0 ? where : near <= G.HandRange ? $"Right here ({near:0.#} y)" : $"{near:0} y away",
                     near >= 0 && near <= G.HandRange ? Theme.SageDeep : Theme.InkSoft));
                 if (st != null)
                 {

@@ -387,6 +387,7 @@ public sealed class MemberInfo
     public long LastSeen { get; set; }      // unix seconds their plugin last checked in (0 = never)
     public string Version { get; set; } = "";   // their plugin version, as of their last check-in
     public bool Guest { get; set; }             // visiting from another dairy (not a member)
+    public bool Here { get; set; }              // in this dairy right now (the server's view of where they are)
 
     public List<string> AllRoles => VelvetDairy.Game.Roles.From(Roles, Role);
     public bool Has(string role) => AllRoles.Contains(role);

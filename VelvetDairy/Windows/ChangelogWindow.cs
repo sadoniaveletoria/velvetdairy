@@ -23,6 +23,10 @@ public sealed class ChangelogWindow : Window
     /// <summary>Newest first. Write these for players: what changed for them, not how.</summary>
     private static readonly Entry[] Entries =
     {
+        new("0.9.91", "Who's in the dairy", new[]
+        {
+            "\"In the dairy\" (Herd Care, Members) now means this dairy: someone visiting a different dairy shows as \"In another dairy\" instead.",
+        }),
         new("0.9.90", "HUD only in a dairy", new[]
         {
             "With \"Only while I'm in a dairy\" on, the HUD now only shows in a dairy (yours or one you're visiting), even when you're full or being milked somewhere else.",
