@@ -25,7 +25,7 @@ public sealed class ChangelogWindow : Window
     {
         new("0.9.91", "Who's in the dairy", new[]
         {
-            "Herd Care only lists cows and bulls who are in your dairy right now: someone online but in a different dairy (or out in the world) doesn't show up.",
+            "Herd Care only lists cows and bulls who are in your dairy right now, and only while you're there too: someone online but in a different dairy (or out in the world) doesn't show up.",
             "\"In the dairy\" (Members) now means this dairy: someone visiting a different dairy shows as \"In another dairy\".",
         }),
         new("0.9.90", "HUD only in a dairy", new[]

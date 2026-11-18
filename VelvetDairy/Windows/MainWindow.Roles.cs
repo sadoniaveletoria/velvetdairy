@@ -225,6 +225,13 @@ public sealed partial class MainWindow
         var mine = G.Net.Mine;
         var me = Plugin.ObjectTable.LocalPlayer;
         var myName = me?.Name.TextValue ?? "";
+        // Only while you're in your own dairy yourself: nobody is listed from anywhere else
+        if (!G.AtHome)
+        {
+            ImGui.TextColored(Theme.InkSoft, "Go to your dairy: its cows and bulls show here while you're there with them.");
+            return;
+        }
+
         // Cows and bulls in this dairy right now: your dairy's, and guests from other dairies visiting it (a public
         // dairy); each once. Someone online but somewhere else (another dairy, out in the world) isn't listed.
         var cows = mine?.Members.Concat(mine.Guests.Where(g => mine.Members.All(x => x.Id != g.Id)))
