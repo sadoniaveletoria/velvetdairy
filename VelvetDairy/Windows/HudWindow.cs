@@ -148,15 +148,21 @@ public sealed class HudWindow : Window
 
         // Milk and grade
         var x = bmin.X + bh / 2 + 14 + (milkAndSeed ? bh * 0.55f / 2 + 4 : 0);
-        var grade = seedOnly ? G.SeedGrade : G.CurrentGrade;
-        var amountText = Units.NumLike(amount, cap, seedOnly ? "0.##" : "0.#");
-        Ui.Text(dl, fonts.Heading, amountText, new Vector2(x, o.Y + 18), Theme.Ink);
+        // Being milked, the milk is gone but there's seed still coming out: the numbers switch to the seed as it empties
+        var seedText = seedOnly || (milkAndSeed && G.Active != null && cow.Milk < 0.05f && cow.Seed > 0.005f);
+        var tAmount = seedText ? cow.Seed : amount;
+        var tCap = seedText ? G.SeedCapacity : cap;
+        var tCount = seedText ? Math.Max(1, (int)Math.Round(G.SeedCapacity / Math.Max(0.001f, G.VialSize))) : bCount;
+        var tFull = seedText ? Math.Min(tCount, (int)(cow.Seed / Math.Max(0.001f, G.VialSize) + 0.001f)) : full;
+        var grade = seedText ? G.SeedGrade : G.CurrentGrade;
+        var amountText = Units.NumLike(tAmount, tCap, seedText ? "0.##" : "0.#");
+        Ui.Text(dl, fonts.Heading, amountText, new Vector2(x, o.Y + 18), seedText && !seedOnly ? Theme.BlueDeep : Theme.Ink);
         var mw = Ui.Measure(fonts.Heading, amountText).X;
-        var capText = Units.Oz(cap, seedOnly ? "0.#" : "0") + (seedOnly ? " seed" : "");
+        var capText = Units.Oz(tCap, seedText ? "0.#" : "0") + (seedText ? " seed" : "");
         // "/ 240 oz · 0 of 5 full", dropping the bottle count (then shortening) when it doesn't fit beside the amount
         var capRoom = o.X + size.X - 20 - (x + mw + 4);
-        var capLine = bCount > 1 ? $"/ {capText} · {full} of {bCount} full" : $"/ {capText}";
-        if (Ui.Measure(fonts.Small, capLine).X > capRoom && bCount > 1) capLine = $"/ {capText} · {full}/{bCount}";
+        var capLine = tCount > 1 ? $"/ {capText} · {tFull} of {tCount} full" : $"/ {capText}";
+        if (Ui.Measure(fonts.Small, capLine).X > capRoom && tCount > 1) capLine = $"/ {capText} · {tFull}/{tCount}";
         if (Ui.Measure(fonts.Small, capLine).X > capRoom) capLine = $"/ {capText}";
         Ui.Text(dl, fonts.Small, Fit(capLine, capRoom), new Vector2(x + mw + 4, o.Y + 24), Theme.InkSoft);
         // The grade seal sits on the jug's shoulder, like the Barn's, so it never covers the text

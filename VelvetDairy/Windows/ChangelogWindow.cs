@@ -23,6 +23,10 @@ public sealed class ChangelogWindow : Window
     /// <summary>Newest first. Write these for players: what changed for them, not how.</summary>
     private static readonly Entry[] Entries =
     {
+        new("0.9.94", "Seed numbers on the HUD", new[]
+        {
+            "Cows who are also bulls: while you're being milked and the milk runs out, the HUD's numbers switch to your seed (in blue) as it empties, then back to milk.",
+        }),
         new("0.9.93", "Farmers don't need care, breed counters", new[]
         {
             "Breed counters on your Stats: as a cow, how many times a bull has bred you; as a bull, how many cows you've bred. They count scene breedings, from this update on.",
