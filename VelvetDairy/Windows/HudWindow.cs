@@ -173,7 +173,8 @@ public sealed class HudWindow : Window
         var half = (bw - 10) / 2;
         // The bar sits under the label's full height (so it never cuts through the letters)
         var labelH = Ui.Measure(fonts.Small, "Ag").Y;
-        for (var i = 0; i < needs.Length; i++)
+        // A farmer who isn't a cow or bull has no needs: no bars
+        for (var i = 0; i < (G.Producer ? needs.Length : 0); i++)
         {
             var bx = x + (i % 2) * (half + 10);
             var by = y + (i / 2) * (labelH + 12);

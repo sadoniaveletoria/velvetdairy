@@ -23,6 +23,10 @@ public sealed class ChangelogWindow : Window
     /// <summary>Newest first. Write these for players: what changed for them, not how.</summary>
     private static readonly Entry[] Entries =
     {
+        new("0.9.93", "Farmers don't need care", new[]
+        {
+            "A farmer who isn't also a cow or bull no longer gets Fed, Watered, Comfy or Happy: sitting doesn't start \"Getting comfy\", food and drinks are hidden from their Shop and Care, and the HUD's need bars are gone. (Those bonuses only speed up milk and seed.)",
+        }),
         new("0.9.92", "Bigger buy orders", new[]
         {
             "Buy orders: type how much milk you want (up to 400 oz, the biggest farmer tank) instead of a slider that stopped at 64 oz.",

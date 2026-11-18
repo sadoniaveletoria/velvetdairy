@@ -927,6 +927,8 @@ public sealed partial class DairyGame
     {
         var b = Blocked();
         if (b != null) return b;
+        // Fed, Watered, Comfy and Happy speed up milk and seed: a farmer who isn't a cow or bull makes neither
+        if (!Producer) return "Farmers don't need feeding or rest: care is for cows and bulls.";
         if (!Where.InDairy) return "Care is only possible inside your dairy. " + Where.Why;
         return null;
     }
@@ -936,7 +938,7 @@ public sealed partial class DairyGame
         var item = Catalog.FeedById(id);
         if (item == null) return false;
         // The tonic works anywhere, so you can take it on the way out
-        var p = item.HoldDays > 0 ? Blocked() : CareProblem();
+        var p = !Producer ? CareProblem() : item.HoldDays > 0 ? Blocked() : CareProblem();
         if (p != null) return Fail(p);
         if (Count(id) <= 0) return Fail($"You're out of {item.Name}. Buy more in the Shop.");
 
@@ -2700,7 +2702,7 @@ public sealed partial class DairyGame
     }
 
     /// <summary>Bull foods are for bulls; cow-and-bull foods for those who are both.</summary>
-    public bool FeedForYou(FeedItem item) => item.Role switch { "bull" => IsBull, "both" => IsCow && IsBull, _ => true };
+    public bool FeedForYou(FeedItem item) => Producer && item.Role switch { "bull" => IsBull, "both" => IsCow && IsBull, _ => true };
 
     /// <summary>The level a food unlocks by: bull level, the lower of cow and bull level, or your shop level.</summary>
     public int FeedUnlockLevel(FeedItem item) => item.Role switch { "bull" => BullLevel, "both" => Math.Min(Level, BullLevel), _ => ShopLevel };
