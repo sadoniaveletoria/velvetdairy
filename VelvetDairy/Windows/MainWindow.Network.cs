@@ -945,8 +945,16 @@ public sealed partial class MainWindow
                 G.CancelBuyOrder(o);
         }
 
-        ImGui.SetNextItemWidth(120);
-        if (ImGui.SliderInt("oz##ordoz", ref orderOz, 1, DairyGame.MaxOrderOz)) orderCoins = -1;
+        // Type the amount (or step it by 8 / 32): up to the biggest farmer tank
+        ImGui.SetNextItemWidth(130);
+        if (ImGui.InputInt("oz##ordoz", ref orderOz, 8, 32))
+        {
+            orderOz = Math.Clamp(orderOz, 1, DairyGame.MaxOrderOz);
+            orderCoins = -1;
+        }
+
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip(Units.Text($"Type how much you want, 1 to {Units.Oz(DairyGame.MaxOrderOz)}. A farmer delivers an order in one go, so a big one needs a farmer with a big tank."));
         if (orderCoins < 0) orderCoins = DairyGame.SuggestedOrderCoins(orderOz, 1);
         ImGui.SameLine();
         ImGui.SetNextItemWidth(110);

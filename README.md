@@ -165,7 +165,7 @@ Target someone with Eorzea Milkers and press **Scan** on the HUD (or right-click
 - Invite people with **right-click → Eorzea Milkers**, or on **Dairy → Overview**.
 - Take **applications**: in **Members → Applications**, tick what you're looking for, then accept or deny. You can let your farmers answer applications too (off unless you turn it on).
 - **Manage members** shows everyone's levels, milk, quality, how much they've given and when they were last online.
-- Post **buy orders** to bring milk into your tank from other dairies. This works even if your dairy is private.
+- Post **buy orders** to bring milk into your tank from other dairies. This works even if your dairy is private. Type the amount you want (1 to 400 oz); a farmer delivers it in one go, so a big order needs a farmer with a big tank.
 - Fill the **weekly contract** together for dairy XP and fund coins.
 
 ---

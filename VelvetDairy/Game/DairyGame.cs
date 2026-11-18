@@ -3396,7 +3396,7 @@ public sealed partial class DairyGame
 
     // ----- Owner buy orders: you put up coins, other players' cows deliver milk in person -----
 
-    public const int MaxOrderOz = 64;
+    public const int MaxOrderOz = 400;   // the biggest farmer tank: a farmer delivers an order in one go
 
     /// <summary>Fair coins for an order: a bit over what the creamery pays, so it's worth the trip.</summary>
     public static int SuggestedOrderCoins(int oz, int grade) => (int)Math.Round(oz * Grades.All[grade].Price * 1.5f);

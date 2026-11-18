@@ -23,6 +23,10 @@ public sealed class ChangelogWindow : Window
     /// <summary>Newest first. Write these for players: what changed for them, not how.</summary>
     private static readonly Entry[] Entries =
     {
+        new("0.9.92", "Bigger buy orders", new[]
+        {
+            "Buy orders: type how much milk you want (up to 400 oz, the biggest farmer tank) instead of a slider that stopped at 64 oz.",
+        }),
         new("0.9.91", "Who's in the dairy", new[]
         {
             "Herd Care only lists cows and bulls who are in your dairy right now, and only while you're there too: someone online but in a different dairy (or out in the world) doesn't show up.",
