@@ -23,8 +23,9 @@ public sealed class ChangelogWindow : Window
     /// <summary>Newest first. Write these for players: what changed for them, not how.</summary>
     private static readonly Entry[] Entries =
     {
-        new("0.9.93", "Farmers don't need care", new[]
+        new("0.9.93", "Farmers don't need care, breed counters", new[]
         {
+            "Breed counters on your Stats: as a cow, how many times a bull has bred you; as a bull, how many cows you've bred. They count scene breedings, from this update on.",
             "A farmer who isn't also a cow or bull no longer gets Fed, Watered, Comfy or Happy: sitting doesn't start \"Getting comfy\", food and drinks are hidden from their Shop and Care, and the HUD's need bars are gone. (Those bonuses only speed up milk and seed.)",
         }),
         new("0.9.92", "Bigger buy orders", new[]

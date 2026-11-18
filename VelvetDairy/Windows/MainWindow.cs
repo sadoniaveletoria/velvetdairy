@@ -1952,6 +1952,9 @@ public sealed partial class MainWindow : Window
         Stat("Coins earned", $"{st.CoinsEarned:N0}");
         Stat("Care tasks", $"{st.CareTasks}");
         Stat("Milk dumped", st.TimesDumped == 0 ? "never" : $"{st.TimesDumped} time(s), {Units.Oz(st.OzDumped, "0")}");
+        // Breeding: as a cow, how often a bull bred you; as a bull, how many cows you've bred (scenes only)
+        if (G.IsCow || st.TimesBred > 0) Stat("Times bred by a bull", $"{st.TimesBred}");
+        if (G.IsBull || st.CowsBred > 0) Stat("Cows bred", $"{st.CowsBred}");
         if (F.EditsCaught > 0) Stat("Save edits undone", $"{F.EditsCaught}");
     }
 

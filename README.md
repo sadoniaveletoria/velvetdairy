@@ -176,6 +176,7 @@ Target someone with Eorzea Milkers and press **Scan** on the HUD (or right-click
 - **Cow levels** make milk faster (up to level 50) and unlock feed and upgrades. **Farmer levels** unlock bigger tanks and better orders.
 - **Daily goals** (Progress tab): four for cows and four for farmers, with a bonus for finishing a set.
 - **Awards:** collect them for coins.
+- **Stats:** your lifetime totals (milk given, best grade, milkings, orders, coins). They include **breed counters**: as a cow, how many times a bull has bred you; as a bull, how many cows you've bred (scene breedings, counted from version 0.9.93 on; breeding stalls don't count).
 - **The Shop** sells feed, treats, bottles, comfort upgrades and things to wear, and only shows what's for your roles. Cow items (and wearables, which raise **milk** pay) are for cows; bull items and foods (wearables raise **seed** pay) unlock by bull level and are for bulls (see Bulls and breeding). Bottles, bedding, troughs and other comfort items are for both.
 - **Comfort items:** Plush bedding (Comfy +7% instead of +4%, Comfy bar drains half as fast), Lavender bedding (Comfy +3% more, Happy bar drains half as fast), Silk cushion (Comfy bar drains 15% slower on top), Bell collar (Happy drains a little slower), Clean trough (Watered lasts half again as long), Endless spring (Watered drains 20% slower).
 - **Champion's ribbon** (cow level 28): farmers who hand milk you earn 10% more; being bred lasts 45 minutes; pregnancy gives 5% more milk.

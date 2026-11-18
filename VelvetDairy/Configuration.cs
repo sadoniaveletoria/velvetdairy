@@ -360,6 +360,8 @@ public class FarmStats
     public int DailiesDone { get; set; }
     public int TimesDumped { get; set; }
     public float OzDumped { get; set; }
+    public int TimesBred { get; set; }                // as a cow: times a bull bred you in a scene
+    public int CowsBred { get; set; }                 // as a bull: times you bred a cow in a scene
 }
 
 /// <summary>A batch of baked goods in progress: Count to make, Done so far, Elapsed seconds into the current one.</summary>
