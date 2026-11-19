@@ -65,7 +65,7 @@ Cow and bull are yours: you add or drop them, and they hold in every dairy you'r
 ## Playing as a cow
 
 **Making milk**
-- Milk builds up while you play. You start with one 8 oz bottle. Buy bigger bottles (up to a 48 oz churn) and extra bottles (up to 5) in the Shop.
+- Milk builds up while you play. You start with one 8 oz bottle. Buy bigger bottles (up to a 64 oz Velvet churn) and extra bottles (up to **4 bottles** in all) in the Shop.
 - When every bottle is full, no more milk comes, so get milked.
 - No milk is made while you're logged out.
 

@@ -294,7 +294,7 @@ public sealed partial class DairyGame
     public int BottleTier => Math.Min(Catalog.BottleSizes.Length - 1, 1 + Owned("bottle"));
     public float BottleSize => Catalog.BottleSizes[BottleTier];
     public string BottleName => Catalog.BottleNames[BottleTier];
-    public int BottleCount => 1 + Owned("rack");
+    public int BottleCount => 1 + Math.Min(Owned("rack"), Catalog.UpgradeById("rack")?.MaxLevel ?? 3);
     public float Capacity => BottleSize * BottleCount;
     public int FullBottles => Math.Min(BottleCount, (int)((Cow.Milk + 0.01f) / BottleSize));
     public TimeSpan BoostLeft => Cow.BoostUntilUtc > DateTime.UtcNow ? Cow.BoostUntilUtc - DateTime.UtcNow : TimeSpan.Zero;

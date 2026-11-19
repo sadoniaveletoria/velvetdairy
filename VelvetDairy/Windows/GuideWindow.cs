@@ -52,7 +52,7 @@ public sealed class GuideWindow : Window
         new("Milk and bottles", new[]
         {
             "Milk fills your bottles while you're awake and logged in. No milk is made while you're logged out.",
-            "Bottles: milk bottle 8 oz, cream jar 12, dairy jug 20, big jug 32, milk churn 48. Bigger bottle upgrades make each one hold more; Extra bottle upgrades add more bottles (up to 5, the 5th at level 25).",
+            "Bottles: milk bottle 8 oz, cream jar 12, dairy jug 20, big jug 32, milk churn 48, Velvet churn 64. Bigger bottle upgrades make each one hold more; Extra bottle upgrades add more bottles (up to 4 in all, the 4th at level 19).",
             "Full bottles spoil after 72 hours (real time, logged in or not; 96 with the Cooling mist upgrade). Empty them before you log off for a while. Spoiled milk has to be dumped (HUD button) for no pay, and your milk tastes off (one grade lower) until care tasks, milkings and deliveries wear it off.",
         }),
         new("Getting milked", new[]

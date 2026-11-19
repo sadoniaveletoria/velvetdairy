@@ -217,7 +217,8 @@ public static class Catalog
         new Upgrade("stallkit", "Stall kit", "bucket", new[] { 200, 500 }, new[] { 6, 12 }, "Lets you register one more stall."),
         new Upgrade("cushion", "Plush bedding", "cushion", new[] { 250 }, new[] { 4 }, "Comfy bonus +7% instead of +4%, and the Comfy bar drains half as fast."),
         new Upgrade("bottle", "Bigger bottle", "bottle", new[] { 180, 450, 1000, 2200, 7500 }, new[] { 3, 8, 14, 21, 40 }, "Each bottle (and seed vial) holds more."),
-        new Upgrade("rack", "Extra bottle", "milk", new[] { 300, 800, 1800, 3500, 6000 }, new[] { 6, 12, 19, 25, 33 }, "One more bottle (and seed vial). When one fills, the next one starts."),
+        // Up to 4 bottles (6 before 0.9.97, when milk came in faster): the 5th and 6th were refunded
+        new Upgrade("rack", "Extra bottle", "milk", new[] { 300, 800, 1800 }, new[] { 6, 12, 19 }, "One more bottle (and seed vial). When one fills, the next one starts. Up to 4."),
         // Farmers (and owners) buy a bigger tank to carry milk from the dairy tank; unlocks go by farmer level
         new Upgrade("farmtank", "Bigger farmer tank", "bucket", new[] { 200, 500, 1200, 2500, 5000, 8000, 14000 }, new[] { 2, 5, 10, 16, 22, 30, 60 },
             "Carry more milk from the dairy tank to customers, other dairies and the Grand Creamery.", Farmer: true),

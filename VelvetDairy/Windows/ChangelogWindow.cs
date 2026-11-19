@@ -30,6 +30,7 @@ public sealed class ChangelogWindow : Window
             "Each level makes you 2% faster instead of 4% (up to level 50: about twice a new cow, not three times).",
             "Grade raises the price per ounce and how fast you're milked, but no longer adds to the amount collected (it was paying grade twice). Your stall's tier still adds to the amount.",
             "Daily pay: the first 1,500 coins a day are paid in full (was 3,000), then half up to 4,000 (was 8,000), then a tenth. Seed keeps its own separate count with the same limits.",
+            "Up to 4 bottles (and seed vials) instead of 6, so they still fill up in a play session or two. If you had a 5th or 6th, its coins come back (3,500 and 6,000) and any milk in it stays until you're milked.",
             "This is a first pass: tell us how it feels.",
         }),
         new("0.9.96", "Top-up minutes, seed pay", new[]

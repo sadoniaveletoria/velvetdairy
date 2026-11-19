@@ -434,6 +434,16 @@ public sealed class Plugin : IDalamudPlugin
                 ChatGui.Print($"[Eorzea Milkers] {gone} was taken out of the Shop, so you got its {price} coins back.");
             }
 
+        // 0.9.97: four bottles at most (it was six). The 5th and 6th bottles' coins come back
+        if (Config.Farm.Upgrades.TryGetValue("rack", out var racks) && racks > 3)
+        {
+            var back = (racks >= 4 ? 3500 : 0) + (racks >= 5 ? 6000 : 0);
+            Config.Farm.Upgrades["rack"] = 3;
+            Config.Farm.Coins += back;
+            Diag.Info("save", $"Bottles now stop at 4: refunded {back} coins for {racks - 3} extra bottle(s)");
+            ChatGui.Print($"[Eorzea Milkers] You can have 4 bottles now (milk comes in slower), so you got {back:N0} coins back for your 5th and 6th. Milk already in them stays until you're milked.");
+        }
+
         // Name change or world transfer: the save follows the character (the next heartbeat updates your dairy's roster)
         var me = ObjectTable.LocalPlayer;
         var name = me?.Name.TextValue ?? "";
