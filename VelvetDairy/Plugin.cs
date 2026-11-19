@@ -392,6 +392,8 @@ public sealed class Plugin : IDalamudPlugin
 
         var r = Integrity.Check(Config.Farm, key, out var save);
         Config.Farm = save;
+        // The dev channel never asks for backups, and its network is how it plays: undo an earlier "play without backups"
+        if (Channel.Dev && Config.Farm.BackupOptOut && !Config.Farm.NetEnabled) Config.Farm.NetEnabled = true;
         FreshSave = fresh;
         LastCheck = r;
         Reload(key);
@@ -412,7 +414,7 @@ public sealed class Plugin : IDalamudPlugin
     /// play without the network. Existing players do it once too. Dev builds don't upload, so they skip it.
     /// </summary>
     public bool BackupSetupNeeded =>
-        !PluginInterface.IsDev && Config.ActiveKey != null && Config.Farm.Confirmed18 && !Config.Farm.BackupReady && !Config.Farm.BackupOptOut;
+        !PluginInterface.IsDev && !Channel.Dev && Config.ActiveKey != null && Config.Farm.Confirmed18 && !Config.Farm.BackupReady && !Config.Farm.BackupOptOut;
 
     private bool setupShown;
 
