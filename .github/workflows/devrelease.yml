@@ -1,0 +1,99 @@
+name: Dev release
+
+# Private dev channel: every push to the devrelease branch builds the plugin and publishes it to the "dev" release,
+# and dev.json (on this branch) points at it. Only people given the dev.json address get it; it isn't in repo.json.
+on:
+  push:
+    branches: [ devrelease ]
+    paths-ignore: [ 'dev.json' ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: devrelease
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: windows-latest
+    outputs:
+      version: ${{ steps.pub.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Download Dalamud
+        shell: pwsh
+        run: |
+          Invoke-WebRequest -Uri https://goatcorp.github.io/dalamud-distrib/latest.zip -OutFile latest.zip
+          $dest = "$env:AppData\XIVLauncher\addon\Hooks\dev"
+          New-Item -ItemType Directory -Force -Path $dest | Out-Null
+          Expand-Archive -Force latest.zip $dest
+          "DALAMUD_HOME=$dest\" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Write the save-signing key
+        shell: pwsh
+        env:
+          KEY: ${{ secrets.VELVET_INTEGRITY_KEY }}
+        run: |
+          if (-not $env:KEY) { "::error::VELVET_INTEGRITY_KEY secret not set"; exit 1 }
+          $value = '"' + $env:KEY.Trim() + '"'
+          @"
+          namespace VelvetDairy.Game;
+
+          public static partial class Integrity
+          {
+              private const string KeyHex = $value;
+          }
+          "@ | Out-File -Encoding utf8 VelvetDairy/Game/IntegrityKey.cs
+
+      - name: Version (the csproj version, with this run as the fourth part, so every dev push is an update)
+        id: ver
+        shell: pwsh
+        run: |
+          $version = ([xml](Get-Content VelvetDairy/VelvetDairy.csproj)).Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
+          $v = [version]$version
+          $full = "{0}.{1}.{2}.{3}" -f $v.Major, $v.Minor, [Math]::Max($v.Build, 0), ${{ github.run_number }}
+          "full=$full" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+      - name: Build
+        run: dotnet build VelvetDairy/VelvetDairy.csproj -c Release -p:Version=${{ steps.ver.outputs.full }} -p:AssemblyVersion=${{ steps.ver.outputs.full }} -p:FileVersion=${{ steps.ver.outputs.full }}
+
+      - name: Publish to the dev release
+        id: pub
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $repo = "${{ github.repository }}"
+          $full = "${{ steps.ver.outputs.full }}"
+          gh release view dev --repo $repo *> $null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create dev --repo $repo --prerelease --target "${{ github.sha }}" --title "Eorzea Milkers dev $full" --notes "Private dev builds. Not for general use."
+          }
+          $global:LASTEXITCODE = 0
+          gh release upload dev VelvetDairy/bin/Release/VelvetDairy/latest.zip --clobber --repo $repo
+          gh release edit dev --repo $repo --prerelease --title "Eorzea Milkers dev $full"
+          "version=$full" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+  list:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: devrelease
+      - name: Point dev.json at it
+        run: |
+          v="${{ needs.build.outputs.version }}"
+          jq --arg v "$v" '.[0].AssemblyVersion = $v' dev.json > dev.tmp && mv dev.tmp dev.json
+          if git diff --quiet; then echo "Already $v"; exit 0; fi
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git commit -am "Dev build $v"
+          git push origin HEAD:devrelease
