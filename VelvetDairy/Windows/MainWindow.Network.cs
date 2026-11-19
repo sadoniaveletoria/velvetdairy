@@ -702,6 +702,18 @@ public sealed partial class MainWindow
             : p.Fund < p.PumpCost ? $"Needs {p.PumpCost:N0} coins in the fund." : null;
         if (Ui.Button("##pumpgo", left > TimeSpan.Zero ? "Add 2 hours" : "Run the pump", new Vector2(150, 30), "rose", why == null, why ?? $"Spend {p.PumpCost:N0} from the fund."))
             G.StartPump();
+
+        if (Channel.Dev && G.IsOwner)
+        {
+            Gap(10);
+            SubHeading("Test bots (dev only)", width);
+            Ui.Wrapped("Adds Daisy (a cow), Hank (a farmer) and Brutus (a bull) to your dairy. They make milk and seed, get milked at stalls, "
+                       + "and Hank grooms and feeds everyone and makes deliveries. Hand milk, groom and feed Daisy and Brutus in Herd Care. Set their quotas in the Members list.", Theme.InkSoft, width);
+            var hasBots = G.Net.Mine?.Members.Any(m => m.Status?.Bot == true) == true;
+            if (Ui.Button("##botsadd", hasBots ? "Reset the bots" : "Add test bots", new Vector2(150, 30), "honey", true, "Adds fresh bots (replacing any you have).")) G.SetBots(true);
+            ImGui.SameLine();
+            if (Ui.Button("##botsremove", "Remove bots", new Vector2(130, 30), "cream", hasBots, "Takes them out of your dairy.")) G.SetBots(false);
+        }
     }
 
     /// <summary>Register (or, for the owner, update) the dairy and how it's listed.</summary>

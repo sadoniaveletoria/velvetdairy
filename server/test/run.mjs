@@ -1085,4 +1085,33 @@ await test("quotas, the feed bin, the Velvet pump and order fund pay", async () 
   assert.equal((await call(alice, "GET", "/v1/dairy/mine")).data.progress.fund, 1540);
 });
 
+await test("dev server test bots: an owner adds a cow, a farmer and a bull, and milks the bots", async () => {
+  const owner = player("Tess Tester");
+  await beat(owner);
+  const H = "7770004445556";
+  const made = await call(owner, "PUT", "/v1/dairy", dairyBody({ houseId: H, name: "Bot Barn", ownerName: "Tess Tester", ward: 27, plot: 13, district: "Goblet", districtKind: 9, roles: ["farmer"] }));
+  assert.equal(made.status, 200, JSON.stringify(made.data));
+  await beat(owner, { houseId: H, awake: true });
+  assert.equal((await call(owner, "POST", "/v1/dev/bots", { on: true })).status, 404, "not on the live server");
+  env.BOTS = "on";
+  try {
+    assert.equal((await call(owner, "POST", "/v1/dev/bots", { on: true })).data.bots, 3);
+    let mine = (await call(owner, "GET", "/v1/dairy/mine")).data;
+    const bots = mine.members.filter(m => m.status?.bot);
+    assert.deepEqual(bots.map(b => b.name).sort(), ["Brutus Bot", "Daisy Bot", "Hank Bot"]);
+    assert.ok(bots.every(b => b.online && b.here), "online and in the dairy");
+    const daisy = bots.find(b => b.name === "Daisy Bot");
+    assert.ok(daisy.status.milk > 0);
+    const r = await call(owner, "POST", `/v1/dev/bots/${daisy.id}/milk`);
+    assert.equal(r.status, 200, JSON.stringify(r.data));
+    assert.ok(r.data.oz > 0 && r.data.coins > 0);
+    assert.equal((await call(owner, "POST", `/v1/dev/bots/${daisy.id}/milk`)).status, 400, "empty now");
+    assert.ok((await call(owner, "GET", "/v1/dairy/mine")).data.progress.tank.total > 0, "her milk is in the tank");
+    // Removing them takes them out of the dairy
+    assert.equal((await call(owner, "POST", "/v1/dev/bots", { on: false })).data.bots, 0);
+    mine = (await call(owner, "GET", "/v1/dairy/mine")).data;
+    assert.equal(mine.members.filter(m => m.status?.bot).length, 0);
+  } finally { delete env.BOTS; }
+});
+
 console.log(`\n${passed} passed`);

@@ -8,3 +8,7 @@ compatibility_date = "2025-06-01"
 binding = "DB"
 database_name = "eorzea-milkers-dev"
 database_id = "REPLACED_BY_DEPLOY"
+
+# The dev server lets owners add test bots (a cow, a farmer and a bull) to their dairy
+[vars]
+BOTS = "on"

@@ -2145,6 +2145,27 @@ public sealed partial class DairyGame
         });
     }
 
+    /// <summary>Dev server: hand milk a test bot (it has no character to stand by, so no emote).</summary>
+    public void MilkBot(MemberInfo bot)
+    {
+        if (!CanCarry || !AtHome)
+        {
+            Fail("Farmers and the owner hand milk, in the dairy.");
+            return;
+        }
+
+        Touch();
+        Net.MilkBot(bot.Id, r =>
+        {
+            F.DayCowsMilked++;
+            plugin.SaveConfig();
+            Say($"You hand milk {bot.Name}: {Units.Oz(r.Oz, "0.##")}{(r.Seed ? " of seed" : "")} into the dairy's tank. Your share ({r.Coins} coins) is on the way.", 1);
+        }, e => Fail(e));
+    }
+
+    public void SetBots(bool on) =>
+        Net.SetBots(on, () => Say(on ? "Test bots added: Daisy (cow), Hank (farmer) and Brutus (bull)." : "Test bots removed.", 1), e => Fail(e));
+
     public void BuyFeedBin(string item, string name) =>
         Net.BuyFeedBin(item, () => Say($"{name} is in the dairy's feed bin now.", 1), e => Fail(e));
 

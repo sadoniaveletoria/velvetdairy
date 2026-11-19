@@ -474,3 +474,13 @@ CREATE TABLE IF NOT EXISTS dairy_pump (
   dairy_id  TEXT PRIMARY KEY,
   until     INTEGER NOT NULL
 );
+
+-- Dev server only (env BOTS = "on"): test bots an owner can add to their dairy to try things alone. Each is a real
+-- install and membership, so it shows up everywhere a member does; state is its own simulation (milk, seed, needs).
+CREATE TABLE IF NOT EXISTS dev_bots (
+  install   TEXT PRIMARY KEY,
+  dairy_id  TEXT NOT NULL,
+  kind      TEXT NOT NULL,               -- cow | farmer | bull
+  state     TEXT NOT NULL DEFAULT '{}',
+  last      INTEGER NOT NULL
+);

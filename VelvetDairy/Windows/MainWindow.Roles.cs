@@ -245,7 +245,8 @@ public sealed partial class MainWindow
         foreach (var c in cows.OrderByDescending(c => c.Online).ThenBy(c => c.Name))
         {
             var near = -1f;
-            if (me != null)
+            if (c.Status?.Bot == true) near = 0;   // a dev test bot: no character in the world, always "right here"
+            else if (me != null)
                 foreach (var o in Plugin.ObjectTable)
                     if (o is Dalamud.Game.ClientState.Objects.SubKinds.IPlayerCharacter pc && pc.Name.TextValue.Equals(c.Name, StringComparison.OrdinalIgnoreCase))
                     {
@@ -291,7 +292,9 @@ public sealed partial class MainWindow
             if (near >= 0 && c.Online)
             {
                 Btn first;
-                if (!targeted) first = new Btn($"##tgt{c.Id}", "Target", "blue", true, "Targets them so your milking counts.");
+                if (c.Status?.Bot == true)
+                    first = new Btn($"##botmilk{c.Id}", "Milk", "rose", c.Has("cow") || c.Has("bull"), "A test bot: milks them straight away (no emote needed).");
+                else if (!targeted) first = new Btn($"##tgt{c.Id}", "Target", "blue", true, "Targets them so your milking counts.");
                 else
                 {
                     var close = near <= G.HandRange;
@@ -317,7 +320,8 @@ public sealed partial class MainWindow
                 : c.Has("cow") && st.Cap > 0 ? st.Milk / st.Cap
                 : st.SeedCap > 0 ? st.SeedOz / st.SeedCap : -1f;
             var clicked = ListRow(Ico("milk"), c.Name, c.Online ? Theme.Ink : Theme.InkSoft, lines, buttons, width, fill, Theme.BlueDeep);
-            if (clicked == 0 && !targeted)
+            if (clicked == 0 && c.Status?.Bot == true) G.MilkBot(c);
+            else if (clicked == 0 && !targeted)
             {
                 foreach (var o in Plugin.ObjectTable)
                     if (o is Dalamud.Game.ClientState.Objects.SubKinds.IPlayerCharacter pc && pc.Name.TextValue.Equals(c.Name, StringComparison.OrdinalIgnoreCase))

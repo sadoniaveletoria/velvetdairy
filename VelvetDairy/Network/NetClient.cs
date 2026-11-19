@@ -790,6 +790,14 @@ public sealed class NetClient : IDisposable
     public void FeedBin(string item, string to, Action ok, Action<string> failed) =>
         Call<object>("POST", "/v1/feedbin/feed", new { item, to }, _ => ok(), failed);
 
+    /// <summary>Dev server: the owner adds or removes the test bots (a cow, a farmer and a bull).</summary>
+    public void SetBots(bool on, Action ok, Action<string> failed) =>
+        Call<object>("POST", "/v1/dev/bots", new { on }, _ => { nextMine = 0; ok(); }, failed);
+
+    /// <summary>Dev server: hand milk a bot cow or bull (no emote: it's not in the game world).</summary>
+    public void MilkBot(string id, Action<BotMilkReply> ok, Action<string> failed) =>
+        Call<BotMilkReply>("POST", $"/v1/dev/bots/{id}/milk", null, r => { nextMine = 0; BeatWithin(1); ok(r); }, failed);
+
     /// <summary>The owner runs the Velvet pump (paid from the fund).</summary>
     public void StartPump(Action ok, Action<string> failed) =>
         Call<object>("POST", "/v1/dairy/pump", null, _ => { nextMine = 0; ok(); }, failed);

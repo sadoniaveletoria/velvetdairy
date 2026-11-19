@@ -373,6 +373,13 @@ public sealed class MyDairyInfo
     public VelvetDairy.Game.DairyArea? PrivateArea { get; set; }   // members only: the dairy's private place (a home or apartment)
 }
 
+public sealed class BotMilkReply
+{
+    public float Oz { get; set; }
+    public bool Seed { get; set; }
+    public int Coins { get; set; }
+}
+
 public sealed class FeedBinOffer
 {
     public string Item { get; set; } = "";
@@ -441,6 +448,7 @@ public sealed class MemberStatus
     public string Scan { get; set; } = "anyone";
     public long W { get; set; }                         // when the server last stored this (unix seconds)
     public List<int> Needs { get; set; } = new();       // minutes left on Fed, Watered, Comfy, Happy
+    public bool Bot { get; set; }                       // a dev server test bot (no character in the game world)
     public bool StudTonic { get; set; }          // a bull who had a Stud draught: his next breeding is stronger
     public string Breeding { get; set; } = "";   // both cow and bull: the scene partner (Name@World) they chose to breed this scene
     public int Quality { get; set; }        // milk quality score (cows)
