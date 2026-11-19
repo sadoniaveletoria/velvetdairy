@@ -1,0 +1,26 @@
+name: One-off - cancel unused Discord restore keys
+
+# Runs once when this branch is pushed: deletes every Discord restore key on the live database that hasn't been used.
+# It doesn't deploy anything. The branch is deleted afterwards.
+on:
+  push:
+    branches: [ ops-cancel-restore-keys ]
+
+permissions:
+  contents: read
+
+jobs:
+  cancel:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cancel unused restore keys
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -e
+          echo "Before:"
+          npx --yes wrangler@4 d1 execute velvet-dairy --remote --command "SELECT COUNT(*) AS unused FROM restore_keys WHERE used = 0"
+          npx --yes wrangler@4 d1 execute velvet-dairy --remote --command "DELETE FROM restore_keys WHERE used = 0"
+          echo "After:"
+          npx --yes wrangler@4 d1 execute velvet-dairy --remote --command "SELECT COUNT(*) AS unused FROM restore_keys WHERE used = 0"
