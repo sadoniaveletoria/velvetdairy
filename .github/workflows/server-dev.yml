@@ -1,0 +1,74 @@
+name: Dev server
+
+# The private dev channel's own server: a separate Cloudflare worker (eorzea-milkers-dev) and database
+# (eorzea-milkers-dev). It only ever deploys from the devrelease branch, with wrangler.dev.toml, and writes its address to
+# network-dev.json on that branch. It never touches the live server or its database.
+on:
+  push:
+    branches: [ devrelease ]
+    paths: [ 'server/**', '.github/workflows/server-dev.yml' ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: server-dev
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/devrelease'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Test
+        run: node --no-warnings server/test/run.mjs
+
+      - name: Create the dev database if needed and apply the schema
+        working-directory: server
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -e
+          find_id() { npx --yes wrangler@4 d1 list --json | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const l=JSON.parse(s);const d=l.find(x=>x.name==="eorzea-milkers-dev");process.stdout.write(d?(d.uuid||d.id||""):"")})'; }
+          ID=$(find_id)
+          if [ -z "$ID" ]; then
+            npx --yes wrangler@4 d1 create eorzea-milkers-dev
+            ID=$(find_id)
+          fi
+          echo "Dev database: $ID"
+          sed -i "s/database_id = \".*\"/database_id = \"$ID\"/" wrangler.dev.toml
+          grep -q 'name = "eorzea-milkers-dev"' wrangler.dev.toml
+          npx --yes wrangler@4 d1 execute eorzea-milkers-dev --remote --config wrangler.dev.toml --file=schema.sql --yes
+
+      - name: Deploy the dev worker
+        working-directory: server
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -e
+          npx --yes wrangler@4 deploy --config wrangler.dev.toml | tee deploy.log
+          URL=$(grep -oE 'https://eorzea-milkers-dev\.[a-zA-Z0-9.-]+\.workers\.dev' deploy.log | head -1)
+          if [ -z "$URL" ]; then echo "::error::Couldn't find the dev worker address in the deploy output."; exit 1; fi
+          echo "Dev server: $URL"
+          printf '{\n  "api": "%s"\n}\n' "$URL" > ../network-dev.json
+
+      - name: Publish the dev server address
+        run: |
+          if git ls-files --error-unmatch network-dev.json >/dev/null 2>&1 && git diff --quiet -- network-dev.json; then
+            echo "Address unchanged."; exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add network-dev.json
+          git commit -m "Dev server address"
+          git pull --rebase origin devrelease
+          git push origin HEAD:devrelease

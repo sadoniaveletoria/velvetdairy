@@ -1,0 +1,10 @@
+# The private dev channel's own server: a separate worker and database, never the live one.
+# Deployed only by .github/workflows/server-dev.yml from the devrelease branch.
+name = "eorzea-milkers-dev"
+main = "src/index.js"
+compatibility_date = "2025-06-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "eorzea-milkers-dev"
+database_id = "REPLACED_BY_DEPLOY"

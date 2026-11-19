@@ -5,7 +5,7 @@ name: Dev release
 on:
   push:
     branches: [ devrelease ]
-    paths-ignore: [ 'dev.json' ]
+    paths-ignore: [ 'dev.json', 'network-dev.json' ]
   workflow_dispatch:
 
 permissions:
@@ -61,8 +61,21 @@ jobs:
           $full = "{0}.{1}.{2}.{3}" -f $v.Major, $v.Minor, [Math]::Max($v.Build, 0), ${{ github.run_number }}
           "full=$full" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
+      - name: The dev plugin's own manifest (a separate plugin: EorzeaMilkersDev)
+        shell: pwsh
+        run: |
+          $m = Get-Content VelvetDairy/VelvetDairy.json -Raw | ConvertFrom-Json
+          $m.Name = "Eorzea Milkers (dev)"
+          $m.Punchline = "Private dev build of Eorzea Milkers: its own save and its own server. Not for general use."
+          $m | ConvertTo-Json -Depth 5 | Out-File -Encoding utf8 VelvetDairy/EorzeaMilkersDev.json
+
       - name: Build
-        run: dotnet build VelvetDairy/VelvetDairy.csproj -c Release -p:Version=${{ steps.ver.outputs.full }} -p:AssemblyVersion=${{ steps.ver.outputs.full }} -p:FileVersion=${{ steps.ver.outputs.full }}
+        run: dotnet build VelvetDairy/VelvetDairy.csproj -c Release -p:DevChannel=true -p:Version=${{ steps.ver.outputs.full }} -p:AssemblyVersion=${{ steps.ver.outputs.full }} -p:FileVersion=${{ steps.ver.outputs.full }}
+
+      - name: Check it's the separate dev plugin
+        shell: pwsh
+        run: |
+          if (-not (Test-Path VelvetDairy/bin/Release/EorzeaMilkersDev/latest.zip)) { "::error::No EorzeaMilkersDev build"; exit 1 }
 
       - name: Publish to the dev release
         id: pub
@@ -77,7 +90,7 @@ jobs:
             gh release create dev --repo $repo --prerelease --target "${{ github.sha }}" --title "Eorzea Milkers dev $full" --notes "Private dev builds. Not for general use."
           }
           $global:LASTEXITCODE = 0
-          gh release upload dev VelvetDairy/bin/Release/VelvetDairy/latest.zip --clobber --repo $repo
+          gh release upload dev VelvetDairy/bin/Release/EorzeaMilkersDev/latest.zip --clobber --repo $repo
           gh release edit dev --repo $repo --prerelease --title "Eorzea Milkers dev $full"
           "version=$full" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 

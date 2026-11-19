@@ -9,6 +9,13 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
+  <!-- The private dev channel builds a separate plugin (dotnet build -p:DevChannel=true): its own name, save, command and
+       server, so it never touches live or testing. -->
+  <PropertyGroup Condition="'$(DevChannel)' == 'true'">
+    <AssemblyName>EorzeaMilkersDev</AssemblyName>
+    <DefineConstants>$(DefineConstants);DEVCHANNEL</DefineConstants>
+  </PropertyGroup>
+
   <ItemGroup>
     <!-- UI art (regenerate with: python3 tools/make_dairy_art.py VelvetDairy/Assets) -->
     <Content Include="Assets\**\*.png">

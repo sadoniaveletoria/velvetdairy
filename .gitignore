@@ -7,3 +7,4 @@ obj/
 __pycache__/
 # Signing key for saves: never commit it (CI writes it from the VELVET_INTEGRITY_KEY secret)
 VelvetDairy/Game/IntegrityKey.cs
+VelvetDairy/EorzeaMilkersDev.json

@@ -30,7 +30,7 @@ public sealed class Plugin : IDalamudPlugin
     [PluginService] internal static IPluginLog Log { get; private set; } = null!;
     [PluginService] internal static IGameGui GameGui { get; private set; } = null!;
 
-    private const string Command = "/milkers";
+    private const string Command = Channel.Command;
 
     public Configuration Config { get; }
     public DairyGame Game { get; private set; }

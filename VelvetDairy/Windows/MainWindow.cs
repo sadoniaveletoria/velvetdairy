@@ -91,7 +91,7 @@ public sealed partial class MainWindow : Window
     public static readonly Vector4 SeedTint = new(0.88f, 0.90f, 0.95f, 1f);
 
     public MainWindow(Plugin plugin, Art art, Fonts fonts)
-        : base("Eorzea Milkers##VelvetDairyMain", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
+        : base("Eorzea Milkers" + Channel.TitleSuffix + "##VelvetDairyMain", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
     {
         this.plugin = plugin;
         this.art = art;

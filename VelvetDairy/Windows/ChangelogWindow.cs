@@ -33,7 +33,7 @@ public sealed class ChangelogWindow : Window
             "New in the Shop: Pump drops (+25% milk and seed for 30 min), Udder balm (your next 3 hand milkings give 20% more; no longer an upgrade), Second wind tonic (tire 2 hours later today, for everyone) and Churn oil (farmers' jugs fill twice as fast for an hour).",
             "Filling jugs takes time: 1 oz a second, staying in the dairy.",
             "Bulls: seed comes in faster at the lower grades (15% of milk speed at Grade C) and gives less xp per oz (breedings make up the rest).",
-            "Coming with the full release (the server is shared, so dev builds still use today's): new stalls 500, 2,000, 4,500, 8,000..., stall tiers 300, 1,000 and 2,500, and a weekly contract of 600 oz at dairy level 1, plus 150 a level, up to 3,500.",
+            "Dairy fund prices: new stalls 500, 2,000, 4,500, 8,000..., stall tiers 300, 1,000 and 2,500. The weekly contract is 600 oz at dairy level 1, plus 150 a level, up to 3,500.",
             "No daily pay limit. The only brake is getting tired after 12 hours of milk a day.",
             "Metric: the contract's Ship button and the seed market's Buy and Sell buttons show litres and millilitres too.",
             "Hand milking: the farmer now sees the cow's or bull's milk going down every few seconds while milking them.",

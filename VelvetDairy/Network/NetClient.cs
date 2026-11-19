@@ -21,7 +21,7 @@ namespace VelvetDairy.Network;
 /// </summary>
 public sealed class NetClient : IDisposable
 {
-    private const string NetworkFileUrl = "https://raw.githubusercontent.com/sadoniaveletoria/velvetdairy/main/network.json";
+    private const string NetworkFileUrl = Channel.NetworkFileUrl;
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
     private readonly Plugin plugin;
@@ -227,7 +227,7 @@ public sealed class NetClient : IDisposable
 
     // ----- Update check: the repo's repo.json says which version is released -----
 
-    private const string RepoFileUrl = "https://raw.githubusercontent.com/sadoniaveletoria/velvetdairy/main/repo.json";
+    private const string RepoFileUrl = Channel.RepoFileUrl;
     private double nextUpdateCheck;
 
     /// <summary>The newest released version, when it's newer than this one.</summary>
