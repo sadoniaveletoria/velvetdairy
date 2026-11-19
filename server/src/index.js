@@ -2802,6 +2802,19 @@ const BOTS = [
   { kind: "bull", name: "Brutus Bot", role: "bull" },
 ];
 const BOT_MILK_CAP = 40, BOT_SEED_CAP = 4;
+const BOT_MILK_PER_MIN = 0.35;   // a busy cow at a good level, so testing doesn't take all day
+const BOT_DONATE_PER_HOUR = { cow: 60, bull: 60, farmer: 150 };
+
+/** Statements for milk (or seed) a bot puts into the dairy's tank: the tank, its pumpers list, and the dairy's xp. */
+function botPumpStmts(env, dairyId, bot, name, oz, seed) {
+  return [
+    env.DB.prepare(`INSERT INTO dairy_tank (dairy_id, grade, oz) VALUES (?, ?, ?) ON CONFLICT(dairy_id, grade) DO UPDATE SET oz = oz + excluded.oz`)
+      .bind(dairyId, seed ? SEED_TANK_GRADE : 0, oz),
+    env.DB.prepare(`INSERT INTO tank_contrib (dairy_id, install, name, oz) VALUES (?, ?, ?, ?) ON CONFLICT(dairy_id, install) DO UPDATE SET oz = oz + excluded.oz`)
+      .bind(dairyId, (seed ? "seed:" : "") + bot.install, name, oz),
+    addXpStmt(env, dairyId, Math.round(seed ? oz * 10 : oz)),
+  ];
+}
 
 const isBot = async (env, install) => !!(await env.DB.prepare("SELECT 1 FROM dev_bots WHERE install = ?").bind(install).first());
 
@@ -2864,28 +2877,38 @@ async function tickBots(env, dairyId) {
     if (st.water < 30) st.water = 90;
     if (st.comfy < 30 && Math.random() < 0.6) st.comfy = 90;
     if (st.happy < 15 && Math.random() < 0.3) st.happy = 60;
-    const speed = 0.12 * ((st.bredUntil || 0) > t ? 1.05 : 1) * (1 + (st.fed > 0 ? st.fedBonus || 0.04 : 0)) * (st.water > 0 ? 1.04 : 1) * (st.comfy > 0 ? 1.04 : 1) * (st.happy > 0 ? 1.05 : 1);
+    const speed = BOT_MILK_PER_MIN * ((st.bredUntil || 0) > t ? 1.05 : 1) * (1 + (st.fed > 0 ? st.fedBonus || 0.04 : 0)) * (st.water > 0 ? 1.04 : 1) * (st.comfy > 0 ? 1.04 : 1) * (st.happy > 0 ? 1.05 : 1);
     let note = "";
     if (bot.kind === "cow") {
       st.milk = Math.min(BOT_MILK_CAP, (st.milk || 0) + speed * mins);
-      // Full, and nobody hand milked her: she gets milked at a stall (into the tank)
-      if (st.milk >= BOT_MILK_CAP && Math.random() < 0.5) {
+      // About every 30 minutes (or when she's full) she sits on a stall and gets milked into the tank
+      if (st.milk >= 5 && (st.milk >= BOT_MILK_CAP || Math.random() < Math.min(1, mins / 30))) {
         log.push(`Daisy Bot was milked at a stall: ${Math.round(st.milk * 10) / 10} oz into the dairy tank.`);
-        stmts.push(env.DB.prepare(`INSERT INTO dairy_tank (dairy_id, grade, oz) VALUES (?, 0, ?) ON CONFLICT(dairy_id, grade) DO UPDATE SET oz = oz + excluded.oz`).bind(dairyId, st.milk));
+        stmts.push(...botPumpStmts(env, dairyId, bot, "Daisy Bot", st.milk, false));
         st.quality = (st.quality || 0) + st.milk * 5;
         st.milk = 0;
       }
     }
     if (bot.kind === "bull") {
       st.seed = Math.min(BOT_SEED_CAP, (st.seed || 0) + speed * 0.15 * mins);
-      if (st.seed >= BOT_SEED_CAP && Math.random() < 0.5) {
+      if (st.seed >= 0.5 && (st.seed >= BOT_SEED_CAP || Math.random() < Math.min(1, mins / 30))) {
         log.push(`Brutus Bot was milked at a stall: ${Math.round(st.seed * 100) / 100} oz of seed into the seed tank.`);
-        stmts.push(env.DB.prepare(`INSERT INTO dairy_tank (dairy_id, grade, oz) VALUES (?, ?, ?) ON CONFLICT(dairy_id, grade) DO UPDATE SET oz = oz + excluded.oz`).bind(dairyId, SEED_TANK_GRADE, st.seed));
+        stmts.push(...botPumpStmts(env, dairyId, bot, "Brutus Bot", st.seed, true));
         st.quality = (st.quality || 0) + st.seed * 50;
         st.seed = 0;
       }
     }
     st.grade = [0, 150, 800, 2600, 6000].filter(q => (st.quality || 0) >= q).length - 1;
+    // Each bot puts some of its pay into the dairy fund, like a player who donates
+    st.owed = (st.owed || 0) + BOT_DONATE_PER_HOUR[bot.kind] * mins / 60;
+    if (st.owed >= 50) {
+      const coins = Math.floor(st.owed);
+      st.owed -= coins;
+      const name = bot.kind === "cow" ? "Daisy Bot" : bot.kind === "bull" ? "Brutus Bot" : "Hank Bot";
+      stmts.push(env.DB.prepare(`INSERT INTO dairy_progress (dairy_id, fund, week) VALUES (?, ?, ?) ON CONFLICT(dairy_id) DO UPDATE SET fund = fund + excluded.fund`).bind(dairyId, coins, weekKey()));
+      stmts.push(env.DB.prepare(`INSERT INTO donations (dairy_id, install, name, coins) VALUES (?, ?, ?, ?) ON CONFLICT(dairy_id, install) DO UPDATE SET coins = coins + excluded.coins`).bind(dairyId, bot.install, name, coins));
+      log.push(`${name} donated ${coins} coins to the dairy fund.`);
+    }
     // Brutus breeds Daisy now and then (about every 45 minutes): she gets the bred bonus for 30 minutes
     if (bot.kind === "bull" && Math.random() < Math.min(1, mins / 45)) {
       const daisy = bots.find(x => x.kind === "cow");
@@ -2985,8 +3008,7 @@ async function botFarmerWork(env, dairyId, bot, bots, herd, bin, mins, t, stmts,
       if (seed) ns.seed = 0; else ns.milk = 0;
       row.state = JSON.stringify(ns);
       stmts.push(env.DB.prepare("UPDATE dev_bots SET state = ? WHERE install = ?").bind(row.state, row.install));
-      stmts.push(env.DB.prepare(`INSERT INTO dairy_tank (dairy_id, grade, oz) VALUES (?, ?, ?) ON CONFLICT(dairy_id, grade) DO UPDATE SET oz = oz + excluded.oz`)
-        .bind(dairyId, seed ? SEED_TANK_GRADE : 0, oz));
+      stmts.push(...botPumpStmts(env, dairyId, row, to.name, oz, seed));
       log.push(`Hank Bot hand milked ${to.name}: ${Math.round(oz * 100) / 100} oz${seed ? " of seed" : ""} into the tank.`);
     }
     // Hand milk a player who's filling up and not being milked (their plugin runs it; one ask every ~10 minutes at most)
@@ -3009,9 +3031,29 @@ async function botFarmerWork(env, dairyId, bot, bots, herd, bin, mins, t, stmts,
       log.push("Hank Bot rang the feeding bell.");
     }
   }
-  // Deliveries: milk out of the tank to customers, and the dairy fund gets its 2 coins an oz
+  // Deliveries: some milk out of the tank to customers (a third of it at most, so the tank fills up too), and the
+  // dairy fund gets its 2 coins an oz; and now and then a shipment to the weekly contract
   const tank = await tankOf(env, dairyId);
-  const take = Math.min(tank?.total || 0, 12 * turns);
+  const total = tank?.total || 0;
+  if (total >= 20 && Math.random() < Math.min(1, turns / 6)) {
+    const p = await progressOf(env, dairyId);
+    const c = await contractFor(env, dairyId, p.level);
+    const ship = Math.floor(Math.min(total / 3, 60, c.oz_need - c.oz_done));
+    if (!c.completed && ship >= 1) {
+      await env.DB.batch([
+        env.DB.prepare("UPDATE dairy_tank SET oz = MAX(0, oz - ?) WHERE dairy_id = ? AND grade = 0").bind(ship, dairyId),
+        env.DB.prepare("UPDATE contracts SET oz_done = MIN(oz_need, oz_done + ?) WHERE dairy_id = ? AND week = ? AND completed IS NULL").bind(ship, dairyId, c.week),
+        env.DB.prepare(`INSERT INTO contract_contrib (dairy_id, week, install, name, oz) VALUES (?, ?, ?, 'Hank Bot', ?)
+          ON CONFLICT(dairy_id, week, install) DO UPDATE SET oz = oz + excluded.oz`).bind(dairyId, c.week, bot.install, ship),
+        addXpStmt(env, dairyId, Math.round(ship * CONTRACT_XP_PER_OZ)),
+      ]);
+      log.push(`Hank Bot shipped ${ship} oz to this week's creamery contract (${Math.min(c.oz_need, c.oz_done + ship)} / ${c.oz_need}).`);
+      const d = await env.DB.prepare("SELECT name FROM dairies WHERE id = ?").bind(dairyId).first();
+      if (c.oz_done + ship >= c.oz_need) await finishContract(env, dairyId, d?.name || "Your dairy", c.week);
+      return;
+    }
+  }
+  const take = Math.floor(Math.min(total / 3, 16 * turns));
   if (take >= 1) {
     log.push(`Hank Bot delivered ${Math.round(take)} oz to customers: +${Math.round(take * ORDER_FUND_PER_OZ)} coins for the dairy fund.`);
     stmts.push(env.DB.prepare("UPDATE dairy_tank SET oz = MAX(0, oz - ?) WHERE dairy_id = ? AND grade = 0").bind(take, dairyId));
