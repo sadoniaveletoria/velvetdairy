@@ -23,6 +23,10 @@ public sealed class ChangelogWindow : Window
     /// <summary>Newest first. Write these for players: what changed for them, not how.</summary>
     private static readonly Entry[] Entries =
     {
+        new("0.9.99", "Metric buttons", new[]
+        {
+            "Metric: the contract's Ship button and the seed market's Buy and Sell buttons show litres and millilitres too.",
+        }),
         new("0.9.98", "Hand milking fix", new[]
         {
             "Fixed hand milking sometimes not starting: since 0.9.90 a cow's plugin could miss that a farmer had pressed Milk on her, while it was checking every few seconds.",

@@ -597,7 +597,7 @@ public sealed partial class MainWindow
             var pAll = G.ShipProblem(all);
             var clicked = ListRow(Ico("bottle"), "Your milk", Theme.Ink,
                 new[] { new Line($"You carry {Units.Oz(G.Carried, "0.#")}", Theme.InkSoft) },
-                new[] { new Btn("##shipall", $"Ship {all}", "blue", pAll == null && all > 0, pAll) }, width);
+                new[] { new Btn("##shipall", $"Ship {Units.Oz(all, "0")}", "blue", pAll == null && all > 0, pAll) }, width);
             if (clicked == 0) G.Ship(all);
         }
     }
@@ -1019,7 +1019,7 @@ public sealed partial class MainWindow
                     new Line($"{Units.Oz(sale.Oz, "0.#")} for sale · {Units.PerOz(sale.Price)}", Theme.HoneyDeep),
                     new Line($"About {Math.Floor(sale.Oz / DairyGame.BreedStallSeedOz):0} breedings", Theme.InkSoft),
                 },
-                new[] { new Btn($"##seedbuy{sale.Id}", oz >= 1 ? $"Buy {oz} oz ({cost:N0})" : "Buy", "sage", why == null && !seedBusy, why ?? "From the dairy fund, into your seed tank.") }, width);
+                new[] { new Btn($"##seedbuy{sale.Id}", oz >= 1 ? $"Buy {Units.Oz(oz, "0")} ({cost:N0})" : "Buy", "sage", why == null && !seedBusy, why ?? "From the dairy fund, into your seed tank.") }, width);
             if (clicked == 0)
             {
                 seedBusy = true;
@@ -1047,7 +1047,7 @@ public sealed partial class MainWindow
         ImGui.SetNextItemWidth(110);
         if (ImGui.InputInt("coins per oz##seedsellprice", ref seedSellPrice)) seedSellPrice = Math.Clamp(seedSellPrice, 10, 2000);
         var sellWhy = seedSellOz > m.Tank + 0.05f ? $"Your seed tank has {Units.Oz(m.Tank, "0.#")}." : m.Mine.Count >= 3 ? "You can have 3 listings at a time." : null;
-        if (Ui.Button("##seedsell", $"Sell {seedSellOz} oz for {seedSellOz * seedSellPrice:N0}", new Vector2(240, 30), "rose", sellWhy == null && !seedBusy, sellWhy))
+        if (Ui.Button("##seedsell", $"Sell {Units.Oz(seedSellOz, "0")} for {seedSellOz * seedSellPrice:N0}", new Vector2(240, 30), "rose", sellWhy == null && !seedBusy, sellWhy))
         {
             seedBusy = true;
             G.Net.SellSeed(seedSellOz, seedSellPrice, () =>
