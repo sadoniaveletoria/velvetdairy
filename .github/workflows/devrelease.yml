@@ -61,7 +61,7 @@ jobs:
           $full = "{0}.{1}.{2}.{3}" -f $v.Major, $v.Minor, [Math]::Max($v.Build, 0), ${{ github.run_number }}
           "full=$full" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
-      - name: The dev plugin's own manifest (a separate plugin: EorzeaMilkersDev)
+      - name: Write the dev plugin's own manifest (EorzeaMilkersDev)
         shell: pwsh
         run: |
           $m = Get-Content VelvetDairy/VelvetDairy.json -Raw | ConvertFrom-Json

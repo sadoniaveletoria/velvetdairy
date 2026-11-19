@@ -68,6 +68,7 @@ jobs:
           fi
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -- server/wrangler.dev.toml
           git add network-dev.json
           git commit -m "Dev server address"
           git pull --rebase origin devrelease
