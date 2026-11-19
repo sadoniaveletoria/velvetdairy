@@ -278,6 +278,15 @@ public sealed partial class DairyGame
                 case "milk":
                     F.Tank![0] += i.Oz;   // milk is just milk now
                     break;
+                case "botmilk":
+                    // Dev server: the test farmer bot hand milks you (no character to watch, so it runs like the test farmhand)
+                    if (Channel.Dev && Active == null && Producer)
+                    {
+                        var hank = new Farmhand { Name = "Hank Bot", IsTest = true };
+                        if (HandProblem(hank) == null) StartHand(hank);
+                    }
+
+                    break;
                 case "binfed":
                     // A farmer fed you from the dairy's feed bin: your Fed bar (a bigger bonus already going is kept)
                     var binId = i.Grade >= 0 && i.Grade < Catalog.BinOrder.Length ? Catalog.BinOrder[i.Grade] : "hay";
@@ -1403,7 +1412,7 @@ public sealed partial class DairyGame
         if (Wake == Wakefulness.Asleep) return "You're asleep. Move, emote or click anything to wake up.";
         if (SpoiledProblem is { } sp) return sp;
         if (!HasEnoughToMilk) return ProducesMilk ? "You don't have enough milk yet." : "You don't have enough seed yet.";
-        if (fh.IsTest) return Dev ? null : "The test farmhand only works in developer mode.";
+        if (fh.IsTest) return Dev || Channel.Dev ? null : "The test farmhand only works in developer mode.";
         var sight = Sight(fh);
         if (!sight.Present) return $"{fh.Name} isn't here.";
         if (sight.Distance > HandRange) return $"{fh.Name} needs to be within {HandRange:0.#} y of you.";
@@ -1421,7 +1430,7 @@ public sealed partial class DairyGame
         if (Networked) Net.Poke();
         nextTestStroke = now + 1.5;
         Say(fh.IsTest
-            ? "The test farmhand starts milking you."
+            ? $"{fh.Name} starts milking you."
             : $"{fh.Name} is milking you. Milk flows while they keep their Milk emote going.", 0);
         return true;
     }
@@ -1573,7 +1582,7 @@ public sealed partial class DairyGame
             if (F.BalmLeft > 0) F.BalmLeft--;
         }
 
-        var by = s.Kind == SessionKind.Hand ? $" by {(s.Hand!.IsTest ? "the test farmhand" : s.Hand.Name)}" : "";
+        var by = s.Kind == SessionKind.Hand ? $" by {(s.Hand!.Name == "Test farmhand" ? "the test farmhand" : s.Hand.Name)}" : "";
         Say($"Milked{by}: {string.Join(". And ", parts)}" + (reason != null ? $" ({reason})" : ""), 1);
         plugin.SaveConfig();
     }

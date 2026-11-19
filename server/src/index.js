@@ -715,6 +715,7 @@ async function heartbeat(env, me, request) {
   const myRows = home ? (await env.DB.prepare("SELECT dairy_id, role FROM memberships WHERE install = ?").bind(me.id).all()).results : [];
   const mine = myRows.map(r => r.dairy_id);
   await syncSelfRoles(env, me.id, myRows);
+  if (env.BOTS === "on" && home) await tickBots(env, home.dairy_id);   // dev server: the test bots keep up with you
   const here = (await dairyInArea(env, b.pos, mine)) || (await dairyAt(env, b.houseId));
   if (home && here && here.id !== home.dairy_id && mine.includes(here.id)) await setActive(env, me.id, here.id).run();
   const charHash = isHash(b.charHash) ? b.charHash : me.char_hash;
@@ -2839,7 +2840,7 @@ async function tickBots(env, dairyId) {
   if (!bots.length) return;
   const t = now();
   // Real members in the dairy right now (what the bot farmer can groom and feed)
-  const herd = (await env.DB.prepare(`SELECT m.install, m.name, m.role FROM memberships m JOIN installs i ON i.id = m.install
+  const herd = (await env.DB.prepare(`SELECT m.install, m.name, m.role, m.status FROM memberships m JOIN installs i ON i.id = m.install
       WHERE m.dairy_id = ? AND i.at_dairy = ? AND i.last_seen >= ? AND i.version != 'bot'`).bind(dairyId, dairyId, t - ONLINE_WINDOW).all()).results
     .filter(m => hasRole(m, "cow") || hasRole(m, "bull"));
   const bin = await feedBinOf(env, dairyId);
@@ -2882,30 +2883,7 @@ async function tickBots(env, dairyId) {
       }
     }
     st.grade = [0, 150, 800, 2600, 6000].filter(q => (st.quality || 0) >= q).length - 1;
-    if (bot.kind === "farmer") {
-      // Every ~10 minutes: groom or feed someone in the dairy (bots and real players), and deliver some milk
-      const goes = Math.floor(mins / 10) + (Math.random() < (mins % 10) / 10 ? 1 : 0);
-      for (let g = 0; g < goes; g++) {
-        const others = bots.filter(x => x.kind !== "farmer").map(x => ({ install: x.install, name: "" })).concat(herd);
-        const to = others[Math.floor(Math.random() * others.length)];
-        if (!to) break;
-        const feed = bin[bin.length - 1] || "hay";
-        if (Math.random() < 0.5) {
-          stmts.push(inboxStmt(env, to.install, "groom", 0, 0, 0, "Hank Bot groomed you. Happy +30 min."));
-          note = "groomed someone";
-        } else {
-          stmts.push(inboxStmt(env, to.install, "binfed", 0, 0, Object.keys(FEED_BIN).indexOf(feed), `Hank Bot fed you ${FEED_BIN[feed].name.toLowerCase()} from the feed bin.`));
-          note = "fed someone";
-        }
-      }
-      // Deliveries: take some milk from the tank, the fund gets its 2 coins an oz
-      const tank = await tankOf(env, dairyId);
-      const take = Math.min(tank?.total || 0, 16 * goes);
-      if (take >= 1) {
-        stmts.push(env.DB.prepare("UPDATE dairy_tank SET oz = MAX(0, oz - ?) WHERE dairy_id = ? AND grade = 0").bind(take, dairyId));
-        stmts.push(env.DB.prepare(`INSERT INTO dairy_progress (dairy_id, fund, week) VALUES (?, ?, ?) ON CONFLICT(dairy_id) DO UPDATE SET fund = fund + excluded.fund`).bind(dairyId, Math.round(take * ORDER_FUND_PER_OZ), weekKey()));
-      }
-    }
+    if (bot.kind === "farmer") await botFarmerWork(env, dairyId, bot, bots, herd, bin, mins, t, stmts);
     st.level = Math.min(100, 1 + Math.floor(((st.quality || 0) / 200)));
     const status = {
       bot: true, inDairy: true, milk: Math.round((st.milk || 0) * 10) / 10, cap: bot.kind === "cow" ? BOT_MILK_CAP : 0, grade: st.grade, spoiled: false,
@@ -2947,4 +2925,52 @@ async function milkBot(env, me, install) {
   ]);
   await tickBots(env, mem.dairy_id);
   return { ok: true, oz: Math.round(collected * 100) / 100, seed, coins };
+}
+
+/**
+ * Hank Bot's farmer work since his last tick, the way a farmer player would do it: about every 5 minutes he looks after
+ * whoever needs it in the dairy (players and the other bots): feeds from the bin when their Fed bar is low, grooms or
+ * gives a shelf treat when Happy is low, hand milks a player cow or bull who's filling up (their plugin runs it as a
+ * hand milking by Hank), cleans the stalls, rings the feeding bell about once an hour, and makes deliveries.
+ */
+async function botFarmerWork(env, dairyId, bot, bots, herd, bin, mins, t, stmts) {
+  const turns = Math.min(24, Math.floor(mins / 5) + (Math.random() < (mins % 5) / 5 ? 1 : 0));
+  if (!turns) return;
+  const feed = bin[bin.length - 1] || "hay";
+  const feedIdx = Object.keys(FEED_BIN).indexOf(feed);
+  // Everyone he looks after: players in the dairy (with their shared status) and the bot cow and bull
+  const others = herd.map(m => ({ install: m.install, name: m.name, st: safeParse(m.status) || {}, player: true }))
+    .concat(bots.filter(x => x.kind !== "farmer").map(x => ({ install: x.install, name: x.kind === "cow" ? "Daisy Bot" : "Brutus Bot", st: safeParse(x.state) || {}, player: false })));
+  for (let n = 0; n < turns && others.length; n++) {
+    const to = others[Math.floor(Math.random() * others.length)];
+    const needs = Array.isArray(to.st.needs) ? to.st.needs : [to.st.fed, to.st.water, to.st.comfy, to.st.happy];
+    const fedLow = (needs[0] ?? 0) < 60, happyLow = (needs[3] ?? 0) < 60;
+    if (fedLow) stmts.push(inboxStmt(env, to.install, "binfed", 0, 0, feedIdx, `Hank Bot fed you ${FEED_BIN[feed].name.toLowerCase()} from the feed bin.`));
+    else if (happyLow && Math.random() < 0.5) stmts.push(inboxStmt(env, to.install, "groom", 0, 0, 0, "Hank Bot groomed you. Happy +30 min."));
+    else if (happyLow) stmts.push(inboxStmt(env, to.install, "fed", 0, 0, Object.keys(SHELF_ITEMS).indexOf("cookies"), "Hank Bot fed you butter cookies from the dairy shelf."));
+    // Hand milk a player who's filling up and not being milked (their plugin runs it; one ask every ~10 minutes at most)
+    const cap = Number(to.st.cap) || 0, seedCap = Number(to.st.seedCap) || 0;
+    const full = (cap > 0 && Number(to.st.milk) >= cap * 0.5) || (seedCap > 0 && Number(to.st.seedOz) >= seedCap * 0.5);
+    if (to.player && full && !to.st.handBy && !to.st.stall) {
+      const asked = await env.DB.prepare("SELECT MAX(created) AS at FROM inbox WHERE install = ? AND kind = 'botmilk'").bind(to.install).first();
+      if (!asked?.at || t - asked.at > 600) stmts.push(inboxStmt(env, to.install, "botmilk", 0, 0, 0, "Hank Bot comes over to hand milk you."));
+    }
+  }
+  // Clean every stall (fresh for an hour)
+  const stalls = (await env.DB.prepare("SELECT id FROM stalls WHERE dairy_id = ?").bind(dairyId).all()).results;
+  for (const s of stalls)
+    stmts.push(env.DB.prepare("INSERT INTO stall_clean (stall_id, dairy_id, until, by_name) VALUES (?, ?, ?, 'Hank Bot') ON CONFLICT(stall_id) DO UPDATE SET until = MAX(until, excluded.until), by_name = excluded.by_name").bind(s.id, dairyId, t + CLEAN_SECONDS));
+  // The feeding bell, about once an hour while a player is here
+  if (herd.length) {
+    const bell = await bellOf(env, dairyId);
+    if (t >= bell.readyAt && Math.random() < 0.5)
+      stmts.push(env.DB.prepare("INSERT INTO dairy_notice (dairy_id, install, kind, name, created) VALUES (?, ?, 'feedingBell', 'Hank Bot', ?)").bind(dairyId, bot.install, t));
+  }
+  // Deliveries: milk out of the tank to customers, and the dairy fund gets its 2 coins an oz
+  const tank = await tankOf(env, dairyId);
+  const take = Math.min(tank?.total || 0, 12 * turns);
+  if (take >= 1) {
+    stmts.push(env.DB.prepare("UPDATE dairy_tank SET oz = MAX(0, oz - ?) WHERE dairy_id = ? AND grade = 0").bind(take, dairyId));
+    stmts.push(env.DB.prepare(`INSERT INTO dairy_progress (dairy_id, fund, week) VALUES (?, ?, ?) ON CONFLICT(dairy_id) DO UPDATE SET fund = fund + excluded.fund`).bind(dairyId, Math.round(take * ORDER_FUND_PER_OZ), weekKey()));
+  }
 }
