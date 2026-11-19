@@ -58,7 +58,21 @@ const SHELF_MAX_STOCK = 200;        // per item per dairy      // delivering a b
 const CLEAN_SECONDS = 3600;         // a cleaned stall stays fresh this long
 const CLEAN_AGAIN_SECONDS = 1800;   // and can be cleaned again once this much (or less) is left
 const GROOM_COOLDOWN = 900;         // one groom per farmer per cow every 15 minutes
-const FEED_COOLDOWN = 900;          // a farmer can feed each cow or bull from the shelf once every 15 minutes
+const FEED_COOLDOWN = 900;
+// The dairy's feed bin: farmers feed from it as often as they like (one feed per cow every 15 minutes). The owner unlocks
+// better feed with the fund once the dairy is high enough. Wheat grain is there from the start. Order = the plugin's.
+const FEED_BIN = {
+  hay: { name: "Wheat grain", level: 1, price: 0 },
+  grain: { name: "Sweet grain", level: 3, price: 2000 },
+  honeyoats: { name: "Honey oats", level: 6, price: 6000 },
+  premium: { name: "Velvet blend", level: 10, price: 15000 },
+  goldenmash: { name: "Golden mash", level: 15, price: 35000 },
+};
+// The Velvet pump: everyone's milk and seed in the dairy +15% for 2 hours, paid from the fund (dairy level 5 and up)
+const PUMP_COST = 2500, PUMP_SECONDS = 2 * 3600, PUMP_LEVEL = 5;
+// A creamery or visitor order delivered pays the farmer, and the farmer's dairy fund this much per oz too
+const ORDER_FUND_PER_OZ = 2;
+const QUOTA_SIZES = 4;   // Light, Steady, Heavy, Devoted          // a farmer can feed each cow or bull from the shelf once every 15 minutes
 // Developer (same phrase hash as the plugin's dev mode)
 const DEV_KEY_HASH = "7d4e0a8c4a26de8d2843e2a563f667d74beda3b81ffa447c22bd40d93b5af76f";
 // Weekly contracts
@@ -328,6 +342,10 @@ async function route(request, env) {
     ["POST", /^\/v1\/shelf\/stock$/, () => shelfStock(env, me, request)],
     ["POST", /^\/v1\/shelf\/buy$/, () => shelfBuy(env, me, request)],
     ["POST", /^\/v1\/shelf\/feed$/, () => shelfFeed(env, me, request)],
+    ["POST", /^\/v1\/feedbin\/feed$/, () => binFeed(env, me, request)],
+    ["POST", /^\/v1\/dairy\/feedbin\/([a-z]+)$/, m => buyFeedBin(env, me, m[1])],
+    ["POST", /^\/v1\/dairy\/pump$/, () => startPump(env, me)],
+    ["PUT", /^\/v1\/members\/([0-9a-f]{32})\/quota$/, m => setQuota(env, me, m[1], request)],
     ["GET", /^\/v1\/pantry$/, () => pantryView(env, me)],
     ["POST", /^\/v1\/pantry\/add$/, () => pantryAdd(env, me, request)],
     ["POST", /^\/v1\/pantry\/take$/, () => pantryTake(env, me, request)],
@@ -1065,8 +1083,9 @@ async function myDairy(env, me) {
   const d = await env.DB.prepare("SELECT * FROM dairies WHERE id = ?").bind(mem.dairy_id).first();
   const t = now();
   const members = (await env.DB.prepare(`
-      SELECT m.install, m.role, m.name, m.world_name, m.status, i.last_seen, i.version, i.at_dairy
-      FROM memberships m LEFT JOIN installs i ON i.id = m.install WHERE m.dairy_id = ? ORDER BY m.joined`).bind(d.id).all()).results;
+      SELECT m.install, m.role, m.name, m.world_name, m.status, i.last_seen, i.version, i.at_dairy, COALESCE(q.size, 1) AS quota
+      FROM memberships m LEFT JOIN installs i ON i.id = m.install LEFT JOIN member_quota q ON q.install = m.install
+      WHERE m.dairy_id = ? ORDER BY m.joined`).bind(d.id).all()).results;
   const stalls = (await env.DB.prepare(
     "SELECT s.*, COALESCE(c.until, 0) AS clean_until, (b.stall_id IS NOT NULL) AS breed, COALESCE(b.loaded, 0) AS loaded FROM stalls s LEFT JOIN stall_clean c ON c.stall_id = s.id LEFT JOIN breed_stalls b ON b.stall_id = s.id WHERE s.dairy_id = ? ORDER BY s.created")
     .bind(d.id).all()).results;
@@ -1088,6 +1107,7 @@ async function myDairy(env, me) {
       online: (m.last_seen || 0) >= t - ONLINE_WINDOW, lastSeen: m.last_seen || 0, version: m.version || "", status: safeParse(m.status),
       // In THIS dairy right now (their plugin's own "in a dairy" can mean another dairy they're visiting)
       here: (m.last_seen || 0) >= t - ONLINE_WINDOW && m.at_dairy === d.id,
+      quota: m.quota,
     })),
     stalls: stalls.map(s => ({ id: s.id, name: s.name, x: s.x, y: s.y, z: s.z, tier: s.tier, cleanUntil: s.clean_until > t ? s.clean_until : 0, breed: !!s.breed, loaded: s.loaded || 0 })),
     progress: await progressOut(env, d.id, stalls.length),
@@ -1120,6 +1140,9 @@ async function progressOut(env, dairyId, stallCount) {
     bell: await bellOf(env, dairyId),
     payBonus: payBonus(p.level),
     contract: await contractOut(env, dairyId, p.level),
+    feedBin: await feedBinOf(env, dairyId),
+    feedBinShop: Object.entries(FEED_BIN).map(([item, f]) => ({ item, name: f.name, level: f.level, price: f.price })),
+    pumpUntil: await pumpUntilOf(env, dairyId), pumpCost: PUMP_COST, pumpLevel: PUMP_LEVEL, pumpMinutes: PUMP_SECONDS / 60,
   };
 }
 
@@ -2021,12 +2044,100 @@ async function useCarriedOz(env, install, oz) {
   return !!r;
 }
 
-/** The plugin reports milk used on the creamery's own customer and visitor orders. */
+/** The plugin reports milk used on the creamery's own customer and visitor orders. An order also pays the dairy fund. */
 async function useCarried(env, me, request) {
   const b = await body(request);
   const oz = Math.max(0, Math.min(1000, Number(b.oz) || 0));
+  const r = await env.DB.prepare("SELECT oz FROM carried WHERE install = ?").bind(me.id).first();
+  const used = Math.min(oz, r?.oz || 0);
   await env.DB.prepare("UPDATE carried SET oz = MAX(0, oz - ?) WHERE install = ?").bind(oz, me.id).run();
-  return { ok: true, carried: await carriedOf(env, me.id) };
+  let fund = 0;
+  const mem = b.order === true ? await membership(env, me.id) : null;
+  if (mem && used > 0) {
+    fund = Math.round(used * ORDER_FUND_PER_OZ);
+    await env.DB.prepare(`INSERT INTO dairy_progress (dairy_id, fund, week) VALUES (?, ?, ?)
+      ON CONFLICT(dairy_id) DO UPDATE SET fund = fund + excluded.fund`).bind(mem.dairy_id, fund, weekKey()).run();
+  }
+  return { ok: true, carried: await carriedOf(env, me.id), fund };
+}
+
+// ---------------------------------------------------------------- quotas, the feed bin, the Velvet pump
+
+/** A farmer or the owner sets a member's daily quota size. Farmers set it for cows and bulls; the owner for anyone. */
+async function setQuota(env, me, install, request) {
+  const b = await body(request);
+  const size = int(b.size, 0, QUOTA_SIZES - 1, "size");
+  const mem = await membership(env, me.id);
+  if (!mem || !(mem.is_owner || hasRole(mem, "farmer"))) fail(403, "Only farmers and the owner set quotas.");
+  const to = await env.DB.prepare("SELECT install, role FROM memberships WHERE install = ? AND dairy_id = ?").bind(install, mem.dairy_id).first();
+  if (!to) fail(404, "They aren't in your dairy.");
+  if (!mem.is_owner && !(hasRole(to, "cow") || hasRole(to, "bull"))) fail(403, "Farmers set quotas for cows and bulls; the owner sets them for farmers.");
+  if (!mem.is_owner && install === me.id) fail(403, "The owner sets your quota.");
+  await env.DB.prepare("INSERT INTO member_quota (install, size) VALUES (?, ?) ON CONFLICT(install) DO UPDATE SET size = excluded.size").bind(install, size).run();
+  return { ok: true, size };
+}
+
+async function feedBinOf(env, dairyId) {
+  const rows = (await env.DB.prepare("SELECT item FROM dairy_feedbin WHERE dairy_id = ?").bind(dairyId).all()).results.map(r => r.item);
+  return Object.keys(FEED_BIN).filter(k => FEED_BIN[k].price === 0 || rows.includes(k));
+}
+
+/** The owner unlocks a feed type for the bin with the fund. */
+async function buyFeedBin(env, me, item) {
+  const f = FEED_BIN[item];
+  if (!f) fail(404, "That isn't a feed.");
+  const d = await ownedDairy(env, me);
+  if ((await feedBinOf(env, d.id)).includes(item)) fail(400, `The bin already has ${f.name.toLowerCase()}.`);
+  const p = await progressOf(env, d.id);
+  if (p.level < f.level) fail(400, `${f.name} needs dairy level ${f.level}.`);
+  if (!(await spendFund(env, d.id, f.price))) fail(400, `${f.name} costs ${f.price.toLocaleString("en-US")} coins from the dairy fund.`);
+  await env.DB.prepare("INSERT OR IGNORE INTO dairy_feedbin (dairy_id, item) VALUES (?, ?)").bind(d.id, item).run();
+  return { ok: true, feedBin: await feedBinOf(env, d.id) };
+}
+
+/** A farmer feeds a cow or bull from the bin: free and unlimited, but each one can be fed once every 15 minutes. */
+async function binFeed(env, me, request) {
+  const b = await body(request);
+  const item = String(b.item || "");
+  if (!FEED_BIN[item]) fail(400, "That isn't a feed.");
+  const mem = await membership(env, me.id);
+  if (!mem || !hasRole(mem, "farmer")) fail(403, "Only farmers feed from the feed bin.");
+  if (!inOwnDairy(me, mem)) fail(400, "Go to your dairy to use its feed bin.");
+  if (!(await feedBinOf(env, mem.dairy_id)).includes(item)) fail(400, `The bin doesn't have ${FEED_BIN[item].name.toLowerCase()} yet.`);
+  const toId = String(b.to || "");
+  const to = await env.DB.prepare(`SELECT install, name, role FROM memberships WHERE install = ?
+      AND (dairy_id = ? OR (install IN (SELECT id FROM installs WHERE at_dairy = ? AND last_seen >= ?)
+        AND EXISTS (SELECT 1 FROM dairies WHERE id = ? AND is_public = 1)))`)
+    .bind(toId, mem.dairy_id, mem.dairy_id, now() - ONLINE_WINDOW, mem.dairy_id).first();
+  if (!to || !(hasRole(to, "cow") || hasRole(to, "bull"))) fail(400, "You can feed your dairy's cows and bulls (and guests visiting it).");
+  const t = now();
+  const last = await env.DB.prepare("SELECT at FROM bin_feeds WHERE member = ?").bind(to.install).first();
+  if (last && last.at + FEED_COOLDOWN > t) fail(400, `${to.name} can be fed again in ${Math.ceil((last.at + FEED_COOLDOWN - t) / 60)} min.`);
+  await env.DB.batch([
+    env.DB.prepare("INSERT INTO bin_feeds (member, at) VALUES (?, ?) ON CONFLICT(member) DO UPDATE SET at = excluded.at").bind(to.install, t),
+    // grade carries which feed it was (its place in FEED_BIN)
+    inboxStmt(env, to.install, "binfed", 0, 0, Object.keys(FEED_BIN).indexOf(item),
+      `${mem.name || "A farmer"} fed you ${FEED_BIN[item].name.toLowerCase()} from the feed bin.`),
+  ]);
+  return { ok: true, next: t + FEED_COOLDOWN };
+}
+
+async function pumpUntilOf(env, dairyId) {
+  return (await env.DB.prepare("SELECT until FROM dairy_pump WHERE dairy_id = ?").bind(dairyId).first())?.until || 0;
+}
+
+/** The owner runs the Velvet pump: 2 more hours (on top of any left), paid from the fund. */
+async function startPump(env, me) {
+  const d = await ownedDairy(env, me);
+  const p = await progressOf(env, d.id);
+  if (p.level < PUMP_LEVEL) fail(400, `The Velvet pump needs dairy level ${PUMP_LEVEL}.`);
+  const t = now();
+  const until = await pumpUntilOf(env, d.id);
+  if (until - t > PUMP_SECONDS) fail(400, "The pump is already running for over 2 hours.");
+  if (!(await spendFund(env, d.id, PUMP_COST))) fail(400, `The Velvet pump costs ${PUMP_COST.toLocaleString("en-US")} coins from the dairy fund.`);
+  const next = Math.max(until, t) + PUMP_SECONDS;
+  await env.DB.prepare("INSERT INTO dairy_pump (dairy_id, until) VALUES (?, ?) ON CONFLICT(dairy_id) DO UPDATE SET until = excluded.until").bind(d.id, next).run();
+  return { ok: true, until: next };
 }
 
 // Up to 3 Grand Creameries (one at each Grand Company), set by the developer. Contract milk can be shipped at any of them.

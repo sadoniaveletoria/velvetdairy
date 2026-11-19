@@ -152,6 +152,9 @@ public class FarmSave
     public int DayClaimed { get; set; }               // bitmask of claimed goals (cow goals bits 0-3, farmer goals bits 8-11)
     public int DayGrooms { get; set; }                // farmer goals
     public int DayCleans { get; set; }
+    public float DayDeliveredOz { get; set; }         // oz a farmer delivered today (orders, visitors, contract): their quota
+    public int BalmLeft { get; set; }                 // Udder balm: hand milkings left that give more
+    public DateTime OilUntilUtc { get; set; } = DateTime.MinValue;   // Churn oil: jugs fill faster until then
     public int DayDelivered { get; set; }             // customer orders, visitor orders, buy-order deliveries, contract shipments
     public int DayCowsMilked { get; set; }
     // Breeding (with the Corruption plugin)
@@ -319,6 +322,7 @@ public class CowState
     public DateTime FreshHoldUntilUtc { get; set; } = DateTime.MinValue;   // Dry-off tonic: no slipping until then
     public float Milk { get; set; } = 3;       // oz waiting to be milked (across all your bottles)
     public DateTime BoostUntilUtc { get; set; } = DateTime.MinValue;   // treat boost
+    public DateTime DropsUntilUtc { get; set; } = DateTime.MinValue;   // Pump drops
     public DateTime? FullSinceUtc { get; set; }   // when every bottle became full (spoils 72 h later)
     public bool Spoiled { get; set; }             // bottles have gone bad: dump them before anything else
     public float Taint { get; set; }              // off taste left from dumping (0-100); one grade lower while it lasts

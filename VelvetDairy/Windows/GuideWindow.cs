@@ -30,9 +30,9 @@ public sealed class GuideWindow : Window
         }),
         new("Roles", new[]
         {
-            "Cow: makes milk and gets milked. Paid per ounce at milking time. Cows treat themselves (food, water, rest, treats) for faster milk.",
+            "Cow: makes milk and gets milked. Paid for reaching a daily quota (a farmer or the owner sets its size), not per ounce. Cows drink, rest and have treats themselves; farmers feed them from the dairy's feed bin.",
             "Farmer: hand milks the dairy's cows (and gets a 25% share of what the cow is paid, on top), fills jugs from the dairy tank and delivers milk. Farmers can invite and give roles to others, farmer included.",
-            "Bull: makes seed and gets milked, the way a cow makes milk: the same needs and care, vials instead of bottles (a tenth the size), seed grades, stalls and hand milking, pay per oz, and a seed tank at the dairy. Seed comes in at 15% of milk speed at Grade C, up to 20% at S+, and pays five times milk's price per oz. Seed gives a bit less xp than milk would, since bulls also level from breeding. With the Corruption plugin, bulls also breed their dairy's cows.",
+            "Bull: makes seed and gets milked, the way a cow makes milk: the same needs and care, vials instead of bottles (a tenth the size), seed grades, stalls and hand milking, a daily quota in seed, and a seed tank at the dairy. Seed comes in at 15% of milk speed at Grade C, up to 20% at S+. Seed gives a bit less xp than milk would, since bulls also level from breeding. With the Corruption plugin, bulls also breed their dairy's cows.",
             "Owner: runs the dairy. Marks out where it is, sets up stalls, invites farmers, cows and bulls, spends the dairy fund and posts buy orders. The owner can also play any mix of roles.",
             "You can hold several roles at once (a Cow + Farmer + Bull can take care of everyone). Add cow or bull to yourself any time on Dairy > Overview. Farmer is given by a farmer or the owner. Only the owner takes roles away.",
             "Each role has its own level: cow level (milk speed and shop unlocks), farmer level (unlocks bigger farmer tanks) and bull level. Adding or losing a role never loses its progress. The Roles tab has a page for each: cow level and milk quality, farmer level and tank, bull level and seed quality.",
@@ -44,9 +44,9 @@ public sealed class GuideWindow : Window
             "Bonuses only count down while you're awake and playing; they wait while you're asleep or logged out. When one runs out you're just plain: it never slows you down or lowers your grade. The newest food or treat of a kind replaces the last.",
             "Care happens inside your dairy (Barn tab): Drink and Rest (sitting on furniture) are free; feed comes from your Pantry.",
             "Pantry tab: everything you own. Eat it, sell back what you don't need for half price, or hide it from your lists.",
-            "Shop tab: Feed & treats (everyday feed, quality treats), Upgrades (comfort, care and things to wear) and Bottles. Cow levels unlock new feed and cow upgrades all the way to level 30: faster stall and hand milking, deeper rest, longer before you tire or spoil, faster quality, and wearables that raise your pay.",
+            "Shop tab: Feed & treats (treats, tonics, Pump drops, Udder balm, quality treats) and Level rewards. Bottles, bedding, wearables and the rest of the old upgrades now come free at their level (Shop > Level rewards). Farmers still buy bigger farmer tanks.",
             "Quality treats (cream biscuit, golden alfalfa, star clover) raise your milk quality toward the next grade and make milk come 30% faster for 30 minutes. You can have one every hour.",
-            "Clover, salt licks, cream clover, the Velvet blend and Golden mash also give a treat boost (+30% milk) on top of their bonus.",
+            "Clover, salt licks and cream clover also give a treat boost (+30% milk) on top of their Happy bonus. A farmer's baked treats from the dairy shelf are better than anything you buy. Pump drops: +25% milk and seed for 30 minutes. Udder balm: your next 3 hand milkings give 20% more. Second wind tonic: you tire 2 hours later today.",
             "Going away for a while? A Dry-off tonic (Shop, 150 coins) stops your grade slipping for 7 days. Take it anywhere, even outside your dairy.",
         }),
         new("Milk and bottles", new[]
@@ -72,14 +72,14 @@ public sealed class GuideWindow : Window
             "The Kitchen (Roles > Farmer > Kitchen): farmers fill their jugs from the dairy tank at the top, and bake with milk from their jugs, making ingredients for their pantry. For now that's butter (16 oz of milk makes 1). Ingredients are only used to make other things, and more recipes are coming.",
             "Farmer chores: Groom a cow or bull (in the Herd Care window) you're standing next to for 20 farmer xp; it adds 30 minutes to their Happy bar (once every 15 minutes each). Feed one a treat from the dairy shelf: press Feed and pick which treat (free for you, farmer xp, one treat per cow or bull every 15 minutes, whoever gives it). Clean a stall nobody is sitting on for 25 farmer xp; cows milked there get +10% speed and xp for an hour, and it can be freshened again once half an hour is left. Stalls never get worse than their tier.",
             "Feed from the shelf (Herd Care window): give a cow or bull something your dairy baked, straight from the dairy shelf. It's free for the farmer (nobody is paid for it) and earns 10 farmer xp; cows get the treat's Happy and milk boost, bulls get bull xp. Once every 15 minutes per cow or bull, and never to yourself.",
-            "You're paid the moment you're milked: per ounce, by your grade, plus 2% for each dairy level and your looks bonus (Creamery > Your pay).",
+            "You're paid for your daily quota: reach it and claim it in Goals. A farmer or the owner picks its size (Light, Steady, Heavy or Devoted; bigger pays more). Your grade, your wearables and the dairy's level raise it (Creamery > Your pay). Daily goals pay 20 coins each, 40 more for all four.",
         }),
         new("Grades and pay", new[]
         {
             "Everyone starts at Grade C. Milk quality builds as you get milked, fill goals and eat quality treats: B at 150, A at 800, S at 2,600 and S+ at 6,000.",
-            "Pay per ounce: C 6, B 8, A 10, S 12, S+ 14 coins. Better grades also give more XP.",
+            "Quota pay by grade: C x1, B x1.15, A x1.3, S x1.45, S+ x1.6. Better grades also give more XP.",
             "There's no daily limit on pay: everything is paid in full. After 12 hours of making milk in a day you get tired, and milk (and its pay) comes in at half speed until the daily reset.",
-            "Your grade also makes milking faster: B +10%, A +20%, S +35%, S+ +50%. (It used to give more milk too; now it raises the price per ounce, and your stall's tier decides how much is collected.)",
+            "Your grade also makes milking faster: B +10%, A +20%, S +35%, S+ +50%. (Your stall's tier decides how much is collected.)",
             "Milk itself has no grade: once it's in the dairy tank, any milk fills any order, contract or recipe.",
             "Your grade is your milk quality, and it stays there as long as you're milked. Go 3 days without being milked and it slips one grade (one more every 3 days after). One milking brings it right back. A Dry-off tonic stops it slipping while you're away.",
             "Hand milking by a farmer makes up one grade lost to slipping or off taste.",
@@ -114,12 +114,12 @@ public sealed class GuideWindow : Window
         {
             "Dairy > Overview: who's in it, invites, and the members summary. Manage members opens a window with search, filters, role changes and removal.",
             "Dairy level: members earn dairy XP by milking and caring inside it (up to 300 each a day), and from filled buy orders and contracts. Higher levels give better stall tiers (3 from level 5, 4 from level 12), 2% more pay per level, and put the dairy higher in the Dairies list.",
-            "Dairy fund: anyone in the dairy can donate coins. The owner spends them on new stalls and stall upgrades.",
+            "Dairy fund: members donate, creamery orders pay 2 coins an oz into it, and the weekly contract adds more. The owner spends it on stalls, stall tiers, feed for the feed bin (Dairy > Feed & pump) and the Velvet pump (everyone's milk and seed +15% for 2 hours).",
             "Dairy tank: every milking inside the dairy adds that milk to the tank, by grade. Farmers and the owner fill jugs from it.",
         }),
         new("Jugs and deliveries", new[]
         {
-            "Farmers and the owner fill jugs from the dairy tank (top of the Kitchen window: Roles > Farmer > Kitchen), inside the dairy, up to what their farmer tank holds: a 32 oz milk pail at first, up to a 256 oz tanker cart (Shop > Farmer tank, unlocked by farmer level).",
+            "Farmers and the owner fill jugs from the dairy tank (top of the Kitchen window: Roles > Farmer > Kitchen), inside the dairy, up to what their farmer tank holds: a 32 oz milk pail at first, up to a 400 oz grand tanker (Shop > Farmer tank, unlocked by farmer level). Filling takes time: 1 oz a second (twice as fast with Churn oil), and you have to stay in the dairy.",
             "Customer orders (Creamery tab): the creamery's customers want milk. Deliver from your jugs for coins and XP; better-paying customers come as your farmer level grows.",
             "Deliveries: other dairies' buy orders (public or private) are listed on the Creamery tab. Fill them from inside your own dairy with milk in your jugs; it goes straight into the buying dairy's tank. The creamery's two visitor orders a day per public dairy are still in person.",
             "Any owner, public or private, can post buy orders (Creamery > Deliveries): the coins are held until a delivery fills it or you cancel.",

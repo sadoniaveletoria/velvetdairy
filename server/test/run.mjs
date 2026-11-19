@@ -45,7 +45,7 @@ const beat = (p, extra = {}) => call(p, "POST", "/v1/heartbeat", { charHash: p.h
 let passed = 0;
 async function test(name, fn) {
   try { await fn(); passed++; console.log("ok  ", name); }
-  catch (e) { console.log("FAIL", name, "\n   ", e.message); process.exitCode = 1; }
+  catch (e) { console.log("FAIL", name, "\n   ", e.message, (e.stack || "").split("\n").find(l => l.includes("run.mjs:")) || ""); process.exitCode = 1; }
 }
 
 const alice = player("Alice Cow"), bob = player("Bob Hand"), carl = player("Carl Bull"), dana = player("Dana Visitor"), erin = player("Erin Owner");
@@ -1028,6 +1028,61 @@ await test("breeding stalls use the seed tank, and dairies sell spare seed to ea
   assert.equal((await call(ivo, "POST", `/v1/seed/sales/${sale}/close`)).status, 404, "not theirs");
   assert.equal((await call(hana, "POST", `/v1/seed/sales/${sale}/close`)).data.returned, 3);
   assert.equal((await call(hana, "GET", "/v1/seed/market")).data.tank, 5);
+});
+
+await test("quotas, the feed bin, the Velvet pump and order fund pay", async () => {
+  const alice = player("Olive Owner"), bob = player("Fran Farmer"), carl = player("Bert Bull");
+  const H = "5550001112221";
+  for (const x of [alice, bob, carl]) await beat(x);
+  const made = await call(alice, "PUT", "/v1/dairy", dairyBody({ houseId: H, name: "Quota Farm", ownerName: "Olive Owner", ward: 23, plot: 9 }));
+  assert.equal(made.status, 200, JSON.stringify(made.data));
+  for (const [who, role, name] of [[bob, "farmer", "Fran Farmer"], [carl, "bull", "Bert Bull"]]) {
+    const inv = await call(alice, "POST", "/v1/invites", { toHash: who.hash, toName: name, role });
+    assert.equal(inv.status, 200, JSON.stringify(inv.data));
+    const acc = await call(who, "POST", `/v1/invites/${inv.data.id}/accept`, { charHash: who.hash, name, worldName: "Gilgamesh" });
+    assert.equal(acc.status, 200, JSON.stringify(acc.data));
+  }
+  for (const x of [alice, bob, carl]) await beat(x, { houseId: H, awake: true });
+  const mine = (await call(alice, "GET", "/v1/dairy/mine")).data;
+  const did = mine.dairy.id;
+  assert.equal(mine.members.find(m => m.id === carl.id).quota, 1, "Steady by default");
+  // Quotas: farmers set cows' and bulls', the owner anyone's
+  assert.equal((await call(carl, "PUT", `/v1/members/${alice.id}/quota`, { size: 2 })).status, 403, "bulls can't set quotas");
+  assert.equal((await call(bob, "PUT", `/v1/members/${carl.id}/quota`, { size: 3 })).status, 200);
+  assert.equal((await call(bob, "PUT", `/v1/members/${bob.id}/quota`, { size: 3 })).status, 403, "not your own as a farmer");
+  assert.equal((await call(alice, "PUT", `/v1/members/${bob.id}/quota`, { size: 0 })).status, 200, "the owner sets a farmer's");
+  assert.equal((await call(alice, "PUT", `/v1/members/${bob.id}/quota`, { size: 9 })).status, 400);
+  const q = (await call(carl, "GET", "/v1/dairy/mine")).data.members;
+  assert.equal(q.find(m => m.id === carl.id).quota, 3);
+  assert.equal(q.find(m => m.id === bob.id).quota, 0);
+  // Feed bin: wheat from the start; better feed needs dairy level and the fund
+  let p = (await call(alice, "GET", "/v1/dairy/mine")).data.progress;
+  assert.deepEqual(p.feedBin, ["hay"]);
+  assert.equal((await call(bob, "POST", "/v1/dairy/feedbin/grain")).status, 403, "only the owner unlocks feed");
+  assert.equal((await call(alice, "POST", "/v1/dairy/feedbin/grain")).status, 400, "needs dairy level 3");
+  sqlite.prepare("INSERT INTO dairy_progress (dairy_id, xp, fund, week) VALUES (?, 20000, 6000, 'w') ON CONFLICT(dairy_id) DO UPDATE SET xp = 20000, fund = 6000").run(did);
+  assert.equal((await call(alice, "POST", "/v1/dairy/feedbin/grain")).status, 200);
+  assert.equal((await call(alice, "POST", "/v1/dairy/feedbin/grain")).status, 400, "already there");
+  assert.equal((await call(alice, "GET", "/v1/dairy/mine")).data.progress.fund, 4000);
+  await call(carl, "POST", "/v1/inbox/claim");
+  assert.equal((await call(carl, "POST", "/v1/feedbin/feed", { item: "grain", to: alice.id })).status, 403, "only farmers feed");
+  assert.equal((await call(bob, "POST", "/v1/feedbin/feed", { item: "goldenmash", to: carl.id })).status, 400, "not unlocked");
+  assert.equal((await call(bob, "POST", "/v1/feedbin/feed", { item: "grain", to: carl.id })).status, 200);
+  assert.equal((await call(bob, "POST", "/v1/feedbin/feed", { item: "hay", to: carl.id })).status, 400, "once every 15 minutes");
+  const fed = (await call(carl, "POST", "/v1/inbox/claim")).data.items.find(i => i.kind === "binfed");
+  assert.equal(fed.grade, 1, "which feed it was");
+  // The Velvet pump
+  assert.equal((await call(bob, "POST", "/v1/dairy/pump")).status, 403, "the owner runs it");
+  assert.equal((await call(alice, "POST", "/v1/dairy/pump")).status, 200);
+  p = (await call(alice, "GET", "/v1/dairy/mine")).data.progress;
+  assert.equal(p.fund, 1500);
+  assert.ok(p.pumpUntil > Date.now() / 1000 + 7000);
+  assert.equal((await call(alice, "POST", "/v1/dairy/pump")).status, 400, "not enough in the fund");
+  // An order delivered pays the fund 2 coins an oz (only milk actually carried)
+  sqlite.prepare("INSERT INTO carried (install, oz) VALUES (?, 20) ON CONFLICT(install) DO UPDATE SET oz = 20").run(bob.id);
+  const used = (await call(bob, "POST", "/v1/carry/use", { oz: 30, order: true })).data;
+  assert.equal(used.fund, 40, "20 oz carried, 2 coins an oz");
+  assert.equal((await call(alice, "GET", "/v1/dairy/mine")).data.progress.fund, 1540);
 });
 
 console.log(`\n${passed} passed`);

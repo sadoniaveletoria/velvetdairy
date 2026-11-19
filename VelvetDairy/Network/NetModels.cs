@@ -244,6 +244,12 @@ public sealed class DairyProgress
     public BellInfo? Bell { get; set; }
     public float PayBonus { get; set; } = 1f;
     public ContractInfo? Contract { get; set; }
+    public List<string> FeedBin { get; set; } = new() { "hay" };       // feed types farmers can give from the dairy's bin
+    public List<FeedBinOffer> FeedBinShop { get; set; } = new();      // every feed type, its dairy level and fund price
+    public long PumpUntil { get; set; }                                // the Velvet pump runs until this (unix seconds)
+    public int PumpCost { get; set; } = 2500;
+    public int PumpLevel { get; set; } = 5;
+    public int PumpMinutes { get; set; } = 120;
 
     public float LevelProgress => NextXp is { } n && n > LevelXp ? Math.Clamp((Xp - LevelXp) / (float)(n - LevelXp), 0, 1) : 1;
     public int TierPrice(int tier) => tier >= 0 && tier < TierPrices.Count ? TierPrices[tier] : 0;
@@ -367,6 +373,14 @@ public sealed class MyDairyInfo
     public VelvetDairy.Game.DairyArea? PrivateArea { get; set; }   // members only: the dairy's private place (a home or apartment)
 }
 
+public sealed class FeedBinOffer
+{
+    public string Item { get; set; } = "";
+    public string Name { get; set; } = "";
+    public int Level { get; set; }
+    public int Price { get; set; }
+}
+
 public sealed class YouInfo
 {
     public string Id { get; set; } = "";
@@ -388,6 +402,7 @@ public sealed class MemberInfo
     public string Version { get; set; } = "";   // their plugin version, as of their last check-in
     public bool Guest { get; set; }             // visiting from another dairy (not a member)
     public bool Here { get; set; }              // in this dairy right now (the server's view of where they are)
+    public int Quota { get; set; } = 1;         // daily quota size a farmer or the owner set (0 Light .. 3 Devoted)
 
     public List<string> AllRoles => VelvetDairy.Game.Roles.From(Roles, Role);
     public bool Has(string role) => AllRoles.Contains(role);

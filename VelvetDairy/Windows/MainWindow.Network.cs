@@ -329,7 +329,7 @@ public sealed partial class MainWindow
             return;
         }
 
-        var labels = m.IsOwner ? new[] { "Overview", "Contract", "Stalls", "Listing" } : new[] { "Overview", "Contract", "Stalls" };
+        var labels = m.IsOwner ? new[] { "Overview", "Contract", "Stalls", "Feed & pump", "Listing" } : new[] { "Overview", "Contract", "Stalls", "Feed & pump" };
         var top = SubTabs("dairynet", labels, min, max.X - min.X);
         var mid = (min.X + max.X) / 2;
         switch (Sub("dairynet"))
@@ -349,6 +349,10 @@ public sealed partial class MainWindow
                     if (G.IsOwner) DrawStallUpgrades(w);
                     else Ui.Wrapped("Cows: your milking emotes are on Roles > Cow. Farmers: the dairy's cows and the emotes that milk them are in Herd Care (HUD).", Theme.InkSoft, w);
                 }, true);
+                break;
+            case 3:
+                Panel("##feedbin", top, new Vector2(mid - 7, max.Y), "Feed bin", DrawFeedBin);
+                Panel("##pump", new Vector2(mid + 7, top.Y), max, "Velvet pump", DrawPump, true);
                 break;
             default:
                 var (lmin, lmax) = Column(top, max, 760);
@@ -651,6 +655,53 @@ public sealed partial class MainWindow
         if (p.Donors.Count > 0)
             Ui.Wrapped("Top donors: " + string.Join(", ", p.Donors.Take(5).Select(d => $"{d.Name.Split(' ')[0]} {d.Coins:N0}")), Theme.InkSoft, width);
         Gap(6);
+    }
+
+    /// <summary>The dairy's feed bin: farmers feed from it for free; the owner unlocks better feed with the fund.</summary>
+    private void DrawFeedBin(float width)
+    {
+        var p = G.Net.Progress;
+        if (p == null)
+        {
+            ImGui.TextColored(Theme.InkSoft, "Loading...");
+            return;
+        }
+
+        Ui.Wrapped("Cows and bulls get their Fed bar from farmers, who feed them from this bin as often as they like (each one every 15 minutes). "
+                   + "Better feed gives a bigger Fed bonus. The owner unlocks it once, from the dairy fund.", Theme.InkSoft, width);
+        ImGui.TextColored(Theme.HoneyDeep, $"Dairy fund: {p.Fund:N0} coins · dairy level {p.Level}");
+        Gap(4);
+        foreach (var o in p.FeedBinShop)
+        {
+            var f = Catalog.FeedById(o.Item);
+            var have = p.FeedBin.Contains(o.Item);
+            var why = have ? null : !G.IsOwner ? "The owner unlocks feed." : p.Level < o.Level ? $"Needs dairy level {o.Level}." : p.Fund < o.Price ? $"Needs {o.Price:N0} coins in the fund." : null;
+            var lines = new[]
+            {
+                new Line($"Fed +{(f?.Fed ?? 0) * 100:0}%", Theme.SageDeep),
+                new Line(have ? "In the bin" : $"Dairy level {o.Level} · {o.Price:N0} coins from the fund", have ? Theme.SageDeep : Theme.InkSoft),
+            };
+            var btns = have ? Array.Empty<Btn>() : new[] { new Btn($"##bin{o.Item}", "Unlock", "honey", why == null, why ?? $"Spend {o.Price:N0} from the fund.") };
+            if (ListRow(Ico(f?.Icon ?? "grain", have ? 1f : 0.6f), o.Name, have ? Theme.Ink : Theme.InkSoft, lines, btns, width) == 0)
+                G.BuyFeedBin(o.Item, o.Name);
+        }
+    }
+
+    /// <summary>The Velvet pump: the owner spends from the fund to speed up everyone's milk and seed for a while.</summary>
+    private void DrawPump(float width)
+    {
+        var p = G.Net.Progress;
+        if (p == null) return;
+        Ui.Wrapped($"Runs for {p.PumpMinutes / 60} hours: everyone milked in the dairy makes milk and seed {Catalog.PumpBonus * 100:0}% faster. "
+                   + $"It costs {p.PumpCost:N0} coins from the fund each time, from dairy level {p.PumpLevel}.", Theme.InkSoft, width);
+        Gap(4);
+        var left = G.PumpLeft;
+        ImGui.TextColored(left > TimeSpan.Zero ? Theme.SageDeep : Theme.InkSoft, left > TimeSpan.Zero ? $"Running: {DairyGame.Wait(left)} left" : "Not running");
+        ImGui.TextColored(Theme.HoneyDeep, $"Dairy fund: {p.Fund:N0} coins");
+        var why = !G.IsOwner ? "The owner runs the pump." : p.Level < p.PumpLevel ? $"Needs dairy level {p.PumpLevel}." : left.TotalMinutes > p.PumpMinutes ? "It already has over 2 hours left."
+            : p.Fund < p.PumpCost ? $"Needs {p.PumpCost:N0} coins in the fund." : null;
+        if (Ui.Button("##pumpgo", left > TimeSpan.Zero ? "Add 2 hours" : "Run the pump", new Vector2(150, 30), "rose", why == null, why ?? $"Spend {p.PumpCost:N0} from the fund."))
+            G.StartPump();
     }
 
     /// <summary>Register (or, for the owner, update) the dairy and how it's listed.</summary>

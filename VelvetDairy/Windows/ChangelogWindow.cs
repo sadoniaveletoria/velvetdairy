@@ -23,15 +23,20 @@ public sealed class ChangelogWindow : Window
     /// <summary>Newest first. Write these for players: what changed for them, not how.</summary>
     private static readonly Entry[] Entries =
     {
-        new("0.9.99", "Shop prices and no daily pay limit", new[]
+        new("0.9.99", "Quotas, the feed bin and the Velvet pump", new[]
         {
-            "Every price was rebalanced from a day-by-day simulation of cows, bulls and farmers from level 1 to 100. Playing a few hours a day, you're usually a little short when something unlocks and catch up in a few days, with about a quarter of your pay left over for your dairy's fund. Upgrades up to level 30 are much cheaper (Velvet champion sash 1,250, was 5,000); the late ones cost more (Velvet crown 55,000).",
-            "Bulls: seed comes in faster at the lower grades (15% of milk speed at Grade C, was 10%; still 20% at S+) and gives less xp per oz (breedings make up the rest), so a bull earns about what a cow does per level. Bull upgrades are cheaper (Champion bull sash 25,000 at level 75, Legendary stud 12,000).",
-            "Farmers: creamery orders pay less per oz (they used to pay several times what the cows who made the milk earned). Bigger farmer tanks cost 200 to 9,500, and the biggest unlocks at farmer level 40 (was 60).",
-            "Dairy fund: new stalls cost 500, 2,000, 4,500, 8,000... (was 250, 1,000, 2,250...), and raising a stall to Padded, Velvet and Gilded costs 300, 1,000 and 2,500 (was 150, 400, 900). The weekly contract is 600 oz at dairy level 1, plus 150 a level, up to 3,500 (was 1,500 up to 6,000), so a small dairy can fill it.",
-            "No more daily pay limit: everything you earn is paid in full. The only brake is getting tired after 12 hours of milk a day (half speed, so half the pay).",
+            "Pay works like a dairy now: you're paid for reaching your daily quota, not per ounce. A farmer or the owner sets its size (Light, Steady, Heavy or Devoted: bigger pays more). Claim it in Goals. Your grade, wearables and the dairy's level raise it. Daily goals pay 20 each and 40 for all four.",
+            "Bulls' quota is in seed; farmers' is milk delivered (orders, visitors, buy orders and the contract). Creamery orders pay the farmer and the dairy fund (2 coins an oz).",
+            "Upgrades are free: bottles, bedding, troughs, bells, wearables and bull perks come with your level (Shop > Level rewards). Farmers still buy bigger farmer tanks (200 to 7,500; the biggest at farmer level 40).",
+            "Farmers feed you now: your Fed bar comes from the dairy's feed bin (Herd Care > Feed), free and unlimited. The owner unlocks better feed with the fund (Dairy > Feed & pump). You still drink, rest and have treats yourself, but a farmer's baked treats are better than the ones you buy.",
+            "New: the Velvet pump (dairy level 5, 2,500 from the fund): everyone's milk and seed +15% for 2 hours. Home pasture: +10% when you're milked in your own dairy.",
+            "New in the Shop: Pump drops (+25% milk and seed for 30 min), Udder balm (your next 3 hand milkings give 20% more; no longer an upgrade), Second wind tonic (tire 2 hours later today, for everyone) and Churn oil (farmers' jugs fill twice as fast for an hour).",
+            "Filling jugs takes time: 1 oz a second, staying in the dairy.",
+            "Bulls: seed comes in faster at the lower grades (15% of milk speed at Grade C) and gives less xp per oz (breedings make up the rest).",
+            "Dairy fund prices: new stalls 500, 2,000, 4,500, 8,000..., stall tiers 300, 1,000 and 2,500. The weekly contract is 600 oz at dairy level 1, plus 150 a level, up to 3,500.",
+            "No daily pay limit. The only brake is getting tired after 12 hours of milk a day.",
             "Metric: the contract's Ship button and the seed market's Buy and Sell buttons show litres and millilitres too.",
-            "Hand milking: the farmer now sees the cow's or bull's milk going down every few seconds while milking them (it used to update only every minute or so).",
+            "Hand milking: the farmer now sees the cow's or bull's milk going down every few seconds while milking them.",
         }),
         new("0.9.98", "Hand milking fix", new[]
         {

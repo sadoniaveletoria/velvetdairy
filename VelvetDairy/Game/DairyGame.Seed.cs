@@ -207,7 +207,7 @@ public sealed partial class DairyGame
     private string FinishSeed(Session s)
     {
         var hand = s.Kind == SessionKind.Hand;
-        var collected = s.ExtractedSeed * s.SeedYield;
+        var collected = s.ExtractedSeed * s.SeedYield * (hand && F.BalmLeft > 0 ? 1f + Catalog.BalmBonus : 1f);
         if (F.SeedTea > 0 && collected > 0)
         {
             collected *= 1f + F.SeedTea;   // Seed tea: this milking gives more
@@ -218,8 +218,8 @@ public sealed partial class DairyGame
         EaseSeedTaint(Catalog.TaintPerMilking);
         AddSeedQuality(milkEquivalent * (hand ? Grades.QualityPerOzHand : Grades.QualityPerOz));
 
-        var paidOz = Math.Clamp(Catalog.DailyPaidOz * SeedRatio - F.DaySeedOz, 0, collected);
-        var pay = EarnSeed((int)Math.Round(paidOz * PayRate(s.SeedGrade, true) * SeedPriceMult));
+        // Seed doesn't pay per oz since 0.9.99: it counts toward a bull's daily quota
+        var quotaBefore = QuotaReached;
         F.Stats.TotalSeedOz += collected;
         F.DaySeedOz += collected;
         EarnDairyXp(milkEquivalent * (hand ? 1.5f : 1f));
@@ -237,7 +237,6 @@ public sealed partial class DairyGame
         }
 
         AddBullXp(xp);
-        return $"{Units.Oz(collected, "0.##")} of seed as a Grade {Grades.Name(s.SeedGrade)} bull. +{pay} coins, +{xp} bull xp" +
-               (paidOz < collected - 0.005f ? $" (you've been paid for {Units.Oz(Catalog.DailyPaidOz * SeedRatio, "N0")} of seed today; more still gives xp)" : "");
+        return $"{Units.Oz(collected, "0.##")} of seed as a Grade {Grades.Name(s.SeedGrade)} bull. +{xp} bull xp" + QuotaNote(quotaBefore);
     }
 }

@@ -205,6 +205,7 @@ public sealed class MembersWindow : Window
 
                 ImGui.TableNextColumn();
                 ImGui.TextColored(RoleColor(m.AllRoles.Count == 1 ? m.AllRoles[0] : ""), (m.IsOwner ? "Owner · " : "") + m.RoleText);
+                if (ImGui.IsItemHovered()) ImGui.SetTooltip($"Daily quota: {Catalog.QuotaNames[Math.Clamp(m.Quota, 0, 3)]} (a farmer or the owner sets it with ...)");
 
                 ImGui.TableNextColumn();
                 DrawLevels(m);
@@ -487,6 +488,14 @@ public sealed class MembersWindow : Window
                 if (p == null && ImGui.MenuItem($"Give the {r} role")) G.AddRole(m, r);
             }
             else if (G.IsOwner && r == "farmer" && ImGui.MenuItem($"Take the {r} role away")) G.RemoveRole(m, r);   // cow and bull are theirs
+        }
+
+        if (G.CanSetQuota(m) && ImGui.BeginMenu($"Daily quota: {Catalog.QuotaNames[Math.Clamp(m.Quota, 0, 3)]}"))
+        {
+            for (var i = 0; i < Catalog.QuotaNames.Length; i++)
+                if (ImGui.MenuItem($"{Catalog.QuotaNames[i]} · {Catalog.QuotaOz[i]} oz at level 1 · {Catalog.QuotaCoins[i]} coins", "", m.Quota == i))
+                    G.SetQuota(m, i);
+            ImGui.EndMenu();
         }
 
         if (G.CanRemove(m))

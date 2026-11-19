@@ -92,7 +92,7 @@ public sealed partial class MainWindow
         {
             ImGui.TextColored(g == cur ? Theme.RoseDeep : Theme.Ink, $"Grade {Grades.Name(g)}");
             ImGui.SameLine(90);
-            ImGui.TextColored(Theme.InkSoft, Units.PerOz(G.PayRate(g)) + (g > 0 ? $" · +{Catalog.GradeBoost[g] * 100:0}% speed and milk" : "") + (g == cur ? "  ·  yours now" : ""));
+            ImGui.TextColored(Theme.InkSoft, $"quota pays x{Catalog.QuotaGradeMult[g]:0.##}" + (g > 0 ? $" · milked {Catalog.GradeBoost[g] * 100:0}% faster" : "") + (g == cur ? "  ·  yours now" : ""));
         }
 
         Gap(6);
@@ -304,7 +304,7 @@ public sealed partial class MainWindow
                 }
 
                 var groomWhy = G.GroomProblem(c.Name, c.Id, near);
-                var feedWhy = G.FeedProblem(c.Name, c.Id, near);
+                var feedWhy = G.AnyFeedProblem(c.Name, c.Id, near);
                 buttons = new[]
                 {
                     first,
@@ -350,11 +350,35 @@ public sealed partial class MainWindow
         {
             ImGui.TextColored(Theme.RoseDeep, $"Feed {feedPick.Name}");
             ImGui.Separator();
+            // The feed bin: free and unlimited, fills their Fed bar
+            var binWhy = G.BinFeedProblem(feedPick.Name, feedPick.Id, feedPick.Near);
+            ImGui.TextColored(Theme.Ink, "Feed bin (Fed)");
+            if (binWhy != null) ImGui.TextColored(Theme.InkSoft, binWhy);
+            else
+                foreach (var item in G.BinFeeds())
+                {
+                    var f = Catalog.FeedById(item)!;
+                    if (ImGui.Selectable($"{f.Name} · Fed +{f.Fed * 100:0}%##bin{item}"))
+                    {
+                        G.FeedFromBin(feedPick.Name, feedPick.Id, feedPick.Near, item);
+                        ImGui.CloseCurrentPopup();
+                    }
+                }
+
+            ImGui.Separator();
+            ImGui.TextColored(Theme.Ink, "Dairy shelf (treats)");
             var feeds = G.ShelfFeeds();
             if (feeds.Count == 0) ImGui.TextColored(Theme.InkSoft, "The dairy shelf is empty. Bake some in the Kitchen.");
             foreach (var (item, qty) in feeds)
             {
                 var f = Catalog.FeedById(item)!;
+                var shelfWhy = G.FeedProblem(feedPick.Name, feedPick.Id, feedPick.Near);
+                if (shelfWhy != null)
+                {
+                    ImGui.TextColored(Theme.InkSoft, shelfWhy);
+                    break;
+                }
+
                 if (ImGui.Selectable($"{Catalog.MadeName(item)} ({qty} left)##pick{item}"))
                 {
                     G.FeedFromShelf(feedPick.Name, feedPick.Id, feedPick.Near, item);

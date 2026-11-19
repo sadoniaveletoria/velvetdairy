@@ -448,3 +448,29 @@ CREATE TABLE IF NOT EXISTS seed_sales (
   status    TEXT NOT NULL DEFAULT 'open'   -- open | closed
 );
 CREATE INDEX IF NOT EXISTS seed_sales_open ON seed_sales(status, dairy_id);
+
+-- A cow's, bull's or farmer's daily quota size, set by a farmer or the owner (0 Light, 1 Steady, 2 Heavy, 3 Devoted).
+-- Reaching it pays coins once a day (milking itself doesn't pay any more).
+CREATE TABLE IF NOT EXISTS member_quota (
+  install   TEXT PRIMARY KEY,
+  size      INTEGER NOT NULL DEFAULT 1
+);
+
+-- The dairy's feed bin: feed types the owner unlocked with the fund. Farmers feed any of them as often as they like.
+CREATE TABLE IF NOT EXISTS dairy_feedbin (
+  dairy_id  TEXT NOT NULL,
+  item      TEXT NOT NULL,
+  PRIMARY KEY (dairy_id, item)
+);
+
+-- When each cow or bull was last fed from a feed bin (one feed every 15 minutes, whoever gives it).
+CREATE TABLE IF NOT EXISTS bin_feeds (
+  member    TEXT PRIMARY KEY,
+  at        INTEGER NOT NULL
+);
+
+-- The Velvet pump: bought from the fund, it speeds up everyone's milk and seed in the dairy until this time.
+CREATE TABLE IF NOT EXISTS dairy_pump (
+  dairy_id  TEXT PRIMARY KEY,
+  until     INTEGER NOT NULL
+);

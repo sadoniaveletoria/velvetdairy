@@ -70,7 +70,9 @@ public sealed partial class MainWindow
         var hiddenCount = 0;
         foreach (var item in Catalog.Feed)
         {
-            if (!G.FeedUnlocked(item)) continue;
+            // Feed for the bin isn't eaten yourself any more (0.9.99): any left over is listed so it can be sold back
+            var binLeft = Catalog.IsBinFeed(item.Id) && G.Count(item.Id) > 0;
+            if (!G.FeedUnlocked(item) && !binLeft) continue;
             var hidden = F.HiddenFeed!.Contains(item.Id);
             if (hidden) hiddenCount++;
             if (hidden && !showHiddenFeed) continue;
@@ -89,10 +91,13 @@ public sealed partial class MainWindow
                     waiting ? Theme.HoneyDeep : Theme.InkSoft),
             };
 
+            var itemProblem = item.OilMinutes > 0 ? (G.CanCarry ? null : "For farmers.")
+                : Catalog.IsBinFeed(item.Id) ? "Your Fed bar comes from your farmers' feed bin now. Sell this back."
+                : problem;
             var buttons = new List<Btn>
             {
-                new($"##eat{item.Id}", "Eat", "honey", problem == null && have > 0 && !waiting,
-                    problem ?? (have <= 0 ? "You're out. Buy more in the Shop." : waiting ? $"Quality treats share a {Grades.QualityTreatHours:0}-hour cooldown." : item.Desc)),
+                new($"##eat{item.Id}", item.OilMinutes > 0 ? "Use" : "Eat", "honey", itemProblem == null && have > 0 && !waiting,
+                    itemProblem ?? (have <= 0 ? "You're out. Buy more in the Shop." : waiting ? $"Quality treats share a {Grades.QualityTreatHours:0}-hour cooldown." : item.Desc)),
             };
             if (have > 0 && !item.Baked) buttons.Add(new Btn($"##psell1{item.Id}", $"Sell 1 - {back}", "cream", true, $"Sell one back for {back} coins (half price)."));
             if (have > 1 && !item.Baked) buttons.Add(new Btn($"##psellall{item.Id}", $"Sell all - {back * have}", "cream", true, $"Sell all {have} back for {back * have} coins."));

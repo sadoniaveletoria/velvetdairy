@@ -1014,10 +1014,10 @@ public sealed partial class MainWindow : Window
         var y = p.Y;
         var rows = new (string Icon, string Label, float Value, float Bonus, Vector4 Color, string Tip)[]
         {
-            ("hay", "Fed", cow.Hunger, cow.FedBonus, Theme.HoneyDeep, "Eat feed from your pantry. Better food gives a bigger bonus (wheat grain +4% up to Golden mash +15%)."),
+            ("hay", "Fed", cow.Hunger, cow.FedBonus, Theme.HoneyDeep, "Your farmers feed you from the dairy's feed bin (Herd Care > Feed). Better feed gives a bigger bonus: wheat grain +4% up to golden mash +15%, as the owner unlocks it."),
             ("water", "Watered", cow.Thirst, cow.WaterBonus, Theme.BlueDeep, "Drink at the trough (free, +4%) or have a Mineral block (+8%)."),
             ("cushion", "Comfy", cow.Comfort, cow.ComfortBonus, Theme.RoseDeep, $"Sit in your dairy 10 min for +{G.FillMinutesNow} min of Comfy. It doesn't drain while you sit."),
-            ("clover", "Happy", cow.Mood, cow.HappyBonus, Theme.SageDeep, "Have a treat: clover, salt lick, cream clover or a quality treat."),
+            ("clover", "Happy", cow.Mood, cow.HappyBonus, Theme.SageDeep, "Have a treat of your own (clover, salt lick, cream clover or a quality treat), or get a baked one from a farmer: theirs are better."),
         };
 
         foreach (var r in rows)
@@ -1257,7 +1257,9 @@ public sealed partial class MainWindow : Window
         if (short_)
         {
             var main = f.Fed != 0 ? $"Fed +{f.Fed * 100:0}%" : f.Water != 0 ? $"Watered +{f.Water * 100:0}%" : f.Happy != 0 ? $"Happy +{f.Happy * 100:0}%"
-                : f.Quality != 0 ? $"+{f.Quality:0} quality" : f.HoldDays != 0 ? $"holds grade {f.HoldDays}d" : f.BoostMinutes != 0 ? $"boost {f.BoostMinutes}m" : "";
+                : f.Quality != 0 ? $"+{f.Quality:0} quality" : f.HoldDays != 0 ? $"holds grade {f.HoldDays}d" : f.BoostMinutes != 0 ? $"boost {f.BoostMinutes}m"
+                : f.DropsMinutes != 0 ? $"+{Catalog.DropsBonus * 100:0}% {f.DropsMinutes}m" : f.BalmMilkings != 0 ? $"+{Catalog.BalmBonus * 100:0}% x{f.BalmMilkings}"
+                : f.OilMinutes != 0 ? $"jugs x2 {f.OilMinutes}m" : f.RestHours != 0 ? $"tired {f.RestHours}h later" : "";
             return main;
         }
 
@@ -1270,6 +1272,10 @@ public sealed partial class MainWindow : Window
         if (f.BoostMinutes != 0) parts.Add($"boost {f.BoostMinutes}m");
         if (f.HoldDays != 0) parts.Add($"no grade slip for {f.HoldDays} days");
         if (f.Quality != 0) parts.Add($"+{f.Quality:0} milk quality");
+        if (f.DropsMinutes != 0) parts.Add($"milk and seed +{Catalog.DropsBonus * 100:0}% for {f.DropsMinutes}m");
+        if (f.BalmMilkings != 0) parts.Add($"next {f.BalmMilkings} hand milkings +{Catalog.BalmBonus * 100:0}%");
+        if (f.OilMinutes != 0) parts.Add($"jugs fill twice as fast for {f.OilMinutes}m");
+        if (f.RestHours != 0) parts.Add($"tired {f.RestHours} hours later today");
         return string.Join(", ", parts);
     }
 
@@ -1341,26 +1347,51 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    /// <summary>What the dairy pays per oz, by grade, the moment you're milked.</summary>
+    /// <summary>How you're paid since 0.9.99: your daily quota and daily goals (milking itself doesn't pay).</summary>
     private void DrawPay(float width)
     {
-        Ui.Wrapped("You don't sell milk yourself: the dairy pays you for every ounce the moment you're milked, at a stall or by a farmer's hand. " +
-                   "The milk goes into the dairy's tank, and farmers and the owner deliver it to customers.", Theme.InkSoft, width);
-        Gap(8);
+        Ui.Wrapped("You're paid for reaching your daily quota, not per ounce. A farmer or the owner sets its size; reach it and claim it in Goals once a day. "
+                   + "Your milk goes into the dairy's tank, and farmers deliver it to customers (which pays them and the dairy fund).", Theme.InkSoft, width);
+        Gap(6);
+        if (G.Producer)
+        {
+            SubHeading("Your quota", width);
+            var reached = G.QuotaReached;
+            ImGui.TextColored(reached ? Theme.SageDeep : Theme.Ink,
+                $"{Catalog.QuotaNames[G.QuotaSize]}: {Units.Oz(G.QuotaHave, G.QuotaInSeed ? "0.##" : "0.#")} / {Units.Oz(G.QuotaNeed, G.QuotaInSeed ? "0.##" : "0")} {(G.QuotaInSeed ? "of seed" : "of milk")} today · pays {G.QuotaCoins:N0} coins");
+            var cur0 = ImGui.GetCursorScreenPos();
+            Ui.Bar(ImGui.GetWindowDrawList(), cur0 + new Vector2(0, 4), cur0 + new Vector2(Math.Min(width, 360), 12), G.QuotaNeed > 0 ? Math.Clamp(G.QuotaHave / G.QuotaNeed, 0, 1) : 0, Theme.HoneyDeep);
+            ImGui.Dummy(new Vector2(width, 16));
+        }
+
+        if (G.IsFarmer)
+        {
+            SubHeading("Your farmer quota", width);
+            ImGui.TextColored(F.DayDeliveredOz >= G.FarmerQuotaNeed ? Theme.SageDeep : Theme.Ink,
+                $"{Catalog.QuotaNames[G.QuotaSize]}: delivered {Units.Oz(F.DayDeliveredOz, "0")} / {Units.Oz(G.FarmerQuotaNeed, "0")} today · pays {G.FarmerQuotaCoins:N0} coins");
+            Ui.Wrapped("Orders, visitor orders, buy orders and the weekly contract all count. Each creamery order also pays you, and the dairy fund 2 coins an oz.", Theme.InkSoft, width);
+        }
+
+        Gap(4);
+        SubHeading("Quota sizes", width);
+        for (var i = 0; i < Catalog.QuotaNames.Length; i++)
+            ImGui.TextColored(i == G.QuotaSize ? Theme.RoseDeep : Theme.InkSoft,
+                $"{Catalog.QuotaNames[i]} · {Units.Oz(Catalog.QuotaOz[i], "0")} of milk at level 1 (+2% a level) · {Catalog.QuotaCoins[i]} coins at Grade C" + (i == G.QuotaSize ? "  ·  yours" : ""));
+        Gap(4);
+        SubHeading("Your grade raises it", width);
         var cur = G.CurrentGrade;
         for (var g = Grades.Count - 1; g >= 0; g--)
         {
             var grade = g;
             ListRow(c => Ui.Seal(ImGui.GetWindowDrawList(), c, 22, Grades.Name(grade), Theme.GradeColor(grade)),
                 $"Grade {Grades.Name(g)} · {Grades.All[g].Blurb}" + (g == cur ? "  ·  yours now" : ""), g == cur ? Theme.RoseDeep : Theme.Ink,
-                new[] { new Line(Units.PerOz(G.PayRate(g)) + (g > 0 ? $" · milks {Catalog.GradeBoost[g] * 100:0}% faster, {Catalog.GradeBoost[g] * 100:0}% more milk" : ""), Theme.HoneyDeep) }, Array.Empty<Btn>(), width);
+                new[] { new Line($"Quota pays x{Catalog.QuotaGradeMult[g]:0.##}" + (g > 0 ? $" · you're milked {Catalog.GradeBoost[g] * 100:0}% faster" : ""), Theme.HoneyDeep) }, Array.Empty<Btn>(), width);
         }
 
         Gap(4);
         var bonus = (G.DairyPayBonus - 1) * 100;
-        ImGui.TextColored(Theme.InkSoft, $"Dairy level bonus: +{bonus:0}% · your looks bonus: +{(G.PriceBonus - 1) * 100:0}%");
-        if (G.Networked) ImGui.TextColored(Theme.InkSoft, "Each dairy level raises pay by 2%. Hand milking also pays your farmer a share (not taken from you).");
-        ImGui.TextColored(Theme.InkSoft, $"Milk given today: {Units.Oz(F.DayOz, "0.#")}" + (F.DayOz >= Catalog.DailyPaidOz ? $" · paid for {Units.Oz(Catalog.DailyPaidOz, "N0")} (the most a day); more still gives xp" : ""));
+        ImGui.TextColored(Theme.InkSoft, $"Dairy level bonus: +{bonus:0}% · your looks bonus: +{(G.PriceBonus - 1) * 100:0}% (both raise your quota pay)");
+        ImGui.TextColored(Theme.InkSoft, $"Milk given today: {Units.Oz(F.DayOz, "0.#")}");
         ImGui.TextColored(Theme.InkSoft, $"Earned today: {F.DayEarned:N0}" + (G.ProducesSeed ? $" · seed: {F.DaySeedEarned:N0}" : ""));
         ImGui.TextColored(G.Tired ? Theme.HoneyDeep : Theme.InkSoft, G.Tired
             ? $"Tired: after {G.TiredHours} hours of milk today, milk (and its pay) comes in at half speed until the daily reset."
@@ -1417,7 +1448,7 @@ public sealed partial class MainWindow : Window
 
     private void DrawShop(Vector2 min, Vector2 max)
     {
-        var sub = SubTabs("shop", G.CanCarry ? new[] { "Feed & treats", "Upgrades", "Bottles", "Farmer tank" } : new[] { "Feed & treats", "Upgrades", "Bottles" }, min, max.X - min.X);
+        var sub = SubTabs("shop", G.CanCarry ? new[] { "Feed & treats", "Level rewards", "Farmer tank" } : new[] { "Feed & treats", "Level rewards" }, min, max.X - min.X);
         var mid = (min.X + max.X) / 2;
         switch (Sub("shop"))
         {
@@ -1426,11 +1457,7 @@ public sealed partial class MainWindow : Window
                 Panel("##treatshop", new Vector2(mid + 7, sub.Y), max, "Quality treats", w => DrawFeedShop(w, true), true);
                 break;
             case 1:
-                Panel("##upgrades", sub, new Vector2(mid - 7, max.Y), "Comfort and care", w => DrawUpgradeShop(w, false));
-                Panel("##looks", new Vector2(mid + 7, sub.Y), max, "Things to wear", w => DrawUpgradeShop(w, true), true);
-                break;
-            case 2:
-                Panel("##bottleshop", sub, new Vector2(mid - 7, max.Y), "Bottles", DrawBottleShop);
+                Panel("##rewards", sub, new Vector2(mid - 7, max.Y), "Rewards by level", DrawLevelRewards);
                 Panel("##bottlenow", new Vector2(mid + 7, sub.Y), max, "Your bottles now", DrawBottleSummary, true);
                 break;
             default:
@@ -1562,6 +1589,25 @@ public sealed partial class MainWindow : Window
         {
             Gap(4);
             ImGui.Checkbox($"Show hidden ({hiddenCount})##showhiddenfeed{treats}", ref showHiddenFeed);
+        }
+    }
+
+    /// <summary>Cow, bull and shared upgrades: free rewards at their level since 0.9.99 (only farmer tanks are bought).</summary>
+    private void DrawLevelRewards(float width)
+    {
+        Ui.Wrapped("These come free as you level: no coins needed. Coins go on food, treats, tonics and your dairy's fund.", Theme.InkSoft, width);
+        Gap(4);
+        var rows = new List<(int Level, Upgrade U, int Step)>();
+        foreach (var u in Catalog.Upgrades.Where(u => u.LevelReward && (!u.Bull || G.IsBull) && (!u.Cow || G.IsCow)))
+            for (var i = 0; i < u.Unlocks.Length; i++) rows.Add((u.Unlocks[i], u, i));
+        foreach (var (lvl, u, step) in rows.OrderBy(r => r.Level).ThenBy(r => r.U.Bull))
+        {
+            var have = G.Owned(u.Id) > step;
+            var name = u.Name + (u.MaxLevel > 1 ? $" {step + 1}" : "");
+            var who = u.Bull ? "Bull level" : "Level";
+            ListRow(Ico(u.Icon, have ? 1f : 0.5f), name, have ? Theme.Ink : Theme.InkSoft,
+                new[] { new Line(have ? $"Yours · {who.ToLowerInvariant()} {lvl}" : $"{who} {lvl}", have ? Theme.SageDeep : Theme.InkSoft), new Line(u.Desc, Theme.InkSoft) },
+                Array.Empty<Btn>(), width);
         }
     }
 
@@ -1970,14 +2016,16 @@ public sealed partial class MainWindow : Window
             {
                 var done = g.Have >= g.Need;
                 var claimed = G.Claimed(g);
-                var tip = claimed ? null : done ? $"+{DairyGame.GoalCoins} coins, +{DairyGame.GoalXp} {(g.Farmer ? "farmer" : "cow")} xp" : "Not done yet.";
-                if (ListRow(null, g.Name, claimed ? Theme.InkSoft : Theme.Ink, new[] { new Line($"{Math.Min(g.Have, g.Need):0} / {g.Need:0}", Theme.InkSoft) },
+                var coins = g.Coins > 0 ? g.Coins : DairyGame.GoalCoins;
+                var tip = claimed ? null : done ? $"+{coins} coins, +{DairyGame.GoalXp} {(g.Farmer ? "farmer" : "cow")} xp" : $"Not done yet. Pays {coins} coins.";
+                var fmt = g.Need < 5 && g.Need != Math.Floor(g.Need) ? "0.##" : "0";
+                if (ListRow(null, g.Name, claimed ? Theme.InkSoft : Theme.Ink, new[] { new Line($"{Math.Min(g.Have, g.Need).ToString(fmt)} / {g.Need.ToString(fmt)} · {coins} coins", g.Coins > 0 ? Theme.HoneyDeep : Theme.InkSoft) },
                         new[] { new Btn($"##claim{g.Bit}", claimed ? "Claimed" : "Claim", "sage", done && !claimed, tip) }, width,
                         g.Have / g.Need, done ? Theme.SageDeep : Theme.BlueDeep) == 0)
                     G.Claim(g);
             }
 
-            Ui.Wrapped($"Finish all four {(farmer ? "farmer" : "cow")} goals for {DairyGame.AllGoalsCoins} bonus coins.", Theme.InkSoft, width);
+            Ui.Wrapped($"Finish the four {(farmer ? "farmer" : "cow")} goals above the quota for {DairyGame.AllGoalsCoins} bonus coins. The quota is your main pay: a farmer or the owner sets its size.", Theme.InkSoft, width);
         }
 
         SubHeading("Recent", width);

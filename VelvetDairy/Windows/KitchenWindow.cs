@@ -72,6 +72,19 @@ public sealed class KitchenWindow : Window
         ImGui.PushStyleColor(ImGuiCol.PlotHistogram, Theme.BlueDeep);
         ImGui.ProgressBar(frac, new Vector2(Math.Min(ImGui.GetContentRegionAvail().X, 260), 8), "");
         ImGui.PopStyleColor();
+        if (G.FillingJugs)
+        {
+            // Filling takes time: a bar for it, and a Stop button
+            ImGui.TextColored(Theme.BlueDeep, $"Filling {Units.Oz(G.FillingOz)}... {G.FillProgress * 100:0}%");
+            ImGui.PushStyleColor(ImGuiCol.PlotHistogram, Theme.SageDeep);
+            ImGui.ProgressBar(G.FillProgress, new Vector2(Math.Min(ImGui.GetContentRegionAvail().X, 260), 8), "");
+            ImGui.PopStyleColor();
+            SameLineIfFits(80);
+            if (Ui.Button("##kjugstop", "Stop", new Vector2(80, 24), "rose", true, "Stop filling (nothing is taken).")) G.CancelFill();
+            ImGui.Spacing();
+            return;
+        }
+
         // The buttons follow the bar while they fit, and wrap to the next line in a narrow window
         var w8 = Units.Metric ? 104f : 84f;
         var w32 = Units.Metric ? 104f : 90f;
@@ -84,7 +97,7 @@ public sealed class KitchenWindow : Window
         SameLineIfFits(80);
         var up = G.FillUpOz;
         var pUp = up < 1 ? (G.Carried >= G.MaxCarry - 0.5f ? "Your jugs are full." : "The dairy tank is empty.") : G.TakeJugProblem(up);
-        if (Ui.Button("##kjugup", "Fill up", new Vector2(80, 24), "blue", pUp == null, pUp ?? $"Take {Units.Oz(up)}")) G.TakeJug(up);
+        if (Ui.Button("##kjugup", "Fill up", new Vector2(80, 24), "blue", pUp == null, pUp ?? $"Take {Units.Oz(up)} ({DairyGame.Wait(TimeSpan.FromSeconds(up / G.JugFillRate))})")) G.TakeJug(up);
         ImGui.Spacing();
     }
 

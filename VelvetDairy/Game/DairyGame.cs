@@ -278,6 +278,22 @@ public sealed partial class DairyGame
                 case "milk":
                     F.Tank![0] += i.Oz;   // milk is just milk now
                     break;
+                case "binfed":
+                    // A farmer fed you from the dairy's feed bin: your Fed bar (a bigger bonus already going is kept)
+                    var binId = i.Grade >= 0 && i.Grade < Catalog.BinOrder.Length ? Catalog.BinOrder[i.Grade] : "hay";
+                    if (Producer && Catalog.FeedById(binId) is { } feed)
+                    {
+                        Cow.FedReadyUtc = DateTime.UtcNow.AddMinutes(Catalog.NeedCooldownMinutes);
+                        if (!NeedFull(Cow.Hunger))
+                        {
+                            Cow.FedBonus = Cow.Hunger <= 0 ? feed.Fed : Math.Max(Cow.FedBonus, feed.Fed);
+                            Cow.Hunger = Fill(Cow.Hunger);
+                        }
+                        else if (feed.Fed > Cow.FedBonus) Cow.FedBonus = feed.Fed;
+                    }
+
+                    if (Has("bull")) F.BullXp += Catalog.FedBullXp;
+                    break;
                 case "fed":
                     // A farmer fed you something from the dairy shelf: cows get its treat, bulls some bull xp
                     var fedId = i.Grade >= 0 && i.Grade < Catalog.ShelfOrder.Length ? Catalog.ShelfOrder[i.Grade] : "";
@@ -304,7 +320,18 @@ public sealed partial class DairyGame
     /// <summary>How long until full bottles spoil, or null if they aren't all full.</summary>
     public TimeSpan? SpoilsIn => Cow.Spoiled || Cow.FullSinceUtc == null ? null
         : Cow.FullSinceUtc.Value.AddHours(SpoilHours) - DateTime.UtcNow;
-    public int Owned(string upgrade) => F.Upgrades.GetValueOrDefault(upgrade);
+    /// <summary>
+    /// How many levels of an upgrade you have. Since 0.9.99 cow, bull and shared upgrades are free rewards: you have every
+    /// level your level has reached. Farmer tanks (and the solo stall kit) are still bought.
+    /// </summary>
+    public int Owned(string upgrade)
+    {
+        var u = Catalog.UpgradeById(upgrade);
+        if (u == null || !u.LevelReward) return F.Upgrades.GetValueOrDefault(upgrade);
+        if ((u.Bull && !IsBull) || (u.Cow && !IsCow) || (!u.Bull && !u.Cow && !Producer)) return 0;
+        var lvl = UnlockLevel(u);
+        return u.Unlocks.Count(l => l <= lvl);
+    }
     public int Count(string item) => F.Pantry.GetValueOrDefault(item);
     public float NeedsAverage => (Cow.Hunger + Cow.Thirst + Cow.Comfort + Cow.Mood) / 4f;
     public int CurrentGrade => Grades.For(Cow, false, F.Quality);
@@ -454,9 +481,18 @@ public sealed partial class DairyGame
         return null;
     }
 
+    // Filling jugs takes time since 0.9.99: Catalog.JugFillPerSecond oz a second (twice that with Churn oil). Stay in the dairy.
+    private int fillOz;
+    private double fillStart, fillSeconds;
+
+    public bool FillingJugs => fillOz > 0;
+    public float FillProgress => fillOz > 0 && fillSeconds > 0 ? (float)Math.Clamp((now - fillStart) / fillSeconds, 0, 1) : 0;
+    public int FillingOz => fillOz;
+    public float JugFillRate => Catalog.JugFillPerSecond * (F.OilUntilUtc > DateTime.UtcNow ? 2f : 1f);
+
     public void TakeJug(int oz)
     {
-        var p = TakeJugProblem(oz);
+        var p = FillingJugs ? "Your jugs are already filling." : TakeJugProblem(oz);
         if (p != null)
         {
             Fail(p);
@@ -464,6 +500,33 @@ public sealed partial class DairyGame
         }
 
         Touch();
+        fillOz = oz;
+        fillStart = now;
+        fillSeconds = oz / JugFillRate;
+        Say($"Filling {Units.Oz(oz)} from the dairy tank: {Wait(TimeSpan.FromSeconds(fillSeconds))}. Stay in the dairy.", 0);
+    }
+
+    public void CancelFill(string? why = null)
+    {
+        if (fillOz <= 0) return;
+        fillOz = 0;
+        if (why != null) Fail(why);
+    }
+
+    /// <summary>Called each frame: finishes a fill once its time is up (and stops it if you leave the dairy).</summary>
+    private void TickFill()
+    {
+        if (fillOz <= 0) return;
+        if (!AtHome)
+        {
+            CancelFill("You left the dairy, so your jugs stopped filling.");
+            return;
+        }
+
+        Touch();
+        if (now - fillStart < fillSeconds) return;
+        var oz = fillOz;
+        fillOz = 0;
         Net.TakeFromTank(0, oz, r =>
         {
             F.Tank![0] += r.Oz;
@@ -574,6 +637,7 @@ public sealed partial class DairyGame
         Net.ShipToContract(0, oz, r =>
         {
             F.DayDelivered++;
+            F.DayDeliveredOz += r.Shipped;
             F.Tank![0] = Math.Max(0, F.Tank[0] - r.Shipped);
             AddFarmerXp(Math.Max(1, r.Shipped / 2));
             plugin.SaveConfig();
@@ -645,6 +709,9 @@ public sealed partial class DairyGame
         var lvl = seed ? BullLevel : Level;
         if (lvl > 1) parts.Add(new RatePart((seed ? "Bull level " : "Level ") + (lvl > Leveling.MilkBonusCap ? $"{lvl} (max bonus)" : $"{lvl}"), 1f + Catalog.LevelBonus * (Math.Min(lvl, Leveling.MilkBonusCap) - 1)));
         if (Contented) parts.Add(new RatePart("Contented (all four bonuses)", 1f + Catalog.ContentBonus));
+        if (Networked && Where.InDairy && !Where.Guest) parts.Add(new RatePart("Home pasture (your own dairy)", 1f + Catalog.HomeBonus));
+        if (PumpOn) parts.Add(new RatePart("Velvet pump (the whole dairy)", 1f + Catalog.PumpBonus));
+        if (Cow.DropsUntilUtc > DateTime.UtcNow) parts.Add(new RatePart("Pump drops", 1f + Catalog.DropsBonus));
         if (BoostLeft > TimeSpan.Zero) parts.Add(new RatePart("Treat boost", 1f + Catalog.TreatBonus));
         if (!seed && BredLeft > TimeSpan.Zero) parts.Add(new RatePart($"Bred by {F.BredBy}", 1f + BredBonusNow));
         if (!seed && PregnancyBonus > 0) parts.Add(new RatePart($"Pregnant ({StageName(Preg.Stage)})", 1f + PregnancyBonus));
@@ -660,6 +727,12 @@ public sealed partial class DairyGame
     public bool MilkComing => ProducesMilk && !Paused && !Overfull && !Spoiled && Blocked() == null && ProductionPerMinute() > 0;
 
     public float ProductionPerMinute() => RateParts().Aggregate(BaseRate, (r, p) => r * p.Multiplier);
+
+    /// <summary>The dairy's Velvet pump is running and you're in your own dairy.</summary>
+    public bool PumpOn => Networked && Where.InDairy && !Where.Guest && (Net.Progress?.PumpUntil ?? 0) > UnixNow;
+
+    /// <summary>Time left on the dairy's Velvet pump (zero when it isn't running).</summary>
+    public TimeSpan PumpLeft => TimeSpan.FromSeconds(Math.Max(0, (Net.Progress?.PumpUntil ?? 0) - UnixNow));
 
     // =================================================================
     // Frame update
@@ -762,6 +835,7 @@ public sealed partial class DairyGame
         WatchFarmhands();
         WatchMyMilking();
         TickBake(dt);
+        TickFill();
 
         simAccum += dt;
         if (simAccum >= 1.0)
@@ -874,6 +948,7 @@ public sealed partial class DairyGame
     private void HoldBoost(double seconds)
     {
         if (Cow.BoostUntilUtc > DateTime.UtcNow) Cow.BoostUntilUtc = Cow.BoostUntilUtc.AddSeconds(seconds);
+        if (Cow.DropsUntilUtc > DateTime.UtcNow) Cow.DropsUntilUtc = Cow.DropsUntilUtc.AddSeconds(seconds);
     }
 
     private void Simulate(float seconds)
@@ -944,6 +1019,20 @@ public sealed partial class DairyGame
         if (p != null) return Fail(p);
         if (Count(id) <= 0) return Fail($"You're out of {item.Name}. Buy more in the Shop.");
 
+        if (Catalog.IsBinFeed(item.Id)) return Fail("Your Fed bar comes from your farmers: they feed you from the dairy's feed bin.");
+        if (item.OilMinutes > 0)
+        {
+            if (!CanCarry) return Fail("Churn oil is for farmers' jugs.");
+            if (Count(id) <= 0) return Fail($"You're out of {item.Name}. Buy more in the Shop.");
+            F.Pantry[id] = Count(id) - 1;
+            var from = F.OilUntilUtc > DateTime.UtcNow ? F.OilUntilUtc : DateTime.UtcNow;
+            F.OilUntilUtc = from.AddMinutes(item.OilMinutes);
+            Touch();
+            Say($"Churn oil: your jugs fill twice as fast until {F.OilUntilUtc.ToLocalTime():h:mm tt}.", 1);
+            plugin.SaveConfig();
+            return true;
+        }
+
         if (!FeedForYou(item)) return Fail(item.Role == "bull" ? "That's for bulls." : "That's for cows who are also bulls.");
         if (NeedsFullFor(item) is { } full) return Fail(full);
         var upgradeOnly = UpgradeOnly(item);
@@ -959,6 +1048,15 @@ public sealed partial class DairyGame
         if (item.Happy > 0 && !NeedFull(Cow.Mood)) { Cow.Mood = Fill(Cow.Mood); Cow.HappyBonus = item.Happy; Cow.HappyReadyUtc = cd; }
         // A bar over an hour: a bigger bonus still takes over, without adding time
         RaiseBonusIfFull(item);
+        if (item.DropsMinutes > 0)
+        {
+            var from = Cow.DropsUntilUtc > DateTime.UtcNow ? Cow.DropsUntilUtc : DateTime.UtcNow;
+            var until = from.AddMinutes(item.DropsMinutes);
+            var cap = DateTime.UtcNow.AddMinutes(60);
+            Cow.DropsUntilUtc = until > cap ? cap : until;
+        }
+
+        if (item.BalmMilkings > 0) F.BalmLeft += item.BalmMilkings;
         if (item.HoldDays > 0)
         {
             var from = Cow.FreshHoldUntilUtc > DateTime.UtcNow ? Cow.FreshHoldUntilUtc : DateTime.UtcNow;
@@ -1391,7 +1489,7 @@ public sealed partial class DairyGame
 
             if (handFlowing)
             {
-                Draw(Catalog.HandSpeed * dt, milkOnly: Owned("udderbalm") > 0 ? 1.15f : 1f);
+                Draw(Catalog.HandSpeed * dt);
                 if (now >= nextSquirt)
                 {
                     nextSquirt = now + 2.5;
@@ -1472,6 +1570,7 @@ public sealed partial class DairyGame
             F.Stats.HandSessions++;
             F.DayHand++;
             s.Hand!.Sessions++;
+            if (F.BalmLeft > 0) F.BalmLeft--;
         }
 
         var by = s.Kind == SessionKind.Hand ? $" by {(s.Hand!.IsTest ? "the test farmhand" : s.Hand.Name)}" : "";
@@ -1482,13 +1581,11 @@ public sealed partial class DairyGame
     /// <summary>The milk part of a finished milking: pay, xp, quality, the dairy's tank. Returns the message part.</summary>
     private string FinishMilk(Session s)
     {
-        var collected = s.Extracted * s.Yield;
+        var collected = s.Extracted * s.Yield * (s.Kind == SessionKind.Hand && F.BalmLeft > 0 ? 1f + Catalog.BalmBonus : 1f);
         EaseTaint(Catalog.TaintPerMilking);
         AddQuality(collected * (s.Kind == SessionKind.Hand ? Grades.QualityPerOzHand : Grades.QualityPerOz));
-        // The dairy pays for the milk right away (up to the day's paid amount);
-        // the milk itself goes into the dairy's tank
-        var paidOz = Math.Clamp(Catalog.DailyPaidOz - F.DayOz, 0, collected);
-        var pay = Earn((int)Math.Round(paidOz * PayRate(s.Grade)));
+        // Milking doesn't pay since 0.9.99: it counts toward your daily quota (which does), and the milk goes into the dairy's tank
+        var quotaBefore = QuotaReached;
         F.Stats.TotalOz += collected;
         F.DayOz += collected;
         F.Stats.BestGrade = Math.Max(F.Stats.BestGrade, s.Grade);
@@ -1511,8 +1608,7 @@ public sealed partial class DairyGame
         }
 
         AddXp(xp);
-        return $"{Units.Oz(collected, "0.#")} as a Grade {Grades.Name(s.Grade)} cow. +{pay} coins, +{xp} xp" +
-               (paidOz < collected - 0.05f ? $" (you've been paid for {Units.Oz(Catalog.DailyPaidOz, "N0")} today; more milk still gives xp)" : "");
+        return $"{Units.Oz(collected, "0.#")} as a Grade {Grades.Name(s.Grade)} cow. +{xp} xp" + QuotaNote(quotaBefore);
     }
 
     // =================================================================
@@ -1975,9 +2071,8 @@ public sealed partial class DairyGame
         Net.Shelf.Where(x => x.Qty > 0 && Catalog.FeedById(x.Item) != null)
             .GroupBy(x => x.Item).Select(g => (g.Key, g.Sum(x => x.Qty))).ToList();
 
-    public string FeedTip => FeedStock is { } st
-        ? $"Pick a treat from the dairy shelf to give them. Free; +{Catalog.FeedXp} farmer xp. One treat per cow or bull every 15 minutes, whoever gives it."
-        : "The dairy shelf is empty. Bake some in the Kitchen.";
+    public string FeedTip =>
+        $"Feed them from the dairy's feed bin (their Fed bar) or a treat from the shelf (their Happy bar). Free; +{Catalog.FeedXp} farmer xp. Each one every 15 minutes, whoever gives it.";
 
     public string? FeedProblem(string name, string id, float distance)
     {
@@ -1993,6 +2088,82 @@ public sealed partial class DairyGame
         var nowUnix = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         if (treatAt > nowUnix) return $"{name} can have another treat in {Wait(TimeSpan.FromSeconds(treatAt - nowUnix))}.";
         return null;
+    }
+
+    /// <summary>Feed types in the dairy's feed bin (unlocked by the owner with the fund).</summary>
+    public List<string> BinFeeds() => (Net.Progress?.FeedBin ?? new List<string> { "hay" }).Where(Catalog.IsBinFeed).ToList();
+
+    private readonly Dictionary<string, double> binReady = new();
+    private bool binFeeding;
+
+    /// <summary>Why a farmer can't feed this cow or bull from the bin right now (null when they can).</summary>
+    public string? BinFeedProblem(string name, string id, float distance)
+    {
+        var b = Blocked();
+        if (b != null) return b;
+        if (!IsFarmer) return "Only farmers feed from the feed bin.";
+        if (!AtHome) return "Go to your dairy first.";
+        if (distance < 0 || distance > HandRange) return $"Get within {HandRange:0} yalms of {name} first.";
+        if (binReady.TryGetValue(id, out var t) && t > now) return $"{name} can be fed again in {Wait(TimeSpan.FromSeconds(t - now))}.";
+        var fedMin = Net.Mine?.Members.Concat(Net.Mine.Guests).FirstOrDefault(m => m.Id == id)?.Status?.Needs is { Count: 4 } needs ? needs[0] : 0;
+        if (fedMin > NeedTopUpLimit) return $"{name}'s Fed bar is over an hour ({fedMin} min). Feed them once it's under.";
+        return null;
+    }
+
+    /// <summary>The Feed button in Herd Care: the bin or the shelf has something for them.</summary>
+    public string? AnyFeedProblem(string name, string id, float distance)
+    {
+        var bin = BinFeedProblem(name, id, distance);
+        if (bin == null) return null;
+        return FeedProblem(name, id, distance) == null ? null : bin;
+    }
+
+    public void FeedFromBin(string name, string id, float distance, string item)
+    {
+        var p = BinFeedProblem(name, id, distance);
+        if (p != null)
+        {
+            Fail(p);
+            return;
+        }
+
+        if (binFeeding) return;
+        binFeeding = true;
+        Touch();
+        Net.FeedBin(item, id, () =>
+        {
+            binFeeding = false;
+            binReady[id] = now + Catalog.NeedCooldownMinutes * 60;
+            AddFarmerXp(Catalog.FeedXp);
+            EarnDairyXp(2);
+            Say($"You feed {name} {Catalog.MadeName(item).ToLowerInvariant()} from the feed bin. +{Catalog.FeedXp} farmer xp", 1);
+        }, e =>
+        {
+            binFeeding = false;
+            binReady[id] = now + WaitFromServer(e, 60);
+            Fail(e);
+        });
+    }
+
+    public void BuyFeedBin(string item, string name) =>
+        Net.BuyFeedBin(item, () => Say($"{name} is in the dairy's feed bin now.", 1), e => Fail(e));
+
+    public void StartPump() =>
+        Net.StartPump(() => Say("The Velvet pump is running: everyone's milk and seed are faster.", 1), e => Fail(e));
+
+    /// <summary>Farmers set cows' and bulls' quotas (not their own); the owner sets anyone's.</summary>
+    public bool CanSetQuota(MemberInfo m) =>
+        Networked && F.NetMember != null && (IsOwner || (IsFarmer && (m.Has("cow") || m.Has("bull")) && m.Id != Net.Mine?.You?.Id));
+
+    public void SetQuota(MemberInfo m, int size)
+    {
+        if (!CanSetQuota(m))
+        {
+            Fail("Farmers set cows' and bulls' quotas; the owner sets anyone's.");
+            return;
+        }
+
+        Net.SetQuota(m.Id, size, () => Say($"{m.Name}'s daily quota is {Catalog.QuotaNames[size]} now.", 1), e => Fail(e));
     }
 
     public void FeedFromShelf(string name, string id, float distance, string? which = null)
@@ -2666,8 +2837,9 @@ public sealed partial class DairyGame
     public string? BuyFeedProblem(FeedItem item, int qty)
     {
         if (Blocked() != null) return Blocked();
-        if (!FeedForYou(item)) return item.Role == "bull" ? "For bulls." : "For cows who are also bulls.";
-        if (FeedUnlockLevel(item) < item.Unlock) return $"Unlocks at {(item.Role == "bull" ? "bull " : item.Role == "both" ? "cow and bull " : "")}level {item.Unlock}.";
+        if (!FeedForYou(item)) return item.Role == "bull" ? "For bulls." : item.Role == "farmer" ? "For farmers." : "For cows who are also bulls.";
+        if (item.Id == "hay" && FarmerLevel < 6) return "Farmers mill wheat grain into flour from farmer level 6.";
+        if (item.Id != "hay" && FeedUnlockLevel(item) < item.Unlock) return $"Unlocks at {(item.Role == "bull" ? "bull " : item.Role == "both" ? "cow and bull " : item.Role == "farmer" ? "farmer " : "")}level {item.Unlock}.";
         if (F.Coins < item.Price * qty) return "Not enough coins.";
         return null;
     }
@@ -2708,10 +2880,14 @@ public sealed partial class DairyGame
     }
 
     /// <summary>Bull foods are for bulls; cow-and-bull foods for those who are both.</summary>
-    public bool FeedForYou(FeedItem item) => Producer && item.Role switch { "bull" => IsBull, "both" => IsCow && IsBull, _ => true };
+    public bool FeedForYou(FeedItem item) =>
+        Catalog.IsBinFeed(item.Id) ? item.Id == "hay" && CanCarry   // feed is for the dairy's bin; farmers buy wheat to mill
+        : item.Role == "farmer" ? CanCarry
+        : Producer && item.Role switch { "bull" => IsBull, "both" => IsCow && IsBull, _ => true };
 
     /// <summary>The level a food unlocks by: bull level, the lower of cow and bull level, or your shop level.</summary>
-    public int FeedUnlockLevel(FeedItem item) => item.Role switch { "bull" => BullLevel, "both" => Math.Min(Level, BullLevel), _ => ShopLevel };
+    public int FeedUnlockLevel(FeedItem item) => Catalog.IsBinFeed(item.Id) ? 99
+        : item.Role switch { "bull" => BullLevel, "both" => Math.Min(Level, BullLevel), "farmer" => FarmerLevel, _ => ShopLevel };
 
     /// <summary>In the Shop and Care for you: yours to buy, and unlocked.</summary>
     public bool FeedUnlocked(FeedItem item) => FeedForYou(item) && FeedUnlockLevel(item) >= item.Unlock;
@@ -2758,6 +2934,7 @@ public sealed partial class DairyGame
         if (Blocked() != null) return Blocked();
         var have = Owned(u.Id);
         if (have >= u.MaxLevel) return "Owned.";
+        if (u.LevelReward) return have >= u.MaxLevel ? "Owned." : $"Yours free at {(u.Bull ? "bull " : "")}level {u.Unlocks[have]}.";
         if (u.Farmer && !CanCarry) return "For farmers and dairy owners.";
         if (u.Bull && !IsBull) return "For bulls.";
         if (u.Cow && !IsCow) return "For cows.";
@@ -3172,7 +3349,7 @@ public sealed partial class DairyGame
         // Milk has no grade: any milk fills any order. Better-paying customers show up as your farmer level grows.
         var grade = rng.Next(0, Math.Min(Grades.Count - 1, 1 + lvl / 15) + 1);
         var oz = 4 * rng.Next(2, 3 + Math.Min(6, lvl / 3));
-        var coins = (int)Math.Round(oz * Grades.All[grade].Price * 0.4f) + 5;   // 1.6x + 10 before 0.9.99: farmers out-earned their cows several times over
+        var coins = (int)Math.Round(oz * Grades.All[grade].Price * 0.25f) + 3;   // 1.6x + 10 before 0.9.99; the dairy fund gets 2 coins an oz too
         return new Order
         {
             Id = ++F.OrderSerial,
@@ -3200,7 +3377,8 @@ public sealed partial class DairyGame
         }
 
         F.Orders!.Remove(o);
-        if (Networked) Net.UseCarried(o.Oz);
+        if (Networked) Net.UseCarried(o.Oz, order: true);   // the dairy fund gets paid for it too
+        F.DayDeliveredOz += o.Oz;
         var paid = Earn(o.Coins);
         if (CanCarry) AddFarmerXp(o.Xp);   // delivering is farmer work
         else AddXp(o.Xp);
@@ -3482,6 +3660,7 @@ public sealed partial class DairyGame
             F.Stats.OrdersFilled++;
             F.DayOrders++;
             F.DayDelivered++;
+            F.DayDeliveredOz += r.Oz;
             EaseTaint(Catalog.TaintPerOrder);
             AddQuality(Grades.QualityPerOrder);
             Say($"Delivered {Units.Oz(r.Oz)} to {r.Dairy}. Your {r.Coins} coins are on the way{(r.Bonus > 0 ? $" (+{r.Bonus} for coming in person)" : "")}.", 1);
@@ -3522,7 +3701,7 @@ public sealed partial class DairyGame
                 Customer = Catalog.Customers[r.Next(Catalog.Customers.Length)],
                 Oz = oz,
                 MinGrade = 0,
-                Coins = (int)Math.Round(oz * Grades.All[grade].Price * 0.5f) + 10,   // 2x + 20 before 0.9.99
+                Coins = (int)Math.Round(oz * Grades.All[grade].Price * 0.3f) + 5,   // 2x + 20 before 0.9.99; the dairy fund gets 2 coins an oz too
                 Xp = (int)(oz * 3f) + 25 + grade * 10,
             });
         }
@@ -3552,7 +3731,33 @@ public sealed partial class DairyGame
     // Daily goals
     // =================================================================
 
-    public sealed record Goal(string Name, float Have, float Need, int Bit, bool Farmer);
+    /// <summary>A daily goal. Coins: what it pays (0 = the usual GoalCoins); quota goals pay more and don't count toward "all four".</summary>
+    public sealed record Goal(string Name, float Have, float Need, int Bit, bool Farmer, int Coins = 0);
+
+    // ----- Daily quota -----
+
+    /// <summary>Your quota size: a farmer or the owner sets it (Steady until they do, and off the network).</summary>
+    public int QuotaSize => Math.Clamp(Net.Mine?.Members.FirstOrDefault(m => m.Id == Net.Mine.You?.Id)?.Quota ?? 1, 0, Catalog.QuotaNames.Length - 1);
+
+    private static float QuotaLevelMult(int level) => 1f + Catalog.LevelBonus * (Math.Min(level, Leveling.MilkBonusCap) - 1);
+
+    /// <summary>Milk for a cow's quota (a cow who's also a bull gives milk), or seed for a bull's.</summary>
+    public bool QuotaInSeed => !ProducesMilk && ProducesSeed;
+    public float QuotaNeed => QuotaInSeed
+        ? Catalog.QuotaOz[QuotaSize] * QuotaLevelMult(BullLevel) * Catalog.QuotaSeedShare
+        : Catalog.QuotaOz[QuotaSize] * QuotaLevelMult(Level);
+    public float QuotaHave => QuotaInSeed ? F.DaySeedOz : F.DayOz;
+    public bool QuotaReached => Producer && QuotaHave >= QuotaNeed - 0.001f;
+
+    /// <summary>What reaching your quota pays: its size, your grade, your wearables and the dairy's level.</summary>
+    public int QuotaCoins => (int)Math.Round(Catalog.QuotaCoins[QuotaSize] * Catalog.QuotaGradeMult[Math.Clamp(QuotaInSeed ? SeedGrade : CurrentGrade, 0, 4)]
+                                             * (QuotaInSeed ? SeedPayBonus : PriceBonus) * DairyPayBonus);
+
+    /// <summary>A farmer's quota: milk delivered today (orders, visitor orders, buy orders and the contract).</summary>
+    public float FarmerQuotaNeed => Catalog.QuotaOz[QuotaSize] * Catalog.QuotaFarmerOz * QuotaLevelMult(FarmerLevel);
+    public int FarmerQuotaCoins => (int)Math.Round(Catalog.QuotaCoins[QuotaSize] * Catalog.QuotaFarmerMult * DairyPayBonus);
+
+    private string QuotaNote(bool before) => !before && QuotaReached ? $" Quota reached: claim {QuotaCoins} coins in Goals." : "";
 
     /// <summary>Your daily goals: a set for cows and a separate set for farmers (you get both if you're both).</summary>
     public IReadOnlyList<Goal> Goals()
@@ -3564,6 +3769,8 @@ public sealed partial class DairyGame
             list.Add(new Goal("Get milked at a stall", F.DayStall, 1, 1, false));
             list.Add(new Goal("Do 3 care tasks", F.DayCare, 3, 2, false));
             list.Add(new Goal("Get hand milked", F.DayHand, 1, 3, false));
+            list.Add(new Goal($"{Catalog.QuotaNames[QuotaSize]} quota: give {Units.Oz(QuotaNeed, QuotaInSeed ? "0.##" : "0")} of {(QuotaInSeed ? "seed" : "milk")}",
+                QuotaHave, QuotaNeed, 4, false, QuotaCoins));
         }
 
         if (IsFarmer)
@@ -3572,26 +3779,27 @@ public sealed partial class DairyGame
             list.Add(new Goal("Clean a stall", F.DayCleans, 1, 9, true));
             list.Add(new Goal("Fill an order or ship to the contract", F.DayDelivered, 1, 10, true));
             list.Add(new Goal("Hand milk a cow until they're empty", F.DayCowsMilked, 1, 11, true));
+            list.Add(new Goal($"{Catalog.QuotaNames[QuotaSize]} quota: deliver {Units.Oz(FarmerQuotaNeed, "0")}", F.DayDeliveredOz, FarmerQuotaNeed, 12, true, FarmerQuotaCoins));
         }
 
         return list;
     }
 
     public bool Claimed(Goal g) => (F.DayClaimed & (1 << g.Bit)) != 0;
-    public const int GoalCoins = 30;
+    public const int GoalCoins = 20;       // 30 before 0.9.99 (the quota is the main pay now)
     public const int GoalXp = 40;
-    public const int AllGoalsCoins = 60;
+    public const int AllGoalsCoins = 40;   // 60 before 0.9.99
 
     public bool Claim(Goal g)
     {
         if (Claimed(g) || g.Have < g.Need) return false;
         F.DayClaimed |= 1 << g.Bit;
-        var goalPaid = Earn(GoalCoins);
+        var goalPaid = Earn(g.Coins > 0 ? g.Coins : GoalCoins);
         if (g.Farmer) AddFarmerXp(GoalXp);
         else AddXp(GoalXp);
         F.Stats.DailiesDone++;
         // Each set has its own bonus for finishing all four
-        var all = Goals().Where(x => x.Farmer == g.Farmer).All(Claimed);
+        var all = g.Coins == 0 && Goals().Where(x => x.Farmer == g.Farmer && x.Coins == 0).All(Claimed);
         if (all) goalPaid += Earn(AllGoalsCoins);
         var set = g.Farmer ? "farmer" : "cow";
         Say(all ? $"All {set} goals done! +{goalPaid} coins" : $"Daily goal done. +{goalPaid} coins, +{GoalXp} {set} xp", 1);
@@ -3618,6 +3826,7 @@ public sealed partial class DairyGame
         F.DayGrooms = 0;
         F.DayCleans = 0;
         F.DayDelivered = 0;
+        F.DayDeliveredOz = 0;
         F.DayCowsMilked = 0;
         F.DayBreeds = 0;
         F.DaySeedOz = 0;

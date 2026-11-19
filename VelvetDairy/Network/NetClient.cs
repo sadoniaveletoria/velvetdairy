@@ -775,8 +775,24 @@ public sealed class NetClient : IDisposable
         }, failed, dev: true);
 
     /// <summary>Milk used on the creamery's own customer and visitor orders (so it can't also go to a contract).</summary>
-    public void UseCarried(float oz) =>
-        Call<IdReply>("POST", "/v1/carry/use", new { oz = Math.Round(oz, 2) }, _ => { }, e => Plugin.Log.Debug($"Carry use: {e}"));
+    public void UseCarried(float oz, bool order = false) =>
+        Call<IdReply>("POST", "/v1/carry/use", new { oz = Math.Round(oz, 2), order }, _ => { if (order) MineWithin(5); }, e => Plugin.Log.Debug($"Carry use: {e}"));
+
+    /// <summary>A farmer or the owner sets a member's daily quota size.</summary>
+    public void SetQuota(string memberId, int size, Action ok, Action<string> failed) =>
+        Call<object>("PUT", $"/v1/members/{memberId}/quota", new { size }, _ => { nextMine = 0; ok(); }, failed);
+
+    /// <summary>The owner unlocks a feed type for the dairy's feed bin with the fund.</summary>
+    public void BuyFeedBin(string item, Action ok, Action<string> failed) =>
+        Call<object>("POST", $"/v1/dairy/feedbin/{item}", null, _ => { nextMine = 0; ok(); }, failed);
+
+    /// <summary>A farmer feeds a cow or bull from the dairy's feed bin.</summary>
+    public void FeedBin(string item, string to, Action ok, Action<string> failed) =>
+        Call<object>("POST", "/v1/feedbin/feed", new { item, to }, _ => ok(), failed);
+
+    /// <summary>The owner runs the Velvet pump (paid from the fund).</summary>
+    public void StartPump(Action ok, Action<string> failed) =>
+        Call<object>("POST", "/v1/dairy/pump", null, _ => { nextMine = 0; ok(); }, failed);
 
     /// <summary>Ships milk from your jugs to this week's contract.</summary>
     public void ShipToContract(int grade, int oz, Action<ShipReply> ok, Action<string> failed) =>
