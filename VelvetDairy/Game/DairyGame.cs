@@ -257,7 +257,7 @@ public sealed partial class DairyGame
             switch (i.Kind)
             {
                 case "payout":
-                    // Payouts come from farmer work: hand milking shares (game-made, grade 1: they taper) and coins from other players
+                    // Payouts come from farmer work: hand milking shares (game-made, grade 1) and coins from other players
                     if (i.Grade == 1) Earn(i.Coins);
                     else Receive(i.Coins);
                     AddFarmerXp(Math.Max(5, i.Coins / 8));
@@ -1485,10 +1485,9 @@ public sealed partial class DairyGame
         var collected = s.Extracted * s.Yield;
         EaseTaint(Catalog.TaintPerMilking);
         AddQuality(collected * (s.Kind == SessionKind.Hand ? Grades.QualityPerOzHand : Grades.QualityPerOz));
-        // The dairy pays for the milk right away (up to the day's paid amount; tapering with the day's earnings);
+        // The dairy pays for the milk right away (up to the day's paid amount);
         // the milk itself goes into the dairy's tank
         var paidOz = Math.Clamp(Catalog.DailyPaidOz - F.DayOz, 0, collected);
-        var rateBefore = Catalog.TaperRate(F.DayEarned);
         var pay = Earn((int)Math.Round(paidOz * PayRate(s.Grade)));
         F.Stats.TotalOz += collected;
         F.DayOz += collected;
@@ -1513,8 +1512,7 @@ public sealed partial class DairyGame
 
         AddXp(xp);
         return $"{Units.Oz(collected, "0.#")} as a Grade {Grades.Name(s.Grade)} cow. +{pay} coins, +{xp} xp" +
-               (paidOz < collected - 0.05f ? $" (you've been paid for {Units.Oz(Catalog.DailyPaidOz, "N0")} today; more milk still gives xp)"
-                   : Catalog.TaperRate(F.DayEarned) < rateBefore || rateBefore < 1f ? $" (you've earned a lot today, so pay is at {(Catalog.TaperRate(F.DayEarned) >= 0.5f ? "half" : "a tenth")}; xp is the same)" : "");
+               (paidOz < collected - 0.05f ? $" (you've been paid for {Units.Oz(Catalog.DailyPaidOz, "N0")} today; more milk still gives xp)" : "");
     }
 
     // =================================================================
@@ -3629,32 +3627,29 @@ public sealed partial class DairyGame
     // XP, coins, awards, messages
     // =================================================================
 
-    /// <summary>Coins the game pays you. They taper with what you've earned today (see Catalog.Tapered); returns what you got.</summary>
+    /// <summary>Coins the game pays you (no daily limit); returns what you got.</summary>
     private int Earn(int coins)
     {
         if (coins <= 0) return 0;
-        var got = Catalog.Tapered(F.DayEarned, coins);
+        var got = coins;
         F.DayEarned += coins;
         F.Coins += got;
         F.Stats.CoinsEarned += got;
         return got;
     }
 
-    /// <summary>
-    /// Coins a bull's seed earns. They taper the same way as everything else, but on their own count, so seed and
-    /// milk each have their own daily limit (3,000 in full, then half up to 8,000, then a tenth).
-    /// </summary>
+    /// <summary>Coins a bull's seed earns (counted on its own for the day; no daily limit).</summary>
     private int EarnSeed(int coins)
     {
         if (coins <= 0) return 0;
-        var got = Catalog.Tapered(F.DaySeedEarned, coins);
+        var got = coins;
         F.DaySeedEarned += coins;
         F.Coins += got;
         F.Stats.CoinsEarned += got;
         return got;
     }
 
-    /// <summary>Coins from another player (shelf sales, buy orders) or paid back: never tapered.</summary>
+    /// <summary>Coins from another player (shelf sales, buy orders) or paid back: not counted as the game's pay.</summary>
     private void Receive(int coins)
     {
         F.Coins += coins;

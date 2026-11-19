@@ -1361,24 +1361,10 @@ public sealed partial class MainWindow : Window
         ImGui.TextColored(Theme.InkSoft, $"Dairy level bonus: +{bonus:0}% · your looks bonus: +{(G.PriceBonus - 1) * 100:0}%");
         if (G.Networked) ImGui.TextColored(Theme.InkSoft, "Each dairy level raises pay by 2%. Hand milking also pays your farmer a share (not taken from you).");
         ImGui.TextColored(Theme.InkSoft, $"Milk given today: {Units.Oz(F.DayOz, "0.#")}" + (F.DayOz >= Catalog.DailyPaidOz ? $" · paid for {Units.Oz(Catalog.DailyPaidOz, "N0")} (the most a day); more still gives xp" : ""));
-        var rate = Catalog.TaperRate(F.DayEarned);
-        ImGui.TextColored(rate < 1f ? Theme.HoneyDeep : Theme.InkSoft,
-            rate >= 1f ? $"Earned today: {F.DayEarned:N0} · full pay until {Catalog.FullEarnings:N0}"
-                : rate >= 0.5f ? $"Earned today: {F.DayEarned:N0} · pay is at half until {Catalog.HalfEarnings:N0}, then a tenth"
-                : $"Earned today: {F.DayEarned:N0} · pay is at a tenth until the daily reset");
-        if (ImGui.IsItemHovered())
-            ImGui.SetTooltip($"Everything the game pays you in a day (milking, hand milking shares, orders, goals, awards) counts together, except seed.\n" +
-                             $"The first {Catalog.FullEarnings:N0} coins are paid in full, then half up to {Catalog.HalfEarnings:N0}, then a tenth.\n" +
-                             "Seed has its own count with the same limits, so a big seed milking never cuts your milk pay.\n" +
-                             "XP is never reduced, and coins from other players (shelf sales, buy orders) aren't counted. Resets with the daily reset.");
-        if (G.ProducesSeed)
-        {
-            var srate = Catalog.TaperRate(F.DaySeedEarned);
-            ImGui.TextColored(srate < 1f ? Theme.HoneyDeep : Theme.InkSoft,
-                srate >= 1f ? $"Seed earned today: {F.DaySeedEarned:N0} · full pay until {Catalog.FullEarnings:N0}"
-                    : srate >= 0.5f ? $"Seed earned today: {F.DaySeedEarned:N0} · seed pay is at half until {Catalog.HalfEarnings:N0}, then a tenth"
-                    : $"Seed earned today: {F.DaySeedEarned:N0} · seed pay is at a tenth until the daily reset");
-        }
+        ImGui.TextColored(Theme.InkSoft, $"Earned today: {F.DayEarned:N0}" + (G.ProducesSeed ? $" · seed: {F.DaySeedEarned:N0}" : ""));
+        ImGui.TextColored(G.Tired ? Theme.HoneyDeep : Theme.InkSoft, G.Tired
+            ? $"Tired: after {G.TiredHours} hours of milk today, milk (and its pay) comes in at half speed until the daily reset."
+            : $"No daily limit on pay. After {G.TiredHours} hours of milk in a day you get tired: milk comes in at half speed until the daily reset.");
     }
 
     /// <summary>One line on what you carry, with a button to the Kitchen where jugs are filled.</summary>

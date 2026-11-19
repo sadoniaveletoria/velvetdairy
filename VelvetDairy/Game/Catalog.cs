@@ -215,27 +215,27 @@ public static class Catalog
     public static readonly IReadOnlyList<Upgrade> Upgrades = new[]
     {
         new Upgrade("stallkit", "Stall kit", "bucket", new[] { 200, 500 }, new[] { 6, 12 }, "Lets you register one more stall."),
-        new Upgrade("cushion", "Plush bedding", "cushion", new[] { 250 }, new[] { 4 }, "Comfy bonus +7% instead of +4%, and the Comfy bar drains half as fast."),
-        new Upgrade("bottle", "Bigger bottle", "bottle", new[] { 180, 450, 1000, 2200, 7500 }, new[] { 3, 8, 14, 21, 40 }, "Each bottle (and seed vial) holds more."),
+        new Upgrade("cushion", "Plush bedding", "cushion", new[] { 70 }, new[] { 4 }, "Comfy bonus +7% instead of +4%, and the Comfy bar drains half as fast."),
+        new Upgrade("bottle", "Bigger bottle", "bottle", new[] { 50, 135, 275, 550, 7500 }, new[] { 3, 8, 14, 21, 40 }, "Each bottle (and seed vial) holds more."),
         // Up to 4 bottles (6 before 0.9.97, when milk came in faster): the 5th and 6th were refunded
-        new Upgrade("rack", "Extra bottle", "milk", new[] { 300, 800, 1800 }, new[] { 6, 12, 19 }, "One more bottle (and seed vial). When one fills, the next one starts. Up to 4."),
+        new Upgrade("rack", "Extra bottle", "milk", new[] { 90, 225, 350 }, new[] { 6, 12, 19 }, "One more bottle (and seed vial). When one fills, the next one starts. Up to 4."),
         // Farmers (and owners) buy a bigger tank to carry milk from the dairy tank; unlocks go by farmer level
         new Upgrade("farmtank", "Bigger farmer tank", "bucket", new[] { 200, 500, 1200, 2500, 5000, 8000, 14000 }, new[] { 2, 5, 10, 16, 22, 30, 60 },
             "Carry more milk from the dairy tank to customers, other dairies and the Grand Creamery.", Farmer: true),
-        new Upgrade("trough", "Clean trough", "water", new[] { 160 }, new[] { 5 }, "Watered lasts half again as long."),
-        new Upgrade("bell", "Bell collar", "bell", new[] { 80 }, new[] { 3 }, "A brass bell. The Happy bar drains a little slower.", true),
-        new Upgrade("ribbon", "Show ribbon", "ribbon", new[] { 600 }, new[] { 15 }, "Wear your ribbon. +5% pay for milk.", true, Cow: true),
-        new Upgrade("cap", "Gold-cap bottles", "coin", new[] { 1500 }, new[] { 25 }, "Bottles with your name on them. +10% pay for milk.", true, Cow: true),
+        new Upgrade("trough", "Clean trough", "water", new[] { 90 }, new[] { 5 }, "Watered lasts half again as long."),
+        new Upgrade("bell", "Bell collar", "bell", new[] { 50 }, new[] { 3 }, "A brass bell. The Happy bar drains a little slower.", true),
+        new Upgrade("ribbon", "Show ribbon", "ribbon", new[] { 275 }, new[] { 15 }, "Wear your ribbon. +5% pay for milk.", true, Cow: true),
+        new Upgrade("cap", "Gold-cap bottles", "coin", new[] { 550 }, new[] { 25 }, "Bottles with your name on them. +10% pay for milk.", true, Cow: true),
         // Cow perks and wearables for the higher cow levels
-        new Upgrade("udderbalm", "Udder balm", "cushion", new[] { 400 }, new[] { 9 }, "Hand milking by a farmer draws your milk 15% faster.", Cow: true),
-        new Upgrade("letdown", "Easy let-down", "bucket", new[] { 600 }, new[] { 10 }, "Stall milking draws your milk 10% faster.", Cow: true),
-        new Upgrade("halter", "Silk halter", "ribbon", new[] { 1000 }, new[] { 17 }, "A soft silk halter. +3% pay for milk.", true, Cow: true),
-        new Upgrade("steady", "Steady producer", "milk", new[] { 1200 }, new[] { 18 }, "You get tired after 14 hours of milk a day instead of 12."),
-        new Upgrade("lavender", "Lavender bedding", "cushion", new[] { 1800 }, new[] { 23 }, "Comfy bonus +3% more, and the Happy bar drains half as fast."),
-        new Upgrade("mist", "Cooling mist", "water", new[] { 2000 }, new[] { 24 }, "Full bottles keep 96 hours before they spoil instead of 72.", Cow: true),
-        new Upgrade("velvetbell", "Velvet bell", "bell", new[] { 2600 }, new[] { 26 }, "A velvet-wrapped bell. +5% pay for milk.", true, Cow: true),
-        new Upgrade("champion", "Champion's ribbon", "ribbon", new[] { 3200 }, new[] { 28 }, "A prized cow: farmers who hand milk you get 10% more pay and farmer xp. Being bred lasts 45 minutes instead of 30, and pregnancy gives 5% more milk.", true, Cow: true),
-        new Upgrade("velvetchamp", "Velvet champion sash", "coin", new[] { 5000 }, new[] { 30 }, "The best cow in Eorzea. +10% pay for milk.", true, Cow: true),
+        new Upgrade("udderbalm", "Udder balm", "cushion", new[] { 105 }, new[] { 9 }, "Hand milking by a farmer draws your milk 15% faster.", Cow: true),
+        new Upgrade("letdown", "Easy let-down", "bucket", new[] { 120 }, new[] { 10 }, "Stall milking draws your milk 10% faster.", Cow: true),
+        new Upgrade("halter", "Silk halter", "ribbon", new[] { 325 }, new[] { 17 }, "A soft silk halter. +3% pay for milk.", true, Cow: true),
+        new Upgrade("steady", "Steady producer", "milk", new[] { 300 }, new[] { 18 }, "You get tired after 14 hours of milk a day instead of 12."),
+        new Upgrade("lavender", "Lavender bedding", "cushion", new[] { 600 }, new[] { 23 }, "Comfy bonus +3% more, and the Happy bar drains half as fast."),
+        new Upgrade("mist", "Cooling mist", "water", new[] { 475 }, new[] { 24 }, "Full bottles keep 96 hours before they spoil instead of 72.", Cow: true),
+        new Upgrade("velvetbell", "Velvet bell", "bell", new[] { 600 }, new[] { 26 }, "A velvet-wrapped bell. +5% pay for milk.", true, Cow: true),
+        new Upgrade("champion", "Champion's ribbon", "ribbon", new[] { 900 }, new[] { 28 }, "A prized cow: farmers who hand milk you get 10% more pay and farmer xp. Being bred lasts 45 minutes instead of 30, and pregnancy gives 5% more milk.", true, Cow: true),
+        new Upgrade("velvetchamp", "Velvet champion sash", "coin", new[] { 1250 }, new[] { 30 }, "The best cow in Eorzea. +10% pay for milk.", true, Cow: true),
         // Levels 31 to 100: fewer, bigger rewards
         new Upgrade("silkcushion", "Silk cushion", "cushion", new[] { 6500 }, new[] { 45 }, "The Comfy bar drains 15% slower (on top of Plush bedding)."),
         new Upgrade("heirloombell", "Heirloom bell", "bell", new[] { 9000 }, new[] { 55 }, "A family heirloom bell. +3% pay for milk.", true, Cow: true),
@@ -270,31 +270,8 @@ public static class Catalog
     public static readonly string[] ShelfOrder = { "cookies", "buns", "cheese", "cake", "tart" };
     public const int DailyPaidOz = 1500;   // milk you're paid for each day; past it you still get xp (matches the server's daily tank limit)
 
-    // Everything you earn from the game in a day (milking, hand milking shares, orders, goals, awards) tapers off together:
-    // the first FullEarnings coins are paid in full, then half up to HalfEarnings, then a tenth. Coins from other
-    // players (shelf sales, buy orders) aren't touched. No cap, but more play pays less and less.
-    public const int FullEarnings = 1500;   // 3,000 before 0.9.97
-    public const int HalfEarnings = 4000;   // 8,000 before 0.9.97
-
-    /// <summary>What `gross` coins are actually worth when `earnedToday` (gross) were already earned today.</summary>
-    public static int Tapered(float earnedToday, int gross)
-    {
-        double pay = 0, at = earnedToday, left = gross;
-        foreach (var (upTo, rate) in new (double, double)[] { (FullEarnings, 1.0), (HalfEarnings, 0.5), (double.MaxValue, 0.10) })
-        {
-            if (left <= 0) break;
-            var room = Math.Max(0, upTo - at);
-            var part = Math.Min(room, left);
-            pay += part * rate;
-            at += part;
-            left -= part;
-        }
-
-        return (int)Math.Round(pay);
-    }
-
-    /// <summary>The share of each new coin you get right now (1, 0.5 or 0.1).</summary>
-    public static float TaperRate(float earnedToday) => earnedToday < FullEarnings ? 1f : earnedToday < HalfEarnings ? 0.5f : 0.10f;
+    // No daily limit on coins (removed in 0.10.0: it was 1,500 in full, then half up to 4,000, then a tenth). The only
+    // brake is being Tired: after 12 hours of making milk in a day it comes in at half speed, and so does its pay.
     public const int FeedXp = 10;          // farmer xp for feeding a cow or bull from the shelf
     public const int FedBullXp = 20;       // bull xp for being fed
     /// <summary>Your cow grade (C, B, A, S, S+) milks you this much faster and gives this much more milk.</summary>

@@ -23,8 +23,10 @@ public sealed class ChangelogWindow : Window
     /// <summary>Newest first. Write these for players: what changed for them, not how.</summary>
     private static readonly Entry[] Entries =
     {
-        new("0.9.99", "Metric buttons", new[]
+        new("0.9.99", "Shop prices and no daily pay limit", new[]
         {
+            "Shop prices are lower for cow upgrades up to level 30 (Velvet champion sash 1,250, was 5,000; all of them together about 7,400, was 27,000). You're usually a little short when something unlocks and catch up in a couple of days, with coins left over to give your dairy's fund.",
+            "No more daily pay limit: everything you earn is paid in full. The only brake is getting tired after 12 hours of milk a day (half speed, so half the pay).",
             "Metric: the contract's Ship button and the seed market's Buy and Sell buttons show litres and millilitres too.",
             "Hand milking: the farmer now sees the cow's or bull's milk going down every few seconds while milking them (it used to update only every minute or so).",
         }),
