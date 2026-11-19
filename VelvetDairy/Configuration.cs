@@ -192,7 +192,7 @@ public class FarmSave
     public bool ListPublic { get; set; } = true;      // your dairy shows its address in the directory
     public bool ListShowName { get; set; }            // your character name shows as the owner
     public string ListDescription { get; set; } = "";
-    public string OwnerRole { get; set; } = "cow";    // older single role (kept for old saves)
+    public string OwnerRole { get; set; } = "";       // older single role (kept for old saves); new owners start with none
     public List<string>? OwnerRoles { get; set; }      // what you play in your own dairy: any of cow, farmer, bull
     public bool ShowOwnerHud { get; set; } = true;   // no longer used (the owner HUD was removed); kept so old saves load
     public bool ShowStallMarkers { get; set; } = true;   // a colored box on the ground around each stall (only you see it)

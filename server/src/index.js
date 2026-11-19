@@ -1193,7 +1193,7 @@ async function putDairy(env, me, request) {
   const area = readArea(b.area);
   if (area) area.whole = 0;   // whole-house is for private places only
   const existing = await env.DB.prepare("SELECT * FROM dairies WHERE owner = ?").bind(me.id).first();
-  const ownerRoles = Array.isArray(b.roles) ? roleList(b.roles.join(",")) : PLAY_ROLES.includes(b.role) ? roleList(b.role) : ["cow"];
+  const ownerRoles = Array.isArray(b.roles) ? roleList(b.roles.join(",")) : PLAY_ROLES.includes(b.role) ? roleList(b.role) : [];   // no role until they pick one
   const role = roleText(ownerRoles);
   const t = now();
   let hid, world, ward, plot, room, districtKind;
