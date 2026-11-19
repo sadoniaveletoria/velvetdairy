@@ -1,0 +1,24 @@
+name: One-off - look at the dev server's database
+
+on:
+  push:
+    branches: [ ops-dev-check ]
+
+permissions:
+  contents: read
+
+jobs:
+  look:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Query the dev database (read only)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          q() { npx --yes wrangler@4 d1 execute eorzea-milkers-dev --remote --json --command "$1" | jq -c '.[0].results'; }
+          echo "dairies:"; q "SELECT id, name, owner FROM dairies"
+          echo "members:"; q "SELECT m.dairy_id, m.name, m.role, i.version, i.last_seen, i.at_dairy, (SELECT COUNT(*) FROM dairies d WHERE d.owner = m.install) AS owns FROM memberships m LEFT JOIN installs i ON i.id = m.install"
+          echo "bots:"; q "SELECT install, dairy_id, kind, last FROM dev_bots"
+          echo "installs:"; q "SELECT id, version, last_seen, at_dairy FROM installs ORDER BY last_seen DESC LIMIT 5"
+          echo "now: $(date +%s)"
