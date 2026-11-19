@@ -23,6 +23,15 @@ public sealed class ChangelogWindow : Window
     /// <summary>Newest first. Write these for players: what changed for them, not how.</summary>
     private static readonly Entry[] Entries =
     {
+        new("0.9.97", "Rebalance: slower milk and seed", new[]
+        {
+            "# Milk and seed come in slower",
+            "Milk (and a bull's seed) comes in a little over half as fast as before, so a full bottle means more. Each ounce gives more xp to match, so levels take about as long as before.",
+            "Each level makes you 2% faster instead of 4% (up to level 50: about twice a new cow, not three times).",
+            "Grade raises the price per ounce and how fast you're milked, but no longer adds to the amount collected (it was paying grade twice). Your stall's tier still adds to the amount.",
+            "Daily pay: the first 1,500 coins a day are paid in full (was 3,000), then half up to 4,000 (was 8,000), then a tenth. Seed keeps its own separate count with the same limits.",
+            "This is a first pass: tell us how it feels.",
+        }),
         new("0.9.96", "Top-up minutes, seed pay", new[]
         {
             "Seed now pays 5 times milk's price per ounce (it was 10), including a farmer's share for hand milking seed.",

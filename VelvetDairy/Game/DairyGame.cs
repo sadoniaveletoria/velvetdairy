@@ -26,8 +26,10 @@ public sealed class Session
     public double LastActivity;    // last stroke (hand) or last second seated (stall)
     public int Strokes;
 
-    public float Yield => (Kind == SessionKind.Hand ? Catalog.HandYield : Catalog.StallYield[Math.Clamp(Stall?.Tier ?? 1, 1, 4)]) * Catalog.GradeMult(Grade);
-    public float SeedYield => (Kind == SessionKind.Hand ? Catalog.HandYield : Catalog.StallYield[Math.Clamp(Stall?.Tier ?? 1, 1, 4)]) * Catalog.GradeMult(SeedGrade);
+    // What's collected per oz taken: the stall's tier (or hand milking). Grade raises the price per oz instead (and how
+    // fast milk is drawn); it used to multiply the amount too, which paid grade twice.
+    public float Yield => Kind == SessionKind.Hand ? Catalog.HandYield : Catalog.StallYield[Math.Clamp(Stall?.Tier ?? 1, 1, 4)];
+    public float SeedYield => Yield;
     public float Progress => StartMilk > 0 ? Math.Clamp(Extracted / StartMilk, 0f, 1f) : StartSeed > 0 ? Math.Clamp(ExtractedSeed / StartSeed, 0f, 1f) : 1f;
 }
 
@@ -59,7 +61,7 @@ public sealed partial class DairyGame
     public event Action<string, int>? Toast;   // message, kind (0 info, 1 good, 2 warn)
     public event Action? Stroked;              // a farmhand stroke drew milk (for the squirt sound)
 
-    private const float BaseRate = 0.14f;  // oz per minute with every need full, before bonuses and the Milk speed setting
+    private const float BaseRate = 0.08f;  // oz per minute with every need full, before bonuses and the Milk speed setting (0.14 before 0.9.97)
     private double now;
     private bool autoHold;                  // after a stall milking, wait for half a bottle before it starts again
     private int spoilWarned;                // 0 none, 1 warned at 24 h left, 2 warned at 2 h left

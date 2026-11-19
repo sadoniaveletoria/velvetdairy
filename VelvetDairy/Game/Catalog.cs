@@ -272,8 +272,8 @@ public static class Catalog
     // Everything you earn from the game in a day (milking, hand milking shares, orders, goals, awards) tapers off together:
     // the first FullEarnings coins are paid in full, then half up to HalfEarnings, then a tenth. Coins from other
     // players (shelf sales, buy orders) aren't touched. No cap, but more play pays less and less.
-    public const int FullEarnings = 3000;
-    public const int HalfEarnings = 8000;
+    public const int FullEarnings = 1500;   // 3,000 before 0.9.97
+    public const int HalfEarnings = 4000;   // 8,000 before 0.9.97
 
     /// <summary>What `gross` coins are actually worth when `earnedToday` (gross) were already earned today.</summary>
     public static int Tapered(float earnedToday, int gross)
@@ -326,7 +326,7 @@ public static class Catalog
     // Milk is sized at about five times a real person's yield: roughly 125-150 oz a day with good care
     public static readonly float[] BottleSizes = { 0, 8, 12, 20, 32, 48, 64 };
 
-    public const float LevelBonus = 0.04f;      // +4% milk per level above 1, up to Leveling.MilkBonusCap
+    public const float LevelBonus = 0.02f;      // +2% milk per level above 1, up to Leveling.MilkBonusCap (+4% before 0.9.97)
     public const float ContentBonus = 0.10f;    // all four need bonuses active at once
     public const float TreatBonus = 0.30f;      // while a treat boost lasts
 
@@ -360,9 +360,11 @@ public static class Leveling
     public const int MilkBonusCap = 50;
 
     // ----- Where XP comes from -----
-    public const float OzPerXpTick = 0.2f;        // +1 xp for every 0.2 oz of milk you make (awake, bottles not full)
-    public const float XpPerOzStall = 1f;         // bonus for emptying at a stall, times the stall's tier bonus
-    public const float XpPerOzHand = 3f;          // bonus for being hand milked by a farmer
+    // Milk comes in slower since 0.9.97 (a little over half as fast), so each oz gives 2.75 times the xp it did: levels
+    // still take about as long as before.
+    public const float OzPerXpTick = 0.0727f;     // +1 xp for every 0.0727 oz of milk you make (awake, bottles not full)
+    public const float XpPerOzStall = 2.75f;      // bonus for emptying at a stall, times the stall's tier bonus
+    public const float XpPerOzHand = 8.25f;       // bonus for being hand milked by a farmer
     public const int XpHandSession = 10;          // plus this for each hand milking
     public static readonly float[] StallXpBonus = { 0, 1.0f, 1.15f, 1.3f, 1.5f };
     public static readonly float[] GradeXpBonus = { 1.0f, 1.2f, 1.4f, 1.7f, 2.0f };   // C, B, A, S, S+

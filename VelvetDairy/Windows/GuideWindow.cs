@@ -78,8 +78,8 @@ public sealed class GuideWindow : Window
         {
             "Everyone starts at Grade C. Milk quality builds as you get milked, fill goals and eat quality treats: B at 150, A at 800, S at 2,600 and S+ at 6,000.",
             "Pay per ounce: C 6, B 8, A 10, S 12, S+ 14 coins. Better grades also give more XP.",
-            "Everything the game pays you in a day (milking, hand milking shares, orders, goals, awards) adds up together: the first 3,000 coins are paid in full, then half up to 8,000, then a tenth. XP is never reduced, coins from other players don't count, and it resets each day. Creamery > Your pay shows where you are.",
-            "Your grade also makes milking faster and gives more milk each time: B +10%, A +20%, S +35%, S+ +50%.",
+            "Everything the game pays you in a day (milking, hand milking shares, orders, goals, awards) adds up together: the first 1,500 coins are paid in full, then half up to 4,000, then a tenth (seed has its own count with the same limits). XP is never reduced, coins from other players don't count, and it resets each day. Creamery > Your pay shows where you are.",
+            "Your grade also makes milking faster: B +10%, A +20%, S +35%, S+ +50%. (It used to give more milk too; now it raises the price per ounce, and your stall's tier decides how much is collected.)",
             "Milk itself has no grade: once it's in the dairy tank, any milk fills any order, contract or recipe.",
             "Your grade is your milk quality, and it stays there as long as you're milked. Go 3 days without being milked and it slips one grade (one more every 3 days after). One milking brings it right back. A Dry-off tonic stops it slipping while you're away.",
             "Hand milking by a farmer makes up one grade lost to slipping or off taste.",
@@ -87,7 +87,7 @@ public sealed class GuideWindow : Window
         new("Levels and XP", new[]
         {
             "You get +1 XP for every 0.2 oz of milk you make (more at better grades), plus a bonus when you're emptied at a stall or by hand, plus daily goals, orders and care.",
-            "Max level is 100, and each level takes longer than the last: the first ten go by in an evening or two, the 90s take days each. Your cow level makes milk come 4% faster per level up to level 50 (about three times a new cow), and unlocks shop items and upgrades. Farmer and bull levels climb the same way.",
+            "Max level is 100, and each level takes longer than the last: the first ten go by in an evening or two, the 90s take days each. Your cow level makes milk come 2% faster per level up to level 50 (about twice a new cow), and unlocks shop items and upgrades. Farmer and bull levels climb the same way.",
             "Farmers level separately: hand milking pay, filling jugs, deliveries and contracts give farmer XP, and farmer levels unlock bigger farmer tanks to buy in the Shop. Bulls level from making seed, being milked, care and breeding; their level speeds up seed the way cow level speeds up milk.",
             "Daily goals (Progress tab) reset each day and pay coins and XP. Cows and farmers each have their own four; if you're both, you get both sets.",
         }),

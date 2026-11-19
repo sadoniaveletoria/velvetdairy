@@ -73,11 +73,11 @@ Cow and bull are yours: you add or drop them, and they hold in every dairy you'r
 - **At a stall:** sit on its seat and it starts by itself. You don't need to get up between milkings: stay seated and it starts again once half a bottle has refilled, and sitting there builds Comfy like any seat in your dairy. (After 30 minutes without doing anything you start dozing and it won't start a new milking until you move, emote or click something.)
 - **By hand:** a farmer of your dairy stands close, targets you and presses **Milk**. Hand milking is faster, pays more and makes up a lost grade.
 - You're **paid the moment you're milked**, by grade: C 6, B 8, A 10, S 12, S+ 14 coins an ounce, plus a bonus for your dairy's level.
-- **Daily earnings taper off:** everything the game pays you in a day (milking, farmer shares, orders, goals, awards) counts together. The first 3,000 coins are paid in full, then half up to 8,000, then a tenth. **Seed has its own separate count with the same limits**, so a big seed milking never cuts your milk pay (and the other way round). XP is never reduced, coins from other players don't count, and it resets each day at midnight UTC.
+- **Daily earnings taper off:** everything the game pays you in a day (milking, farmer shares, orders, goals, awards) counts together. The first 1,500 coins are paid in full, then half up to 4,000, then a tenth. **Seed has its own separate count with the same limits**, so a big seed milking never cuts your milk pay (and the other way round). XP is never reduced, coins from other players don't count, and it resets each day at midnight UTC.
 - **Ask first (optional):** turn off "Farmers can start milking me without asking" on Roles → Cow and you get an Allow / Not now pop-up each time a farmer presses Milk on you.
 
 **Your grade**
-- Your grade is about you, not your milk. Higher grades pay more, milk you faster and get more milk out: B +10%, A +20%, S +35%, S+ +50%. Milk itself is just milk: any of it fills any order.
+- Your grade is about you, not your milk. Higher grades pay more per ounce and milk you faster: B +10%, A +20%, S +35%, S+ +50% speed. (Grade no longer adds to the amount collected: the stall's tier does.) Milk itself is just milk: any of it fills any order.
 - Everyone starts at **Grade C**. Being milked, deliveries and quality treats build your **milk quality**, which unlocks B (150), A (800), S (2,600) and S+ (6,000).
 - **Keep getting milked:** after 3 days without a milking your grade slips one step. One milking brings it back. Going away? A **Dry-off tonic** holds your grade for 7 days.
 
