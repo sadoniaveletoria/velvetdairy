@@ -18,7 +18,10 @@ jobs:
         run: |
           q() { npx --yes wrangler@4 d1 execute eorzea-milkers-dev --remote --json --command "$1" | jq -c '.[0].results'; }
           echo "dairies:"; q "SELECT id, name, owner FROM dairies"
-          echo "members:"; q "SELECT m.dairy_id, m.name, m.role, i.version, i.last_seen, i.at_dairy, (SELECT COUNT(*) FROM dairies d WHERE d.owner = m.install) AS owns FROM memberships m LEFT JOIN installs i ON i.id = m.install"
-          echo "bots:"; q "SELECT install, dairy_id, kind, last FROM dev_bots"
-          echo "installs:"; q "SELECT id, version, last_seen, at_dairy FROM installs ORDER BY last_seen DESC LIMIT 5"
+          echo "members:"; q "SELECT m.name, m.role, i.version, i.last_seen, i.at_dairy = m.dairy_id AS here FROM memberships m LEFT JOIN installs i ON i.id = m.install"
+          echo "bots:"; q "SELECT kind, last, state FROM dev_bots"
+          echo "tank:"; q "SELECT * FROM dairy_tank"
+          echo "progress:"; q "SELECT * FROM dairy_progress"
+          echo "botlog:"; q "SELECT install, kind, note, created, claimed FROM inbox WHERE kind IN ('botlog','botmilk','binfed','groom','fed') ORDER BY id DESC LIMIT 15"
+          echo "notices:"; q "SELECT * FROM dairy_notice ORDER BY id DESC LIMIT 3"
           echo "now: $(date +%s)"
