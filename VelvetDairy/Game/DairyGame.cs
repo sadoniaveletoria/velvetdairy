@@ -311,6 +311,10 @@ public sealed partial class DairyGame
                     break;
             }
 
+            // Dev server: what the test bots do goes in chat ("[Eorzea Milkers] Hank Bot fed you ..."); their own log lines only there
+            if (Channel.Dev && i.Note.Length > 0 && (i.Kind == "botlog" || i.Note.StartsWith("Hank Bot") || i.Note.StartsWith("Daisy Bot") || i.Note.StartsWith("Brutus Bot")))
+                Plugin.ChatGui.Print($"[Eorzea Milkers] {i.Note}");
+            if (i.Kind == "botlog") continue;
             Say(i.Note.Length > 0 ? i.Note : $"Network: {i.Kind}.", i.Kind == "notice" ? 0 : 1);
         }
 
@@ -1584,6 +1588,8 @@ public sealed partial class DairyGame
 
         var by = s.Kind == SessionKind.Hand ? $" by {(s.Hand!.Name == "Test farmhand" ? "the test farmhand" : s.Hand.Name)}" : "";
         Say($"Milked{by}: {string.Join(". And ", parts)}" + (reason != null ? $" ({reason})" : ""), 1);
+        if (Channel.Dev && s.Kind == SessionKind.Hand && s.Hand!.Name == "Hank Bot")
+            Plugin.ChatGui.Print($"[Eorzea Milkers] Hank Bot hand milked you: {string.Join(". And ", parts)}");
         plugin.SaveConfig();
     }
 
