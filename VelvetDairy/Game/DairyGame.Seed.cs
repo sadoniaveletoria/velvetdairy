@@ -16,9 +16,13 @@ public sealed partial class DairyGame
     public const float SeedRatio = 0.10f;
 
     /// <summary>Seed speed as a share of milk speed, by seed grade (C to S+).</summary>
-    public static readonly float[] SeedRateByGrade = { 0.10f, 0.125f, 0.15f, 0.175f, 0.20f };
+    public static readonly float[] SeedRateByGrade = { 0.15f, 0.16f, 0.17f, 0.185f, 0.20f };   // 0.10-0.20 before 0.9.99
 
     /// <summary>Seed pays this many times milk's price per oz (there's only a tenth as much of it).</summary>
+    /// <summary>Bull xp from seed, as a share of what the same milk-equivalent would give a cow (1 before 0.9.99): seed pays
+    /// 5x milk's price for a tenth to a fifth of the amount, so bulls earn a little less an hour than cows; with breedings on top this
+    /// keeps coins per bull level about the same as per cow level.</summary>
+    public const float SeedXpShare = 0.4f;
     public const float SeedPriceMult = 5f;   // the server's SEED_PRICE_MULT (a farmer's share of hand-milked seed)
 
     public bool ProducesSeed => IsBull;
@@ -189,7 +193,7 @@ public sealed partial class DairyGame
     /// <summary>Bull xp ticks in as seed is made, the way cow xp does for milk (the same xp per milk-equivalent oz).</summary>
     private void TickSeedXp()
     {
-        var per = Leveling.OzPerXpTick * SeedRatio;
+        var per = Leveling.OzPerXpTick * SeedRatio / SeedXpShare;
         if (seedMadeSinceTick < per) return;
         var n = (int)(seedMadeSinceTick / per);
         seedMadeSinceTick -= n * per;
@@ -224,12 +228,12 @@ public sealed partial class DairyGame
 
         int xp;
         if (!hand)
-            xp = (int)Math.Round(milkEquivalent * Leveling.XpPerOzStall * Leveling.StallXpBonus[Math.Clamp(s.Stall!.Tier, 1, 4)] * Leveling.GradeBonus(s.SeedGrade) *
+            xp = (int)Math.Round(milkEquivalent * SeedXpShare * Leveling.XpPerOzStall * Leveling.StallXpBonus[Math.Clamp(s.Stall!.Tier, 1, 4)] * Leveling.GradeBonus(s.SeedGrade) *
                                  (Fresh(s.Stall) ? 1f + Catalog.CleanBonus : 1f));
         else
         {
             if (Networked && !s.Hand!.IsTest) Net.HandPay(s.Hand.Name, s.Hand.WorldName, collected, s.SeedGrade, true, Prized);   // the farmer's share
-            xp = (int)Math.Round(milkEquivalent * Leveling.XpPerOzHand * Leveling.GradeBonus(s.SeedGrade)) + Leveling.XpHandSession;
+            xp = (int)Math.Round(milkEquivalent * SeedXpShare * Leveling.XpPerOzHand * Leveling.GradeBonus(s.SeedGrade)) + Leveling.XpHandSession;
         }
 
         AddBullXp(xp);

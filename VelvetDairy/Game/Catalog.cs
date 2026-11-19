@@ -216,11 +216,11 @@ public static class Catalog
     {
         new Upgrade("stallkit", "Stall kit", "bucket", new[] { 200, 500 }, new[] { 6, 12 }, "Lets you register one more stall."),
         new Upgrade("cushion", "Plush bedding", "cushion", new[] { 70 }, new[] { 4 }, "Comfy bonus +7% instead of +4%, and the Comfy bar drains half as fast."),
-        new Upgrade("bottle", "Bigger bottle", "bottle", new[] { 50, 135, 275, 550, 7500 }, new[] { 3, 8, 14, 21, 40 }, "Each bottle (and seed vial) holds more."),
+        new Upgrade("bottle", "Bigger bottle", "bottle", new[] { 50, 135, 275, 550, 10500 }, new[] { 3, 8, 14, 21, 40 }, "Each bottle (and seed vial) holds more."),
         // Up to 4 bottles (6 before 0.9.97, when milk came in faster): the 5th and 6th were refunded
         new Upgrade("rack", "Extra bottle", "milk", new[] { 90, 225, 350 }, new[] { 6, 12, 19 }, "One more bottle (and seed vial). When one fills, the next one starts. Up to 4."),
         // Farmers (and owners) buy a bigger tank to carry milk from the dairy tank; unlocks go by farmer level
-        new Upgrade("farmtank", "Bigger farmer tank", "bucket", new[] { 200, 500, 1200, 2500, 5000, 8000, 14000 }, new[] { 2, 5, 10, 16, 22, 30, 60 },
+        new Upgrade("farmtank", "Bigger farmer tank", "bucket", new[] { 200, 300, 700, 1350, 1750, 3850, 9500 }, new[] { 2, 5, 10, 16, 22, 30, 40 },
             "Carry more milk from the dairy tank to customers, other dairies and the Grand Creamery.", Farmer: true),
         new Upgrade("trough", "Clean trough", "water", new[] { 90 }, new[] { 5 }, "Watered lasts half again as long."),
         new Upgrade("bell", "Bell collar", "bell", new[] { 50 }, new[] { 3 }, "A brass bell. The Happy bar drains a little slower.", true),
@@ -237,22 +237,22 @@ public static class Catalog
         new Upgrade("champion", "Champion's ribbon", "ribbon", new[] { 900 }, new[] { 28 }, "A prized cow: farmers who hand milk you get 10% more pay and farmer xp. Being bred lasts 45 minutes instead of 30, and pregnancy gives 5% more milk.", true, Cow: true),
         new Upgrade("velvetchamp", "Velvet champion sash", "coin", new[] { 1250 }, new[] { 30 }, "The best cow in Eorzea. +10% pay for milk.", true, Cow: true),
         // Levels 31 to 100: fewer, bigger rewards
-        new Upgrade("silkcushion", "Silk cushion", "cushion", new[] { 6500 }, new[] { 45 }, "The Comfy bar drains 15% slower (on top of Plush bedding)."),
-        new Upgrade("heirloombell", "Heirloom bell", "bell", new[] { 9000 }, new[] { 55 }, "A family heirloom bell. +3% pay for milk.", true, Cow: true),
-        new Upgrade("nightowl", "Night owl", "milk", new[] { 10000 }, new[] { 62 }, "You get tired 2 hours later each day (on top of Steady producer)."),
-        new Upgrade("royalhalter", "Royal halter", "ribbon", new[] { 12000 }, new[] { 70 }, "A halter fit for royalty. +3% pay for milk.", true, Cow: true),
-        new Upgrade("spring", "Endless spring", "water", new[] { 15000 }, new[] { 85 }, "Watered drains 20% slower."),
-        new Upgrade("sweettooth", "Sweet tooth", "clover", new[] { 18000 }, new[] { 92 }, "Treat milk boosts last 15% longer."),
+        new Upgrade("silkcushion", "Silk cushion", "cushion", new[] { 7000 }, new[] { 45 }, "The Comfy bar drains 15% slower (on top of Plush bedding)."),
+        new Upgrade("heirloombell", "Heirloom bell", "bell", new[] { 19000 }, new[] { 55 }, "A family heirloom bell. +3% pay for milk.", true, Cow: true),
+        new Upgrade("nightowl", "Night owl", "milk", new[] { 18000 }, new[] { 62 }, "You get tired 2 hours later each day (on top of Steady producer)."),
+        new Upgrade("royalhalter", "Royal halter", "ribbon", new[] { 25000 }, new[] { 70 }, "A halter fit for royalty. +3% pay for milk.", true, Cow: true),
+        new Upgrade("spring", "Endless spring", "water", new[] { 50000 }, new[] { 85 }, "Watered drains 20% slower."),
+        new Upgrade("sweettooth", "Sweet tooth", "clover", new[] { 45000 }, new[] { 92 }, "Treat milk boosts last 15% longer."),
         // Bulls: unlocked by bull level, only for bulls (a cow who's also a bull gets both sets)
-        new Upgrade("nosering", "Nose ring", "ribbon", new[] { 300 }, new[] { 5 }, "A polished brass ring. +3% pay for seed.", true, Bull: true),
-        new Upgrade("studbook", "Stud book", "coin", new[] { 900 }, new[] { 10 }, "25 breedings a day at full seed output instead of 20.", Bull: true),
-        new Upgrade("horncaps", "Brass horn caps", "bell", new[] { 1600 }, new[] { 20 }, "Shining caps for your horns. +5% pay for seed.", true, Bull: true),
-        new Upgrade("prizestud", "Prize stud", "ribbon", new[] { 2400 }, new[] { 25 }, "Bull xp from breeding +25%.", Bull: true),
-        new Upgrade("breedpen", "Breeding pen", "bucket", new[] { 4000 }, new[] { 35 }, "Each breeding in your dairy gives the dairy xp.", Bull: true),
-        new Upgrade("herdsire", "Herd sire", "milk", new[] { 7000 }, new[] { 50 }, "Your seed fills your vials 15% faster.", Bull: true),
-        new Upgrade("bullsash", "Champion bull sash", "coin", new[] { 12000 }, new[] { 75 }, "+10% pay for seed, and your breeding output never drops below 60%.", true, Bull: true),
-        new Upgrade("legendstud", "Legendary stud", "coin", new[] { 20000 }, new[] { 100 }, "30 breedings a day at full seed output.", Bull: true),
-        new Upgrade("crown", "Velvet crown", "coin", new[] { 25000 }, new[] { 100 }, "The final prize: a gold crown on your HUD and next to your name in your dairy's member list.", true),
+        new Upgrade("nosering", "Nose ring", "ribbon", new[] { 125 }, new[] { 5 }, "A polished brass ring. +3% pay for seed.", true, Bull: true),
+        new Upgrade("studbook", "Stud book", "coin", new[] { 350 }, new[] { 10 }, "25 breedings a day at full seed output instead of 20.", Bull: true),
+        new Upgrade("horncaps", "Brass horn caps", "bell", new[] { 700 }, new[] { 20 }, "Shining caps for your horns. +5% pay for seed.", true, Bull: true),
+        new Upgrade("prizestud", "Prize stud", "ribbon", new[] { 1000 }, new[] { 25 }, "Bull xp from breeding +25%.", Bull: true),
+        new Upgrade("breedpen", "Breeding pen", "bucket", new[] { 2500 }, new[] { 35 }, "Each breeding in your dairy gives the dairy xp.", Bull: true),
+        new Upgrade("herdsire", "Herd sire", "milk", new[] { 4000 }, new[] { 50 }, "Your seed fills your vials 15% faster.", Bull: true),
+        new Upgrade("bullsash", "Champion bull sash", "coin", new[] { 25000 }, new[] { 75 }, "+10% pay for seed, and your breeding output never drops below 60%.", true, Bull: true),
+        new Upgrade("legendstud", "Legendary stud", "coin", new[] { 12000 }, new[] { 100 }, "30 breedings a day at full seed output.", Bull: true),
+        new Upgrade("crown", "Velvet crown", "coin", new[] { 55000 }, new[] { 100 }, "The final prize: a gold crown on your HUD and next to your name in your dairy's member list.", true),
     };
 
     public static Upgrade? UpgradeById(string id) => Upgrades.FirstOrDefault(u => u.Id == id);

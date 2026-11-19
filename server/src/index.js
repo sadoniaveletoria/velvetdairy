@@ -36,7 +36,7 @@ const XP_PER_BEAT = 60;             // most dairy XP one heartbeat can carry
 const DELIVERY_XP_PER_OZ = 3;       // a filled buy order gives the dairy it was delivered to this much
 const DELIVERER_XP_PER_OZ = 1;      // and the deliverer's own dairy this much
 const MAX_DONATION = 100000;
-const TIER_PRICE = [0, 0, 150, 400, 900];   // fund coins to raise a stall to this tier
+const TIER_PRICE = [0, 0, 300, 1000, 2500];   // fund coins to raise a stall to this tier (150, 400, 900 before 0.9.99)
 const LEADERBOARD_SIZE = 20;
 const GRADE_PRICE = [6, 8, 10, 12, 14];   // coins per oz the dairy pays a cow, by grade (C..S+)
 const PAY_PER_LEVEL = 0.02;         // each dairy level adds 2% to what it pays
@@ -62,7 +62,7 @@ const FEED_COOLDOWN = 900;          // a farmer can feed each cow or bull from t
 // Developer (same phrase hash as the plugin's dev mode)
 const DEV_KEY_HASH = "7d4e0a8c4a26de8d2843e2a563f667d74beda3b81ffa447c22bd40d93b5af76f";
 // Weekly contracts
-const CONTRACT_BASE_OZ = 1500, CONTRACT_OZ_PER_LEVEL = 250, CONTRACT_NEED_MAX = 6000;   // weekly contract size
+const CONTRACT_BASE_OZ = 600, CONTRACT_OZ_PER_LEVEL = 150, CONTRACT_NEED_MAX = 3500;   // weekly contract size (1,500 + 250 a level, up to 6,000, before 0.9.99)
 const BELL_GAP = 3600;               // a dairy's feeding bell rings at most once an hour
 
 /** The weekend milk contest: all of Saturday and Sunday (UTC). Milk pumped into a dairy's tank then also fills its contract. */
@@ -80,7 +80,7 @@ const CONTRACT_MAX_OZ = 1200;       // most one shipment can carry
 const CONTRACT_XP_PER_OZ = 1.5, CONTRACT_FUND_PER_OZ = 4;             // most milk a farmer or owner can carry out of the tank at once
 const PUMP_PER_BEAT = 120;          // most oz one heartbeat can add to the dairy tank
 const MEMBER_DAILY_PUMP = 1500;     // most oz one member can add to a dairy tank per day
-// A bull's seed works like milk, but there's far less of it (a tenth of milk's speed, up to a fifth at S+), and each oz pays 10x
+// A bull's seed works like milk, but there's far less of it (15% of milk's speed at C, up to a fifth at S+), and each oz pays 5x
 const SEED_PER_BEAT = 24;
 const MEMBER_DAILY_SEED = 300;
 const SEED_PRICE_MULT = 5;   // the plugin's DairyGame.SeedPriceMult: seed pays this many times milk's price
@@ -217,8 +217,8 @@ const STALL_CAP = 16;
 const stallSlots = () => STALL_CAP;
 /** Best stall tier allowed: 2 at first, 3 from level 5, 4 from level 12. */
 const maxTier = level => level >= 12 ? 4 : level >= 5 ? 3 : 2;
-/** Fund coins for the next stall: the first is free, then they climb fast (250, 1,000, 2,250, 4,000, 6,250...). */
-const stallPrice = count => 250 * count * count;
+/** Fund coins for the next stall: the first is free, then they climb fast (500, 2,000, 4,500, 8,000, 12,500...). */
+const stallPrice = count => 500 * count * count;
 /** Monday (UTC) of this week, e.g. "2026-11-02". */
 function weekKey(date = new Date()) {
   const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));

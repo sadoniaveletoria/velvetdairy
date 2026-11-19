@@ -32,7 +32,7 @@ public sealed class GuideWindow : Window
         {
             "Cow: makes milk and gets milked. Paid per ounce at milking time. Cows treat themselves (food, water, rest, treats) for faster milk.",
             "Farmer: hand milks the dairy's cows (and gets a 25% share of what the cow is paid, on top), fills jugs from the dairy tank and delivers milk. Farmers can invite and give roles to others, farmer included.",
-            "Bull: makes seed and gets milked, the way a cow makes milk: the same needs and care, vials instead of bottles (a tenth the size), seed grades, stalls and hand milking, pay per oz, and a seed tank at the dairy. Seed comes in at 10% of milk speed at Grade C, up to 20% at S+, and pays five times milk's price per oz (seed has its own daily earnings limit, separate from milk). With the Corruption plugin, bulls also breed their dairy's cows.",
+            "Bull: makes seed and gets milked, the way a cow makes milk: the same needs and care, vials instead of bottles (a tenth the size), seed grades, stalls and hand milking, pay per oz, and a seed tank at the dairy. Seed comes in at 15% of milk speed at Grade C, up to 20% at S+, and pays five times milk's price per oz. Seed gives a bit less xp than milk would, since bulls also level from breeding. With the Corruption plugin, bulls also breed their dairy's cows.",
             "Owner: runs the dairy. Marks out where it is, sets up stalls, invites farmers, cows and bulls, spends the dairy fund and posts buy orders. The owner can also play any mix of roles.",
             "You can hold several roles at once (a Cow + Farmer + Bull can take care of everyone). Add cow or bull to yourself any time on Dairy > Overview. Farmer is given by a farmer or the owner. Only the owner takes roles away.",
             "Each role has its own level: cow level (milk speed and shop unlocks), farmer level (unlocks bigger farmer tanks) and bull level. Adding or losing a role never loses its progress. The Roles tab has a page for each: cow level and milk quality, farmer level and tank, bull level and seed quality.",
@@ -105,7 +105,7 @@ public sealed class GuideWindow : Window
             "2. Dairy tab: give it a name, choose public or private, whether to show your name, and what you play as.",
             "3. Stand in the middle and press Start marking here. A box is drawn on the ground: pink sides, blue front. Use Width, Length and Turn (and Face my way) until it covers your dairy. Height is how far up or down still counts.",
             "4. Press Register my dairy. Boxes can't overlap another dairy in the same zone and world.",
-            "5. Stalls: sit on a seat inside the box (or your private place) and press Add on Dairy > Stalls. The first stall is free; after that there's no limit by level, but each new one costs more from the dairy fund (250, 1,000, 2,250, 4,000...).",
+            "5. Stalls: sit on a seat inside the box (or your private place) and press Add on Dairy > Stalls. The first stall is free; after that there's no limit by level, but each new one costs more from the dairy fund (500, 2,000, 4,500, 8,000...).",
             "6. Invite people: right-click a player > Eorzea Milkers > Invite as cow, bull or farmer, or target them and use the Members panel. For people already in your dairy, the same menu (or Manage members) gives them more roles.",
             "You can move or resize the box any time, even to a different zone: Dairy > Listing > Move or resize. To move a stall, sit on its new seat and press Move here on Dairy > Stalls; it keeps its name and tier. Stalls left outside a moved box stop working until you move them.",
             "You can also give the dairy a private place just for members, like your home or apartment (Dairy > Listing > Private place): use the whole house, or draw borders around part of it. Members are in the dairy there, so milking, stalls, resting and chores all work; visitors, the directory and deliveries only ever see the public area.",
@@ -126,7 +126,7 @@ public sealed class GuideWindow : Window
         }),
         new("Weekly contract", new[]
         {
-            "Every week (Monday 00:00 UTC) the Grand Creamery gives each dairy a contract: 1,500 oz at dairy level 1, plus 250 oz a level (up to 6,000). Any milk counts. Fill it for the full reward; if it isn't full by Monday, your dairy still gets the share it delivered (half the milk, half the reward).",
+            "Every week (Monday 00:00 UTC) the Grand Creamery gives each dairy a contract: 600 oz at dairy level 1, plus 150 oz a level (up to 3,500). Any milk counts. Fill it for the full reward; if it isn't full by Monday, your dairy still gets the share it delivered (half the milk, half the reward).",
             "Farmers and the owner fill jugs at the dairy, take them to the Grand Creamery (Dairy > Contract shows where, with Show on map) and ship them there.",
             "When it's full the dairy gets dairy XP (which counts on the weekly leaderboard) and coins for the fund, and everyone is told.",
         }),
@@ -134,7 +134,7 @@ public sealed class GuideWindow : Window
         {
             "Dairies tab: how many people are playing right now, every dairy (public ones show where they are), and this week's top dairies.",
             "The feeding bell (Herd Care, farmers and the owner, in the dairy, once an hour): everyone in the dairy hears it, and each cow and bull picks one bar to fill right up, plus a 20 minute boost.",
-            "Weekly contract: 1,500 oz at dairy level 1, growing 250 oz a level up to 6,000 oz. Weekend milk contest (Saturday and Sunday, UTC): milk pumped into the tank also fills the contract, so it counts twice; the Contract card shows the top pumpers and last weekend's champion.",
+            "Weekly contract: 600 oz at dairy level 1, growing 150 oz a level up to 3,500 oz. Weekend milk contest (Saturday and Sunday, UTC): milk pumped into the tank also fills the contract, so it counts twice; the Contract card shows the top pumpers and last weekend's champion.",
             "Details (Dairies tab): a dairy's address, owner, what it's looking for and description, its tank (milk and seed) and stalls, and who's there now with roles and levels, members or visiting, and whether each cow can be bred. Players who don't share (scan setting) are only counted.",
             "Visit: with the Lifestream plugin it travels to a dairy in a house, or to the ward of an outdoor dairy in a residential district (and flags the spot on your map). Other outdoor dairies are flagged on your map. Without Lifestream it copies the address.",
             "You can turn the network off in Settings; the game then runs on its own.",

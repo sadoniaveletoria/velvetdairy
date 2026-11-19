@@ -25,7 +25,10 @@ public sealed class ChangelogWindow : Window
     {
         new("0.9.99", "Shop prices and no daily pay limit", new[]
         {
-            "Shop prices are lower for cow upgrades up to level 30 (Velvet champion sash 1,250, was 5,000; all of them together about 7,400, was 27,000). You're usually a little short when something unlocks and catch up in a couple of days, with coins left over to give your dairy's fund.",
+            "Every price was rebalanced from a day-by-day simulation of cows, bulls and farmers from level 1 to 100. Playing a few hours a day, you're usually a little short when something unlocks and catch up in a few days, with about a quarter of your pay left over for your dairy's fund. Upgrades up to level 30 are much cheaper (Velvet champion sash 1,250, was 5,000); the late ones cost more (Velvet crown 55,000).",
+            "Bulls: seed comes in faster at the lower grades (15% of milk speed at Grade C, was 10%; still 20% at S+) and gives less xp per oz (breedings make up the rest), so a bull earns about what a cow does per level. Bull upgrades are cheaper (Champion bull sash 25,000 at level 75, Legendary stud 12,000).",
+            "Farmers: creamery orders pay less per oz (they used to pay several times what the cows who made the milk earned). Bigger farmer tanks cost 200 to 9,500, and the biggest unlocks at farmer level 40 (was 60).",
+            "Dairy fund: new stalls cost 500, 2,000, 4,500, 8,000... (was 250, 1,000, 2,250...), and raising a stall to Padded, Velvet and Gilded costs 300, 1,000 and 2,500 (was 150, 400, 900). The weekly contract is 600 oz at dairy level 1, plus 150 a level, up to 3,500 (was 1,500 up to 6,000), so a small dairy can fill it.",
             "No more daily pay limit: everything you earn is paid in full. The only brake is getting tired after 12 hours of milk a day (half speed, so half the pay).",
             "Metric: the contract's Ship button and the seed market's Buy and Sell buttons show litres and millilitres too.",
             "Hand milking: the farmer now sees the cow's or bull's milk going down every few seconds while milking them (it used to update only every minute or so).",

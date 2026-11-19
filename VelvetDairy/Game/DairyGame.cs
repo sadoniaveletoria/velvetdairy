@@ -3172,7 +3172,7 @@ public sealed partial class DairyGame
         // Milk has no grade: any milk fills any order. Better-paying customers show up as your farmer level grows.
         var grade = rng.Next(0, Math.Min(Grades.Count - 1, 1 + lvl / 15) + 1);
         var oz = 4 * rng.Next(2, 3 + Math.Min(6, lvl / 3));
-        var coins = (int)Math.Round(oz * Grades.All[grade].Price * 1.6f) + 10;
+        var coins = (int)Math.Round(oz * Grades.All[grade].Price * 0.4f) + 5;   // 1.6x + 10 before 0.9.99: farmers out-earned their cows several times over
         return new Order
         {
             Id = ++F.OrderSerial,
@@ -3522,7 +3522,7 @@ public sealed partial class DairyGame
                 Customer = Catalog.Customers[r.Next(Catalog.Customers.Length)],
                 Oz = oz,
                 MinGrade = 0,
-                Coins = (int)Math.Round(oz * Grades.All[grade].Price * 2f) + 20,
+                Coins = (int)Math.Round(oz * Grades.All[grade].Price * 0.5f) + 10,   // 2x + 20 before 0.9.99
                 Xp = (int)(oz * 3f) + 25 + grade * 10,
             });
         }

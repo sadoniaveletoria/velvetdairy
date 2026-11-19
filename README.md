@@ -48,12 +48,12 @@ Cow and bull are yours: you add or drop them, and they hold in every dairy you'r
 
 - **The public area** is a box you mark out anywhere: a field, a corner of a city, or a room in a house. Visitors can find it and deliver to it in person.
 - **The feeding bell:** farmers and the owner can ring it from **Herd Care**, inside the dairy and while active (not idle), once an hour. Until it can ring again the button is greyed out and shows "Bell ready in …"; hover it to see who rang it last. Everyone in the dairy hears it chime; each cow and bull gets a pop-up to pick one bar (Fed, Watered, Comfy or Happy) to fill right up, plus a 20 minute boost. The ringer gets 10 farmer xp.
-- **Weekly contract:** 1,500 oz at dairy level 1, growing 250 oz a level up to 6,000 oz.
+- **Weekly contract:** 600 oz at dairy level 1, growing 150 oz a level up to 3,500 oz.
 - **Weekend milk contest** (all of Saturday and Sunday, UTC): milk pumped into your dairy's tank also fills the weekly contract, so it counts twice (now, and again when it's shipped). The Contract card shows the weekend's top pumpers and last weekend's champion.
 - **Details:** on the **Dairies** tab, each public dairy (and your own) has a **Details** button: where it is, its owner, what it's looking for and its description, how much milk (and seed) is in its tank, how many stalls it has, and **who's there right now** with their roles and levels (cow, bull, farmer), member or visiting, and whether each cow can be bred. Handy for finding a dairy with a bull. Players whose scan setting is "My dairy only" or "Nobody" are counted but not named.
 - **Finding a dairy:** the **Dairies** tab shows each one's address (for a box outdoors in a residential district, the district, ward and the plot whose yard it's in). **Visit** uses the [Lifestream](https://github.com/NightmareXIV/Lifestream) plugin to take you there: to the house, or to that ward and plot with the spot flagged on your map. Other outdoor dairies are flagged on your map. Without Lifestream, Visit copies the address.
 - **The private place** (optional) is a second spot just for members, like your home or apartment. Use the whole house, or draw borders around part of it. Everything works there, but visitors never see it.
-- **Stalls** are seats (a chair, bench or bed) that milk whoever sits on them. Put them in either place. The first is free; each one after costs more from the dairy fund (250, 1,000, 2,250, 4,000…). Upgrade them to Wooden, Padded, Velvet and Gilded for faster milking.
+- **Stalls** are seats (a chair, bench or bed) that milk whoever sits on them. Put them in either place. The first is free; each one after costs more from the dairy fund (500, 2,000, 4,500, 8,000…). Raising a stall a tier costs 300 (Padded), 1,000 (Velvet) and 2,500 (Gilded). Upgrade them to Wooden, Padded, Velvet and Gilded for faster milking.
 - **Stall markers** (Settings, on by default): a small green dot above each stall, only on your screen, so you can see which seats milk you.
 - **The dairy fund** is shared money, filled by members' donations and the weekly contract. It pays for stalls and stall upgrades.
 - **The dairy shelf** (Pantry tab) sells treats your farmers baked, like Butter cookies (Happy and a milk boost). Any member can buy them inside the dairy; the baker gets 80% and the fund 20%. The owner sets the price.
@@ -110,7 +110,7 @@ Cow and bull are yours: you add or drop them, and they hold in every dairy you'r
 - **Deliveries:**
   - **Customer orders**, with a new one every 20 minutes.
   - **Other dairies' buy orders**, public or private. Fill them from inside your own dairy, or in person at a public dairy (same pay).
-  - **The weekly contract** (1,500 oz at dairy level 1, plus 250 a level, up to 6,000), delivered in person at any **Grand Creamery**. **Dairy → Contract** shows where they are. Fill it for the full reward; if it isn't full by Monday, your dairy still gets the share it delivered.
+  - **The weekly contract** (600 oz at dairy level 1, plus 150 a level, up to 3,500), delivered in person at any **Grand Creamery**. **Dairy → Contract** shows where they are. Fill it for the full reward; if it isn't full by Monday, your dairy still gets the share it delivered.
 
 ---
 
