@@ -328,9 +328,9 @@ await test("dairy XP: only in the dairy, capped per member per day", async () =>
   assert.equal(st2.total, 8.5, "the milk tank doesn't change");
   assert.equal(st2.seedPumpers[0].name, "Carl Bull");
   assert.ok(st2.pumpers.every(x => x.name !== "Carl Bull"));
-  // A bull's hand milking pays the farmer a share at ten times the price per oz
+  // A bull's hand milking pays the farmer a share at five times the price per oz
   const sp = await call(carl, "POST", "/v1/handpay", { farmer: "Bob Hand", world: "Gilgamesh", oz: 1, grade: 0, seed: true });
-  assert.equal(sp.data.coins, Math.round(1 * 6 * 10 * 1.02 * 0.25));
+  assert.equal(sp.data.coins, Math.round(1 * 6 * 5 * 1.02 * 0.25));
   assert.equal((await call(alice, "POST", "/v1/handpay", { farmer: "Bob Hand", world: "Gilgamesh", oz: 1, grade: 0, seed: true })).status, 400, "cows don't report seed");
   await call(bob, "POST", "/v1/inbox/claim");
   await beat(carl);
