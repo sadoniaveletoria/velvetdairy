@@ -26,6 +26,7 @@ public sealed class ChangelogWindow : Window
         new("0.9.99", "Metric buttons", new[]
         {
             "Metric: the contract's Ship button and the seed market's Buy and Sell buttons show litres and millilitres too.",
+            "Hand milking: the farmer now sees the cow's or bull's milk going down every few seconds while milking them (it used to update only every minute or so).",
         }),
         new("0.9.98", "Hand milking fix", new[]
         {

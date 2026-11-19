@@ -2175,7 +2175,7 @@ public sealed partial class DairyGame
 
         // A farmer close by and targeting you may be grooming or milking you: check in with the server sooner
         if (Networked && Farmhands.Any(f => !f.IsTest && Sight(f) is { Present: true, TargetingYou: true } s && s.Distance <= HandRange))
-            Net.BeatWithin(10);
+            Net.BeatWithin(Active != null ? 5 : 10);   // being milked: the farmer sees your milk go down sooner
 
         // "Farmers can start milking me without asking" is off: a farmer pressing Milk on you asks first (a pop-up)
         if (MilkAsk is { } asking && (Active != null || !AskingMe(asking) || HandProblem(asking) != null)) MilkAsk = null;

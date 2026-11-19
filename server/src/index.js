@@ -632,6 +632,8 @@ const notice = (env, install, note) => addInbox(env, install, "notice", 0, 0, 0,
 // This keeps database writes down without making anything that matters slower.
 const STATUS_VOLATILE = ["milk", "seedOz", "quality", "totalOz", "drainLeft", "drainAt", "w", "bonuses", "speed", "needs"];
 const STATUS_REFRESH = 90;
+// While a farmer is hand milking them, the farmer watches the milk go down: refresh much more often then
+const STATUS_REFRESH_HAND = 5;
 
 function statusNeedsWrite(oldJson, newJson, t) {
   if (!oldJson) return true;
@@ -639,7 +641,8 @@ function statusNeedsWrite(oldJson, newJson, t) {
   const strip = o => JSON.stringify(Object.fromEntries(Object.entries(o).filter(([k]) => !STATUS_VOLATILE.includes(k))));
   if (strip(old) !== strip(now_)) return true;                 // something that matters changed
   const same = JSON.stringify({ ...old, w: 0 }) === JSON.stringify({ ...now_, w: 0 });
-  return !same && t - (Number(old.w) || 0) >= STATUS_REFRESH;  // only numbers moved: refresh now and then
+  const every = now_.handBy ? STATUS_REFRESH_HAND : STATUS_REFRESH;
+  return !same && t - (Number(old.w) || 0) >= every;  // only numbers moved: refresh now and then
 }
 
 /** The status as stored: with when it was written (for the refresh above). */
