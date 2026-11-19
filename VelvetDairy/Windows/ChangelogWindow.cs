@@ -23,6 +23,10 @@ public sealed class ChangelogWindow : Window
     /// <summary>Newest first. Write these for players: what changed for them, not how.</summary>
     private static readonly Entry[] Entries =
     {
+        new("0.9.98", "Hand milking fix", new[]
+        {
+            "Fixed hand milking sometimes not starting: since 0.9.90 a cow's plugin could miss that a farmer had pressed Milk on her, while it was checking every few seconds.",
+        }),
         new("0.9.97", "Rebalance: slower milk and seed", new[]
         {
             "# Milk and seed come in slower",

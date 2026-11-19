@@ -717,7 +717,7 @@ public sealed class NetClient : IDisposable
     public void LookupPlayer(string name, string world, Action<PlayerLookup> done) =>
         Call<PlayerLookup>("GET", $"/v1/player?name={Uri.EscapeDataString(name)}&world={Uri.EscapeDataString(world)}", null, done, _ => done(new PlayerLookup()));
 
-    private int mineSeq;
+    private int mineSeq, mineApplied;
 
     public void RefreshMine()
     {
@@ -726,8 +726,11 @@ public sealed class NetClient : IDisposable
         var seq = ++mineSeq;
         Call<MyDairyReply>("GET", "/v1/dairy/mine", null, r =>
         {
-            // An older refresh that answers after a newer one (say, from before you cleaned a stall) is ignored
-            if (seq != mineSeq) return;
+            // An older refresh that answers after a newer one was already used (say, from before you cleaned a
+            // stall) is ignored. Only "already used": while refreshes are asked for every few seconds (a farmer
+            // pressing Milk on you), skipping every reply that isn't the very latest meant none ever got through.
+            if (seq < mineApplied) return;
+            mineApplied = seq;
             Mine = r.Dairy == null ? null : r;
             plugin.Game.OnMyDairy(Mine);
             if (r.You?.IsOwner == true) RefreshMyOrders();
