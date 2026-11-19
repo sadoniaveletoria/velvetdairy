@@ -172,6 +172,7 @@ public class FarmSave
     public float Quality { get; set; }                // milk quality score: unlocks better grades
     public float SeedQuality { get; set; }            // a bull's seed quality score: unlocks better seed grades (same steps as milk)
     public float DaySeedOz { get; set; }              // a bull: seed milked today (paid up to a tenth of the milk amount)
+    public float DaySeedEarned { get; set; }          // a bull: coins seed earned today, tapered on its own (separate from milk)
     public HashSet<string> Awards { get; set; } = new();
     public FarmStats Stats { get; set; } = new();
     public List<string>? Log { get; set; }

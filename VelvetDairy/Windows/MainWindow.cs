@@ -1367,9 +1367,18 @@ public sealed partial class MainWindow : Window
                 : rate >= 0.5f ? $"Earned today: {F.DayEarned:N0} · pay is at half until {Catalog.HalfEarnings:N0}, then a tenth"
                 : $"Earned today: {F.DayEarned:N0} · pay is at a tenth until the daily reset");
         if (ImGui.IsItemHovered())
-            ImGui.SetTooltip($"Everything the game pays you in a day (milking, hand milking shares, orders, goals, awards) counts together.\n" +
+            ImGui.SetTooltip($"Everything the game pays you in a day (milking, hand milking shares, orders, goals, awards) counts together, except seed.\n" +
                              $"The first {Catalog.FullEarnings:N0} coins are paid in full, then half up to {Catalog.HalfEarnings:N0}, then a tenth.\n" +
+                             "Seed has its own count with the same limits, so a big seed milking never cuts your milk pay.\n" +
                              "XP is never reduced, and coins from other players (shelf sales, buy orders) aren't counted. Resets with the daily reset.");
+        if (G.ProducesSeed)
+        {
+            var srate = Catalog.TaperRate(F.DaySeedEarned);
+            ImGui.TextColored(srate < 1f ? Theme.HoneyDeep : Theme.InkSoft,
+                srate >= 1f ? $"Seed earned today: {F.DaySeedEarned:N0} · full pay until {Catalog.FullEarnings:N0}"
+                    : srate >= 0.5f ? $"Seed earned today: {F.DaySeedEarned:N0} · seed pay is at half until {Catalog.HalfEarnings:N0}, then a tenth"
+                    : $"Seed earned today: {F.DaySeedEarned:N0} · seed pay is at a tenth until the daily reset");
+        }
     }
 
     /// <summary>One line on what you carry, with a button to the Kitchen where jugs are filled.</summary>

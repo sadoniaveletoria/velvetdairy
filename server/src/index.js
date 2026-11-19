@@ -83,7 +83,7 @@ const MEMBER_DAILY_PUMP = 1500;     // most oz one member can add to a dairy tan
 // A bull's seed works like milk, but there's far less of it (a tenth of milk's speed, up to a fifth at S+), and each oz pays 10x
 const SEED_PER_BEAT = 24;
 const MEMBER_DAILY_SEED = 300;
-const SEED_PRICE_MULT = 10;
+const SEED_PRICE_MULT = 5;   // the plugin's DairyGame.SeedPriceMult: seed pays this many times milk's price
 const SEED_DAILY_HAND_OZ = 160;
 const CREAMERY_HERE_WINDOW = 120;  // seconds: someone counts as "at the creamery" this long after their last check-in there
 const SEED_TANK_GRADE = -1;         // the dairy's seed tank is its own dairy_tank row

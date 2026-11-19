@@ -3608,6 +3608,7 @@ public sealed partial class DairyGame
         F.DayKey = key;
         F.DayOz = 0;
         F.DayEarned = 0;
+        F.DaySeedEarned = 0;
         F.DayOrders = 0;
         F.DayCare = 0;
         F.DayHand = 0;
@@ -3632,6 +3633,20 @@ public sealed partial class DairyGame
         if (coins <= 0) return 0;
         var got = Catalog.Tapered(F.DayEarned, coins);
         F.DayEarned += coins;
+        F.Coins += got;
+        F.Stats.CoinsEarned += got;
+        return got;
+    }
+
+    /// <summary>
+    /// Coins a bull's seed earns. They taper the same way as everything else, but on their own count, so seed and
+    /// milk each have their own daily limit (3,000 in full, then half up to 8,000, then a tenth).
+    /// </summary>
+    private int EarnSeed(int coins)
+    {
+        if (coins <= 0) return 0;
+        var got = Catalog.Tapered(F.DaySeedEarned, coins);
+        F.DaySeedEarned += coins;
         F.Coins += got;
         F.Stats.CoinsEarned += got;
         return got;

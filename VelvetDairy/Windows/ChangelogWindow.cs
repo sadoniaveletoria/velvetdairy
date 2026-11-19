@@ -23,8 +23,10 @@ public sealed class ChangelogWindow : Window
     /// <summary>Newest first. Write these for players: what changed for them, not how.</summary>
     private static readonly Entry[] Entries =
     {
-        new("0.9.96", "Top-up minutes", new[]
+        new("0.9.96", "Top-up minutes, seed pay", new[]
         {
+            "Seed now pays 5 times milk's price per ounce (it was 10), including a farmer's share for hand milking seed.",
+            "Seed has its own daily earnings limit, separate from milk: a big seed milking no longer puts your milk pay at half. The Pay page shows both.",
             "Food, drinks, treats and Comfy say how much time they add as your bar will show it: +60 minutes in your dairy (where bars drain half as fast), +30 elsewhere. They said +30 everywhere before.",
         }),
         new("0.9.95", "Small fixes", new[]

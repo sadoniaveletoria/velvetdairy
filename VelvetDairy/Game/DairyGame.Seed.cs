@@ -19,7 +19,7 @@ public sealed partial class DairyGame
     public static readonly float[] SeedRateByGrade = { 0.10f, 0.125f, 0.15f, 0.175f, 0.20f };
 
     /// <summary>Seed pays this many times milk's price per oz (there's only a tenth as much of it).</summary>
-    public const float SeedPriceMult = 10f;
+    public const float SeedPriceMult = 5f;   // the server's SEED_PRICE_MULT (a farmer's share of hand-milked seed)
 
     public bool ProducesSeed => IsBull;
 
@@ -215,8 +215,8 @@ public sealed partial class DairyGame
         AddSeedQuality(milkEquivalent * (hand ? Grades.QualityPerOzHand : Grades.QualityPerOz));
 
         var paidOz = Math.Clamp(Catalog.DailyPaidOz * SeedRatio - F.DaySeedOz, 0, collected);
-        var rateBefore = Catalog.TaperRate(F.DayEarned);
-        var pay = Earn((int)Math.Round(paidOz * PayRate(s.SeedGrade, true) * SeedPriceMult));
+        var rateBefore = Catalog.TaperRate(F.DaySeedEarned);
+        var pay = EarnSeed((int)Math.Round(paidOz * PayRate(s.SeedGrade, true) * SeedPriceMult));
         F.Stats.TotalSeedOz += collected;
         F.DaySeedOz += collected;
         EarnDairyXp(milkEquivalent * (hand ? 1.5f : 1f));
@@ -236,6 +236,6 @@ public sealed partial class DairyGame
         AddBullXp(xp);
         return $"{Units.Oz(collected, "0.##")} of seed as a Grade {Grades.Name(s.SeedGrade)} bull. +{pay} coins, +{xp} bull xp" +
                (paidOz < collected - 0.005f ? $" (you've been paid for {Units.Oz(Catalog.DailyPaidOz * SeedRatio, "N0")} of seed today; more still gives xp)"
-                   : Catalog.TaperRate(F.DayEarned) < rateBefore || rateBefore < 1f ? " (pay is tapered from what you've earned today)" : "");
+                   : Catalog.TaperRate(F.DaySeedEarned) < rateBefore || rateBefore < 1f ? $" (your seed has earned a lot today, so its pay is at {(Catalog.TaperRate(F.DaySeedEarned) >= 0.5f ? "half" : "a tenth")}; milk pay is separate)" : "");
     }
 }
