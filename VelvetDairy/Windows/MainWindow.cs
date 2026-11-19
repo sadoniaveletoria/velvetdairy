@@ -1016,7 +1016,7 @@ public sealed partial class MainWindow : Window
         {
             ("hay", "Fed", cow.Hunger, cow.FedBonus, Theme.HoneyDeep, "Eat feed from your pantry. Better food gives a bigger bonus (wheat grain +4% up to Golden mash +15%)."),
             ("water", "Watered", cow.Thirst, cow.WaterBonus, Theme.BlueDeep, "Drink at the trough (free, +4%) or have a Mineral block (+8%)."),
-            ("cushion", "Comfy", cow.Comfort, cow.ComfortBonus, Theme.RoseDeep, "Sit in your dairy 10 min for +30 min of Comfy (up to 1 h). It doesn't drain while you sit."),
+            ("cushion", "Comfy", cow.Comfort, cow.ComfortBonus, Theme.RoseDeep, $"Sit in your dairy 10 min for +{G.FillMinutesNow} min of Comfy. It doesn't drain while you sit."),
             ("clover", "Happy", cow.Mood, cow.HappyBonus, Theme.SageDeep, "Have a treat: clover, salt lick, cream clover or a quality treat."),
         };
 
@@ -1099,7 +1099,7 @@ public sealed partial class MainWindow : Window
         var wcd = G.DrinkWait;
         var wetFull = G.NeedFull(F.Cow.Thirst);
         cells.Add(("##drink", "water", "Drink", wetFull ? "Watered is over an hour" : wcd > TimeSpan.Zero ? $"Ready in {DairyGame.Wait(wcd)}" : $"Free · Watered +{Catalog.TroughBonus * 100:0}%",
-            "Drink", "blue", ok && wcd <= TimeSpan.Zero && !wetFull, problem ?? (wetFull ? "Your Watered bar is over an hour. Drink again once it's under." : $"Free. Watered +{Catalog.TroughBonus * 100:0}%, +30 minutes."), () => G.Drink()));
+            "Drink", "blue", ok && wcd <= TimeSpan.Zero && !wetFull, problem ?? (wetFull ? "Your Watered bar is over an hour. Drink again once it's under." : $"Free. Watered +{Catalog.TroughBonus * 100:0}%, +{G.FillMinutesNow} minutes."), () => G.Drink()));
         foreach (var item in Catalog.Feed)
         {
             if (!G.FeedUnlocked(item) || F.HiddenFeed!.Contains(item.Id)) continue;
@@ -1186,7 +1186,7 @@ public sealed partial class MainWindow : Window
 
         var ok = problem == null;
         var wcd = G.DrinkWait;
-        if (Row("##drink", "water", "Drink", G.NeedFull(F.Cow.Thirst) ? "Watered is over an hour" : wcd > TimeSpan.Zero ? $"Ready in {DairyGame.Wait(wcd)}" : $"Free · Watered +{Catalog.TroughBonus * 100:0}%, +30m", "Drink", "blue",
+        if (Row("##drink", "water", "Drink", G.NeedFull(F.Cow.Thirst) ? "Watered is over an hour" : wcd > TimeSpan.Zero ? $"Ready in {DairyGame.Wait(wcd)}" : $"Free · Watered +{Catalog.TroughBonus * 100:0}%, +{G.FillMinutesNow}m", "Drink", "blue",
                 ok && wcd <= TimeSpan.Zero && !G.NeedFull(F.Cow.Thirst), problem, width))
             G.Drink();
 
@@ -1252,7 +1252,7 @@ public sealed partial class MainWindow : Window
     }
 
     /// <summary>What a food or treat does; short leaves out the extras (for the small Care cards; the tooltip has it all).</summary>
-    private static string Effects(FeedItem f, bool short_ = false)
+    private string Effects(FeedItem f, bool short_ = false)
     {
         if (short_)
         {
@@ -1265,7 +1265,8 @@ public sealed partial class MainWindow : Window
         if (f.Fed != 0) parts.Add($"Fed +{f.Fed * 100:0}%");
         if (f.Water != 0) parts.Add($"Watered +{f.Water * 100:0}%");
         if (f.Happy != 0) parts.Add($"Happy +{f.Happy * 100:0}%");
-        if (f.Fed != 0 || f.Water != 0 || f.Happy != 0) parts.Add("+30m");
+        // 30 minutes, or 60 in your dairy (bars drain half as fast there): the same as the bar will show
+        if (f.Fed != 0 || f.Water != 0 || f.Happy != 0) parts.Add($"+{G.FillMinutesNow}m");
         if (f.BoostMinutes != 0) parts.Add($"boost {f.BoostMinutes}m");
         if (f.HoldDays != 0) parts.Add($"no grade slip for {f.HoldDays} days");
         if (f.Quality != 0) parts.Add($"+{f.Quality:0} milk quality");

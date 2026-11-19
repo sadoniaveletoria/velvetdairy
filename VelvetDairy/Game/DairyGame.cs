@@ -1091,6 +1091,12 @@ public sealed partial class DairyGame
 
     public const float NeedTopUpLimit = 60f;
 
+    /// <summary>
+    /// How many minutes one top-up (eating, drinking, a treat, a Comfy sit) adds, as the bars show it here: 30, or 60
+    /// in your dairy, where bars drain half as fast. So the messages match the bar under How you're doing.
+    /// </summary>
+    public int FillMinutesNow => (int)Math.Round(NeedMinutesLeft(Catalog.NeedFill));
+
     /// <summary>A bar that's over an hour, or already full to the top: no more until it's under.</summary>
     public bool NeedFull(float bar) => NeedMinutesLeft(bar) > NeedTopUpLimit || bar >= 99.5f;
 
@@ -1135,7 +1141,7 @@ public sealed partial class DairyGame
         if (restPendingSince >= 0) return true;
         restPendingSince = now;
         Touch();
-        Say($"Getting comfy: stay seated {Catalog.RestSettleMinutes:0} min for 30 min of Comfy (+{ComfyNow * 100:0}%).", 0);
+        Say($"Getting comfy: stay seated {Catalog.RestSettleMinutes:0} min for {FillMinutesNow} min of Comfy (+{ComfyNow * 100:0}%).", 0);
         return true;
     }
 
@@ -1183,7 +1189,7 @@ public sealed partial class DairyGame
         Cow.Comfort = Fill(Cow.Comfort);
         Cow.ComfortBonus = ComfyNow;
         Cow.ComfyReadyUtc = DateTime.UtcNow;
-        CareDone($"Comfy +{ComfyNow * 100:0}%: {(int)Math.Round(Cow.Comfort * 0.6f)} min on the bar. Stay seated to add more (up to 1 h).");
+        CareDone($"Comfy +{ComfyNow * 100:0}%: {NeedMinutesLeft(Cow.Comfort):0} min on the bar. Stay seated to add more.");
     }
 
     private void CareDone(string text)

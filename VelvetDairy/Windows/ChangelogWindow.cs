@@ -23,6 +23,10 @@ public sealed class ChangelogWindow : Window
     /// <summary>Newest first. Write these for players: what changed for them, not how.</summary>
     private static readonly Entry[] Entries =
     {
+        new("0.9.96", "Top-up minutes", new[]
+        {
+            "Food, drinks, treats and Comfy say how much time they add as your bar will show it: +60 minutes in your dairy (where bars drain half as fast), +30 elsewhere. They said +30 everywhere before.",
+        }),
         new("0.9.95", "Small fixes", new[]
         {
             "The HUD's milking line says \"(bonus)\" when your stall or grade makes what's collected more than what was taken out of you.",

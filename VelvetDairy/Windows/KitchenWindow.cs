@@ -253,7 +253,7 @@ public sealed class KitchenWindow : Window
             if (f.Fed > 0) parts.Add($"Fed +{f.Fed * 100:0}% milk speed");
             if (f.Water > 0) parts.Add($"Watered +{f.Water * 100:0}%");
             if (f.Happy > 0) parts.Add($"Happy +{f.Happy * 100:0}% milk speed");
-            if (parts.Count > 0) lines.Add($"For cows: {string.Join(", ", parts)}, filling half the bar (30 minutes).");
+            if (parts.Count > 0) lines.Add($"For cows: {string.Join(", ", parts)}, filling half the bar ({G.FillMinutesNow} minutes as you see it here).");
             if (f.BoostMinutes > 0) lines.Add($"Milk boost: +{Catalog.TreatBonus * 100:0}% milk for {f.BoostMinutes} minutes.");
             if (f.Quality > 0) lines.Add($"Milk quality +{f.Quality:0}.");
             if (r.ToShelf)
