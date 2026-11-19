@@ -23,6 +23,11 @@ public sealed class ChangelogWindow : Window
     /// <summary>Newest first. Write these for players: what changed for them, not how.</summary>
     private static readonly Entry[] Entries =
     {
+        new("0.9.95", "Small fixes", new[]
+        {
+            "The HUD's milking line says \"(bonus)\" when your stall or grade makes what's collected more than what was taken out of you.",
+            "Dairy details: refreshing it also updates that dairy's \"N there now\" in the Dairies list (it could show an old count).",
+        }),
         new("0.9.94", "Seed numbers on the HUD", new[]
         {
             "Cows who are also bulls: while you're being milked and the milk runs out, the HUD's numbers switch to your seed (in blue) as it empties, then back to milk.",

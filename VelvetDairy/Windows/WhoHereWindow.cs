@@ -57,6 +57,8 @@ public sealed class WhoHereWindow : Window
         {
             loading = false;
             reply = r;
+            // The Dairies list's "N there now" was from when the list loaded: bring it up to date too
+            if (listing != null && listing.Id == dairyId) listing.CowsHere = r.People.Count + r.Hidden;
         }, e =>
         {
             loading = false;

@@ -206,7 +206,10 @@ public sealed class HudWindow : Window
         }
         else if (s != null)
         {
-            status = seedOnly ? $"Milking · {Units.Oz(s.ExtractedSeed * s.SeedYield, "0.##")} seed" : $"Milking · {Units.Oz(s.Extracted * s.Yield, "0.#")}" + (s.ExtractedSeed > 0 ? $" + {Units.Oz(s.ExtractedSeed * s.SeedYield, "0.##")} seed" : "");
+            // What's collected so far: more than what's taken when the stall or the grade adds a bonus
+            var bonus = (seedOnly ? s.SeedYield : s.Yield) > 1.001f ? " (bonus)" : "";
+            status = seedOnly ? $"Milking · {Units.Oz(s.ExtractedSeed * s.SeedYield, "0.##")} seed{bonus}"
+                : $"Milking · {Units.Oz(s.Extracted * s.Yield, "0.#")}" + (s.ExtractedSeed > 0 ? $" + {Units.Oz(s.ExtractedSeed * s.SeedYield, "0.##")} seed" : "") + bonus;
             col = Theme.BlueDeep;
             Ui.Bar(dl, new Vector2(x, o.Y + size.Y - 26), new Vector2(x + bw, o.Y + size.Y - 22), s.Progress, Theme.BlueDeep);
         }
