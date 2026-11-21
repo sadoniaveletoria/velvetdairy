@@ -3,7 +3,7 @@
     "Author": "Sadonia",
     "Name": "Eorzea Milkers (dev)",
     "InternalName": "EorzeaMilkersDev",
-    "AssemblyVersion": "0.9.99.7",
+    "AssemblyVersion": "0.9.99.8",
     "Punchline": "Private dev build of Eorzea Milkers: its own save and its own server. Not for general use.",
     "Description": "Private dev build of Eorzea Milkers, for trying new features before they reach testing.\n\nIt's a separate plugin with its own save, its own /milkersdev command and its own server, so nothing here touches live or testing. Enable only one of the two while you play.\n\nAdults only (18+); Lalafell characters can't play.",
     "RepoUrl": "https://github.com/sadoniaveletoria/velvetdairy",
