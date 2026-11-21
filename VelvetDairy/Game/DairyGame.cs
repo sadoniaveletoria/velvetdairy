@@ -790,19 +790,45 @@ public sealed partial class DairyGame
     /// <summary>Something real happened (a click in the plugin, care, a farmer's stroke...).</summary>
     public void Touch() => lastActive = now;
 
-    /// <summary>Watches for signs someone is playing: moving, turning, targeting, emotes, and the game's own input timer.</summary>
+    private float lastInputTimer = -1;
+
+    /// <summary>The game's input timer can be read (then only real input keeps you awake).</summary>
+    public bool HasInputTimer => lastInputTimer >= 0;
+
+    /// <summary>
+    /// The game's own "seconds since the last key, mouse or controller input" (-1 if it can't be read). Real input is the
+    /// only thing that counts as being at the keyboard: a Corruption scene moves and animates you and posts emote lines
+    /// as you, and sitting on a stall milks you, without anyone touching anything (that kept people awake for hours).
+    /// </summary>
+    private static unsafe float GameInputTimer()
+    {
+        var m = FFXIVClientStructs.FFXIV.Client.UI.Misc.InputTimerModule.Instance();
+        return m == null ? -1 : m->InputTimer;
+    }
+
+    /// <summary>Watches for real input (the game's input timer); without it, falls back to moving, turning, targeting and emotes.</summary>
     private void WatchActivity()
     {
         var me = Plugin.ObjectTable.LocalPlayer;
         if (me == null) return;
-        var target = Plugin.TargetManager.Target?.GameObjectId ?? 0;
-        var emote = Emotes.Current(me);
-        if (Vector3.Distance(me.Position, lastPos) > 0.05f || Math.Abs(me.Rotation - lastRot) > 0.05f || target != lastTarget || emote != myLastEmote)
-            Touch();
-        lastPos = me.Position;
-        lastRot = me.Rotation;
-        lastTarget = target;
-        myLastEmote = emote;
+        var input = GameInputTimer();
+        if (input >= 0)
+        {
+            // The timer starts again from 0 at every input
+            if (input < 1f || (lastInputTimer >= 0 && input < lastInputTimer - 0.5f)) Touch();
+            lastInputTimer = input;
+        }
+        else
+        {
+            var target = Plugin.TargetManager.Target?.GameObjectId ?? 0;
+            var emote = Emotes.Current(me);
+            if (Vector3.Distance(me.Position, lastPos) > 0.05f || Math.Abs(me.Rotation - lastRot) > 0.05f || target != lastTarget || emote != myLastEmote)
+                Touch();
+            lastPos = me.Position;
+            lastRot = me.Rotation;
+            lastTarget = target;
+            myLastEmote = emote;
+        }
 
         var w = Wake;
         if (w != lastWake)

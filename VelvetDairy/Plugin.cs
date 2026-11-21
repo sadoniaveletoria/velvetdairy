@@ -630,7 +630,8 @@ public sealed class Plugin : IDalamudPlugin
             var text = sender.GetType().GetProperty("TextValue")?.GetValue(sender) as string
                        ?? sender.GetType().GetMethod("ExtractText", System.Type.EmptyTypes)?.Invoke(sender, null) as string
                        ?? sender.ToString() ?? "";
-            if (text.Contains(me, System.StringComparison.Ordinal)) Game.Touch();
+            // Only when the game can't tell us about real input: otherwise a Corruption scene's emote lines (sent as you) kept you awake
+            if (text.Contains(me, System.StringComparison.Ordinal) && !Game.HasInputTimer) Game.Touch();
         }
         catch
         {
