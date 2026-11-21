@@ -102,8 +102,8 @@ public sealed class TutorialWindow : Window
 
             case Step.Loop:
                 Title("How it works");
-                Para("1. Cows make milk over time while they play. Eat, drink, rest and have treats (Barn tab) for 30-minute bonuses that make milk come faster.");
-                Para("2. Get milked at one of your dairy's stalls (sit on its seat) or by one of its farmers. The dairy pays you for every ounce, more for better grades.");
+                Para("1. Cows make milk over time while they play. Drink, rest and have treats (Barn tab), and get fed by your farmers, for bonuses that make milk come faster.");
+                Para("2. Get milked at one of your dairy's stalls (sit on its seat) or by one of its farmers. Reach your daily quota and claim it in Goals: that's your pay, more for better grades.");
                 Para("3. The milk goes into the dairy's tank. Farmers and the owner deliver it to customers, other dairies and the Grand Creamery's weekly contract.");
                 Para("4. You level up as you make milk, and your dairy levels up as its members play together.");
                 Soft("Full bottles spoil after 72 hours, so empty them before you log off for a while. Standing still for 30 minutes puts you to sleep (no milk).");

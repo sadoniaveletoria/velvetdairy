@@ -909,7 +909,7 @@ public sealed partial class MainWindow : Window
         if (ImGui.IsMouseHoveringRect(sealC - new Vector2(28, 28), sealC + new Vector2(28, 28)) && seedOnly)
             ImGui.SetTooltip(SeedGradeTip());
         else if (ImGui.IsMouseHoveringRect(sealC - new Vector2(28, 28), sealC + new Vector2(28, 28)))
-            ImGui.SetTooltip($"Grade {Grades.Name(grade)} ({Grades.All[grade].Blurb}) if you're milked now.\nHigher grades pay more, milk faster and give more milk.\nYour grade comes from your milk quality, and stays up as long as you're milked every few days." +
+            ImGui.SetTooltip($"Grade {Grades.Name(grade)} ({Grades.All[grade].Blurb}) if you're milked now.\nHigher grades raise your quota pay and milk you faster.\nYour grade comes from your milk quality, and stays up as long as you're milked every few days." +
                 (G.GradeSlip > 0 ? $"\nSlipped {G.GradeSlip} grade{(G.GradeSlip > 1 ? "s" : "")}: it's been a while since you were milked. Get milked to bring it back." : "") +
                 (cow.Taint > 0 ? "\nOff taste from dumped milk: one grade lower until it wears off." : "") +
                 "\nHand milking makes up one lost grade." + GradeCapNote());
@@ -1122,7 +1122,7 @@ public sealed partial class MainWindow : Window
 
         // Nothing to eat: the last card points at the Shop
         if (cells.Count == 1)
-            cells.Add(("##careshop", "hay", "Pantry empty", "Buy feed in the Shop", "Shop", "cream", true, "Buy feed and treats.", () => tab = TabShop));
+            cells.Add(("##careshop", "clover", "Pantry empty", G.InNetDairy ? "Buy treats in the Shop" : "Buy feed in the Shop", "Shop", "cream", true, G.InNetDairy ? "Buy treats and tonics (farmers feed you from the dairy's feed bin)." : "Buy feed and treats.", () => tab = TabShop));
 
         const float cellGap = 10f, cellH = 58f;
         var fits = Math.Clamp((int)((width + cellGap) / (230 + cellGap)), 2, 6);
@@ -1212,7 +1212,7 @@ public sealed partial class MainWindow : Window
                 G.UseFeed(item.Id);
         }
 
-        if (shown == 0) Ui.Wrapped("Your pantry is empty. Buy feed in the Shop.", Theme.InkSoft, width);
+        if (shown == 0) Ui.Wrapped(G.InNetDairy ? "Your pantry is empty. Buy treats in the Shop." : "Your pantry is empty. Buy feed in the Shop.", Theme.InkSoft, width);
         Gap(4);
         if (ImGui.SmallButton("Open pantry##carepantry")) tab = TabPantry;
         ImGui.SameLine();

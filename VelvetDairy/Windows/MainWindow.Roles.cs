@@ -439,7 +439,7 @@ public sealed partial class MainWindow
             G.DumpSeed();
         Gap(4);
         SeedQualityBar(width);
-        Ui.Wrapped("Seed works like milk: the same needs (Fed, Watered, Comfy, Happy) speed it up, it's milked at stalls or by a farmer's hand into your dairy's seed tank, and it pays per oz. "
+        Ui.Wrapped("Seed works like milk: the same needs (Fed, Watered, Comfy, Happy) speed it up, it's milked at stalls or by a farmer's hand into your dairy's seed tank, and it counts toward your daily quota. "
                    + $"Your vials hold a tenth of your bottles. Seed comes in at {DairyGame.SeedRateByGrade[0] * 100:0}% of milk speed at Grade C, up to {DairyGame.SeedRateByGrade[^1] * 100:0}% at S+, and each oz pays {DairyGame.SeedPriceMult:0}x milk's price.",
             Theme.InkSoft, width);
 
@@ -477,7 +477,7 @@ public sealed partial class MainWindow
     {
         var cap = G.SeedGradeCap;
         return $"Seed Grade {Grades.Name(G.SeedGrade)} ({Grades.All[G.SeedGrade].Blurb}) if you're milked now.\n" +
-               $"Higher seed grades make more seed ({G.SeedShare * 100:0.#}% of milk speed now, {DairyGame.SeedRateByGrade[^1] * 100:0}% at S+), milk faster and pay more.\n" +
+               $"Higher seed grades make more seed ({G.SeedShare * 100:0.#}% of milk speed now, {DairyGame.SeedRateByGrade[^1] * 100:0}% at S+), milk faster and raise your quota pay.\n" +
                (G.SeedSlip > 0 ? $"Slipped {G.SeedSlip} grade{(G.SeedSlip > 1 ? "s" : "")}: it's been a while since you were milked.\n" : "") +
                (F.Cow.SeedTaint > 0 ? "One grade lower after dumping spoiled seed, until it wears off.\n" : "") +
                "Hand milking makes up one lost grade.\n" +

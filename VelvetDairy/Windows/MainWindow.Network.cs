@@ -859,7 +859,7 @@ public sealed partial class MainWindow
             var has = mine.Contains(r);
             var desc = r switch
             {
-                "cow" => "Make milk and get milked here; paid per ounce.",
+                "cow" => "Make milk and get milked here; paid for reaching your daily quota.",
                 "farmer" => "Hand milk cows, fill jugs, deliver, invite.",
                 _ => "Make seed, get milked and breed cows (Corruption).",
             };
