@@ -32,6 +32,8 @@ public sealed class ChangelogWindow : Window
             "New: the Velvet pump (dairy level 5, 2,500 from the fund): everyone's milk and seed +15% for 2 hours. Home pasture: +10% when you're milked in your own dairy.",
             "New in the Shop: Pump drops (+25% milk and seed for 30 min), Udder balm (your next 3 hand milkings give 20% more; no longer an upgrade), Second wind tonic (tire 2 hours later today, for everyone) and Churn oil (farmers' jugs fill twice as fast for an hour).",
             "Filling jugs takes time: 1 oz a second, staying in the dairy.",
+            "Your quota shows on the mini HUD under your milk. The owner can feed from the feed bin too, and playing alone off the network you still feed yourself.",
+            "Dozing and falling asleep now only look at real key, mouse or controller input. A Corruption scene (which moves and emotes you, and posts emote lines as you) no longer keeps you awake while you're away. Support info says what last counted as you being there.",
             "Bulls: seed comes in faster at the lower grades (15% of milk speed at Grade C) and gives less xp per oz (breedings make up the rest).",
             "Dairy fund prices: new stalls 500, 2,000, 4,500, 8,000..., stall tiers 300, 1,000 and 2,500. The weekly contract is 600 oz at dairy level 1, plus 150 a level, up to 3,500.",
             "No daily pay limit. The only brake is getting tired after 12 hours of milk a day.",
