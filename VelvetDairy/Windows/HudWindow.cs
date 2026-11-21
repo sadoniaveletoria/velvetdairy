@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Windowing;
@@ -165,6 +166,17 @@ public sealed class HudWindow : Window
         if (Ui.Measure(fonts.Small, capLine).X > capRoom && tCount > 1) capLine = $"/ {capText} · {tFull}/{tCount}";
         if (Ui.Measure(fonts.Small, capLine).X > capRoom) capLine = $"/ {capText}";
         Ui.Text(dl, fonts.Small, Fit(capLine, capRoom), new Vector2(x + mw + 4, o.Y + 24), Theme.InkSoft);
+        // Today's quota, under the amount ("Quota 12 / 18 oz", or claimable)
+        if (G.Producer)
+        {
+            var qDone = G.QuotaReached;
+            var claimed = G.Goals().FirstOrDefault(gl => gl.Bit == 4) is { } qg && G.Claimed(qg);
+            var qFmt = G.QuotaInSeed ? "0.##" : "0";
+            var qText = claimed ? "Quota done today" : qDone ? $"Quota reached: claim {G.QuotaCoins} in Goals"
+                : $"Quota {Units.Oz(G.QuotaHave, qFmt)} / {Units.Oz(G.QuotaNeed, qFmt)}{(G.QuotaInSeed ? " seed" : "")}";
+            Ui.Text(dl, fonts.Small, Fit(qText, o.X + size.X - 20 - x), new Vector2(x, o.Y + 37), qDone && !claimed ? Theme.SageDeep : Theme.HoneyDeep);
+        }
+
         // The grade seal sits on the jug's shoulder, like the Barn's, so it never covers the text
         Ui.Seal(dl, new Vector2(bmin.X + bh / 2 - 4, bmin.Y + bh * 0.2f), 15, Grades.Name(grade), Theme.GradeColor(grade));
 

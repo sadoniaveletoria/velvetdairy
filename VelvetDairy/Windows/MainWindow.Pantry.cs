@@ -92,7 +92,7 @@ public sealed partial class MainWindow
             };
 
             var itemProblem = item.OilMinutes > 0 ? (G.CanCarry ? null : "For farmers.")
-                : Catalog.IsBinFeed(item.Id) ? "Your Fed bar comes from your farmers' feed bin now. Sell this back."
+                : Catalog.IsBinFeed(item.Id) && G.InNetDairy ? "Your Fed bar comes from your farmers' feed bin now. Sell this back."
                 : problem;
             var buttons = new List<Btn>
             {

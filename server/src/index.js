@@ -2105,7 +2105,7 @@ async function binFeed(env, me, request) {
   const item = String(b.item || "");
   if (!FEED_BIN[item]) fail(400, "That isn't a feed.");
   const mem = await membership(env, me.id);
-  if (!mem || !hasRole(mem, "farmer")) fail(403, "Only farmers feed from the feed bin.");
+  if (!mem || !(hasRole(mem, "farmer") || mem.is_owner)) fail(403, "Only farmers and the owner feed from the feed bin.");
   if (!inOwnDairy(me, mem)) fail(400, "Go to your dairy to use its feed bin.");
   if (!(await feedBinOf(env, mem.dairy_id)).includes(item)) fail(400, `The bin doesn't have ${FEED_BIN[item].name.toLowerCase()} yet.`);
   const toId = String(b.to || "");

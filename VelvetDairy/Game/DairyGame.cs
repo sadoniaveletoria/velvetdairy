@@ -112,6 +112,9 @@ public sealed partial class DairyGame
     /// <summary>The game uses the network's dairies, roles and stalls.</summary>
     public bool Networked => F.NetEnabled && (F.NetMember != null || (Net.Api != null && Net.Last != null));
 
+    /// <summary>In a dairy on the network: farmers feed you from its bin (alone or off the network, you feed yourself).</summary>
+    public bool InNetDairy => Networked && F.NetMember != null;
+
     /// <summary>Your dairy on the network (kept in the save so it still works if the server is briefly unreachable).</summary>
     public NetMember? Member => Networked ? F.NetMember : null;
 
@@ -788,7 +791,14 @@ public sealed partial class DairyGame
     public bool Tired => F.DayAwakeMinutes >= TiredHours * 60;
 
     /// <summary>Something real happened (a click in the plugin, care, a farmer's stroke...).</summary>
-    public void Touch() => lastActive = now;
+    public void Touch(string why = "the plugin")
+    {
+        lastActive = now;
+        LastTouchWhy = why;
+    }
+
+    /// <summary>What last counted as you being here (for support info, when someone never falls asleep).</summary>
+    public string LastTouchWhy { get; private set; } = "starting";
 
     private float lastInputTimer = -1;
 
@@ -815,7 +825,7 @@ public sealed partial class DairyGame
         if (input >= 0)
         {
             // The timer starts again from 0 at every input
-            if (input < 1f || (lastInputTimer >= 0 && input < lastInputTimer - 0.5f)) Touch();
+            if (input < 1f || (lastInputTimer >= 0 && input < lastInputTimer - 0.5f)) Touch("key, mouse or controller input");
             lastInputTimer = input;
         }
         else
@@ -823,7 +833,7 @@ public sealed partial class DairyGame
             var target = Plugin.TargetManager.Target?.GameObjectId ?? 0;
             var emote = Emotes.Current(me);
             if (Vector3.Distance(me.Position, lastPos) > 0.05f || Math.Abs(me.Rotation - lastRot) > 0.05f || target != lastTarget || emote != myLastEmote)
-                Touch();
+                Touch(emote != myLastEmote ? "an emote change" : target != lastTarget ? "a target change" : "moving or turning");
             lastPos = me.Position;
             lastRot = me.Rotation;
             lastTarget = target;
@@ -833,6 +843,7 @@ public sealed partial class DairyGame
         var w = Wake;
         if (w != lastWake)
         {
+            Diag.Info("wake", $"{lastWake} -> {w} (idle {IdleSeconds / 60:0} min, last: {LastTouchWhy})");
             if (w == Wakefulness.Dozing) Say("You're dozing off. Milk comes in at half speed until you do something (move, emote, chat or click).", 2);
             else if (w == Wakefulness.Asleep)
             {
@@ -1058,7 +1069,7 @@ public sealed partial class DairyGame
         if (p != null) return Fail(p);
         if (Count(id) <= 0) return Fail($"You're out of {item.Name}. Buy more in the Shop.");
 
-        if (Catalog.IsBinFeed(item.Id)) return Fail("Your Fed bar comes from your farmers: they feed you from the dairy's feed bin.");
+        if (Catalog.IsBinFeed(item.Id) && InNetDairy) return Fail("Your Fed bar comes from your farmers: they feed you from the dairy's feed bin.");
         if (item.OilMinutes > 0)
         {
             if (!CanCarry) return Fail("Churn oil is for farmers' jugs.");
@@ -2142,7 +2153,7 @@ public sealed partial class DairyGame
     {
         var b = Blocked();
         if (b != null) return b;
-        if (!IsFarmer) return "Only farmers feed from the feed bin.";
+        if (!CanCarry) return "Only farmers and the owner feed from the feed bin.";
         if (!AtHome) return "Go to your dairy first.";
         if (distance < 0 || distance > HandRange) return $"Get within {HandRange:0} yalms of {name} first.";
         if (binReady.TryGetValue(id, out var t) && t > now) return $"{name} can be fed again in {Wait(TimeSpan.FromSeconds(t - now))}.";
@@ -2900,7 +2911,7 @@ public sealed partial class DairyGame
     {
         if (Blocked() != null) return Blocked();
         if (!FeedForYou(item)) return item.Role == "bull" ? "For bulls." : item.Role == "farmer" ? "For farmers." : "For cows who are also bulls.";
-        if (item.Id == "hay" && FarmerLevel < 6) return "Farmers mill wheat grain into flour from farmer level 6.";
+        if (item.Id == "hay" && InNetDairy && FarmerLevel < 6) return "Farmers mill wheat grain into flour from farmer level 6.";
         if (item.Id != "hay" && FeedUnlockLevel(item) < item.Unlock) return $"Unlocks at {(item.Role == "bull" ? "bull " : item.Role == "both" ? "cow and bull " : item.Role == "farmer" ? "farmer " : "")}level {item.Unlock}.";
         if (F.Coins < item.Price * qty) return "Not enough coins.";
         return null;
@@ -2943,12 +2954,12 @@ public sealed partial class DairyGame
 
     /// <summary>Bull foods are for bulls; cow-and-bull foods for those who are both.</summary>
     public bool FeedForYou(FeedItem item) =>
-        Catalog.IsBinFeed(item.Id) ? item.Id == "hay" && CanCarry   // feed is for the dairy's bin; farmers buy wheat to mill
+        Catalog.IsBinFeed(item.Id) && InNetDairy ? item.Id == "hay" && CanCarry   // feed is for the dairy's bin; farmers buy wheat to mill
         : item.Role == "farmer" ? CanCarry
         : Producer && item.Role switch { "bull" => IsBull, "both" => IsCow && IsBull, _ => true };
 
     /// <summary>The level a food unlocks by: bull level, the lower of cow and bull level, or your shop level.</summary>
-    public int FeedUnlockLevel(FeedItem item) => Catalog.IsBinFeed(item.Id) ? 99
+    public int FeedUnlockLevel(FeedItem item) => Catalog.IsBinFeed(item.Id) && InNetDairy ? 99
         : item.Role switch { "bull" => BullLevel, "both" => Math.Min(Level, BullLevel), "farmer" => FarmerLevel, _ => ShopLevel };
 
     /// <summary>In the Shop and Care for you: yours to buy, and unlocked.</summary>
@@ -3858,6 +3869,7 @@ public sealed partial class DairyGame
         F.DayClaimed |= 1 << g.Bit;
         var goalPaid = Earn(g.Coins > 0 ? g.Coins : GoalCoins);
         if (g.Farmer) AddFarmerXp(GoalXp);
+        else if (!ProducesMilk && ProducesSeed) F.BullXp += GoalXp;   // a bull who isn't a cow levels as a bull
         else AddXp(GoalXp);
         F.Stats.DailiesDone++;
         // Each set has its own bonus for finishing all four

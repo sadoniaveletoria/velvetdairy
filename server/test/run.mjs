@@ -1065,7 +1065,7 @@ await test("quotas, the feed bin, the Velvet pump and order fund pay", async () 
   assert.equal((await call(alice, "POST", "/v1/dairy/feedbin/grain")).status, 400, "already there");
   assert.equal((await call(alice, "GET", "/v1/dairy/mine")).data.progress.fund, 4000);
   await call(carl, "POST", "/v1/inbox/claim");
-  assert.equal((await call(carl, "POST", "/v1/feedbin/feed", { item: "grain", to: alice.id })).status, 403, "only farmers feed");
+  assert.equal((await call(carl, "POST", "/v1/feedbin/feed", { item: "grain", to: alice.id })).status, 403, "only farmers (and the owner) feed");
   assert.equal((await call(bob, "POST", "/v1/feedbin/feed", { item: "goldenmash", to: carl.id })).status, 400, "not unlocked");
   assert.equal((await call(bob, "POST", "/v1/feedbin/feed", { item: "grain", to: carl.id })).status, 200);
   assert.equal((await call(bob, "POST", "/v1/feedbin/feed", { item: "hay", to: carl.id })).status, 400, "once every 15 minutes");

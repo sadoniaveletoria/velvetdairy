@@ -59,6 +59,8 @@ public static class Diag
         L(m == null ? "Dairy: none" : $"Dairy: {m.Dairy}{(m.IsOwner ? " (owner)" : "")} · roles {string.Join(", ", g.MyRoles)}");
         L($"Levels: cow {g.Level}, farmer {g.FarmerLevel}, bull {g.BullLevel} · grade {Grades.Name(g.CurrentGrade)} · milk {f.Cow.Milk:0.#}/{g.Capacity:0} oz · coins {f.Coins:N0} · earned today {f.DayEarned:N0}");
         L($"Where: territory {Plugin.ClientState.TerritoryType} · in dairy: {(g.Where.InDairy ? "yes" : "no")} ({g.Where.Why}) · wake {g.Wake}");
+        L($"Awake: idle {g.IdleSeconds / 60:0.#} min · last counted: {g.LastTouchWhy} · game input timer {(g.HasInputTimer ? "read" : "not read")}"
+          + (p.Dev && !f.DevCanSleep ? " · developer mode: never dozes (Settings > Developer to allow)" : ""));
         L($"Cow settings: stalls start milking {f.AutoStall} · farmers milk without asking {f.AutoHand} · any emote counts {f.AnyLoopEmote}");
         L($"Milk button: does {g.MilkEmoteFor(null)} · own pick '{f.MilkButtonEmote}' · Penumbra {(PenumbraLink.Available ? "yes" : "no")}");
         if (f.MilkModDir.Length > 0)
