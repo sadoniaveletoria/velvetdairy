@@ -1114,4 +1114,30 @@ await test("dev server test bots: an owner adds a cow, a farmer and a bull, and 
   } finally { delete env.BOTS; }
 });
 
+await test("dev server test dairy: a bot-run public dairy you visit as a guest", async () => {
+  const tess = player("Tess Visitor");
+  await beat(tess, { name: "Tess Visitor", worldName: "Gilgamesh" });
+  const area = { territory: 135, world: 40, house: "", x: 300, y: 10, z: 300, width: 16, length: 12, height: 6, rot: 0, mapId: 16, zone: "Lower La Noscea" };
+  assert.equal((await call(tess, "POST", "/v1/dev/testdairy", { on: true, area })).status, 404, "not on the live server");
+  env.BOTS = "on";
+  try {
+    const made = await call(tess, "POST", "/v1/dev/testdairy", { on: true, area, worldName: "Gilgamesh", dcName: "Aether" });
+    assert.equal(made.status, 200, JSON.stringify(made.data));
+    assert.equal((await call(tess, "POST", "/v1/dev/testdairy/stall", { x: 301, y: 10, z: 301 })).status, 200);
+    const listed = (await call(tess, "GET", "/v1/dairies")).data.dairies.find(d => d.id === made.data.id);
+    assert.ok(listed && listed.name === "Test Pasture (dev)" && !listed.mine, "listed, and not hers");
+    const r = (await beat(tess, { pos: { territory: 135, world: 40, house: "", x: 302, y: 10, z: 299 }, awake: true })).data;
+    assert.equal(r.here?.guest, true, JSON.stringify(r.here));
+    assert.equal(r.here.stalls.length, 1);
+    assert.ok(r.here.farmers.some(f => f.name === "Clyde Bot"), "the bot farmer is on");
+    // Making it again moves it (one per tester); removing it takes everything away
+    const again = await call(tess, "POST", "/v1/dev/testdairy", { on: true, area: { ...area, x: 400 } });
+    assert.equal(again.status, 200, JSON.stringify(again.data));
+    assert.ok(!(await call(tess, "GET", "/v1/dairies")).data.dairies.some(d => d.id === made.data.id), "the old one is gone");
+    assert.equal((await call(tess, "POST", "/v1/dev/testdairy", { on: false })).status, 200);
+    assert.ok(!(await call(tess, "GET", "/v1/dairies")).data.dairies.some(d => d.name === "Test Pasture (dev)"));
+    assert.equal((await call(tess, "POST", "/v1/dev/testdairy/stall", { x: 1, y: 1, z: 1 })).status, 400, "no test dairy now");
+  } finally { delete env.BOTS; }
+});
+
 console.log(`\n${passed} passed`);

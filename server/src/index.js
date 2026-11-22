@@ -348,6 +348,8 @@ async function route(request, env) {
     ["PUT", /^\/v1\/members\/([0-9a-f]{32})\/quota$/, m => setQuota(env, me, m[1], request)],
     ["POST", /^\/v1\/dev\/bots$/, () => setBots(env, me, request)],
     ["POST", /^\/v1\/dev\/bots\/([0-9a-f]{32})\/milk$/, m => milkBot(env, me, m[1])],
+    ["POST", /^\/v1\/dev\/testdairy$/, () => setTestDairy(env, me, request)],
+    ["POST", /^\/v1\/dev\/testdairy\/stall$/, () => addTestStall(env, me, request)],
     ["GET", /^\/v1\/pantry$/, () => pantryView(env, me)],
     ["POST", /^\/v1\/pantry\/add$/, () => pantryAdd(env, me, request)],
     ["POST", /^\/v1\/pantry\/take$/, () => pantryTake(env, me, request)],
@@ -717,6 +719,7 @@ async function heartbeat(env, me, request) {
   await syncSelfRoles(env, me.id, myRows);
   if (env.BOTS === "on" && home) await tickBots(env, home.dairy_id);   // dev server: the test bots keep up with you
   const here = (await dairyInArea(env, b.pos, mine)) || (await dairyAt(env, b.houseId));
+  if (env.BOTS === "on" && here && !mine.includes(here.id)) await tickBots(env, here.id);   // visiting a bot-run test dairy
   if (home && here && here.id !== home.dairy_id && mine.includes(here.id)) await setActive(env, me.id, here.id).run();
   const charHash = isHash(b.charHash) ? b.charHash : me.char_hash;
   if (t - me.last_seen >= HEARTBEAT_MIN || (here?.id ?? null) !== me.at_dairy || charHash !== me.char_hash) {
@@ -2847,9 +2850,99 @@ async function setBots(env, me, request) {
   return { ok: true, bots: BOTS.length };
 }
 
+// A public dairy run by a bot owner, for testing visiting as a guest (dev server only). One per tester.
+const TEST_DAIRY_BOTS = [
+  { kind: "cow", name: "Bessie Bot", role: "cow" },
+  { kind: "farmer", name: "Clyde Bot", role: "farmer" },
+];
+
+/** The bot owner (install id) and dairy of the test dairy this tester made, if any. */
+async function testDairyOf(env, me) {
+  return await env.DB.prepare("SELECT install, dairy_id FROM dev_bots WHERE kind = 'owner' AND json_extract(state, '$.by') = ?").bind(me.id).first();
+}
+
+async function newBotInstall(env, t, dairyId, kind, role, name, state) {
+  const id = (randomId() + randomId()).slice(0, 32);
+  await env.DB.batch([
+    env.DB.prepare("INSERT INTO installs (id, key_hash, created, last_seen, at_dairy, version) VALUES (?, ?, ?, ?, ?, 'bot')").bind(id, randomId(), t, t, dairyId),
+    env.DB.prepare("INSERT INTO dev_bots (install, dairy_id, kind, state, last) VALUES (?, ?, ?, ?, ?)").bind(id, dairyId || "", kind, JSON.stringify(state), t),
+  ]);
+  if (dairyId) await env.DB.prepare("INSERT INTO memberships (install, dairy_id, role, name, world_name, status, joined) VALUES (?, ?, ?, ?, 'Bot', '', ?)")
+    .bind(id, dairyId, role, name, t).run();
+  return id;
+}
+
+async function removeTestDairy(env, me) {
+  const td = await testDairyOf(env, me);
+  if (!td) return;
+  const bots = (await env.DB.prepare("SELECT install FROM dev_bots WHERE dairy_id = ? AND kind != 'owner'").bind(td.dairy_id).all()).results.map(r => r.install);
+  if (td.dairy_id) await deleteDairy(env, { id: td.install });
+  const stmts = [];
+  for (const id of [...bots, td.install]) {
+    stmts.push(env.DB.prepare("DELETE FROM memberships WHERE install = ?").bind(id));
+    stmts.push(env.DB.prepare("DELETE FROM installs WHERE id = ?").bind(id));
+    stmts.push(env.DB.prepare("DELETE FROM inbox WHERE install = ?").bind(id));
+    stmts.push(env.DB.prepare("DELETE FROM dev_bots WHERE install = ?").bind(id));
+  }
+  await env.DB.batch(stmts);
+}
+
+/**
+ * Dev server: makes (on: true, with an area box centered where you stand) or removes a public test dairy run by a
+ * bot owner, with Bessie (a cow) and Clyde (a farmer) in it. You're not a member, so walking in makes you a guest.
+ */
+async function setTestDairy(env, me, request) {
+  if (env.BOTS !== "on") fail(404, "Not found.");
+  const b = await body(request);
+  await removeTestDairy(env, me);
+  if (b.on !== true) return { ok: true };
+  const area = readArea(b.area);
+  if (!area) fail(400, "Stand where the test dairy should go.");
+  if (isIsland(area.territory)) fail(400, "Test dairies can't go on an island: visitors can't tell whose island it is.");
+  const t = now();
+  const ownerId = await newBotInstall(env, t, null, "owner", "none", "Test Bot", { by: me.id });
+  const req = new Request("https://dev/v1/dairy", { method: "PUT", body: JSON.stringify({
+    name: "Test Pasture (dev)", description: "A bot-run public dairy for testing visits.", isPublic: true, showOwner: true,
+    ownerName: "Test Bot", worldName: clean(b.worldName, 30), dcName: clean(b.dcName, 30), namesFor: area.world, roles: [],
+    area: b.area, outdoorWard: b.outdoorWard, outdoorPlot: b.outdoorPlot, districtKind: b.districtKind }) });
+  let id;
+  try {
+    ({ id } = await putDairy(env, { id: ownerId }, req));
+  } catch (e) {
+    await env.DB.batch([env.DB.prepare("DELETE FROM installs WHERE id = ?").bind(ownerId), env.DB.prepare("DELETE FROM dev_bots WHERE install = ?").bind(ownerId)]);
+    throw e;
+  }
+  await env.DB.batch([
+    env.DB.prepare("UPDATE dev_bots SET dairy_id = ? WHERE install = ?").bind(id, ownerId),
+    env.DB.prepare("UPDATE installs SET at_dairy = ? WHERE id = ?").bind(id, ownerId),
+    // A little fund and level so its stalls and shop look like a real dairy's
+    env.DB.prepare("INSERT INTO dairy_progress (dairy_id, xp, fund) VALUES (?, ?, ?) ON CONFLICT(dairy_id) DO UPDATE SET xp = excluded.xp, fund = excluded.fund")
+      .bind(id, xpToReach(5), 5000),
+  ]);
+  for (const bot of TEST_DAIRY_BOTS) {
+    const state = { milk: bot.kind === "cow" ? 10 : 0, seed: 0, fed: 30, water: 60, comfy: 60, happy: 30, fedBonus: 0.04, grade: 0, quality: 0, level: 1 };
+    await newBotInstall(env, t, id, bot.kind, bot.role, bot.name, state);
+  }
+  await tickBots(env, id);
+  return { ok: true, id };
+}
+
+/** Dev server: adds a stall to your test dairy where you're sitting (free, up to the stall cap). */
+async function addTestStall(env, me, request) {
+  if (env.BOTS !== "on") fail(404, "Not found.");
+  const b = await body(request);
+  const td = await testDairyOf(env, me);
+  if (!td?.dairy_id) fail(400, "Make a test dairy first.");
+  const count = await env.DB.prepare("SELECT COUNT(*) AS n FROM stalls WHERE dairy_id = ?").bind(td.dairy_id).first();
+  if (count.n >= STALL_CAP) fail(400, `A dairy can have up to ${STALL_CAP} stalls.`);
+  await env.DB.prepare("INSERT INTO stalls (id, dairy_id, name, x, y, z, tier, created) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+    .bind(randomId(), td.dairy_id, `Test stall ${count.n + 1}`, num(b.x, "x"), num(b.y, "y"), num(b.z, "z"), Math.max(1, Math.min(4, Math.floor(Number(b.tier) || 2))), now()).run();
+  return { ok: true, stalls: count.n + 1 };
+}
+
 /** Moves the dairy's bots forward to now: milk and seed fill, needs drain, and they do their role's things. */
 async function tickBots(env, dairyId) {
-  const bots = (await env.DB.prepare("SELECT * FROM dev_bots WHERE dairy_id = ?").bind(dairyId).all()).results;
+  const bots = (await env.DB.prepare("SELECT * FROM dev_bots WHERE dairy_id = ? AND kind != 'owner'").bind(dairyId).all()).results;
   if (!bots.length) return;
   const t = now();
   // Real members in the dairy right now (what the bot farmer can groom and feed)

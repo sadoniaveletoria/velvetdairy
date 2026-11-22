@@ -2218,6 +2218,65 @@ public sealed partial class DairyGame
     public void SetBots(bool on) =>
         Net.SetBots(on, () => Say(on ? "Test bots added: Daisy (cow), Hank (farmer) and Brutus (bull)." : "Test bots removed.", 1), e => Fail(e));
 
+    /// <summary>Dev server: a bot-run public dairy you made, for testing visiting as a guest.</summary>
+    public bool HasTestDairy => F.TestDairyMade;
+
+    /// <summary>Dev server: makes a public test dairy (owned by a bot, with a bot cow and farmer) in a box centered on you.</summary>
+    public void MakeTestDairyHere()
+    {
+        var me = Plugin.ObjectTable.LocalPlayer;
+        if (me == null) return;
+        if (Estate.Island(Plugin.ClientState.TerritoryType)) { Fail("Test dairies can't go on an island."); return; }
+        var house = Estate.Current();
+        var area = new DairyArea
+        {
+            Territory = Plugin.ClientState.TerritoryType,
+            World = me.CurrentWorld.RowId,
+            House = Estate.PlaceKey(),
+            X = me.Position.X, Y = me.Position.Y, Z = me.Position.Z,
+            Rot = me.Rotation,
+            MapId = Plugin.ClientState.MapId,
+            Zone = Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.TerritoryType>().GetRowOrDefault(Plugin.ClientState.TerritoryType)?.PlaceName.ValueNullable?.Name.ExtractText() ?? "",
+            Width = house != null ? 10 : 16,
+            Length = house != null ? 10 : 12,
+        };
+        var world = me.CurrentWorld.ValueNullable;
+        var outdoor = area.House.Length == 0 && Estate.DistrictKind(area.Territory) > 0;
+        var body = new
+        {
+            on = true,
+            area,
+            worldName = world?.Name.ExtractText() ?? "",
+            dcName = world?.DataCenter.ValueNullable?.Name.ExtractText() ?? "",
+            outdoorWard = outdoor ? Housing.OutdoorWard() : 0,
+            outdoorPlot = outdoor ? Housing.OutdoorPlot() : 0,
+            districtKind = outdoor ? Estate.DistrictKind(area.Territory) : 0,
+        };
+        Net.SetTestDairy(body, () =>
+        {
+            F.TestDairyMade = true;
+            plugin.SaveConfig();
+            Say("Test Pasture (dev) is set up around you: a public dairy owned by Test Bot, with Bessie (a cow) and Clyde (a farmer). "
+                + "Sit on a seat in it and press Add a test stall here. Walk in and out to test visiting as a guest.", 1);
+        }, e => Fail(e));
+    }
+
+    public void AddTestStallHere()
+    {
+        var me = Plugin.ObjectTable.LocalPlayer;
+        if (me == null) return;
+        if (!Where.Seated) { Fail("Sit on the seat you want as the test stall."); return; }
+        Net.AddTestStall(me.Position.X, me.Position.Y, me.Position.Z, () => Say("A test stall is set up here in Test Pasture.", 1), e => Fail(e));
+    }
+
+    public void RemoveTestDairy() =>
+        Net.SetTestDairy(new { on = false }, () =>
+        {
+            F.TestDairyMade = false;
+            plugin.SaveConfig();
+            Say("Test Pasture is gone.", 1);
+        }, e => Fail(e));
+
     public void BuyFeedBin(string item, string name) =>
         Net.BuyFeedBin(item, () => Say($"{name} is in the dairy's feed bin now.", 1), e => Fail(e));
 

@@ -714,6 +714,23 @@ public sealed partial class MainWindow
             ImGui.SameLine();
             if (Ui.Button("##botsremove", "Remove bots", new Vector2(130, 30), "cream", hasBots, "Takes them out of your dairy.")) G.SetBots(false);
         }
+
+        if (Channel.Dev && G.Networked)
+        {
+            Gap(10);
+            SubHeading("Public test dairy (dev only)", width);
+            Ui.Wrapped("Makes Test Pasture (dev): a public dairy owned by Test Bot, with Bessie (a cow) and Clyde (a farmer), in a box centered "
+                       + "where you're standing. You're not a member, so walking into it makes you a guest. Stand somewhere outside your own dairy. "
+                       + "Then sit on a seat in it and add a test stall. Making it again moves it here.", Theme.InkSoft, width);
+            if (Ui.Button("##testdairy", G.HasTestDairy ? "Move it here" : "Make it here", new Vector2(150, 30), "honey", true, "A 16 x 12 box around you (10 x 10 in a house)."))
+                G.MakeTestDairyHere();
+            ImGui.SameLine();
+            if (Ui.Button("##teststall", "Add a test stall here", new Vector2(170, 30), "sage", G.HasTestDairy, "Sit on a seat inside Test Pasture first. Free, Padded tier."))
+                G.AddTestStallHere();
+            ImGui.SameLine();
+            if (Ui.Button("##testdairyoff", "Remove it", new Vector2(110, 30), "cream", G.HasTestDairy, "Deletes Test Pasture, its stalls and its bots."))
+                G.RemoveTestDairy();
+        }
     }
 
     /// <summary>Register (or, for the owner, update) the dairy and how it's listed.</summary>

@@ -124,6 +124,7 @@ public class FarmSave
     public float HandRange { get; set; } = 3f;
     public float StallRange { get; set; } = 0.9f;
     public bool DevCanSleep { get; set; }          // developer: let the anti-AFK rules apply to you for testing
+    public bool TestDairyMade { get; set; }        // dev server: you made a bot-run public test dairy
     public bool HandNeedsTarget { get; set; } = true; // farmhand must be targeting you
 
     // ----- You (the cow) -----

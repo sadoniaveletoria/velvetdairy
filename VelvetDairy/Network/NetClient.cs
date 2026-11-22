@@ -794,6 +794,14 @@ public sealed class NetClient : IDisposable
     public void SetBots(bool on, Action ok, Action<string> failed) =>
         Call<object>("POST", "/v1/dev/bots", new { on }, _ => { nextMine = 0; ok(); }, failed);
 
+    /// <summary>Dev server: make (with an area) or remove your bot-run public test dairy, for testing visits.</summary>
+    public void SetTestDairy(object body, Action ok, Action<string> failed) =>
+        Call<object>("POST", "/v1/dev/testdairy", body, _ => { nextBeat = 0; nextDirectory = 0; ok(); }, failed);
+
+    /// <summary>Dev server: add a stall to your test dairy where you're sitting.</summary>
+    public void AddTestStall(float x, float y, float z, Action ok, Action<string> failed) =>
+        Call<object>("POST", "/v1/dev/testdairy/stall", new { x, y, z, tier = 2 }, _ => { nextBeat = 0; ok(); }, failed);
+
     /// <summary>Dev server: hand milk a bot cow or bull (no emote: it's not in the game world).</summary>
     public void MilkBot(string id, Action<BotMilkReply> ok, Action<string> failed) =>
         Call<BotMilkReply>("POST", $"/v1/dev/bots/{id}/milk", null, r => { nextMine = 0; BeatWithin(1); ok(r); }, failed);
