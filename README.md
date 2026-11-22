@@ -17,7 +17,7 @@ A dairy life game for FFXIV, played with friends. Be a **cow** who makes milk, a
 
 **First time**
 - Confirm you're 18+ and a short walkthrough starts. Pick **Join a dairy** or **Start my own**.
-- The full guide is the **?** in the main window, or `/milkers guide`. `/milkers tutorial` runs the walkthrough again.
+- The full guide is the **?** in the main window, or `/milkers guide`. `/milkers tutorial` runs the walkthrough again. A complete written guide to every role is in [GUIDE.md](GUIDE.md).
 
 ---
 
