@@ -62,7 +62,7 @@ public sealed partial class MainWindow
         {
             if (Ui.Button($"##roleadd{role}", $"Become a {role} too", new Vector2(200, 30), "sage", true, "You keep your other roles.")) G.AddRole(null, role);
         }
-        else ImGui.TextColored(Theme.InkSoft, p);
+        else TextLine(Theme.InkSoft, p);
 
         Gap(8);
     }
@@ -88,16 +88,16 @@ public sealed partial class MainWindow
         QualityBar(width);
         Gap(6);
         var wait = G.QualityTreatWait;
-        ImGui.TextColored(wait > TimeSpan.Zero ? Theme.HoneyDeep : Theme.SageDeep,
+        TextLine(wait > TimeSpan.Zero ? Theme.HoneyDeep : Theme.SageDeep,
             wait > TimeSpan.Zero ? $"Next quality treat in {DairyGame.Wait(wait)}" : "A quality treat is ready (Pantry)");
         Gap(6);
         SubHeading("Grades and pay", width);
         var cur = G.CurrentGrade;
         for (var g = Grades.Count - 1; g >= 0; g--)
         {
-            ImGui.TextColored(g == cur ? Theme.RoseDeep : Theme.Ink, $"Grade {Grades.Name(g)}");
+            TextLine(g == cur ? Theme.RoseDeep : Theme.Ink, $"Grade {Grades.Name(g)}");
             ImGui.SameLine(90);
-            ImGui.TextColored(Theme.InkSoft, $"quota pays x{Catalog.QuotaGradeMult[g]:0.##}" + (g > 0 ? $" · milked {Catalog.GradeBoost[g] * 100:0}% faster" : "") + (g == cur ? "  ·  yours now" : ""));
+            TextLine(Theme.InkSoft, $"quota pays x{Catalog.QuotaGradeMult[g]:0.##}" + (g > 0 ? $" · milked {Catalog.GradeBoost[g] * 100:0}% faster" : "") + (g == cur ? "  ·  yours now" : ""));
         }
 
         Gap(6);
@@ -145,13 +145,13 @@ public sealed partial class MainWindow
         for (var i = 0; i < tank.Unlocks.Length && shown < 4; i++)
         {
             if (tank.Unlocks[i] <= G.FarmerLevel) continue;
-            ImGui.TextColored(Theme.Ink, $"Lv {tank.Unlocks[i]}");
+            TextLine(Theme.Ink, $"Lv {tank.Unlocks[i]}");
             ImGui.SameLine(56);
-            ImGui.TextColored(Theme.InkSoft, $"{Catalog.FarmerTankNames[i + 1]} ({Units.Oz(Catalog.FarmerTankSizes[i + 1])}) in the Shop");
+            TextLine(Theme.InkSoft, $"{Catalog.FarmerTankNames[i + 1]} ({Units.Oz(Catalog.FarmerTankSizes[i + 1])}) in the Shop");
             shown++;
         }
 
-        if (shown == 0) ImGui.TextColored(Theme.InkSoft, "Every farmer tank is unlocked.");
+        if (shown == 0) TextLine(Theme.InkSoft, "Every farmer tank is unlocked.");
 
         SubHeading("What farmers do", width);
         Ui.Wrapped("Hand milk your dairy's cows (Herd Care button): stand close, target them and press Milk; it does the emote and stops when they're empty. You get 25% of what the milk is worth (30% from farmer level 45), with no daily limit.", Theme.Ink, width);
@@ -167,6 +167,8 @@ public sealed partial class MainWindow
     {
         var buttons = new System.Collections.Generic.List<Btn>();
         if (G.IsFarmer) buttons.Add(new Btn("##farmhandmilk", "Herd Care", "rose", true, "Your dairy's cows and bulls: milk, groom and feed them."));
+        var bellWhy = G.CanCarry ? G.BellProblem() : "";
+        if (G.CanCarry) buttons.Add(new Btn("##farmbell", "Ring the bell", "honey", bellWhy == null, bellWhy ?? "Everyone in the dairy fills one bar right up and gets a 20-minute boost. Once an hour."));
         if (G.CanCarry) buttons.Add(new Btn("##farmkitchen", "Kitchen", "honey", true, "Fill your jugs from the dairy tank and bake."));
         if (buttons.Count == 0) return;
         Gap(4);
@@ -174,12 +176,13 @@ public sealed partial class MainWindow
         if (clicked >= 0)
         {
             if (buttons[clicked].Id == "##farmhandmilk") plugin.Milking.IsOpen = true;
+            else if (buttons[clicked].Id == "##farmbell") G.RingFeedingBell();
             else plugin.Kitchen.IsOpen = true;
         }
 
         if (G.Baking is { } b)
-            ImGui.TextColored(Theme.InkSoft, $"{Catalog.Doing(b.Recipe)} {Catalog.MadeName(b.Recipe.Makes).ToLowerInvariant()} · {F.Bake!.Done + 1} of {F.Bake.Count} · {(G.AtHome ? $"{DairyGame.Wait(b.Left)} left" : "paused")}");
-        ImGui.TextColored(Theme.InkSoft, $"Jugs: {Units.Num(G.Carried, "0.#")} / {Units.Num(G.MaxCarry)} {Units.Unit}");
+            TextLine(Theme.InkSoft, $"{Catalog.Doing(b.Recipe)} {Catalog.MadeName(b.Recipe.Makes).ToLowerInvariant()} · {F.Bake!.Done + 1} of {F.Bake.Count} · {(G.AtHome ? $"{DairyGame.Wait(b.Left)} left" : "paused")}");
+        TextLine(Theme.InkSoft, $"Jugs: {Units.Num(G.Carried, "0.#")} / {Units.Num(G.MaxCarry)} {Units.Unit}");
         Gap(4);
     }
 
@@ -196,7 +199,7 @@ public sealed partial class MainWindow
         Ui.Wrapped($"Walk up to a stall nobody is sitting on and press Clean. Cows milked there get +{Catalog.CleanBonus * 100:0}% speed and xp for an hour. It can be freshened up again once half an hour is left.", Theme.Ink, width);
         if (G.Stalls.Count == 0)
         {
-            ImGui.TextColored(Theme.InkSoft, "Your dairy has no stalls yet.");
+            TextLine(Theme.InkSoft, "Your dairy has no stalls yet.");
             return;
         }
 
@@ -233,7 +236,7 @@ public sealed partial class MainWindow
         // Only while you're in your own dairy yourself: nobody is listed from anywhere else
         if (!G.AtHome)
         {
-            ImGui.TextColored(Theme.InkSoft, "Go to your dairy: its cows and bulls show here while you're there with them.");
+            TextLine(Theme.InkSoft, "Go to your dairy: its cows and bulls show here while you're there with them.");
             return;
         }
 
@@ -243,7 +246,7 @@ public sealed partial class MainWindow
             .Where(m => m.Online && m.Here && (m.Has("cow") || m.Has("bull")) && !m.Name.Equals(myName, StringComparison.OrdinalIgnoreCase)).ToList() ?? new();
         if (cows.Count == 0)
         {
-            ImGui.TextColored(Theme.InkSoft, "No other cows or bulls are in the dairy right now.");
+            TextLine(Theme.InkSoft, "No other cows or bulls are in the dairy right now.");
             return;
         }
 
@@ -283,6 +286,14 @@ public sealed partial class MainWindow
                     else if (G.AwaitingAllow(c.Name)) lines.Add(new Line("Asked: waiting for them to press Allow...", Theme.HoneyDeep));
                     else if (st.Ask) lines.Add(new Line("Asks first: they get a pop-up to Allow", Theme.InkSoft));
                     if (st.Preg.Length > 0) lines.Add(new Line($"Pregnant · {DairyGame.StageName(st.Preg)}", Theme.RoseDeep));
+                    // Their four bonuses, minutes left (what to feed, groom or treat them for)
+                    if (st.Needs.Count >= 4)
+                    {
+                        var names = new[] { "Fed", "Water", "Comfy", "Happy" };
+                        var low = Enumerable.Range(0, 4).Where(i => st.Needs[i] < 10).Select(i => names[i]).ToList();
+                        lines.Add(new Line(string.Join(" · ", Enumerable.Range(0, 4).Select(i => $"{names[i]} {(st.Needs[i] > 0 ? $"{st.Needs[i]}m" : "out")}")),
+                            low.Count > 0 ? Theme.RoseDeep : Theme.InkSoft));
+                    }
                 }
             }
 
@@ -411,7 +422,7 @@ public sealed partial class MainWindow
     {
         RoleNote("bull", width);
         LevelHeader(F.BullXp, $"Bull level {G.BullLevel}", Theme.HoneyDeep, width);
-        if (Leveling.BullRank(G.BullLevel) is { } title) ImGui.TextColored(Theme.HoneyDeep, title);
+        if (Leveling.BullRank(G.BullLevel) is { } title) TextLine(Theme.HoneyDeep, title);
         DrawFathered(width);
 
         SubHeading("Breeding", width);
@@ -435,9 +446,9 @@ public sealed partial class MainWindow
         }
 
         var cow = F.Cow;
-        ImGui.TextColored(Theme.Ink, $"Seed: {Units.Oz(cow.Seed, "0.##")} / {Units.Oz(G.SeedCapacity, "0.#")} · Grade {Grades.Name(G.SeedGrade)}");
+        TextLine(Theme.Ink, $"Seed: {Units.Oz(cow.Seed, "0.##")} / {Units.Oz(G.SeedCapacity, "0.#")} · Grade {Grades.Name(G.SeedGrade)}");
         if (ImGui.IsItemHovered()) ImGui.SetTooltip(SeedGradeTip());
-        ImGui.TextColored(Theme.InkSoft, G.SeedSpoiled ? "Spoiled: dump it before you can be milked."
+        TextLine(Theme.InkSoft, G.SeedSpoiled ? "Spoiled: dump it before you can be milked."
             : G.SeedFull ? "Full: get milked at a stall or by a farmer."
             : $"+{Units.Oz(G.SeedPerMinute(), "0.000")} a minute ({G.SeedShare * 100:0.#}% of milk speed at Grade {Grades.Name(G.SeedGrade)})");
         if (G.SeedSpoiled && Ui.Button("##dumpseedrole", "Dump seed", new Vector2(130, 30), "rose", true, "Pour it all out. Your seed grade is one lower for a while."))
@@ -450,8 +461,8 @@ public sealed partial class MainWindow
 
         SubHeading("Breeding output", width);
         var seed = G.SeedNow;
-        ImGui.TextColored(seed >= 100 ? Theme.SageDeep : Theme.HoneyDeep, $"{seed}% for your next breeding · bred today: {F.DayBreeds}");
-        ImGui.TextColored(Theme.InkSoft, F.DayBreeds < G.FreshBreedsNow
+        TextLine(seed >= 100 ? Theme.SageDeep : Theme.HoneyDeep, $"{seed}% for your next breeding · bred today: {F.DayBreeds}");
+        TextLine(Theme.InkSoft, F.DayBreeds < G.FreshBreedsNow
             ? $"{G.FreshBreedsNow - F.DayBreeds} more at full output today"
             : "You're tired: each breeding today gives a bit less. Full again at midnight Central time.");
         Ui.Wrapped($"Each breeding: up to {DairyGame.BreedXp} bull xp, and the cow gets +{DairyGame.BredBonus * 100:0}% milk for {DairyGame.BredMinutes} minutes, both scaled by your breeding output.", Theme.InkSoft, width);
@@ -513,9 +524,9 @@ public sealed partial class MainWindow
         }
 
         if (G.BredLeft > TimeSpan.Zero)
-            ImGui.TextColored(Theme.RoseDeep, $"Bred by {F.BredBy}: +{G.BredBonusNow * 100:0.#}% milk for {(int)G.BredLeft.TotalMinutes + 1} more min");
+            TextLine(Theme.RoseDeep, $"Bred by {F.BredBy}: +{G.BredBonusNow * 100:0.#}% milk for {(int)G.BredLeft.TotalMinutes + 1} more min");
         else if (G.BreedCooldownLeft > TimeSpan.Zero)
-            ImGui.TextColored(Theme.InkSoft, $"Another breeding counts in {(int)G.BreedCooldownLeft.TotalMinutes + 1} min");
+            TextLine(Theme.InkSoft, $"Another breeding counts in {(int)G.BreedCooldownLeft.TotalMinutes + 1} min");
         else Ui.Wrapped($"When a bull of your dairy finishes in a Corruption scene with you, you're bred: +{DairyGame.BredBonus * 100:0}% milk for {G.BredMinutesNow} minutes (less if they're tired), once every {DairyGame.BredCooldownMinutes} minutes.", Theme.InkSoft, width);
 
         Ui.Wrapped("A bull of your dairy always finishes inside: their climaxes count as a pussy creampie, so Corruption rolls for conception each time (your Cummy blocks still apply).", Theme.InkSoft, width);
@@ -524,30 +535,30 @@ public sealed partial class MainWindow
         if (G.Pregnant)
         {
             Gap(4);
-            ImGui.TextColored(Theme.RoseDeep, $"Pregnant · {DairyGame.StageName(p.Stage)} · milk +{G.PregnancyBonus * 100:0}%");
+            TextLine(Theme.RoseDeep, $"Pregnant · {DairyGame.StageName(p.Stage)} · milk +{G.PregnancyBonus * 100:0}%");
             var cur = ImGui.GetCursorScreenPos();
             var barW = Math.Min(width, 360);
             Ui.Bar(ImGui.GetWindowDrawList(), cur + new Vector2(0, 4), cur + new Vector2(barW, 12), G.PregnancyProgress, Theme.RoseDeep);
             ImGui.Dummy(new Vector2(barW, 18));
             var due = p.DueUtc - DateTime.UtcNow;
-            if (p.FatherName.Length > 0) ImGui.TextColored(Theme.Ink, $"Sire: {p.FatherName}" + (p.FatherWorld.Length > 0 ? $" ({p.FatherWorld})" : ""));
-            ImGui.TextColored(Theme.InkSoft, $"Day {p.DaysPregnant:0} of {(p.DueUtc - p.ConceivedUtc).TotalDays:0}" + (due > TimeSpan.Zero ? $" · due in {(int)due.TotalDays}d {due.Hours}h" : " · due now"));
-            if (p.Craving.Length > 0) ImGui.TextColored(p.CravingMet ? Theme.SageDeep : Theme.HoneyDeep, $"Craving today: {p.Craving}" + (p.CravingMet ? " (met)" : ""));
-            ImGui.TextColored(Theme.InkSoft, "Milk +5% in the first trimester, +10% in the second, +15% in the third. It ends with the birth.");
+            if (p.FatherName.Length > 0) TextLine(Theme.Ink, $"Sire: {p.FatherName}" + (p.FatherWorld.Length > 0 ? $" ({p.FatherWorld})" : ""));
+            TextLine(Theme.InkSoft, $"Day {p.DaysPregnant:0} of {(p.DueUtc - p.ConceivedUtc).TotalDays:0}" + (due > TimeSpan.Zero ? $" · due in {(int)due.TotalDays}d {due.Hours}h" : " · due now"));
+            if (p.Craving.Length > 0) TextLine(p.CravingMet ? Theme.SageDeep : Theme.HoneyDeep, $"Craving today: {p.Craving}" + (p.CravingMet ? " (met)" : ""));
+            TextLine(Theme.InkSoft, "Milk +5% in the first trimester, +10% in the second, +15% in the third. It ends with the birth.");
         }
         else if (p.Stage == "recovering")
-            ImGui.TextColored(Theme.InkSoft, p.RecoveryUntilUtc > DateTime.UtcNow ? $"Recovering after the birth for {(int)(p.RecoveryUntilUtc - DateTime.UtcNow).TotalHours + 1} more h" : "Recovering after the birth");
-        else ImGui.TextColored(Theme.InkSoft, "Not pregnant. Pregnancy comes from Corruption's own breeding (its cycle and settings); it shows here once it's confirmed (a test, or at day 5).");
+            TextLine(Theme.InkSoft, p.RecoveryUntilUtc > DateTime.UtcNow ? $"Recovering after the birth for {(int)(p.RecoveryUntilUtc - DateTime.UtcNow).TotalHours + 1} more h" : "Recovering after the birth");
+        else TextLine(Theme.InkSoft, "Not pregnant. Pregnancy comes from Corruption's own breeding (its cycle and settings); it shows here once it's confirmed (a test, or at day 5).");
 
         // Past births, newest first, with their fathers
         var births = G.BirthsNow;
         if (births.Count > 0)
         {
             Gap(4);
-            ImGui.TextColored(Theme.Ink, $"Births: {births.Count}");
+            TextLine(Theme.Ink, $"Births: {births.Count}");
             foreach (var b in births.AsEnumerable().Reverse().Take(5))
-                ImGui.TextColored(Theme.InkSoft, $"  {b.BornUtc.ToLocalTime():MMM d}: sire {(b.FatherName.Length > 0 ? b.FatherName : "unknown")}");
-            if (births.Count > 5) ImGui.TextColored(Theme.InkSoft, $"  and {births.Count - 5} more");
+                TextLine(Theme.InkSoft, $"  {b.BornUtc.ToLocalTime():MMM d}: sire {(b.FatherName.Length > 0 ? b.FatherName : "unknown")}");
+            if (births.Count > 5) TextLine(Theme.InkSoft, $"  and {births.Count - 5} more");
         }
 
         if (G.IsBull) DrawFathered(width);
@@ -562,7 +573,7 @@ public sealed partial class MainWindow
         if (mine.Count == 0 && fathered == 0) return;
         Gap(4);
         foreach (var (name, stage) in mine)
-            ImGui.TextColored(Theme.RoseDeep, $"Pregnant by you: {name} · {DairyGame.StageName(stage)}");
-        if (fathered > 0) ImGui.TextColored(Theme.InkSoft, $"Children you've sired: {fathered}");
+            TextLine(Theme.RoseDeep, $"Pregnant by you: {name} · {DairyGame.StageName(stage)}");
+        if (fathered > 0) TextLine(Theme.InkSoft, $"Children you've sired: {fathered}");
     }
 }

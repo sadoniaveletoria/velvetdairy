@@ -72,30 +72,30 @@ public sealed partial class MainWindow
         if (net.Api == null)
         {
             Ui.Wrapped("The network isn't available right now, so Eorzea Milkers is running on its own. Everything local still works.", Theme.InkSoft, width);
-            ImGui.TextColored(Theme.InkSoft, net.Status);
+            TextLine(Theme.InkSoft, net.Status);
             return;
         }
 
         var online = net.Last?.Online ?? net.Directory?.Online ?? 0;
-        using (fonts.For(fonts.Heading, $"{online}")!.Push()) ImGui.TextColored(Theme.SageDeep, $"{online:N0} online");
+        using (fonts.For(fonts.Heading, $"{online}")!.Push()) TextLine(Theme.SageDeep, $"{online:N0} online");
         Ui.Wrapped("Players with Eorzea Milkers running in the last few minutes.", Theme.InkSoft, width);
-        ImGui.TextColored(net.Connected ? Theme.SageDeep : Theme.Warn, net.Status);
+        TextLine(net.Connected ? Theme.SageDeep : Theme.Warn, net.Status);
 
         SubHeading("You", width);
         var m = F.NetMember;
         if (m == null) Ui.Wrapped("You aren't in a dairy. Register your own estate on the Dairy tab, or accept an invite.", Theme.Ink, width);
         else
         {
-            ImGui.TextColored(Theme.Ink, m.Dairy);
-            ImGui.TextColored(Theme.Ink, m.IsOwner ? $"Owner · {G.Role}" : G.Role);
+            TextLine(Theme.Ink, m.Dairy);
+            TextLine(Theme.Ink, m.IsOwner ? $"Owner · {G.Role}" : G.Role);
         }
 
         var visiting = G.VisitingDairy;
         if (visiting != null)
         {
             SubHeading("You're visiting", width);
-            ImGui.TextColored(Theme.Ink, visiting.Name);
-            ImGui.TextColored(Theme.InkSoft, "Deliver milk here from Market > Creamery.");
+            TextLine(Theme.Ink, visiting.Name);
+            TextLine(Theme.InkSoft, "Deliver milk here from Market > Creamery.");
         }
 
         // This week's most active dairies
@@ -107,15 +107,15 @@ public sealed partial class MainWindow
             foreach (var r in board.Dairies.Take(10))
             {
                 var col = r.Mine ? Theme.RoseDeep : r.Rank <= 3 ? Theme.HoneyDeep : Theme.Ink;
-                ImGui.TextColored(col, $"{r.Rank}.");
+                TextLine(col, $"{r.Rank}.");
                 ImGui.SameLine(28);
-                ImGui.TextColored(col, $"{r.Name}{(r.Mine ? " (yours)" : "")}");
+                TextLine(col, $"{r.Name}{(r.Mine ? " (yours)" : "")}");
                 ImGui.SameLine();
-                ImGui.TextColored(Theme.InkSoft, $"Lv {r.Level} · {r.WeekXp:N0} xp");
+                TextLine(Theme.InkSoft, $"Lv {r.Level} · {r.WeekXp:N0} xp");
             }
 
             var reset = NextMonday() - DateTime.UtcNow;
-            ImGui.TextColored(Theme.InkSoft, $"Resets in {(int)reset.TotalDays}d {reset.Hours}h (Monday 00:00 UTC).");
+            TextLine(Theme.InkSoft, $"Resets in {(int)reset.TotalDays}d {reset.Hours}h (Monday 00:00 UTC).");
         }
 
         SubHeading("How it works", width);
@@ -165,7 +165,7 @@ public sealed partial class MainWindow
         var apps = net.Directory?.Applications ?? new List<MyApplication>();
         if (list == null)
         {
-            ImGui.TextColored(Theme.InkSoft, "Loading...");
+            TextLine(Theme.InkSoft, "Loading...");
             return;
         }
 
@@ -177,7 +177,7 @@ public sealed partial class MainWindow
         // How many there are (and how many the search or Public only leaves)
         var pub = list.Count(d => d.IsPublic);
         var count = $"{list.Count} dair{(list.Count == 1 ? "y" : "ies")} · {pub} public · {list.Count(d => d.LookingFor.Count > 0)} taking applications";
-        ImGui.TextColored(Theme.BlueDeep, shown.Count == list.Count ? count : $"Showing {shown.Count} of {count}");
+        TextLine(Theme.BlueDeep, shown.Count == list.Count ? count : $"Showing {shown.Count} of {count}");
         Gap(4);
         if (shown.Count == 0) Ui.Wrapped(list.Count == 0 ? "No dairies yet. Be the first: register your estate on the Dairy tab." : "Nothing matches.", Theme.InkSoft, width);
 
@@ -394,18 +394,18 @@ public sealed partial class MainWindow
             return;
         }
 
-        ImGui.TextColored(Theme.Ink, m.Dairy);
+        TextLine(Theme.Ink, m.Dairy);
         if (mine != null)
-            if (mine.Area is { } ma) ImGui.TextColored(Theme.InkSoft, $"{ma.Zone}{(ma.House.Length > 0 ? " (in a house)" : "")} · {mine.WorldName} · {(mine.IsPublic ? "public" : "private")}");
+            if (mine.Area is { } ma) TextLine(Theme.InkSoft, $"{ma.Zone}{(ma.House.Length > 0 ? " (in a house)" : "")} · {mine.WorldName} · {(mine.IsPublic ? "public" : "private")}");
             else
-            ImGui.TextColored(Theme.InkSoft, $"{mine.District}, Ward {mine.Ward}, {(mine.Room > 0 && Estate.FromId(ulong.TryParse(mine.HouseId, out var h) ? h : 0).Apartment ? $"apartment {mine.Room}" : $"Plot {mine.Plot}")} · {mine.WorldName}" +
+            TextLine(Theme.InkSoft, $"{mine.District}, Ward {mine.Ward}, {(mine.Room > 0 && Estate.FromId(ulong.TryParse(mine.HouseId, out var h) ? h : 0).Apartment ? $"apartment {mine.Room}" : $"Plot {mine.Plot}")} · {mine.WorldName}" +
                                              $" · {(mine.IsPublic ? "public" : "private")}");
-        ImGui.TextColored(Theme.Ink, m.IsOwner ? $"You own it · you play as {G.Role}" : $"You're a {G.Role} here");
-        ImGui.TextColored(G.Where.InDairy ? Theme.SageDeep : Theme.RoseDeep, G.Where.Why);
+        TextLine(Theme.Ink, m.IsOwner ? $"You own it · you play as {G.Role}" : $"You're a {G.Role} here");
+        TextLine(G.Where.InDairy ? Theme.SageDeep : Theme.RoseDeep, G.Where.Why);
         Gap(6);
 
         DrawMyRoles(width);
-        if (m.IsOwner) ImGui.TextColored(Theme.InkSoft, "Change the name or listing on the Listing tab.");
+        if (m.IsOwner) TextLine(Theme.InkSoft, "Change the name or listing on the Listing tab.");
         else
         {
             Gap(4);
@@ -470,23 +470,23 @@ public sealed partial class MainWindow
         var c = G.Net.Progress?.Contract;
         if (c == null)
         {
-            ImGui.TextColored(Theme.InkSoft, "Loading...");
+            TextLine(Theme.InkSoft, "Loading...");
             return;
         }
 
         Ui.Wrapped("The Grand Creamery wants milk from your dairy every week. Farmers and the owner fill jugs from the dairy tank and bring them to any Grand Creamery. Fill it for the full reward; if it isn't full by Monday, your dairy still gets the share it delivered.", Theme.InkSoft, width);
         Gap(8);
         using (fonts.For(fonts.Heading, $"{c.OzDone:0}")!.Push())
-            ImGui.TextColored(c.Completed ? Theme.SageDeep : Theme.Ink, c.Completed ? "Done for this week!" : $"{Units.Num(c.OzDone, "0")} / {Units.Num(c.OzNeed)} {Units.Unit}");
+            TextLine(c.Completed ? Theme.SageDeep : Theme.Ink, c.Completed ? "Done for this week!" : $"{Units.Num(c.OzDone, "0")} / {Units.Num(c.OzNeed)} {Units.Unit}");
         var cur = ImGui.GetCursorScreenPos();
         var barW = Math.Min(width, 420);
         Ui.Bar(ImGui.GetWindowDrawList(), cur + new Vector2(0, 4), cur + new Vector2(barW, 14), c.Progress, c.Completed ? Theme.SageDeep : Theme.BlueDeep);
         ImGui.Dummy(new Vector2(barW, 20));
-        ImGui.TextColored(Theme.InkSoft, "Any milk counts");
-        ImGui.TextColored(Theme.HoneyDeep, $"Full reward: {c.RewardXp:N0} dairy xp + {c.RewardFund:N0} coins for the fund");
-        if (!c.Completed) ImGui.TextColored(Theme.SageDeep, $"Earned so far: {c.EarnedXp:N0} dairy xp + {c.EarnedFund:N0} coins (paid Monday if it isn't full)");
+        TextLine(Theme.InkSoft, "Any milk counts");
+        TextLine(Theme.HoneyDeep, $"Full reward: {c.RewardXp:N0} dairy xp + {c.RewardFund:N0} coins for the fund");
+        if (!c.Completed) TextLine(Theme.SageDeep, $"Earned so far: {c.EarnedXp:N0} dairy xp + {c.EarnedFund:N0} coins (paid Monday if it isn't full)");
         var left = NextMonday() - DateTime.UtcNow;
-        ImGui.TextColored(Theme.InkSoft, c.Completed ? $"A new contract comes in {(int)left.TotalDays}d {left.Hours}h." : $"Ends in {(int)left.TotalDays}d {left.Hours}h (Monday 00:00 UTC).");
+        TextLine(Theme.InkSoft, c.Completed ? $"A new contract comes in {(int)left.TotalDays}d {left.Hours}h." : $"Ends in {(int)left.TotalDays}d {left.Hours}h (Monday 00:00 UTC).");
         if (c.Shippers.Count > 0)
         {
             Gap(6);
@@ -501,7 +501,7 @@ public sealed partial class MainWindow
             if (k.On)
             {
                 var end = TimeSpan.FromSeconds(Math.Max(0, k.End - nowUnix));
-                ImGui.TextColored(Theme.RoseDeep, $"Weekend milk contest: on now (ends in {(int)end.TotalHours}h {end.Minutes}m)");
+                TextLine(Theme.RoseDeep, $"Weekend milk contest: on now (ends in {(int)end.TotalHours}h {end.Minutes}m)");
                 Ui.Wrapped("Milk pumped into the tank this weekend also fills the contract, so it counts twice: now, and again when it's shipped.", Theme.SageDeep, width);
                 if (k.Top.Count > 0)
                     Ui.Wrapped("Top pumpers: " + string.Join(", ", k.Top.Select((x, i) => $"{i + 1}. {x.Name.Split(' ')[0]} {Units.Oz(x.Oz, "N0")}")), Theme.Ink, width);
@@ -509,11 +509,11 @@ public sealed partial class MainWindow
             else
             {
                 var start = TimeSpan.FromSeconds(Math.Max(0, k.Start - nowUnix));
-                ImGui.TextColored(Theme.InkSoft, $"Weekend milk contest: starts in {(int)start.TotalDays}d {start.Hours}h (Saturday 00:00 UTC)");
+                TextLine(Theme.InkSoft, $"Weekend milk contest: starts in {(int)start.TotalDays}d {start.Hours}h (Saturday 00:00 UTC)");
             }
 
             if (k.LastChampion is { } champ)
-                ImGui.TextColored(Theme.HoneyDeep, $"Last weekend's champion: {champ.Name} ({Units.Oz(champ.Oz, "N0")})");
+                TextLine(Theme.HoneyDeep, $"Last weekend's champion: {champ.Name} ({Units.Oz(champ.Oz, "N0")})");
         }
 
         Gap(6);
@@ -560,13 +560,13 @@ public sealed partial class MainWindow
                     var names = now.Here.Take(6).Select(p => p.World.Length > 0 ? $"{p.Name} ({p.World})" : p.Name);
                     Ui.Wrapped("Also here now, on any world: " + string.Join(", ", names) + (now.Here.Count > 6 ? $" and {now.Here.Count - 6} more" : "") + ".", Theme.InkSoft, width);
                 }
-                else ImGui.TextColored(Theme.InkSoft, "No one else is here right now.");
+                else TextLine(Theme.InkSoft, "No one else is here right now.");
             }
             foreach (var cr in crs)
             {
                 // The name with its Map button, and where it is underneath (so narrow panels don't cut it off)
                 var link = CreameryLink(cr);
-                ImGui.TextColored(Theme.Ink, cr.Name);
+                TextLine(Theme.Ink, cr.Name);
                 if (link != null)
                 {
                     ImGui.SameLine();
@@ -592,7 +592,7 @@ public sealed partial class MainWindow
             return;
         }
 
-        ImGui.TextColored(Theme.Ink, $"Your jugs: {Units.Oz(G.Carried, "0.#")}");
+        TextLine(Theme.Ink, $"Your jugs: {Units.Oz(G.Carried, "0.#")}");
         if (G.Carried <= 0) Ui.Wrapped("Fill jugs at your dairy first (Herd > Kitchen).", Theme.InkSoft, width);
         var leftOz = (int)Math.Ceiling(c.Left);
         if (G.Carried >= 0.05f)
@@ -616,15 +616,15 @@ public sealed partial class MainWindow
         var barW = Math.Min(width, 360);
         Ui.Bar(ImGui.GetWindowDrawList(), cur + new Vector2(0, 4), cur + new Vector2(barW, 12), p.LevelProgress, Theme.HoneyDeep);
         ImGui.Dummy(new Vector2(barW, 16));
-        ImGui.TextColored(Theme.InkSoft, p.NextXp is { } n ? $"{p.Xp:N0} / {n:N0} xp · {p.WeekXp:N0} this week" : $"Max level · {p.WeekXp:N0} xp this week");
-        ImGui.TextColored(Theme.InkSoft, $"Next stall {p.NextStallPrice:N0} fund coins · best stall: {Catalog.StallTierNames[Math.Clamp(p.MaxTier, 1, 4)]}");
+        TextLine(Theme.InkSoft, p.NextXp is { } n ? $"{p.Xp:N0} / {n:N0} xp · {p.WeekXp:N0} this week" : $"Max level · {p.WeekXp:N0} xp this week");
+        TextLine(Theme.InkSoft, $"Next stall {p.NextStallPrice:N0} fund coins · best stall: {Catalog.StallTierNames[Math.Clamp(p.MaxTier, 1, 4)]}");
         Ui.Wrapped("Members earn XP for the dairy by milking and caring inside it (up to 300 each a day) and when cows fill its buy orders.", Theme.InkSoft, width);
 
         // The dairy's milk tank
         if (p.Tank != null)
         {
             Gap(4);
-            ImGui.TextColored(Theme.BlueDeep, $"Dairy milk tank: {Units.Oz(p.Tank.Total, "N1")}");
+            TextLine(Theme.BlueDeep, $"Dairy milk tank: {Units.Oz(p.Tank.Total, "N1")}");
             if (ImGui.IsItemHovered())
                 ImGui.SetTooltip(Units.Text("Every milking in this dairy (stalls and hand) fills this tank. Farmers fill their jugs from it."));
             if (p.Tank.Total > 0)
@@ -632,10 +632,10 @@ public sealed partial class MainWindow
                 if (p.Tank.Pumpers.Count > 0)
                     Ui.Wrapped("Top pumpers: " + string.Join(", ", p.Tank.Pumpers.Take(5).Select(x => $"{x.Name.Split(' ')[0]} {Units.Oz(x.Oz, "N0")}")), Theme.InkSoft, width);
             }
-            else ImGui.TextColored(Theme.InkSoft, "Empty. It fills as cows are milked here.");
+            else TextLine(Theme.InkSoft, "Empty. It fills as cows are milked here.");
 
             // Bulls' seed goes into its own tank (just stored for now)
-            ImGui.TextColored(Theme.BlueDeep, $"Dairy seed tank: {Units.Oz(p.Tank.Seed, "N2")}");
+            TextLine(Theme.BlueDeep, $"Dairy seed tank: {Units.Oz(p.Tank.Seed, "N2")}");
             if (ImGui.IsItemHovered())
                 ImGui.SetTooltip(Units.Text("Every time a bull is milked in this dairy (stalls and hand), their seed goes into this tank. Uses for it are coming in a later update."));
             if (p.Tank.SeedPumpers.Count > 0)
@@ -643,7 +643,7 @@ public sealed partial class MainWindow
         }
 
         Gap(4);
-        ImGui.TextColored(Theme.HoneyDeep, $"Dairy fund: {p.Fund:N0} coins");
+        TextLine(Theme.HoneyDeep, $"Dairy fund: {p.Fund:N0} coins");
         if (ImGui.IsItemHovered()) ImGui.SetTooltip(Units.Text("Anyone in the dairy can add coins. The owner spends them on new stalls and stall upgrades."));
         ImGui.SetNextItemWidth(110);
         ImGui.InputInt("##donate", ref donateCoins, 50, 250);
@@ -663,13 +663,13 @@ public sealed partial class MainWindow
         var p = G.Net.Progress;
         if (p == null)
         {
-            ImGui.TextColored(Theme.InkSoft, "Loading...");
+            TextLine(Theme.InkSoft, "Loading...");
             return;
         }
 
         Ui.Wrapped("Cows and bulls get their Fed bar from farmers, who feed them from this bin as often as they like (each one every 15 minutes). "
                    + "Better feed gives a bigger Fed bonus. The owner unlocks it once, from the dairy fund.", Theme.InkSoft, width);
-        ImGui.TextColored(Theme.HoneyDeep, $"Dairy fund: {p.Fund:N0} coins · dairy level {p.Level}");
+        TextLine(Theme.HoneyDeep, $"Dairy fund: {p.Fund:N0} coins · dairy level {p.Level}");
         Gap(4);
         foreach (var o in p.FeedBinShop)
         {
@@ -696,8 +696,8 @@ public sealed partial class MainWindow
                    + $"It costs {p.PumpCost:N0} coins from the fund each time, from dairy level {p.PumpLevel}.", Theme.InkSoft, width);
         Gap(4);
         var left = G.PumpLeft;
-        ImGui.TextColored(left > TimeSpan.Zero ? Theme.SageDeep : Theme.InkSoft, left > TimeSpan.Zero ? $"Running: {DairyGame.Wait(left)} left" : "Not running");
-        ImGui.TextColored(Theme.HoneyDeep, $"Dairy fund: {p.Fund:N0} coins");
+        TextLine(left > TimeSpan.Zero ? Theme.SageDeep : Theme.InkSoft, left > TimeSpan.Zero ? $"Running: {DairyGame.Wait(left)} left" : "Not running");
+        TextLine(Theme.HoneyDeep, $"Dairy fund: {p.Fund:N0} coins");
         var why = !G.IsOwner ? "The owner runs the pump." : p.Level < p.PumpLevel ? $"Needs dairy level {p.PumpLevel}." : left.TotalMinutes > p.PumpMinutes ? "It already has over 2 hours left."
             : p.Fund < p.PumpCost ? $"Needs {p.PumpCost:N0} coins in the fund." : null;
         if (Ui.Button("##pumpgo", left > TimeSpan.Zero ? "Add 2 hours" : "Run the pump", new Vector2(150, 30), "rose", why == null, why ?? $"Spend {p.PumpCost:N0} from the fund."))
@@ -756,7 +756,7 @@ public sealed partial class MainWindow
 
         if (!owner)
         {
-            ImGui.TextColored(Theme.Ink, "I play as (any mix):");
+            TextLine(Theme.Ink, "I play as (any mix):");
             foreach (var r in Roles.All)
             {
                 ImGui.SameLine();
@@ -781,7 +781,7 @@ public sealed partial class MainWindow
             Gap(10);
             SubHeading("Dairy area", width);
             var a = F.NetMember?.Area;
-            ImGui.TextColored(Theme.InkSoft, a != null ? $"{a.Zone} · {a.Width:0} × {a.Length:0} y" : "Your dairy is an older house dairy. Mark out an area to move it anywhere.");
+            TextLine(Theme.InkSoft, a != null ? $"{a.Zone} · {a.Width:0} × {a.Length:0} y" : "Your dairy is an older house dairy. Mark out an area to move it anywhere.");
             DrawAreaEditor(width, false);
 
             Gap(10);
@@ -789,7 +789,7 @@ public sealed partial class MainWindow
             Ui.Wrapped("A second spot just for your dairy's members, like your home or apartment. Members can be milked, rest and do chores there, " +
                        "and it counts as being in the dairy. Visitors, the directory and deliveries only ever see the public area above.", Theme.InkSoft, width);
             var pa = F.NetMember?.PrivateArea;
-            ImGui.TextColored(pa != null ? Theme.Ink : Theme.InkSoft, pa == null ? "None yet."
+            TextLine(pa != null ? Theme.Ink : Theme.InkSoft, pa == null ? "None yet."
                 : pa.WholeHouse ? $"A whole house in {pa.Zone}" : $"{pa.Zone}{(pa.House.Length > 0 ? " (inside a house)" : "")} · {pa.Width:0} × {pa.Length:0} y");
             if (G.Draft == null)
             {
@@ -833,8 +833,8 @@ public sealed partial class MainWindow
             return;
         }
 
-        ImGui.TextColored(Theme.Ink, $"{(d.Zone.Length > 0 ? d.Zone : "Here")}{(d.House.Length > 0 ? " (inside this house)" : "")}");
-        ImGui.TextColored(Theme.InkSoft, "Pink edges are the sides; the blue edge is the front.");
+        TextLine(Theme.Ink, $"{(d.Zone.Length > 0 ? d.Zone : "Here")}{(d.House.Length > 0 ? " (inside this house)" : "")}");
+        TextLine(Theme.InkSoft, "Pink edges are the sides; the blue edge is the front.");
         var w = d.Width;
         var l = d.Length;
         var h = d.Height;
@@ -921,7 +921,7 @@ public sealed partial class MainWindow
             var ok = t != null && me != null && t.GameObjectId != me.GameObjectId;
             var tip = ok ? null : "Target a player first (or right-click them > Eorzea Milkers).";
             var label = ok ? $"Invite {t!.Name.TextValue}:" : "Invite your target:";
-            ImGui.TextColored(Theme.Ink, label);
+            TextLine(Theme.Ink, label);
             var clicked = Buttons(roles.Select(r => new Btn($"##inv{r}", $"as {r}", r == "farmer" ? "sage" : r == "bull" ? "honey" : "rose", ok, tip)).ToList(), width);
             if (clicked >= 0 && t != null) G.InvitePlayer(t.Name.TextValue, t.HomeWorld.RowId, roles[clicked]);
             Gap(4);
@@ -931,15 +931,15 @@ public sealed partial class MainWindow
         var all = mine.Members;
         var online = all.Where(x => x.Online).ToList();
         var inside = online.Where(x => x.Here).ToList();
-        ImGui.TextColored(Theme.Ink, $"{all.Count} member{(all.Count == 1 ? "" : "s")} · {online.Count} online · {inside.Count} in the dairy");
-        ImGui.TextColored(Theme.InkSoft,
+        TextLine(Theme.Ink, $"{all.Count} member{(all.Count == 1 ? "" : "s")} · {online.Count} online · {inside.Count} in the dairy");
+        TextLine(Theme.InkSoft,
             $"{all.Count(x => x.Has("cow"))} cows · {all.Count(x => x.Has("farmer"))} farmers · {all.Count(x => x.Has("bull"))} bulls" +
             (mine.Invites.Count > 0 ? $" · {mine.Invites.Count} invite(s) waiting" : ""));
 
         var full = all.Count(x => x.Has("cow") && x.Online && x.Status is { Cap: > 0 } st && (st.Spoiled || st.Milk >= st.Cap - 0.1f));
-        if (full > 0) ImGui.TextColored(Theme.RoseDeep, $"{full} cow{(full == 1 ? "" : "s")} full and waiting to be milked");
+        if (full > 0) TextLine(Theme.RoseDeep, $"{full} cow{(full == 1 ? "" : "s")} full and waiting to be milked");
         var fullBulls = all.Count(x => x.Has("bull") && x.Online && x.Status is { SeedCap: > 0 } st && (st.SeedSpoiled || st.SeedOz >= st.SeedCap - 0.01f));
-        if (fullBulls > 0) ImGui.TextColored(Theme.RoseDeep, $"{fullBulls} bull{(fullBulls == 1 ? "" : "s")} full and waiting to be milked");
+        if (fullBulls > 0) TextLine(Theme.RoseDeep, $"{fullBulls} bull{(fullBulls == 1 ? "" : "s")} full and waiting to be milked");
 
         if (inside.Count > 0)
         {
@@ -971,7 +971,7 @@ public sealed partial class MainWindow
             JugsNote(width);
             net.RefreshBoard();
             Ui.Wrapped("Deliver from inside your own dairy (or in person at theirs) with milk in your jugs; it goes straight into their tank and they pay what they offered.", Theme.InkSoft, width);
-            if (net.Board.Count == 0) ImGui.TextColored(Theme.InkSoft, "No open buy orders right now.");
+            if (net.Board.Count == 0) TextLine(Theme.InkSoft, "No open buy orders right now.");
             foreach (var o in net.Board.ToList())
             {
                 var p = G.DeliverProblem(o);
@@ -1008,7 +1008,7 @@ public sealed partial class MainWindow
             var why = G.DropProblem(dropOz);
             if (Ui.Button("##dropoff", $"Deliver · {DairyGame.DropPay(dropOz)} coins", new Vector2(190, 28), "sage", why == null, why)) G.DropOff(dropOz);
         }
-        else ImGui.TextColored(Theme.InkSoft, "Walk into another dairy (a public one, or another one you belong to) to drop milk off.");
+        else TextLine(Theme.InkSoft, "Walk into another dairy (a public one, or another one you belong to) to drop milk off.");
         Gap(8);
         }
 
@@ -1068,12 +1068,12 @@ public sealed partial class MainWindow
         Gap(6);
         if (m == null)
         {
-            ImGui.TextColored(Theme.InkSoft, "Loading...");
+            TextLine(Theme.InkSoft, "Loading...");
             return;
         }
 
         var owner = m.IsOwner;
-        ImGui.TextColored(Theme.Ink, $"Your seed tank: {Units.Oz(m.Tank, "0.#")}  ·  dairy fund: {m.Fund:N0} coins");
+        TextLine(Theme.Ink, $"Your seed tank: {Units.Oz(m.Tank, "0.#")}  ·  dairy fund: {m.Fund:N0} coins");
         Gap(8);
 
         // ---- For sale ----
@@ -1081,7 +1081,7 @@ public sealed partial class MainWindow
         if (m.Sales.Count == 0) Ui.Wrapped("No other dairy is selling seed right now.", Theme.InkSoft, width);
         else if (owner)
         {
-            ImGui.TextColored(Theme.InkSoft, "Buy");
+            TextLine(Theme.InkSoft, "Buy");
             ImGui.SameLine();
             ImGui.SetNextItemWidth(110);
             if (ImGui.InputInt("oz at a time##seedbuyoz", ref seedBuyOz)) seedBuyOz = Math.Clamp(seedBuyOz, 1, 500);

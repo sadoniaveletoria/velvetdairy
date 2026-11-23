@@ -178,13 +178,13 @@ public sealed partial class MainWindow
         QualityBar(width);
         Gap(8);
         var wait = G.QualityTreatWait;
-        ImGui.TextColored(wait > TimeSpan.Zero ? Theme.HoneyDeep : Theme.SageDeep,
+        TextLine(wait > TimeSpan.Zero ? Theme.HoneyDeep : Theme.SageDeep,
             wait > TimeSpan.Zero ? $"Next quality treat in {DairyGame.Wait(wait)}" : "A quality treat is ready");
         Ui.Wrapped($"Quality treats (biscuits, alfalfa, starclover) raise your milk quality toward the next grade. You can have one every hour.",
             Theme.InkSoft, width);
         Gap(6);
         if (F.Cow.BoostUntilUtc > DateTime.UtcNow)
-            ImGui.TextColored(Theme.SageDeep, $"Feed boost: milk comes in faster for another {DairyGame.Wait(F.Cow.BoostUntilUtc - DateTime.UtcNow)}");
+            TextLine(Theme.SageDeep, $"Feed boost: milk comes in faster for another {DairyGame.Wait(F.Cow.BoostUntilUtc - DateTime.UtcNow)}");
         Ui.Wrapped("Clover, salt licks and premium mix give a short boost that makes milk come in faster. Everyday feed keeps your hunger up.", Theme.InkSoft, width);
         Gap(6);
         Ui.Wrapped("You can only eat inside your dairy, but you can sell back or hide things from anywhere.", Theme.InkSoft, width);

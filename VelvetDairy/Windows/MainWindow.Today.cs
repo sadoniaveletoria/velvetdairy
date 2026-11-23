@@ -153,7 +153,7 @@ public sealed partial class MainWindow
             return;
         }
 
-        const float gap = 14f, careH = 122f;
+        const float gap = 14f, careH = 132f;
         var blocked = G.Blocked();
         var rightW = Math.Clamp((max.X - min.X) * 0.34f, 290f, 380f);
         var leftMax = new Vector2(max.X - rightW - gap, max.Y);
