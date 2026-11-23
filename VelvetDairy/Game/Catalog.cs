@@ -271,7 +271,7 @@ public static class Catalog
         new Upgrade("halter", "Silk halter", "ribbon", new[] { 325 }, new[] { 17 }, "A soft silk halter. +3% to your quota pay.", true, Cow: true),
         new Upgrade("steady", "Steady producer", "milk", new[] { 300 }, new[] { 18 }, "You get tired after 14 hours of milk a day instead of 12."),
         new Upgrade("lavender", "Lavender bedding", "cushion", new[] { 600 }, new[] { 23 }, "Happy bonus +2% more."),
-        new Upgrade("mist", "Cooling mist", "water", new[] { 475 }, new[] { 24 }, "Full bottles keep 96 hours before they spoil instead of 72.", Cow: true),
+        new Upgrade("mist", "Cooling mist", "water", new[] { 475 }, new[] { 24 }, "Full bottles and seed vials keep 96 hours before they spoil instead of 72."),
         new Upgrade("velvetbell", "Velvet bell", "bell", new[] { 600 }, new[] { 26 }, "A velvet-wrapped bell. +5% to your quota pay.", true, Cow: true),
         new Upgrade("champion", "Champion's ribbon", "ribbon", new[] { 900 }, new[] { 28 }, "A prized cow: farmers who hand milk you get 10% more pay and farmer xp. Being bred lasts 45 minutes instead of 30, and pregnancy gives 5% more milk.", true, Cow: true),
         new Upgrade("velvetchamp", "Velvet champion sash", "coin", new[] { 1250 }, new[] { 30 }, "The best cow in Eorzea. +10% to your quota pay.", true, Cow: true),

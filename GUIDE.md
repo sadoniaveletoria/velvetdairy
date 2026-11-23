@@ -114,7 +114,7 @@ The quota is listed with them as a fifth, separate payment.
 
 ### Things to watch
 
-- **Full bottles spoil** after 72 hours (96 with Cooling mist), counting even while you're logged off. Spoiled milk must be dumped for nothing, and your milk tastes "off" (one grade lower) until care and milkings clear it. So get milked before you log off for a long time.
+- **Full bottles spoil** after 72 hours (96 with Cooling mist, for seed vials too), counting even while you're logged off. Spoiled milk must be dumped for nothing, and your milk tastes "off" (one grade lower) until care and milkings clear it. So get milked before you log off for a long time.
 - **Not milked for 3 days**: your grade slips one step, and one more every 3 days after. One milking brings it right back. Going away? A **Dry-off tonic** (150 coins) holds your grade for 7 days.
 
 ### What a cow spends coins on
