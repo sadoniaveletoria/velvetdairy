@@ -1289,7 +1289,7 @@ public sealed partial class MainWindow : Window
         var how = !G.Where.InDairy ? "Not being milked. Go to your dairy to get milked."
             : G.Stalls.Count == 0 ? "Not being milked. Your dairy has no stalls yet; a farmer can still hand milk you."
             : "Not being milked. Sit on a stall, or have a farmer stand close and press Milk on you.";
-        ImGui.TextColored(Theme.InkSoft, how);
+        Ui.Wrapped(how, Theme.InkSoft, width);
         var buttons = new List<Btn>();
         var starts = new List<Action>();
         if (!G.AutoStall)
