@@ -30,7 +30,17 @@ public sealed class Session
     // fast milk is drawn); it used to multiply the amount too, which paid grade twice.
     public float Yield => Kind == SessionKind.Hand ? Catalog.HandYield : Catalog.StallYield[Math.Clamp(Stall?.Tier ?? 1, 1, 4)];
     public float SeedYield => Yield;
-    public float Progress => StartMilk > 0 ? Math.Clamp(Extracted / StartMilk, 0f, 1f) : StartSeed > 0 ? Math.Clamp(ExtractedSeed / StartSeed, 0f, 1f) : 1f;
+    // Milk and seed are drawn at the same time at their own speeds; the bar follows whichever is further from empty
+    // (the one that takes longest), so it only fills when you're fully milked out.
+    public float Progress
+    {
+        get
+        {
+            var milk = StartMilk > 0.001f ? Math.Clamp(Extracted / StartMilk, 0f, 1f) : 1f;
+            var seed = StartSeed > 0.0001f ? Math.Clamp(ExtractedSeed / StartSeed, 0f, 1f) : 1f;
+            return Math.Min(milk, seed);
+        }
+    }
 }
 
 /// <summary>Where you are right now, refreshed every frame.</summary>
