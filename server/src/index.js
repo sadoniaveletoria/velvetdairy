@@ -783,6 +783,7 @@ async function heartbeat(env, me, request) {
       breedWait: Math.max(0, Math.floor(num(st.breedWait))),   // a cow: when she can be bred again (unix seconds)
       scan: ["anyone", "dairy", "nobody"].includes(st.scan) ? st.scan : "anyone",   // who can scan them
       needs: Array.isArray(st.needs) ? st.needs.slice(0, 4).map(x => Math.max(0, Math.min(600, Math.round(Number(x) || 0)))) : [],   // minutes left: Fed, Watered, Comfy, Happy
+      needPct: Array.isArray(st.needPct) ? st.needPct.slice(0, 4).map(x => Math.max(0, Math.min(1, Math.round((Number(x) || 0) * 1000) / 1000))) : [],   // and the bonus each gives
       breedOk: clean(st.breedOk, 40),    // a cow: the bull from another dairy she allowed to breed her this scene
       guestAt: clean(st.guestAt, 24),    // a guest: the public dairy they're visiting (so its farmers can see them)
     });
@@ -3184,12 +3185,15 @@ async function botFarmerWork(env, dairyId, bot, bots, herd, bin, mins, t, stmts,
   for (let n = 0; n < turns && others.length; n++) {
     const to = others[Math.floor(Math.random() * others.length)];
     const needs = Array.isArray(to.st.needs) ? to.st.needs : [to.st.fed, to.st.water, to.st.comfy, to.st.happy];
-    const fedLow = (needs[0] ?? 0) < 60, happyLow = (needs[3] ?? 0) < 60;
-    if (fedLow) {
+    // A bonus never goes on top of a bonus: he only tends to ones that have run out (every bonus lasts 20 minutes)
+    const fedLow = (needs[0] ?? 0) < 1, waterLow = (needs[1] ?? 0) < 1, comfyLow = (needs[2] ?? 0) < 1, happyLow = (needs[3] ?? 0) < 1;
+    if (to.player && waterLow && Math.random() < 0.5) {
+      stmts.push(inboxStmt(env, to.install, "watered", 0, 0, 0, `${me} brought you fresh water.`));
+    } else if (fedLow) {
       stmts.push(inboxStmt(env, to.install, "binfed", 0, 0, feedIdx, `${me} fed you ${FEED_BIN[feed].name.toLowerCase()} from the feed bin.`));
       if (!to.player) log.push(`${me} fed ${to.name} ${FEED_BIN[feed].name.toLowerCase()} from the feed bin.`);
-    } else if (happyLow && Math.random() < 0.5) {
-      stmts.push(inboxStmt(env, to.install, "groom", 0, 0, 0, `${me} groomed you. Happy +30 min.`));
+    } else if ((happyLow || comfyLow) && Math.random() < 0.5) {
+      stmts.push(inboxStmt(env, to.install, "groom", 0, 0, 0, `${me} groomed you: Happy +3% and Comfy +2% for 20 minutes.`));
       if (!to.player) log.push(`${me} groomed ${to.name}.`);
     } else if (happyLow) {
       stmts.push(inboxStmt(env, to.install, "fed", 0, 0, Object.keys(SHELF_ITEMS).indexOf("cookies"), `${me} fed you butter cookies from the dairy shelf.`));

@@ -1133,7 +1133,7 @@ public sealed partial class DairyGame
         // On the network, a treat you buy gives its own bonus for 10 or 20 minutes and leaves your bars alone: their time
         // comes from your farmers (feeding, grooming, baked treats), the feeding bell, drinking and resting.
         var bonusOnly = InNetDairy && (item.Water > 0 || item.Happy > 0);
-        if (!bonusOnly && NeedsFullFor(item) is { } full) return Fail(full);
+        if (NeedsFullFor(item) is { } full) return Fail(full);
         var upgradeOnly = UpgradeOnly(item);
         if (item.RestHours > 0 && F.RestTeaDay == DayClock.Today) return Fail($"You've had {item.Name} today already.");
         if (item.Quality > 0 && QualityTreatWait > TimeSpan.Zero)
@@ -1148,7 +1148,7 @@ public sealed partial class DairyGame
             // Its own bonus for a while (a bigger one already going stays; the same or bigger restarts the clock)
             var pct = Math.Max(item.Happy, item.Water);
             var mins = Catalog.TreatMinutes(item);
-            if (Cow.TreatUntilUtc <= DateTime.UtcNow || pct >= Cow.TreatPct)
+            if (Cow.TreatUntilUtc <= DateTime.UtcNow || pct > Cow.TreatPct)
             {
                 Cow.TreatPct = pct;
                 Cow.TreatUntilUtc = DateTime.UtcNow.AddMinutes(mins);
@@ -1190,13 +1190,10 @@ public sealed partial class DairyGame
             if (ProducesSeed) AddSeedQuality(item.Quality);
             Cow.QualityTreatReadyUtc = DateTime.UtcNow.AddHours(Grades.QualityTreatHours);
         }
-        if (item.BoostMinutes > 0)
+        if (item.BoostMinutes > 0 && !bonusOnly)
         {
-            // Boosts don't stack past an hour
-            var from = Cow.BoostUntilUtc > DateTime.UtcNow ? Cow.BoostUntilUtc : DateTime.UtcNow;
-            var until = from.AddMinutes(BoostFor(item));
-            var cap = DateTime.UtcNow.AddMinutes(60);
-            Cow.BoostUntilUtc = until > cap ? cap : until;
+            // A boost never goes on top of a boost: only when none is going
+            if (Cow.BoostUntilUtc <= DateTime.UtcNow) Cow.BoostUntilUtc = DateTime.UtcNow.AddMinutes(BoostFor(item));
         }
 
         // Bull and cow-and-bull foods
@@ -1234,7 +1231,7 @@ public sealed partial class DairyGame
             extra += $" {item.RestHours} hours off your milking time today.";
         }
 
-        CareDone($"You {(item.Icon == "water" ? "drink" : "eat")} some {item.Name.ToLowerInvariant()}." + (item.BoostMinutes > 0 ? $" Milk boost for {BoostFor(item)} min." : "") + bonusNote + extra
+        CareDone($"You {(item.Icon == "water" ? "drink" : "eat")} some {item.Name.ToLowerInvariant()}." + (item.BoostMinutes > 0 && !bonusOnly ? $" Milk boost for {BoostFor(item)} min." : "") + bonusNote + extra
                  + (upgradeOnly != null ? " " + upgradeOnly.Replace("this only raises", "it only raised").Replace("it doesn't add time", "no time was added") : ""));
         return true;
     }
@@ -1259,10 +1256,8 @@ public sealed partial class DairyGame
 
         if (item.BoostMinutes > 0)
         {
-            var from = Cow.BoostUntilUtc > DateTime.UtcNow ? Cow.BoostUntilUtc : DateTime.UtcNow;
-            var until = from.AddMinutes(BoostFor(item));
-            var cap = DateTime.UtcNow.AddMinutes(60);
-            Cow.BoostUntilUtc = until > cap ? cap : until;
+            // A boost never goes on top of a boost: only when none is going
+            if (Cow.BoostUntilUtc <= DateTime.UtcNow) Cow.BoostUntilUtc = DateTime.UtcNow.AddMinutes(BoostFor(item));
         }
     }
 
@@ -2211,6 +2206,18 @@ public sealed partial class DairyGame
         return null;
     }
 
+    /// <summary>
+    /// A treat or feed for someone else that would do nothing: every bonus it gives is already going for them at least
+    /// as big (a bonus never goes on top of the same bonus). Null when it would help.
+    /// </summary>
+    public string? ShelfBlocked(string id, FeedItem f)
+    {
+        var (mins, pct) = TargetNeeds(id);
+        var helps = (f.Fed > 0 && !BonusBlocks(mins[0], pct[0], f.Fed)) || (f.Happy > 0 && !BonusBlocks(mins[3], pct[3], f.Happy))
+                    || (f.Water > 0 && !BonusBlocks(mins[1], pct[1], f.Water)) || f.Quality > 0 || f.BoostMinutes > 0;
+        return helps ? null : "They already have that bonus or a bigger one going.";
+    }
+
     /// <summary>Feed types in the dairy's feed bin (unlocked by the owner with the fund).</summary>
     public List<string> BinFeeds() => (Net.Progress?.FeedBin ?? new List<string> { "hay" }).Where(Catalog.IsBinFeed).ToList();
 
@@ -3086,15 +3093,25 @@ public sealed partial class DairyGame
     }
 
     /// <summary>
-    /// A food that fills bars, all of them over an hour, and doesn't give a bigger bonus than the one going: it's
-    /// greyed out until one is under an hour, even if it does something else too (so it's never eaten for less than
-    /// it says). A food with a bigger bonus can still be eaten: see <see cref="UpgradeOnly"/>.
+    /// Why eating this would do nothing (greyed out), or null. A bonus never goes on top of the same bonus: every bar it
+    /// gives is already going with at least as big a bonus. On the network, a treat you buy is its own milk bonus
+    /// instead, and the same rule holds for that: only a bigger treat takes over. Bigger always takes over, with a fresh
+    /// 20 minutes (10 or 20 for a treat).
     /// </summary>
     public string? NeedsFullFor(FeedItem item)
     {
+        if (InNetDairy && !Catalog.IsBinFeed(item.Id) && (item.Water > 0 || item.Happy > 0))
+        {
+            var pct = Math.Max(item.Water, item.Happy);
+            return TreatLeft > TimeSpan.Zero && pct <= Cow.TreatPct + 0.0001f && item.Quality <= 0 && item.XpBoostMinutes <= 0 && item.RestoreBreeds <= 0
+                ? $"Your treat bonus (+{Cow.TreatPct * 100:0}%, {Wait(TreatLeft)} left) is going. Only a bigger treat takes over."
+                : null;
+        }
+
         var fills = FillsOf(item);
-        if (fills.Count == 0 || fills.Any(f => !NeedFull(f.V) || f.Gives > f.Has + 0.001f)) return null;
-        return fills.Count == 1 ? FullText(fills[0].Bar, fills[0].V) : $"Your {string.Join(" and ", fills.Select(f => f.Bar))} bonuses still have their full 30 minutes. Eat again once one has gone down.";
+        if (fills.Count == 0 || fills.Any(f => CanTakeBonus(f.Bar, f.Gives))) return null;
+        return fills.Count == 1 ? FullText(fills[0].Bar, fills[0].V)
+            : $"Your {string.Join(" and ", fills.Select(f => f.Bar))} bonuses are going. Only bigger ones can take over.";
     }
 
     private List<(string Bar, float V, float Has, float Gives)> FillsOf(FeedItem item)
@@ -3106,19 +3123,8 @@ public sealed partial class DairyGame
         return fills;
     }
 
-    /// <summary>
-    /// Every bar this food fills is over an hour, but it has a bigger bonus than the one going: eating it raises the
-    /// bonus and adds no time. The warning shown on its row (null when it would add time as usual).
-    /// </summary>
-    public string? UpgradeOnly(FeedItem item)
-    {
-        var fills = FillsOf(item);
-        if (fills.Count == 0 || fills.Any(f => !NeedFull(f.V))) return null;
-        var up = fills.Where(f => f.Gives > f.Has + 0.001f).ToList();
-        if (up.Count == 0) return null;
-        return $"{string.Join(" and ", up.Select(f => f.Bar))} {(up.Count == 1 ? "is" : "are")} already full: this only raises the bonus to " +
-               string.Join(", ", up.Select(f => $"+{f.Gives * 100:0}%")) + ", it doesn't add time.";
-    }
+    /// <summary>(No longer used: a bigger bonus simply takes over with a fresh 20 minutes.)</summary>
+    public string? UpgradeOnly(FeedItem item) => null;
 
     /// <summary>Bull foods are for bulls; cow-and-bull foods for those who are both.</summary>
     public bool FeedForYou(FeedItem item) =>

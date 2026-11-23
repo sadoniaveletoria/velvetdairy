@@ -1070,7 +1070,7 @@ public sealed partial class MainWindow : Window
         var wcd = G.DrinkWait;
         var wetFull = !G.CanTakeBonus("Watered", Catalog.TroughBonus);
         cells.Add(("##drink", "water", "Drink", wetFull ? "Watered bonus going" : wcd > TimeSpan.Zero ? $"Ready in {DairyGame.Wait(wcd)}" : $"Free · Watered +{Catalog.TroughBonus * 100:0}%",
-            "Drink", "blue", ok && wcd <= TimeSpan.Zero && !wetFull, problem ?? (wetFull ? "Your Watered bonus is going. Drink again once it runs out (a bigger one, like a farmer's fresh water, can still take over)." : $"Free. Watered +{Catalog.TroughBonus * 100:0}%, +{G.FillMinutesNow} minutes."), () => G.Drink()));
+            "Drink", "blue", ok && wcd <= TimeSpan.Zero && !wetFull, problem ?? (wetFull ? "Your Watered bonus is going. Drink again once it runs out (a bigger one, like a farmer's fresh water, can still take over)." : $"Free. Watered +{Catalog.TroughBonus * 100:0}% for {G.FillMinutesNow} minutes."), () => G.Drink()));
         foreach (var item in Catalog.Feed)
         {
             if (!G.FeedUnlocked(item) || F.HiddenFeed!.Contains(item.Id)) continue;
@@ -1087,7 +1087,7 @@ public sealed partial class MainWindow : Window
             var tip = problem ?? full ?? (qualityHeld ? $"Quality treats share a {Grades.QualityTreatHours:0}-hour cooldown." :
                 waiting ? $"Eating, drinking and treats each wait {Catalog.NeedCooldownMinutes:0} minutes between uses." : upOnly ?? $"{item.Desc}\n{Effects(item)}");
             var id = item.Id;
-            cells.Add(($"##feed{id}", item.Icon, item.Name, full != null ? $"{have} left · bar is full" : waiting ? $"{have} left · ready in {DairyGame.Wait(wait)}"
+            cells.Add(($"##feed{id}", item.Icon, item.Name, full != null ? $"{have} left · bonus going" : waiting ? $"{have} left · ready in {DairyGame.Wait(wait)}"
                     : upOnly != null ? $"{have} left · bonus only, no time" : $"{have} left · {Effects(item, true)}",
                 "Eat", "honey", ok && !waiting, tip, () => G.UseFeed(id)));
         }
@@ -1206,7 +1206,7 @@ public sealed partial class MainWindow : Window
 
         var ok = problem == null;
         var wcd = G.DrinkWait;
-        if (Row("##drink", "water", "Drink", !G.CanTakeBonus("Watered", Catalog.TroughBonus) ? "Watered bonus going" : wcd > TimeSpan.Zero ? $"Ready in {DairyGame.Wait(wcd)}" : $"Free · Watered +{Catalog.TroughBonus * 100:0}%, +{G.FillMinutesNow}m", "Drink", "blue",
+        if (Row("##drink", "water", "Drink", !G.CanTakeBonus("Watered", Catalog.TroughBonus) ? "Watered bonus going" : wcd > TimeSpan.Zero ? $"Ready in {DairyGame.Wait(wcd)}" : $"Free · Watered +{Catalog.TroughBonus * 100:0}% for {G.FillMinutesNow}m", "Drink", "blue",
                 ok && wcd <= TimeSpan.Zero && G.CanTakeBonus("Watered", Catalog.TroughBonus), problem, width))
             G.Drink();
 
@@ -1227,7 +1227,7 @@ public sealed partial class MainWindow : Window
             var waiting = wait > TimeSpan.Zero || full != null;
             var tip = problem ?? full ?? (have <= 0 ? "Buy more in the Shop." : qualityHeld ? $"Quality treats share a {Grades.QualityTreatHours:0}-hour cooldown." :
                 waiting ? $"Eating, drinking and treats each wait {Catalog.NeedCooldownMinutes:0} minutes between uses." : upOnly ?? item.Desc);
-            var sub = full != null ? $"{have} left · bar is full" : waiting ? $"{have} left · ready in {DairyGame.Wait(wait)}"
+            var sub = full != null ? $"{have} left · bonus going" : waiting ? $"{have} left · ready in {DairyGame.Wait(wait)}"
                 : upOnly != null ? $"{have} left · {upOnly}" : $"{have} left · {Effects(item)}";
             if (Row($"##feed{item.Id}", item.Icon, item.Name, sub, "Eat", "honey", ok && have > 0 && !waiting, tip, width))
                 G.UseFeed(item.Id);
@@ -1294,9 +1294,9 @@ public sealed partial class MainWindow : Window
             if (f.Fed != 0) parts.Add($"Fed +{f.Fed * 100:0}%");
             if (f.Water != 0) parts.Add($"Watered +{f.Water * 100:0}%");
             if (f.Happy != 0) parts.Add($"Happy +{f.Happy * 100:0}%");
-            if (f.Fed != 0 || f.Water != 0 || f.Happy != 0) parts.Add($"+{G.FillMinutesNow}m");
+            if (f.Fed != 0 || f.Water != 0 || f.Happy != 0) parts.Add($"for {G.FillMinutesNow}m");
         }
-        if (f.BoostMinutes != 0) parts.Add($"boost {f.BoostMinutes}m");
+        if (f.BoostMinutes != 0 && !ownBonus) parts.Add($"milk +{Catalog.TreatBonus * 100:0}% for {f.BoostMinutes}m (not on top of another boost)");
         if (f.HoldDays != 0) parts.Add($"no grade slip for {f.HoldDays} days");
         if (f.Quality != 0) parts.Add($"+{f.Quality:0} milk quality");
         if (f.DropsMinutes != 0) parts.Add($"milk and seed +{Catalog.DropsBonus * 100:0}% for {f.DropsMinutes}m");

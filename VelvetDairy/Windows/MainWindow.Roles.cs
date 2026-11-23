@@ -381,7 +381,8 @@ public sealed partial class MainWindow
                 foreach (var item in G.BinFeeds())
                 {
                     var f = Catalog.FeedById(item)!;
-                    if (ImGui.Selectable($"{f.Name} · Fed +{f.Fed * 100:0}%##bin{item}"))
+                    var smaller = G.ShelfBlocked(feedPick.Id, f) != null;
+                    if (ImGui.Selectable($"{f.Name} · Fed +{f.Fed * 100:0}%{(smaller ? " (they have as much or more)" : "")}##bin{item}", false, smaller ? ImGuiSelectableFlags.Disabled : ImGuiSelectableFlags.None))
                     {
                         G.FeedFromBin(feedPick.Name, feedPick.Id, feedPick.Near, item);
                         ImGui.CloseCurrentPopup();
@@ -402,7 +403,8 @@ public sealed partial class MainWindow
                     break;
                 }
 
-                if (ImGui.Selectable($"{Catalog.MadeName(item)} ({qty} left)##pick{item}"))
+                var blocked = G.ShelfBlocked(feedPick.Id, f);
+                if (ImGui.Selectable($"{Catalog.MadeName(item)} ({qty} left){(blocked != null ? " (they have as much or more)" : "")}##pick{item}", false, blocked != null ? ImGuiSelectableFlags.Disabled : ImGuiSelectableFlags.None))
                 {
                     G.FeedFromShelf(feedPick.Name, feedPick.Id, feedPick.Near, item);
                     ImGui.CloseCurrentPopup();
