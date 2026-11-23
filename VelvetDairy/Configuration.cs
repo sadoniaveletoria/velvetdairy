@@ -199,6 +199,8 @@ public class FarmSave
     public bool ShowStallMarkers { get; set; } = true;   // a colored box on the ground around each stall (only you see it)
     public string VisitDay { get; set; } = "";
     public float DayInDairyMinutes { get; set; }  // awake minutes inside a dairy today (a daily goal)
+    public List<string>? DayDeliveredTo { get; set; }   // other dairies you dropped milk off at today (once each a day)
+    public int DayDeliveries { get; set; }             // deliveries to other dairies today (drop-offs and buy orders): 10 a day
     public float DayToOthersOz { get; set; }      // milk delivered to other dairies today (buy orders and drop-offs): capped by farmer level
     public float DayAwakeMinutes { get; set; }
     public int DayStall { get; set; }                 // stall milkings today (daily goal for cows)
@@ -233,6 +235,7 @@ public class FarmSave
         Orders ??= new List<Order>();
         Log ??= new List<string>();
         VisitOrdersDone ??= new List<string>();
+        DayDeliveredTo ??= new List<string>();
         OwnerRoles ??= OwnerRole is "cow" or "farmer" or "bull" ? new List<string> { OwnerRole } : new List<string>();
         if (Math.Abs(StallRange - 1.6f) < 0.01f) StallRange = 0.9f;   // old default was loose enough to count sitting beside a stall
         if (!StarterGiven)

@@ -120,7 +120,7 @@ public sealed class GuideWindow : Window
         new("Jugs and deliveries", new[]
         {
             "Farmers and the owner fill jugs from the dairy tank (top of the Kitchen window: Roles > Farmer > Kitchen), inside the dairy, up to what their farmer tank holds: a 32 oz milk pail at first, up to a 400 oz grand tanker (Shop > Farmer tank, unlocked by farmer level). Filling takes time: 1 oz a second (twice as fast with Churn oil), and you have to stay in the dairy.",
-            "Drop-offs (Creamery > Deliveries): take milk in your jugs to any other dairy and leave it in their tank, no order needed. The Grand Creamery pays you, your own dairy fund gets 2 coins an oz, and you get farmer XP. You can deliver 30 oz a day to other dairies at farmer level 1, plus 5 a level (buy orders count too).",
+            "Drop-offs (Creamery > Deliveries): take milk in your jugs to any other dairy and leave it in their tank, no order needed. The Grand Creamery pays you, your own dairy fund gets 2 coins an oz, and you get farmer XP. You can deliver 30 oz a day to other dairies at farmer level 1, plus 5 a level, in up to 10 deliveries a day, and drop off at each dairy once a day (filling a buy order counts as a delivery too).",
             "Deliveries: other dairies' buy orders (public or private) are listed on the Creamery tab. Fill them from inside your own dairy (or in person) with milk in your jugs; it goes straight into the buying dairy's tank.",
             "Any owner, public or private, can post buy orders (Creamery > Deliveries): the coins are held until a delivery fills it or you cancel.",
         }),

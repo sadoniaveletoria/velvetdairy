@@ -113,7 +113,7 @@ Cow and bull are yours: you add or drop them, and they hold in every dairy you'r
 - **Deliveries:**
   - **Drop-offs:** walk into any other dairy and leave milk from your jugs in their tank (Creamery → Deliveries), no order needed. The Grand Creamery pays you 1.5 coins an oz, your own dairy fund gets 2 coins an oz, and you get farmer XP.
   - **Other dairies' buy orders**, public or private. Fill them from inside your own dairy, or in person at their dairy (same pay).
-  - **Daily limit:** you can deliver 30 oz a day to other dairies at farmer level 1, plus 5 oz a level (525 at level 100). Drop-offs and buy orders share it.
+  - **Daily limit:** you can deliver 30 oz a day to other dairies at farmer level 1, plus 5 oz a level (525 at level 100). Drop-offs and buy orders share it. You can make **10 deliveries a day**, and drop off at each dairy **once a day**.
   - **The weekly contract** (600 oz at dairy level 1, plus 150 a level, up to 3,500), delivered in person at any **Grand Creamery**. **Dairy → Contract** shows where they are. Fill it for the full reward; if it isn't full by Monday, your dairy still gets the share it delivered.
 
 ---

@@ -1107,9 +1107,20 @@ await test("farmers drop milk off at any other dairy, capped a day by farmer lev
   assert.equal(r.data.fund, 40);
   assert.equal(r.data.left, 10, "level 1: 30 oz a day");
   assert.equal((await call(fred, "POST", "/v1/deliver", { oz: 20, grade: 0, level: 1 })).status, 400, "over the level 1 cap");
-  assert.equal((await call(fred, "POST", "/v1/deliver", { oz: 20, grade: 0, level: 10 })).status, 200, "75 oz at level 10");
-  assert.equal((await call(host, "GET", "/v1/dairy/mine")).data.progress.tank.total, 40, "the milk went into their tank");
-  assert.equal((await call(owner, "GET", "/v1/dairy/mine")).data.progress.fund, 80, "2 coins an oz to the farmer's own dairy");
+  const again = await call(fred, "POST", "/v1/deliver", { oz: 20, grade: 0, level: 10 });
+  assert.equal(again.status, 400, "once per dairy a day");
+  assert.ok(/already delivered/.test(again.data.error || JSON.stringify(again.data)));
+  assert.equal(r.data.deliveriesLeft, 9);
+  assert.equal((await call(host, "GET", "/v1/dairy/mine")).data.progress.tank.total, 20, "the milk went into their tank");
+  assert.equal((await call(owner, "GET", "/v1/dairy/mine")).data.progress.fund, 40, "2 coins an oz to the farmer's own dairy");
+  // Ten a day in all
+  for (let i = 0; i < 9; i++) sqlite.prepare("INSERT INTO deliveries (install, day, target) VALUES (?, ?, ?)").run(fred.id, r.data.day || new Intl.DateTimeFormat("en-CA", { timeZone: "America/Chicago" }).format(new Date()), `x${i}`);
+  const host2 = player("Ida Inn");
+  await beat(host2);
+  assert.equal((await call(host2, "PUT", "/v1/dairy", dairyBody({ houseId: "6660001112223", name: "Inn Pasture", isPublic: true, ownerName: "Ida Inn", ward: 21, plot: 5, roles: [] }))).status, 200);
+  await beat(fred, { houseId: "6660001112223", awake: true });
+  const eleventh = await call(fred, "POST", "/v1/deliver", { oz: 5, grade: 0, level: 10 });
+  assert.equal(eleventh.status, 400, "10 deliveries a day");
   assert.equal((await call(owner, "POST", "/v1/deliver", { oz: 5, grade: 0, level: 1 })).status, 400, "the owner isn't standing in another dairy");
 });
 

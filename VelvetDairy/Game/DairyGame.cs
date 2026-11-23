@@ -3700,6 +3700,7 @@ public sealed partial class DairyGame
             return o.DairyPublic ? $"Deliver from inside your own dairy, or in person at {o.DairyName}." : "Deliver from inside your own dairy.";
         if (Carried < o.Oz) return $"You need {Units.Oz(o.Oz)} of milk in your jugs.";
         if (o.Oz > DeliverLeft) return $"You can deliver {Units.Oz(DeliverLeft, "0")} more to other dairies today (the limit grows with your farmer level).";
+        if (F.DayDeliveries >= Catalog.DeliveriesPerDay) return $"You've made your {Catalog.DeliveriesPerDay} deliveries for today.";
         return null;
     }
 
@@ -3732,6 +3733,7 @@ public sealed partial class DairyGame
             F.DayDelivered++;
             F.DayDeliveredOz += r.Oz;
             F.DayToOthersOz += r.Oz;
+            F.DayDeliveries++;
             EaseTaint(Catalog.TaintPerOrder);
             AddQuality(Grades.QualityPerOrder);
             Say($"Delivered {Units.Oz(r.Oz)} to {r.Dairy}. Your {r.Coins} coins are on the way{(r.Bonus > 0 ? $" (+{r.Bonus} for coming in person)" : "")}.", 1);
@@ -3755,6 +3757,8 @@ public sealed partial class DairyGame
         if (Blocked() != null) return Blocked();
         if (!CanCarry) return "Only farmers and owners deliver milk.";
         if (VisitingDairy == null) return "Go to another dairy to drop milk off there.";
+        if (F.DayDeliveredTo!.Contains(VisitingDairy.Id)) return $"You already delivered to {VisitingDairy.Name} today. Try another dairy, or come back after the daily reset.";
+        if (F.DayDeliveries >= Catalog.DeliveriesPerDay) return $"You've made your {Catalog.DeliveriesPerDay} deliveries for today.";
         if (oz < 1) return "Deliver at least 1 oz.";
         if (Carried < oz) return $"You have {Units.Oz(Carried, "0.#")} in your jugs.";
         if (oz > DeliverLeft) return $"You can deliver {Units.Oz(DeliverLeft, "0")} more to other dairies today (the limit grows with your farmer level).";
@@ -3783,8 +3787,11 @@ public sealed partial class DairyGame
         }
 
         plugin.SaveConfig();
+        var dairyId = VisitingDairy!.Id;
         Net.DeliverHere((int)oz, DeliveryLevel, r =>
         {
+            F.DayDeliveredTo!.Add(dairyId);
+            F.DayDeliveries++;
             F.Stats.OrdersFilled++;
             F.DayOrders++;
             F.DayDelivered++;
@@ -3896,6 +3903,8 @@ public sealed partial class DairyGame
         F.DayKey = key;
         F.DayOz = 0;
         F.DayToOthersOz = 0;
+        F.DayDeliveries = 0;
+        F.DayDeliveredTo!.Clear();
         F.DayEarned = 0;
         F.DaySeedEarned = 0;
         F.DayOrders = 0;

@@ -225,7 +225,7 @@ Your **farmer tank** is how much milk you can carry: a 32 oz pail at first. Buy 
 
 - **Drop-offs** (Creamery > Deliveries): walk into any other dairy and leave milk from your jugs in their tank, no order needed. The Grand Creamery pays you 1.5 coins an oz, your own **dairy fund gets 2 coins per oz**, and you get 2.5 farmer XP an oz.
 - **Other dairies' buy orders** (Creamery > Deliveries): the milk goes into their tank and the coins they offered go to you.
-- **Daily delivery limit**: 30 oz a day to other dairies at farmer level 1, plus 5 oz a level (275 at level 50, 525 at level 100). Drop-offs and buy orders share it.
+- **Daily delivery limit**: 30 oz a day to other dairies at farmer level 1, plus 5 oz a level (275 at level 50, 525 at level 100). Drop-offs and buy orders share it. You can also make only **10 deliveries a day**, and drop off at each dairy **once a day** (until the daily reset).
 - **The weekly contract**: take jugs to the Grand Creamery (Dairy > Contract shows where) and ship. Each shipment gives you farmer XP (half the oz) and the dairy XP and fund coins.
 
 Filling jugs also gives farmer XP (a quarter of the oz).

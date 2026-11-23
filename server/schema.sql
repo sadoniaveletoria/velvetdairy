@@ -493,3 +493,11 @@ CREATE TABLE IF NOT EXISTS dev_bots (
   state     TEXT NOT NULL DEFAULT '{}',
   last      INTEGER NOT NULL
 );
+
+-- Deliveries a farmer made each day (0.9.99): one drop-off per dairy a day, and 10 deliveries a day in all
+CREATE TABLE IF NOT EXISTS deliveries (
+  install  TEXT NOT NULL,
+  day      TEXT NOT NULL,
+  target   TEXT NOT NULL,        -- dairy id (a drop-off) or "order:<id>" (a buy order filled)
+  PRIMARY KEY (install, day, target)
+);

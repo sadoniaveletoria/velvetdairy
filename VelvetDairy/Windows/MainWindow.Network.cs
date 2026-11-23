@@ -997,7 +997,8 @@ public sealed partial class MainWindow
         SubHeading(visiting != null ? $"Drop milk off at {visiting.Name}" : "Drop milk off at another dairy", width);
         Ui.Wrapped($"Bring milk from your jugs to any other dairy and leave it in their tank. The Grand Creamery pays you {Catalog.DeliverPay * Grades.All[0].Price:0.#} coins an oz, "
                    + $"your own dairy fund gets 2 coins an oz, and you get farmer xp. You can deliver {Units.Oz(G.DeliverCap, "0")} a day to other dairies "
-                   + $"(buy orders count too; it grows with your farmer level): {Units.Oz(G.DeliverLeft, "0")} left today.", Theme.InkSoft, width);
+                   + $"(it grows with your farmer level): {Units.Oz(G.DeliverLeft, "0")} left today. You can make {Catalog.DeliveriesPerDay} deliveries a day "
+                   + $"({Math.Max(0, Catalog.DeliveriesPerDay - F.DayDeliveries)} left), and drop off at each dairy once a day. Filling a buy order counts as a delivery too.", Theme.InkSoft, width);
         if (visiting != null)
         {
             var most = (int)Math.Floor(Math.Min(G.Carried, G.DeliverLeft));

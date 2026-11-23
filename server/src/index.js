@@ -26,6 +26,7 @@ const DAILY_POST_COINS = 3000;      // coins one install can put into buy orders
 // How much milk a farmer can deliver to other dairies a day (buy orders and drop-offs together), by farmer level
 const DELIVER_OZ_BASE = 30, DELIVER_OZ_PER_LEVEL = 5;   // 30 oz at level 1, 275 at 50, 525 at 100
 const deliverCap = (level) => DELIVER_OZ_BASE + DELIVER_OZ_PER_LEVEL * (Math.max(1, Math.min(100, Math.floor(Number(level) || 1))) - 1);
+const DELIVERIES_PER_DAY = 10;      // drop-offs and buy orders filled, together, a day per farmer
 const DELIVER_PAY = 0.25;           // a drop-off pays the farmer this much of the milk's grade price an oz (the Grand Creamery pays)
 const MAX_STALLS = 6;
 const MAX_MEMBERS = 40;
@@ -2361,6 +2362,7 @@ async function fillOrder(env, me, id, request) {
   const delivered = me.deliver_day === day ? me.deliver_oz : 0;
   const cap = deliverCap(b.level);
   if (delivered + o.oz > cap) fail(400, `At your farmer level you can deliver up to ${cap} oz a day to other dairies (${Math.max(0, Math.floor(cap - delivered))} left today).`);
+  if ((await deliveriesToday(env, me.id, day)).length >= DELIVERIES_PER_DAY) fail(400, `You can make ${DELIVERIES_PER_DAY} deliveries a day.`);
 
   if (!(await useCarriedOz(env, me.id, o.oz))) fail(400, "Fill jugs from your dairy's tank first: you can only deliver milk you've carried out.");
 
@@ -2375,6 +2377,7 @@ async function fillOrder(env, me, id, request) {
 
   await env.DB.batch([
     env.DB.prepare("UPDATE installs SET deliver_day = ?, deliver_oz = ? WHERE id = ?").bind(day, delivered + o.oz, me.id),
+    env.DB.prepare("INSERT OR IGNORE INTO deliveries (install, day, target) VALUES (?, ?, ?)").bind(me.id, day, `order:${id}`),
     inboxStmt(env, me.id, "payout", o.coins + bonus, 0, 0,
       `${d.name} paid ${o.coins} coins for your ${o.oz} oz${bonus ? ` (+${bonus} for delivering in person)` : ""}.`),
     // The milk goes into the buying dairy's tank
@@ -2407,11 +2410,15 @@ async function deliverHere(env, me, request) {
   const delivered = me.deliver_day === day ? me.deliver_oz : 0;
   const cap = deliverCap(b.level);
   if (delivered + oz > cap) fail(400, `At your farmer level you can deliver up to ${cap} oz a day to other dairies (${Math.max(0, Math.floor(cap - delivered))} left today).`);
+  const done = await deliveriesToday(env, me.id, day);
+  if (done.includes(d.id)) fail(400, `You already delivered to ${d.name} today. Try another dairy, or come back after the daily reset.`);
+  if (done.length >= DELIVERIES_PER_DAY) fail(400, `You can make ${DELIVERIES_PER_DAY} deliveries a day.`);
   if (!(await useCarriedOz(env, me.id, oz))) fail(400, "You don't have that much milk in your jugs (fill them from your dairy's tank).");
   const coins = Math.round(oz * GRADE_PRICE[grade] * DELIVER_PAY);
   const fund = Math.round(oz * ORDER_FUND_PER_OZ);
   await env.DB.batch([
     env.DB.prepare("UPDATE installs SET deliver_day = ?, deliver_oz = ? WHERE id = ?").bind(day, delivered + oz, me.id),
+    env.DB.prepare("INSERT OR IGNORE INTO deliveries (install, day, target) VALUES (?, ?, ?)").bind(me.id, day, d.id),
     inboxStmt(env, me.id, "payout", coins, 0, 1, `The Grand Creamery paid you ${coins} coins for ${oz} oz delivered to ${d.name}.`),
     env.DB.prepare(`INSERT INTO dairy_tank (dairy_id, grade, oz) VALUES (?, 0, ?)
       ON CONFLICT(dairy_id, grade) DO UPDATE SET oz = oz + excluded.oz`).bind(d.id, oz),
@@ -2421,7 +2428,12 @@ async function deliverHere(env, me, request) {
       ON CONFLICT(dairy_id) DO UPDATE SET fund = fund + excluded.fund`).bind(mem.dairy_id, fund, weekKey()),
     addXpStmt(env, mem.dairy_id, oz * DELIVERER_XP_PER_OZ),
   ]);
-  return { ok: true, coins, fund, oz, dairy: d.name, left: Math.max(0, cap - delivered - oz), cap };
+  return { ok: true, coins, fund, oz, dairy: d.name, left: Math.max(0, cap - delivered - oz), cap, deliveriesLeft: DELIVERIES_PER_DAY - done.length - 1 };
+}
+
+/** What a farmer delivered to today: dairy ids for drop-offs, "order:<id>" for buy orders filled. */
+async function deliveriesToday(env, install, day) {
+  return (await env.DB.prepare("SELECT target FROM deliveries WHERE install = ? AND day = ?").bind(install, day).all()).results.map(r => r.target);
 }
 
 function gradeName(g) {
