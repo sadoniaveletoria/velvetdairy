@@ -184,34 +184,34 @@ public static class Catalog
 
     public static readonly IReadOnlyList<FeedItem> Feed = new[]
     {
-        new FeedItem("hay", "Wheat grain", "grain", 4, 1, "Plain and filling: the dairy's feed bin always has it. Farmers buy it to mill into flour in the Kitchen.", Fed: 0.04f),
-        new FeedItem("grain", "Sweet grain", "grain", 12, 2, "A better meal, for the dairy's feed bin.", Fed: 0.07f),
-        new FeedItem("clover", "Fresh clover", "clover", 15, 3, "A treat: a little milk bonus for a while (a farmer's baking is better).", Happy: 0.04f, BoostMinutes: 15),
-        new FeedItem("salt", "Salt lick", "salt", 20, 4, "A salty treat: a little milk bonus for a while.", Happy: 0.03f, BoostMinutes: 10),
-        new FeedItem("premium", "Velvet blend", "premium", 45, 8, "A rich feed for the dairy's feed bin.", Fed: 0.12f),
-        new FeedItem("honeyoats", "Honey oats", "grain", 18, 7, "Sweet and filling, for the dairy's feed bin.", Fed: 0.09f),
-        new FeedItem("mineral", "Mineral block", "salt", 22, 11, "Better than plain water.", Water: 0.08f),
-        new FeedItem("creamclover", "Cream clover", "clover", 35, 13, "A lush treat: a bigger milk bonus for a while.", Happy: 0.05f, BoostMinutes: 45),
-        new FeedItem("goldenmash", "Golden mash", "premium", 70, 22, "A feast: the best feed for the dairy's feed bin.", Fed: 0.15f),
+        new FeedItem("hay", "Wheat grain", "grain", 4, 1, "Plain and filling: the dairy's feed bin always has it. Farmers buy it to mill into flour in the Kitchen.", Fed: 0.08f),
+        new FeedItem("grain", "Sweet grain", "grain", 12, 2, "A better meal, for the dairy's feed bin.", Fed: 0.12f),
+        new FeedItem("clover", "Fresh clover", "clover", 15, 3, "A treat: a little milk bonus for a while (a farmer's baking is better).", Happy: 0.07f, BoostMinutes: 15),
+        new FeedItem("salt", "Salt lick", "salt", 20, 4, "A salty treat: a little milk bonus for a while.", Happy: 0.06f, BoostMinutes: 10),
+        new FeedItem("premium", "Velvet blend", "premium", 45, 8, "A rich feed for the dairy's feed bin.", Fed: 0.20f),
+        new FeedItem("honeyoats", "Honey oats", "grain", 18, 7, "Sweet and filling, for the dairy's feed bin.", Fed: 0.15f),
+        new FeedItem("mineral", "Mineral block", "salt", 22, 11, "Better than plain water.", Water: 0.10f),
+        new FeedItem("creamclover", "Cream clover", "clover", 35, 13, "A lush treat: a bigger milk bonus for a while.", Happy: 0.09f, BoostMinutes: 45),
+        new FeedItem("goldenmash", "Golden mash", "premium", 70, 22, "A feast: the best feed for the dairy's feed bin.", Fed: 0.25f),
         // Quality treats: raise your milk quality score so better grades unlock sooner
-        new FeedItem("biscuit", "Cream biscuit", "biscuit", 30, 1, "A rich little treat that builds your milk quality.", Happy: 0.03f, Quality: 20, BoostMinutes: 30),
+        new FeedItem("biscuit", "Cream biscuit", "biscuit", 30, 1, "A rich little treat that builds your milk quality.", Happy: 0.06f, Quality: 20, BoostMinutes: 30),
         new FeedItem("alfalfa", "Golden alfalfa", "alfalfa", 80, 1, "Prized hay that builds your milk quality a lot.", Quality: 50, BoostMinutes: 30),
-        new FeedItem("starclover", "Star clover", "starclover", 200, 1, "Rare and sweet: a big step up in milk quality.", Happy: 0.05f, Quality: 100, BoostMinutes: 30),
+        new FeedItem("starclover", "Star clover", "starclover", 200, 1, "Rare and sweet: a big step up in milk quality.", Happy: 0.10f, Quality: 100, BoostMinutes: 30),
         // Baked by your dairy's farmers and bought off the dairy shelf (not sold in the Shop)
-        new FeedItem("cheese", "Cheese", "cheese", 0, 1, "Made by your dairy's farmers. A little happy, and a milk boost for 10 minutes.", Happy: 0.04f, BoostMinutes: 10, Baked: true),
-        new FeedItem("cake", "Honey cream cake", "cake", 0, 1, "Baked by your dairy's farmers. Filling, very happy, and a milk boost for 25 minutes.", Fed: 0.06f, Happy: 0.09f, BoostMinutes: 25, Baked: true),
-        new FeedItem("tart", "Velvet tart", "tart", 0, 1, "Baked by your dairy's farmers. The best treat: filling, very happy, and a milk boost for 30 minutes.", Fed: 0.08f, Happy: 0.11f, BoostMinutes: 30, Baked: true),
-        new FeedItem("cookies", "Butter cookies", "biscuit", 0, 1, "Baked by your dairy's farmers. Happy, and a milk boost for 15 minutes.", Happy: 0.06f, BoostMinutes: 15, Baked: true),
-        new FeedItem("buns", "Cream buns", "biscuit", 0, 1, "Baked by your dairy's farmers. Filling, happy, and a milk boost for 20 minutes.", Fed: 0.05f, Happy: 0.07f, BoostMinutes: 20, Baked: true),
+        new FeedItem("cheese", "Cheese", "cheese", 0, 1, "Made by your dairy's farmers. A little happy, and a milk boost for 10 minutes.", Happy: 0.07f, BoostMinutes: 10, Baked: true),
+        new FeedItem("cake", "Honey cream cake", "cake", 0, 1, "Baked by your dairy's farmers. Filling, very happy, and a milk boost for 25 minutes.", Fed: 0.10f, Happy: 0.15f, BoostMinutes: 25, Baked: true),
+        new FeedItem("tart", "Velvet tart", "tart", 0, 1, "Baked by your dairy's farmers. The best treat: filling, very happy, and a milk boost for 30 minutes.", Fed: 0.13f, Happy: 0.18f, BoostMinutes: 30, Baked: true),
+        new FeedItem("cookies", "Butter cookies", "biscuit", 0, 1, "Baked by your dairy's farmers. Happy, and a milk boost for 15 minutes.", Happy: 0.10f, BoostMinutes: 15, Baked: true),
+        new FeedItem("buns", "Cream buns", "biscuit", 0, 1, "Baked by your dairy's farmers. Filling, happy, and a milk boost for 20 minutes.", Fed: 0.08f, Happy: 0.12f, BoostMinutes: 20, Baked: true),
         // Going away: keeps your grade from slipping
         // Bulls only (unlocked by bull level)
-        new FeedItem("ironoats", "Iron oats", "grain", 30, 8, "A hearty bull drink of soaked oats.", Water: 0.08f, Role: "bull"),
-        new FeedItem("bullsalt", "Bull's salt lick", "salt", 35, 12, "A coarse salt lick, and +25% bull xp for 30 minutes.", Happy: 0.04f, Role: "bull", XpBoost: 0.25f, XpBoostMinutes: 30),
+        new FeedItem("ironoats", "Iron oats", "grain", 30, 8, "A hearty bull drink of soaked oats.", Water: 0.10f, Role: "bull"),
+        new FeedItem("bullsalt", "Bull's salt lick", "salt", 35, 12, "A coarse salt lick, and +25% bull xp for 30 minutes.", Happy: 0.07f, Role: "bull", XpBoost: 0.25f, XpBoostMinutes: 30),
         new FeedItem("seedtea", "Seed tea", "water", 40, 15, "A warm herbal brew. Your next seed milking gives 25% more.", Role: "bull", NextSeedBonus: 0.25f),
         new FeedItem("studtonic", "Stud draught", "water", 120, 20, "Your next breeding gives the cow 50% more bred bonus, and it lasts 15 minutes longer.", Role: "bull", StudTonic: true),
         // Cows who are also bulls (unlocked by the lower of the two levels)
-        new FeedItem("twinblend", "Twin blend", "premium", 60, 10, "A treat for a cow and bull.", Happy: 0.05f, BoostMinutes: 30, Role: "both"),
-        new FeedItem("bonbon", "Velvet & brass bonbon", "biscuit", 50, 15, "A rich little sweet, and +20% cow and bull xp for 30 minutes.", Happy: 0.05f, Role: "both", XpBoost: 0.20f, XpBoostMinutes: 30),
+        new FeedItem("twinblend", "Twin blend", "premium", 60, 10, "A treat for a cow and bull.", Happy: 0.09f, BoostMinutes: 30, Role: "both"),
+        new FeedItem("bonbon", "Velvet & brass bonbon", "biscuit", 50, 15, "A rich little sweet, and +20% cow and bull xp for 30 minutes.", Happy: 0.09f, Role: "both", XpBoost: 0.20f, XpBoostMinutes: 30),
         new FeedItem("balancetea", "Second wind tonic", "water", 150, 10, "You get tired 2 hours later today. Once a day.", RestHours: 2),
         new FeedItem("pumpdrops", "Pump drops", "water", 60, 5, "Milk and seed come in 25% faster for 30 minutes.", DropsMinutes: 30),
         new FeedItem("udderbalm", "Udder balm", "cushion", 60, 9, "Your next 3 hand milkings by a farmer give 20% more milk (and seed).", BalmMilkings: 3),
@@ -255,7 +255,7 @@ public static class Catalog
     public static readonly IReadOnlyList<Upgrade> Upgrades = new[]
     {
         new Upgrade("stallkit", "Stall kit", "bucket", new[] { 200, 500 }, new[] { 6, 12 }, "Lets you register one more stall."),
-        new Upgrade("cushion", "Plush bedding", "cushion", new[] { 70 }, new[] { 4 }, "Comfy bonus +7% instead of +4%."),
+        new Upgrade("cushion", "Plush bedding", "cushion", new[] { 70 }, new[] { 4 }, "Comfy bonus +10% instead of +6%."),
         new Upgrade("bottle", "Bigger bottle", "bottle", new[] { 50, 135, 275, 550, 10500 }, new[] { 3, 8, 14, 21, 40 }, "Each bottle (and seed vial) holds more."),
         // Up to 4 bottles (6 before 0.9.97, when milk came in faster): the 5th and 6th were refunded
         new Upgrade("rack", "Extra bottle", "milk", new[] { 90, 225, 350 }, new[] { 6, 12, 19 }, "One more bottle (and seed vial). When one fills, the next one starts. Up to 4."),
@@ -321,9 +321,9 @@ public static class Catalog
     public const float CleanBonus = 0.10f;      // a freshly cleaned stall milks 10% faster and gives 10% more xp (never less than its tier)
     public const int CleanXp = 25;              // farmer xp per stall cleaned (each stall: once an hour, again when half an hour is left)
     public const int GroomXp = 20;              // farmer xp per groom (each cow: once every 15 minutes)
-    public const float GroomHappy = 0.03f;      // a groom: Happy +3% and Comfy +2% for 20 minutes (a bigger bonus already going is kept)
-    public const float GroomComfy = 0.02f;
-    public const float FarmerWater = 0.05f;     // fresh water a farmer brings: Watered +5% (the trough is +4%)
+    public const float GroomHappy = 0.06f;      // a groom: Happy +6% and Comfy +4% for 20 minutes (a bigger bonus already going is kept)
+    public const float GroomComfy = 0.04f;
+    public const float FarmerWater = 0.10f;     // fresh water a farmer brings: Watered +10% (the trough is +6%)
     public const float StallSitRange = 1.5f;    // someone sitting this close to a stall is using it
 
     public const float HandSpeed = 0.35f;        // oz per second while a farmer keeps milking (a looping emote, close, targeting you)
@@ -346,7 +346,7 @@ public static class Catalog
     public static readonly float[] BottleSizes = { 0, 8, 12, 20, 32, 48, 64 };
 
     public const float LevelBonus = 0.02f;      // +2% milk per level above 1, up to Leveling.MilkBonusCap (+4% before 0.9.97)
-    public const float ContentBonus = 0.10f;    // all four need bonuses active at once
+    public const float ContentBonus = 0.15f;    // all four need bonuses active at once
     public const float TreatBonus = 0.30f;      // while a treat boost lasts
 
     // ----- Need bonuses -----
@@ -357,9 +357,9 @@ public static class Catalog
     public const double NeedCooldownMinutes = 15; // eat, drink, rest and treat each wait this long between uses
     public const double RestSettleMinutes = 10;
     public const float InDairyDrain = 1f;   // (0.5 before: bars drained half as fast in a dairy)   // need bars drain this much as fast while you're in a dairy   // sit this long in your dairy and you get Comfy (each further stretch adds more)
-    public const float TroughBonus = 0.04f;     // Watered from the trough
-    public const float ComfyBonus = 0.04f;      // Comfy from resting (Plush bedding 0.07, + Lavender bedding 0.03)
-    public const float ComfyCushion = 0.07f;
+    public const float TroughBonus = 0.06f;     // Watered from the trough
+    public const float ComfyBonus = 0.06f;      // Comfy from resting (Plush bedding 0.10, + Lavender bedding 0.03)
+    public const float ComfyCushion = 0.10f;
     public const float ComfyLavender = 0.03f;
 
     public static readonly string[] Customers =

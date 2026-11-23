@@ -955,8 +955,8 @@ public sealed partial class MainWindow : Window
         var y = p.Y;
         var rows = new (string Icon, string Label, float Value, float Bonus, Vector4 Color, string Tip)[]
         {
-            ("hay", "Fed", cow.Hunger, cow.FedBonus, Theme.HoneyDeep, "Your farmers feed you from the dairy's feed bin (Herd Care > Feed). Better feed gives a bigger bonus: wheat grain +4% up to golden mash +15%, as the owner unlocks it."),
-            ("water", "Watered", cow.Thirst, cow.WaterBonus, Theme.BlueDeep, "Drink at the trough (free, +4%), or a farmer brings you fresh water (+5%)."),
+            ("hay", "Fed", cow.Hunger, cow.FedBonus, Theme.HoneyDeep, "Your farmers feed you from the dairy's feed bin (Herd Care > Feed). Better feed gives a bigger bonus: wheat grain +8% up to golden mash +25%, as the owner unlocks it."),
+            ("water", "Watered", cow.Thirst, cow.WaterBonus, Theme.BlueDeep, $"Drink at the trough (free, +{Catalog.TroughBonus * 100:0}%), or a farmer brings you fresh water (+{Catalog.FarmerWater * 100:0}%)."),
             ("cushion", "Comfy", cow.Comfort, cow.ComfortBonus, Theme.RoseDeep, $"Sit in your dairy 10 minutes for {Catalog.NeedMinutes:0} minutes of Comfy. It doesn't run down while you sit."),
             ("clover", "Happy", cow.Mood, cow.HappyBonus, Theme.SageDeep, "A farmer grooming you (it gives a little Comfy too) or feeding you a baked treat, or the feeding bell. (Treats you buy give their own milk bonus instead, listed below.)"),
         };

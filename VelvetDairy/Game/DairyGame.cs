@@ -496,7 +496,7 @@ public sealed partial class DairyGame
     }
 
     /// <summary>The feeding bell: the extra % it adds on top of each bar's bonus.</summary>
-    public float BellBonus(string bar) => bar switch { "Fed" => 0.08f, "Watered" => 0.04f, "Comfy" => ComfyNow, _ => 0.05f };
+    public float BellBonus(string bar) => bar switch { "Fed" => 0.12f, "Watered" => 0.06f, "Comfy" => ComfyNow, _ => 0.08f };
 
     public void ClaimFeeding(string bar)
     {

@@ -61,7 +61,7 @@ Cow and bull are yours: you add or drop them, and they hold in every dairy you'r
 - **Stalls** are seats (a chair, bench or bed) that milk whoever sits on them. Put them in either place. The first is free; each one after costs more from the dairy fund (500, 2,000, 4,500, 8,000…). Raising a stall a tier costs 300 (Padded), 1,000 (Velvet) and 2,500 (Gilded). Upgrade them to Wooden, Padded, Velvet and Gilded for faster milking.
 - **Stall markers** (Settings, on by default): a small green dot above each stall, only on your screen, so you can see which seats milk you.
 - **The dairy fund** is shared money, filled by members' donations, its farmers' drop-offs at other dairies (2 coins an oz) and the weekly contract. The owner spends it on stalls, stall upgrades, the **feed bin** and the **Velvet pump** (Dairy → Feed & pump).
-- **The feed bin:** farmers feed cows and bulls from it for free (Herd Care → Feed), each one every 15 minutes; it fills their Fed bar. Wheat grain is there from the start; the owner unlocks Sweet grain (dairy level 3, 2,000), Honey oats (6, 6,000), Velvet blend (10, 15,000) and Golden mash (15, 35,000) from the fund.
+- **The feed bin:** farmers feed cows and bulls from it for free (Herd Care → Feed), each one every 15 minutes; it fills their Fed bar. Wheat grain (+8%) is there from the start; the owner unlocks Sweet grain (dairy level 3, 2,000), Honey oats (6, 6,000), Velvet blend (10, 15,000) and Golden mash (15, 35,000) from the fund.
 - **The Velvet pump** (dairy level 5): 2,500 from the fund runs it for 2 hours; everyone milked in the dairy makes milk and seed 15% faster.
 - **Home pasture:** being milked in your own dairy gives +10% milk and seed.
 - **The dairy shelf** (Market > Pantry) sells treats your farmers baked, like Butter cookies (Happy and a milk boost). Any member can buy them inside the dairy; the baker gets 80% and the fund 20%. The owner sets the price.
@@ -104,7 +104,7 @@ Cow and bull are yours: you add or drop them, and they hold in every dairy you'r
 
 - **Hand milking:** press **Herd Care** on the HUD (or Herd → Farmer), stand near a cow, press **Target**, then **Milk**. Herd Care lists only the cows and bulls who are in your dairy right now (members, and guests visiting a public dairy), and only while you're there too; someone online in a different dairy or out in the world isn't listed. Your character does the milking emote (/beesknees by default, or one you choose) until the cow is empty, then stops by itself. You earn 25% of what the cow is paid, on top of their pay (10% more for a cow wearing the Champion's ribbon).
 - **Your own animation:** if you use Penumbra, pick an animation mod and its options with **Animation…** in the Herd Care window. It switches on only while you milk.
-- **Chores:** **Groom** a cow or bull (Happy +3% and Comfy +2% for 20 minutes), **Feed** a cow or bull from the feed bin (their Fed bar), **Water** them (Watered +5%) or a treat from the dairy shelf (their Happy bar; press Feed and pick which; free), and **Clean** an empty stall (cows milked there get a bonus for an hour). All earn farmer XP.
+- **Chores:** **Groom** a cow or bull (Happy +6% and Comfy +4% for 20 minutes), **Feed** a cow or bull from the feed bin (their Fed bar), **Water** them (Watered +10%) or a treat from the dairy shelf (their Happy bar; press Feed and pick which; free), and **Clean** an empty stall (cows milked there get a bonus for an hour). All earn farmer XP.
 - **The Kitchen** (the Kitchen button on the **Herd** page): bake with milk from your jugs. Recipes unlock with your farmer level:
   - **Butter** (level 1): 16 oz of milk → 1 butter.
   - **Butter cookies** (level 3): 1 butter + 8 oz of milk → 3 cookies, for the dairy shelf.
@@ -185,7 +185,7 @@ Target someone with Eorzea Milkers and press **Scan** on the HUD (or right-click
 - **Awards:** collect them for coins.
 - **Stats:** your lifetime totals (milk given, best grade, milkings, deliveries, coins). They include **breed counters**: as a cow, how many times a bull has bred you; as a bull, how many cows you've bred (scene breedings, counted from version 0.9.93 on; breeding stalls don't count).
 - **The Shop** sells treats, tonics (Second wind, Pump drops, Udder balm, Dry-off), quality treats and, for farmers, Churn oil, wheat grain for flour and bigger farmer tanks. Everything else that used to be an upgrade (bottles, bedding, troughs, bells, wearables, bull perks) is now a **free level reward**: Market → Shop → Level rewards lists them and the level each comes at. Wearables raise your quota pay.
-- **Comfort items:** Plush bedding (Comfy +7% instead of +4%), Lavender bedding (Comfy +3% more, Happy +2% more), Silk cushion (Comfy +2% more), Bell collar (Happy +1% more), Clean trough (Watered +2% more), Endless spring (Watered +3% more).
+- **Comfort items:** Plush bedding (Comfy +10% instead of +6%), Lavender bedding (Comfy +3% more, Happy +2% more), Silk cushion (Comfy +2% more), Bell collar (Happy +1% more), Clean trough (Watered +2% more), Endless spring (Watered +3% more).
 - **Champion's ribbon** (cow level 28): farmers who hand milk you earn 10% more; being bred lasts 45 minutes; pregnancy gives 5% more milk.
 - The main window shows your Eorzea Milkers version at the bottom of the left side (handy when asking for help).
 

@@ -48,7 +48,7 @@ Things that make milk come in faster (they add together):
 
 - **Your cow level**: +2% per level, up to level 50 (about double a new cow).
 - **Your grade**: B +10%, A +20%, S +35%, S+ +50% milking speed.
-- **The four bars** (below) and **Contented** (all four going at once: +10% more).
+- **The four bars** (below) and **Contented** (all four going at once: +15% more).
 - **Treats**: a treat you buy adds its own small bonus for 10 or 20 minutes; a farmer's baked treat also gives a +30% boost (one boost at a time).
 - **Home pasture**: +10% while you're milked in your own dairy.
 - **Velvet pump**: +15% for everyone, when the owner turns it on.
@@ -185,13 +185,13 @@ Your main tool is **Herd Care**. Open it from the HUD button or Herd > Farmer. I
 | --- | --- | --- | --- |
 | **Feed from the feed bin** | Herd Care > pick a cow or bull > Feed > pick a bin feed. Fills their **Fed** bar. Free and unlimited. | 10 | Once per cow every 15 min |
 | **Feed a baked treat** | Herd Care > Feed > pick a treat from the dairy shelf. Gives Happy and a milk boost (bulls get 20 bull XP). | 10 | Once per cow every 15 min |
-| **Groom** | Stand next to them, press Groom. Happy +3% and Comfy +2% for 20 minutes. | 20 | Once per cow every 15 min |
-| **Water** | Herd > Water. Watered +5% for 20 minutes. | 10 | Once per cow every 15 min |
+| **Groom** | Stand next to them, press Groom. Happy +6% and Comfy +4% for 20 minutes. | 20 | Once per cow every 15 min |
+| **Water** | Herd > Water. Watered +10% for 20 minutes. | 10 | Once per cow every 15 min |
 | **Clean a stall** | Press Clean on a stall nobody is sitting on. Cows milked there get +10% speed and XP for an hour. | 25 | Again when half an hour is left |
 | **Ring the feeding bell** | Herd > Ring the bell. Every cow and bull in the dairy picks a bar and gets an extra bonus on top of it for 15 minutes. | 10 | Once an hour per dairy |
 | **Load a breeding stall** | Loads one use of a breeding stall from the seed tank. | 8 | Up to 5 loaded |
 
-The better the dairy's feed bin (the owner buys upgrades), the bigger the Fed bonus you give: Wheat grain +4%, Sweet grain +7%, Honey oats +9%, Velvet blend +12%, Golden mash +15%.
+The better the dairy's feed bin (the owner buys upgrades), the bigger the Fed bonus you give: Wheat grain +8%, Sweet grain +12%, Honey oats +15%, Velvet blend +20%, Golden mash +25%.
 
 ### Hand milking
 
@@ -292,11 +292,11 @@ Only the owner takes roles away.
 
 | Feed | Fed bonus | Needs dairy level | Cost |
 | --- | --- | --- | --- |
-| Wheat grain | +4% | 1 | free |
-| Sweet grain | +7% | 3 | 2,000 |
-| Honey oats | +9% | 6 | 6,000 |
-| Velvet blend | +12% | 10 | 15,000 |
-| Golden mash | +15% | 15 | 35,000 |
+| Wheat grain | +8% | 1 | free |
+| Sweet grain | +12% | 3 | 2,000 |
+| Honey oats | +15% | 6 | 6,000 |
+| Velvet blend | +20% | 10 | 15,000 |
+| Golden mash | +25% | 15 | 35,000 |
 
 **The Velvet pump** (Dairy > Feed & pump, from dairy level 5): 2,500 coins turns on +15% milk and seed for everyone in the dairy for 2 hours. Best used when lots of people are on.
 
