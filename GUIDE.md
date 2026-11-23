@@ -76,16 +76,16 @@ Each use fills half a bar (30 minutes). Eating, drinking and treats each have a 
 
 ### Your daily quota (this is your pay)
 
-Milking itself doesn't pay coins. Instead, every day a farmer or the owner sets your quota size:
+Milking itself doesn't pay coins. Instead, a farmer or the owner types in your quota: how many oz of milk you give each day, from **1 to 50** (12 until someone sets it). It pays **5 coins an oz** at Grade C:
 
-| Size | Milk needed at level 1 | Coins at Grade C |
+| Quota | Coins at Grade C | A new cow, roughly |
 | --- | --- | --- |
-| Light | 6 oz | 30 |
-| Steady | 12 oz | 60 |
-| Heavy | 18 oz | 100 |
-| Devoted | 32 oz | 170 |
+| 6 oz | 30 | about an hour of milk |
+| 12 oz | 60 | 2–3 hours |
+| 25 oz | 125 | 5 hours |
+| 50 oz | 250 | a very long day |
 
-The milk needed grows 2% per cow level up to 50 (it roughly doubles), because you make milk faster too. When the HUD says **"Quota reached: claim N in Goals"**, open the **Progress > Goals** tab and press **Claim**. You can only claim it once a day.
+When the HUD says **"Quota reached: claim N in Goals"**, press **Claim** on Today (or in Today's goals). You can only claim it once a day.
 
 What makes the payment bigger:
 
@@ -134,14 +134,7 @@ A bull works exactly like a cow, except it makes **seed** into **vials** instead
 
 ### The bull's daily quota
 
-A bull's quota is in seed: 0.17 oz of seed for every 1 oz a cow would need. It pays the same coins as a cow's.
-
-| Size | Seed needed at level 1 | Coins at Grade C |
-| --- | --- | --- |
-| Light | about 1 oz | 30 |
-| Steady | about 2 oz | 60 |
-| Heavy | about 3 oz | 100 |
-| Devoted | about 5.4 oz | 170 |
+A bull's quota is in seed, typed in by a farmer or the owner: **0.1 to 8.5 oz** a day (2 until someone sets it). It pays about **29 coins an oz of seed** at Grade C, so 2 oz of seed pays about what 12 oz of milk does.
 
 The same grade multiplier applies (C ×1 up to S+ ×1.6), plus the dairy's level, plus bull wearables: Nose ring +3%, Brass horn caps +5% and Champion bull sash +10%. If you're both a cow and a bull, you have both quotas: one in milk and one in seed, set separately, each claimed and paid on its own.
 
@@ -263,12 +256,14 @@ You can move or resize the box at any time (Dairy > Listing > Move or resize), a
 
 ### Managing members and quotas
 
-Open **Manage members** from Dairy > Overview. From there you can give or remove roles, remove people, and set each cow's **Cow quota** and each bull's **Bull quota** (Light, Steady, Heavy or Devoted). Farmers can set them too. Farmers have no quota. A bigger quota needs more milk but pays more, so match it to how much each person plays:
+Open **Manage members** from Dairy > Overview. From there you can give or remove roles, remove people, and set each cow's **Cow quota** and each bull's **Bull quota** by typing a number: 1 to 50 oz of milk a day for a cow, 0.1 to 8.5 oz of seed for a bull. Farmers can set them too. Farmers have no quota. A bigger quota needs more milk but pays more, so match it to how much each person plays (a new cow makes about 5 oz an hour):
 
-- **Light**: plays under an hour a day.
-- **Steady**: about 1–2 hours.
-- **Heavy**: about 2–4 hours.
-- **Devoted**: plays most of the day.
+- **5–10 oz**: plays an hour or two a day.
+- **12–20 oz**: a few hours.
+- **25–35 oz**: most of an evening, every day.
+- **40–50 oz**: plays most of the day.
+
+Bulls make about a sixth as much, so divide by six for a bull's seed quota.
 
 Only the owner takes roles away.
 
@@ -328,7 +323,7 @@ There is **no daily coin cap**. The only brake is getting **tired** after 12 hou
 
 | Source | Who | How much |
 | --- | --- | --- |
-| **Daily quota** | Cow, bull (both quotas if you're both) | 30 / 60 / 100 / 170, times grade, wearables and dairy level |
+| **Daily quota** | Cow, bull (both quotas if you're both) | 5 coins an oz of milk (29 an oz of seed), times grade, wearables and dairy level |
 | **Daily goals** | Everyone with a role | 20 each, +40 for all four (60 × 2 sets if you're cow and farmer) |
 | **Hand milking share** | Farmer | 25–30% of the milk's value, no daily limit |
 | **Drop-offs at other dairies** | Farmer, owner | 1.5 per oz, and 2/oz to your dairy fund (daily limit by farmer level) |

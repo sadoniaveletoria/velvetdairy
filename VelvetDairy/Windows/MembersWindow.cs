@@ -208,8 +208,8 @@ public sealed class MembersWindow : Window
                 if (ImGui.IsItemHovered())
                     ImGui.SetTooltip(string.Join("\n", new[]
                     {
-                        m.Has("cow") ? $"Cow quota: {Catalog.QuotaNames[Math.Clamp(m.Quota, 0, 3)]} (a farmer or the owner sets it with ...)" : null,
-                        m.Has("bull") ? $"Bull quota: {Catalog.QuotaNames[Math.Clamp(m.BullQuota, 0, 3)]} (a farmer or the owner sets it with ...)" : null,
+                        m.Has("cow") ? $"Cow quota: {Units.Oz(m.QuotaOz ?? Catalog.QuotaDefaultOz, "0")} of milk a day (a farmer or the owner sets it with ...)" : null,
+                        m.Has("bull") ? $"Bull quota: {Units.Oz(m.BullQuotaOz ?? Catalog.QuotaDefaultSeed, "0.#")} of seed a day (a farmer or the owner sets it with ...)" : null,
                     }.Where(x => x != null).DefaultIfEmpty("No quota: only cows and bulls have one.")));
 
                 ImGui.TableNextColumn();
@@ -495,19 +495,15 @@ public sealed class MembersWindow : Window
             else if (G.IsOwner && r == "farmer" && ImGui.MenuItem($"Take the {r} role away")) G.RemoveRole(m, r);   // cow and bull are theirs
         }
 
-        if (G.CanSetQuota(m) && ImGui.BeginMenu($"Cow quota: {Catalog.QuotaNames[Math.Clamp(m.Quota, 0, 3)]}"))
+        if (G.CanSetQuota(m) && ImGui.BeginMenu($"Cow quota: {Units.Oz(m.QuotaOz ?? Catalog.QuotaDefaultOz, "0")} of milk"))
         {
-            for (var i = 0; i < Catalog.QuotaNames.Length; i++)
-                if (ImGui.MenuItem($"{Catalog.QuotaNames[i]} · {Catalog.QuotaOz[i]} oz at level 1 · {Catalog.QuotaCoins[i]} coins", "", m.Quota == i))
-                    G.SetQuota(m, i);
+            QuotaEditor(m, false);
             ImGui.EndMenu();
         }
 
-        if (G.CanSetQuota(m, true) && ImGui.BeginMenu($"Bull quota: {Catalog.QuotaNames[Math.Clamp(m.BullQuota, 0, 3)]}"))
+        if (G.CanSetQuota(m, true) && ImGui.BeginMenu($"Bull quota: {Units.Oz(m.BullQuotaOz ?? Catalog.QuotaDefaultSeed, "0.#")} of seed"))
         {
-            for (var i = 0; i < Catalog.QuotaNames.Length; i++)
-                if (ImGui.MenuItem($"{Catalog.QuotaNames[i]} · {Catalog.QuotaOz[i] * Catalog.QuotaSeedShare:0.##} oz of seed at level 1 · {Catalog.QuotaCoins[i]} coins", "", m.BullQuota == i))
-                    G.SetQuota(m, i, true);
+            QuotaEditor(m, true);
             ImGui.EndMenu();
         }
 
@@ -519,5 +515,37 @@ public sealed class MembersWindow : Window
         }
 
         ImGui.EndPopup();
+    }
+
+    private string quotaFor = "";
+    private float quotaTyped;
+
+    /// <summary>Type a member's daily quota: 1 to 50 oz of milk for a cow, 0.1 to 8.5 oz of seed for a bull.</summary>
+    private void QuotaEditor(MemberInfo m, bool bull)
+    {
+        var key = m.Id + (bull ? ":bull" : ":cow");
+        if (quotaFor != key)
+        {
+            quotaFor = key;
+            quotaTyped = bull ? m.BullQuotaOz ?? Catalog.QuotaDefaultSeed : m.QuotaOz ?? Catalog.QuotaDefaultOz;
+        }
+
+        ImGui.TextUnformatted(bull ? $"Oz of seed a day ({Catalog.QuotaMinSeed:0.#} to {Catalog.QuotaMaxSeed:0.#})" : $"Oz of milk a day ({Catalog.QuotaMinOz} to {Catalog.QuotaMaxOz})");
+        ImGui.SetNextItemWidth(140);
+        if (bull) ImGui.InputFloat("##quotaseed", ref quotaTyped, 0.1f, 0.5f, "%.1f");
+        else
+        {
+            var whole = (int)MathF.Round(quotaTyped);
+            if (ImGui.InputInt("##quotamilk", ref whole, 1, 5)) quotaTyped = whole;
+        }
+
+        quotaTyped = bull ? Math.Clamp(quotaTyped, Catalog.QuotaMinSeed, Catalog.QuotaMaxSeed) : Math.Clamp(quotaTyped, Catalog.QuotaMinOz, Catalog.QuotaMaxOz);
+        var coins = (int)Math.Round(quotaTyped * (bull ? Catalog.QuotaCoinsPerSeedOz : Catalog.QuotaCoinsPerOz));
+        ImGui.TextColored(Theme.InkSoft, $"Pays about {coins} coins at Grade C (more at better grades).");
+        if (ImGui.Button("Set##quotaset", new Vector2(140, 0)))
+        {
+            G.SetQuota(m, quotaTyped, bull);
+            ImGui.CloseCurrentPopup();
+        }
     }
 }

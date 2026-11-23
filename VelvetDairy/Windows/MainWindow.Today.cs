@@ -207,7 +207,7 @@ public sealed partial class MainWindow
         var x = c.X + r + 30;
         var w = max.X - x - 24;
         var y = min.Y + 22;
-        Ui.Eyebrow(dl, $"Today's {(G.QuotaInSeed ? "bull" : "cow")} quota · {Catalog.QuotaNames[G.QuotaSize]}", new Vector2(x, y), w, Theme.RoseDeep);
+        Ui.Eyebrow(dl, $"Today's {(G.QuotaInSeed ? "bull" : "cow")} quota", new Vector2(x, y), w, Theme.RoseDeep);
         y += 28;
         string title;
         if (claimed) title = "Quota done for today";
@@ -223,7 +223,7 @@ public sealed partial class MainWindow
         var more = G.HasSecondQuota
             ? $" Bull quota: {Units.Oz(F.DaySeedOz, "0.##")} / {Units.Oz(G.BullQuotaNeed, "0.##")} of seed, pays {G.BullQuotaCoins:N0} (claim it in Today's goals)."
             : "";
-        TextWrapped(dl, fonts.Small, $"Pays {G.QuotaCoins:N0} coins when you claim it. A farmer or the owner sets its size; it resets at midnight Central.{more}", new Vector2(x, y), w, Theme.InkSoft);
+        TextWrapped(dl, fonts.Small, $"Pays {G.QuotaCoins:N0} coins when you claim it. A farmer or the owner sets how much; it resets at midnight Central.{more}", new Vector2(x, y), w, Theme.InkSoft);
         y = max.Y - 22 - 34;   // the buttons sit along the bottom
         var label = claimed ? "Claimed" : $"Claim {G.QuotaCoins:N0} coins";
         if (goal != null && Ui.Button("##heroclaim", label, new Vector2(200, 34), "sage", G.QuotaReached && !claimed,

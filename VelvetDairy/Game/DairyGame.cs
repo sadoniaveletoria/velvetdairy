@@ -2289,7 +2289,7 @@ public sealed partial class DairyGame
     public bool CanSetQuota(MemberInfo m, bool bull = false) =>
         Networked && F.NetMember != null && m.Has(bull ? "bull" : "cow") && (IsOwner || (IsFarmer && m.Id != Net.Mine?.You?.Id));
 
-    public void SetQuota(MemberInfo m, int size, bool bull = false)
+    public void SetQuota(MemberInfo m, float oz, bool bull = false)
     {
         if (!CanSetQuota(m, bull))
         {
@@ -2297,7 +2297,8 @@ public sealed partial class DairyGame
             return;
         }
 
-        Net.SetQuota(m.Id, size, bull, () => Say($"{m.Name}'s {(bull ? "bull" : "cow")} quota is {Catalog.QuotaNames[size]} now.", 1), e => Fail(e));
+        oz = bull ? Math.Clamp(MathF.Round(oz * 10) / 10, Catalog.QuotaMinSeed, Catalog.QuotaMaxSeed) : Math.Clamp(MathF.Round(oz), Catalog.QuotaMinOz, Catalog.QuotaMaxOz);
+        Net.SetQuota(m.Id, oz, bull, () => Say($"{m.Name}'s {(bull ? "bull" : "cow")} quota is {Units.Oz(oz, bull ? "0.#" : "0")} of {(bull ? "seed" : "milk")} a day now.", 1), e => Fail(e));
     }
 
     public void FeedFromShelf(string name, string id, float distance, string? which = null)
@@ -3820,23 +3821,18 @@ public sealed partial class DairyGame
     /// <summary>Your quota size: a farmer or the owner sets it (Steady until they do, and off the network).</summary>
     private MemberInfo? MeInDairy => Net.Mine?.Members.FirstOrDefault(m => m.Id == Net.Mine.You?.Id);
 
-    /// <summary>Your cow quota size (milk) and bull quota size (seed): a farmer or the owner sets each (Steady until they do).</summary>
-    public int CowQuotaSize => Math.Clamp(MeInDairy?.Quota ?? 1, 0, Catalog.QuotaNames.Length - 1);
-    public int BullQuotaSize => Math.Clamp(MeInDairy?.BullQuota ?? 1, 0, Catalog.QuotaNames.Length - 1);
-
-    private static float QuotaLevelMult(int level) => 1f + Catalog.LevelBonus * (Math.Min(level, Leveling.MilkBonusCap) - 1);
-
-    // A cow's quota is milk; a bull's is seed, a lot less (0.17 oz of seed for each oz a cow's needs). Someone who's both has both.
-    public float CowQuotaNeed => Catalog.QuotaOz[CowQuotaSize] * QuotaLevelMult(Level);
+    /// <summary>Your cow quota (oz of milk) and bull quota (oz of seed): a farmer or the owner types each in (12 and 2 until they do).</summary>
+    public float CowQuotaNeed => Math.Clamp(MeInDairy?.QuotaOz ?? Catalog.QuotaDefaultOz, Catalog.QuotaMinOz, Catalog.QuotaMaxOz);
+    public float BullQuotaNeed => Math.Clamp(MeInDairy?.BullQuotaOz ?? Catalog.QuotaDefaultSeed, Catalog.QuotaMinSeed, Catalog.QuotaMaxSeed);
     public bool CowQuotaReached => ProducesMilk && F.DayOz >= CowQuotaNeed - 0.001f;
-    public int CowQuotaCoins => (int)Math.Round(Catalog.QuotaCoins[CowQuotaSize] * Catalog.QuotaGradeMult[Math.Clamp(CurrentGrade, 0, 4)] * PriceBonus * DairyPayBonus);
-    public float BullQuotaNeed => Catalog.QuotaOz[BullQuotaSize] * QuotaLevelMult(BullLevel) * Catalog.QuotaSeedShare;
     public bool BullQuotaReached => ProducesSeed && F.DaySeedOz >= BullQuotaNeed - 0.0001f;
-    public int BullQuotaCoins => (int)Math.Round(Catalog.QuotaCoins[BullQuotaSize] * Catalog.QuotaGradeMult[Math.Clamp(SeedGrade, 0, 4)] * SeedPayBonus * DairyPayBonus);
+
+    /// <summary>What a quota pays: its size, your grade, your wearables and the dairy's level.</summary>
+    public int CowQuotaCoins => (int)Math.Round(CowQuotaNeed * Catalog.QuotaCoinsPerOz * Catalog.QuotaGradeMult[Math.Clamp(CurrentGrade, 0, 4)] * PriceBonus * DairyPayBonus);
+    public int BullQuotaCoins => (int)Math.Round(BullQuotaNeed * Catalog.QuotaCoinsPerSeedOz * Catalog.QuotaGradeMult[Math.Clamp(SeedGrade, 0, 4)] * SeedPayBonus * DairyPayBonus);
 
     /// <summary>Your main quota (the one Today, the HUD and Your pay lead with): milk for a cow, seed for a bull who isn't one.</summary>
     public bool QuotaInSeed => !ProducesMilk && ProducesSeed;
-    public int QuotaSize => QuotaInSeed ? BullQuotaSize : CowQuotaSize;
     public float QuotaNeed => QuotaInSeed ? BullQuotaNeed : CowQuotaNeed;
     public float QuotaHave => QuotaInSeed ? F.DaySeedOz : F.DayOz;
     public bool QuotaReached => QuotaInSeed ? BullQuotaReached : CowQuotaReached;
@@ -3860,9 +3856,9 @@ public sealed partial class DairyGame
             list.Add(new Goal("Do 3 care tasks", F.DayCare, 3, 2, false));
             list.Add(new Goal("Get hand milked", F.DayHand, 1, 3, false));
             if (ProducesMilk)
-                list.Add(new Goal($"{Catalog.QuotaNames[CowQuotaSize]} cow quota: give {Units.Oz(CowQuotaNeed, "0")} of milk", F.DayOz, CowQuotaNeed, CowQuotaBit, false, CowQuotaCoins));
+                list.Add(new Goal($"Cow quota: give {Units.Oz(CowQuotaNeed, "0.#")} of milk", F.DayOz, CowQuotaNeed, CowQuotaBit, false, CowQuotaCoins));
             if (ProducesSeed)
-                list.Add(new Goal($"{Catalog.QuotaNames[BullQuotaSize]} bull quota: give {Units.Oz(BullQuotaNeed, "0.##")} of seed", F.DaySeedOz, BullQuotaNeed, BullQuotaBit, false, BullQuotaCoins));
+                list.Add(new Goal($"Bull quota: give {Units.Oz(BullQuotaNeed, "0.##")} of seed", F.DaySeedOz, BullQuotaNeed, BullQuotaBit, false, BullQuotaCoins));
         }
 
         if (IsFarmer)

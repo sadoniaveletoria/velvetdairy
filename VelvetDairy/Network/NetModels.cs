@@ -409,8 +409,8 @@ public sealed class MemberInfo
     public string Version { get; set; } = "";   // their plugin version, as of their last check-in
     public bool Guest { get; set; }             // visiting from another dairy (not a member)
     public bool Here { get; set; }              // in this dairy right now (the server's view of where they are)
-    public int Quota { get; set; } = 1;         // cow quota size (milk) a farmer or the owner set (0 Light .. 3 Devoted)
-    public int BullQuota { get; set; } = 1;     // bull quota size (seed)
+    public float? QuotaOz { get; set; }         // cow quota a farmer or the owner typed in (oz of milk a day); null = the default
+    public float? BullQuotaOz { get; set; }     // bull quota (oz of seed a day)
 
     public List<string> AllRoles => VelvetDairy.Game.Roles.From(Roles, Role);
     public bool Has(string role) => AllRoles.Contains(role);

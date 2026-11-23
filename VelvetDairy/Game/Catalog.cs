@@ -235,11 +235,12 @@ public static class Catalog
     // ----- Daily quota: the main pay (milking itself doesn't pay since 0.9.99) -----
     // A farmer or the owner picks each member's size. Cows give milk, bulls seed, farmers deliver milk (orders, visitors,
     // contract). Reaching it once a day pays QuotaCoins x the grade multiplier x your wearables.
-    public static readonly string[] QuotaNames = { "Light", "Steady", "Heavy", "Devoted" };
-    public static readonly int[] QuotaOz = { 6, 12, 18, 32 };          // milk at level 1, +2% a level up to 50
-    public static readonly int[] QuotaCoins = { 30, 60, 100, 170 };
+    // Quotas are typed in: a cow's is 1 to 50 oz of milk, a bull's 0.1 to 8.5 oz of seed (about a sixth as much)
+    public const int QuotaMinOz = 1, QuotaMaxOz = 50, QuotaDefaultOz = 12;
+    public const float QuotaMinSeed = 0.1f, QuotaMaxSeed = 8.5f, QuotaDefaultSeed = 2f;
+    public const float QuotaCoinsPerOz = 5f;         // at Grade C: 12 oz pays 60, 50 oz pays 250
+    public const float QuotaCoinsPerSeedOz = 29.4f;  // the same pay for the same work: 2 oz of seed pays about what 12 oz of milk does
     public static readonly float[] QuotaGradeMult = { 1f, 1.15f, 1.3f, 1.45f, 1.6f };
-    public const float QuotaSeedShare = 0.17f;    // a bull's quota is in seed: this much per oz of milk
 
     public const float HomeBonus = 0.10f;         // milk and seed when you're milked in your own dairy
     public const float PumpBonus = 0.15f;         // the Velvet pump, for everyone in the dairy

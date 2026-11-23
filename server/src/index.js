@@ -75,7 +75,7 @@ const FEED_BIN = {
 const PUMP_COST = 2500, PUMP_SECONDS = 2 * 3600, PUMP_LEVEL = 5;
 // A creamery or visitor order delivered pays the farmer, and the farmer's dairy fund this much per oz too
 const ORDER_FUND_PER_OZ = 2;
-const QUOTA_SIZES = 4;   // Light, Steady, Heavy, Devoted          // a farmer can feed each cow or bull from the shelf once every 15 minutes
+const QUOTA_MILK = [1, 50], QUOTA_SEED = [0.1, 8.5];   // typed-in quotas: oz of milk a day for a cow, oz of seed for a bull          // a farmer can feed each cow or bull from the shelf once every 15 minutes
 // Developer (same phrase hash as the plugin's dev mode)
 const DEV_KEY_HASH = "7d4e0a8c4a26de8d2843e2a563f667d74beda3b81ffa447c22bd40d93b5af76f";
 // Weekly contracts
@@ -1097,8 +1097,8 @@ async function myDairy(env, me) {
   const d = await env.DB.prepare("SELECT * FROM dairies WHERE id = ?").bind(mem.dairy_id).first();
   const t = now();
   const members = (await env.DB.prepare(`
-      SELECT m.install, m.role, m.name, m.world_name, m.status, i.last_seen, i.version, i.at_dairy, COALESCE(q.size, 1) AS quota, COALESCE(q.bull_size, 1) AS bull_quota
-      FROM memberships m LEFT JOIN installs i ON i.id = m.install LEFT JOIN dairy_quotas q ON q.install = m.install AND q.dairy_id = m.dairy_id
+      SELECT m.install, m.role, m.name, m.world_name, m.status, i.last_seen, i.version, i.at_dairy, q.milk_oz AS quota_oz, q.seed_oz AS bull_quota_oz
+      FROM memberships m LEFT JOIN installs i ON i.id = m.install LEFT JOIN quota_amounts q ON q.install = m.install AND q.dairy_id = m.dairy_id
       WHERE m.dairy_id = ? ORDER BY m.joined`).bind(d.id).all()).results;
   const stalls = (await env.DB.prepare(
     "SELECT s.*, COALESCE(c.until, 0) AS clean_until, (b.stall_id IS NOT NULL) AS breed, COALESCE(b.loaded, 0) AS loaded FROM stalls s LEFT JOIN stall_clean c ON c.stall_id = s.id LEFT JOIN breed_stalls b ON b.stall_id = s.id WHERE s.dairy_id = ? ORDER BY s.created")
@@ -1121,7 +1121,7 @@ async function myDairy(env, me) {
       online: (m.last_seen || 0) >= t - ONLINE_WINDOW, lastSeen: m.last_seen || 0, version: m.version || "", status: safeParse(m.status),
       // In THIS dairy right now (their plugin's own "in a dairy" can mean another dairy they're visiting)
       here: (m.last_seen || 0) >= t - ONLINE_WINDOW && m.at_dairy === d.id,
-      quota: m.quota, bullQuota: m.bull_quota,
+      quotaOz: m.quota_oz, bullQuotaOz: m.bull_quota_oz,
     })),
     stalls: stalls.map(s => ({ id: s.id, name: s.name, x: s.x, y: s.y, z: s.z, tier: s.tier, cleanUntil: s.clean_until > t ? s.clean_until : 0, breed: !!s.breed, loaded: s.loaded || 0 })),
     progress: await progressOut(env, d.id, stalls.length),
@@ -1314,7 +1314,7 @@ async function deleteDairy(env, me) {
   for (const m of others) await notice(env, m.install, `${d.name} closed, so you're no longer a member.`);
   await env.DB.batch([
     env.DB.prepare("DELETE FROM memberships WHERE dairy_id = ?").bind(d.id),
-    env.DB.prepare("DELETE FROM dairy_quotas WHERE dairy_id = ?").bind(d.id),
+    env.DB.prepare("DELETE FROM quota_amounts WHERE dairy_id = ?").bind(d.id),
     env.DB.prepare("DELETE FROM stalls WHERE dairy_id = ?").bind(d.id),
     env.DB.prepare("DELETE FROM dairy_progress WHERE dairy_id = ?").bind(d.id),
     env.DB.prepare("DELETE FROM donations WHERE dairy_id = ?").bind(d.id),
@@ -1416,7 +1416,7 @@ async function leave(env, me) {
   if (mem.is_owner) fail(400, "You own this dairy. Close it instead (Dairy tab).");
   await env.DB.batch([
     env.DB.prepare("DELETE FROM memberships WHERE install = ? AND dairy_id = ?").bind(me.id, mem.dairy_id),
-    env.DB.prepare("DELETE FROM dairy_quotas WHERE install = ? AND dairy_id = ?").bind(me.id, mem.dairy_id),
+    env.DB.prepare("DELETE FROM quota_amounts WHERE install = ? AND dairy_id = ?").bind(me.id, mem.dairy_id),
     env.DB.prepare("DELETE FROM active_dairy WHERE install = ?").bind(me.id),
   ]);
   return { ok: true };
@@ -1432,7 +1432,7 @@ async function removeMember(env, me, target) {
   if (!allowed) fail(403, "You can't remove them.");
   await env.DB.batch([
     env.DB.prepare("DELETE FROM memberships WHERE install = ? AND dairy_id = ?").bind(target, mem.dairy_id),
-    env.DB.prepare("DELETE FROM dairy_quotas WHERE install = ? AND dairy_id = ?").bind(target, mem.dairy_id),
+    env.DB.prepare("DELETE FROM quota_amounts WHERE install = ? AND dairy_id = ?").bind(target, mem.dairy_id),
   ]);
   await notice(env, target, `You were removed from ${mem.dairy_name}.`);
   return { ok: true };
@@ -2083,23 +2083,27 @@ async function useCarried(env, me, request) {
 // ---------------------------------------------------------------- quotas, the feed bin, the Velvet pump
 
 /**
- * A farmer or the owner sets a member's daily quota size in this dairy: the cow quota (milk) or the bull quota (seed).
+ * A farmer or the owner types a member's daily quota in this dairy: the cow quota (1 to 50 oz of milk) or the bull quota
+ * (0.1 to 8.5 oz of seed).
  * Farmers set them for others; the owner for anyone. Farmers themselves have no quota (they earn by delivering).
  */
 async function setQuota(env, me, install, request) {
   const b = await body(request);
-  const size = int(b.size, 0, QUOTA_SIZES - 1, "size");
+  const bull = b.bull === true;
+  const [lo, hi] = bull ? QUOTA_SEED : QUOTA_MILK;
+  const raw = Number(b.oz);
+  if (!Number.isFinite(raw) || raw < lo || raw > hi) fail(400, `A ${bull ? "bull" : "cow"} quota is ${lo} to ${hi} oz.`);
+  const oz = bull ? Math.round(raw * 10) / 10 : Math.round(raw);
   const mem = await membership(env, me.id);
   if (!mem || !(mem.is_owner || hasRole(mem, "farmer"))) fail(403, "Only farmers and the owner set quotas.");
   const to = await env.DB.prepare("SELECT install, role FROM memberships WHERE install = ? AND dairy_id = ?").bind(install, mem.dairy_id).first();
   if (!to) fail(404, "They aren't in your dairy.");
-  const bull = b.bull === true;
   if (!hasRole(to, bull ? "bull" : "cow")) fail(400, bull ? "They aren't a bull." : "They aren't a cow.");
   if (!mem.is_owner && install === me.id) fail(403, "The owner sets your quota.");
-  const col = bull ? "bull_size" : "size";
-  await env.DB.prepare(`INSERT INTO dairy_quotas (install, dairy_id, ${col}) VALUES (?, ?, ?) ON CONFLICT(install, dairy_id) DO UPDATE SET ${col} = excluded.${col}`)
-    .bind(install, mem.dairy_id, size).run();
-  return { ok: true, size, bull };
+  const col = bull ? "seed_oz" : "milk_oz";
+  await env.DB.prepare(`INSERT INTO quota_amounts (install, dairy_id, ${col}) VALUES (?, ?, ?) ON CONFLICT(install, dairy_id) DO UPDATE SET ${col} = excluded.${col}`)
+    .bind(install, mem.dairy_id, oz).run();
+  return { ok: true, oz, bull };
 }
 
 async function feedBinOf(env, dairyId) {

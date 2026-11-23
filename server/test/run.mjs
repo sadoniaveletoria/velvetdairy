@@ -1045,17 +1045,16 @@ await test("quotas, the feed bin, the Velvet pump and order fund pay", async () 
   for (const x of [alice, bob, carl]) await beat(x, { houseId: H, awake: true });
   const mine = (await call(alice, "GET", "/v1/dairy/mine")).data;
   const did = mine.dairy.id;
-  assert.equal(mine.members.find(m => m.id === carl.id).quota, 1, "Steady by default");
-  // Quotas: farmers set cows' and bulls', the owner anyone's
-  assert.equal((await call(carl, "PUT", `/v1/members/${alice.id}/quota`, { size: 2 })).status, 403, "bulls can't set quotas");
-  assert.equal((await call(bob, "PUT", `/v1/members/${carl.id}/quota`, { size: 3 })).status, 400, "a bull has no cow quota");
-  assert.equal((await call(alice, "PUT", `/v1/members/${bob.id}/quota`, { size: 0 })).status, 400, "farmers have no quota");
-  assert.equal((await call(alice, "PUT", `/v1/members/${bob.id}/quota`, { size: 0, bull: true })).status, 400, "nor a bull quota");
-  assert.equal((await call(bob, "PUT", `/v1/members/${carl.id}/quota`, { size: 2, bull: true })).status, 200, "a farmer sets a bull's");
-  assert.equal((await call(alice, "PUT", `/v1/members/${carl.id}/quota`, { size: 9, bull: true })).status, 400);
+  assert.equal(mine.members.find(m => m.id === carl.id).bullQuotaOz ?? null, null, "the default until someone sets it");
+  // Quotas: farmers set cows' and bulls', the owner anyone's; typed in
+  assert.equal((await call(carl, "PUT", `/v1/members/${alice.id}/quota`, { oz: 20 })).status, 403, "bulls can't set quotas");
+  assert.equal((await call(bob, "PUT", `/v1/members/${carl.id}/quota`, { oz: 20 })).status, 400, "a bull has no cow quota");
+  assert.equal((await call(alice, "PUT", `/v1/members/${bob.id}/quota`, { oz: 20 })).status, 400, "farmers have no quota");
+  assert.equal((await call(bob, "PUT", `/v1/members/${carl.id}/quota`, { oz: 9, bull: true })).status, 400, "8.5 oz of seed at most");
+  assert.equal((await call(bob, "PUT", `/v1/members/${carl.id}/quota`, { oz: 2.46, bull: true })).status, 200, "a farmer sets a bull's");
   const q = (await call(carl, "GET", "/v1/dairy/mine")).data.members;
-  assert.equal(q.find(m => m.id === carl.id).quota, 1, "the cow quota is separate");
-  assert.equal(q.find(m => m.id === carl.id).bullQuota, 2);
+  assert.equal(q.find(m => m.id === carl.id).bullQuotaOz, 2.5, "to a tenth of an oz");
+  assert.equal(q.find(m => m.id === carl.id).quotaOz ?? null, null, "the cow quota is separate");
   // Feed bin: wheat from the start; better feed needs dairy level and the fund
   let p = (await call(alice, "GET", "/v1/dairy/mine")).data.progress;
   assert.deepEqual(p.feedBin, ["hay"]);
