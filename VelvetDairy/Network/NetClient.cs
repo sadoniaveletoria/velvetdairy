@@ -778,9 +778,9 @@ public sealed class NetClient : IDisposable
     public void UseCarried(float oz, bool order = false) =>
         Call<IdReply>("POST", "/v1/carry/use", new { oz = Math.Round(oz, 2), order }, _ => { if (order) MineWithin(5); }, e => Plugin.Log.Debug($"Carry use: {e}"));
 
-    /// <summary>A farmer or the owner sets a member's daily quota size (farmer: their farmer quota, which only the owner sets).</summary>
-    public void SetQuota(string memberId, int size, bool farmer, Action ok, Action<string> failed) =>
-        Call<object>("PUT", $"/v1/members/{memberId}/quota", new { size, farmer }, _ => { nextMine = 0; ok(); }, failed);
+    /// <summary>A farmer or the owner sets a member's cow quota (milk) or bull quota (seed) size.</summary>
+    public void SetQuota(string memberId, int size, bool bull, Action ok, Action<string> failed) =>
+        Call<object>("PUT", $"/v1/members/{memberId}/quota", new { size, bull }, _ => { nextMine = 0; ok(); }, failed);
 
     /// <summary>The owner unlocks a feed type for the dairy's feed bin with the fund.</summary>
     public void BuyFeedBin(string item, Action ok, Action<string> failed) =>

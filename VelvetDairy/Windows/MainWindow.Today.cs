@@ -187,7 +187,7 @@ public sealed partial class MainWindow
         var have = G.QuotaHave;
         var need = Math.Max(0.001f, G.QuotaNeed);
         var frac = Math.Clamp(have / need, 0f, 1f);
-        var goal = G.Goals().FirstOrDefault(g => g.Bit == 4);
+        var goal = G.Goals().FirstOrDefault(g => g.Bit == G.QuotaBit);
         var claimed = goal != null && G.Claimed(goal);
 
         // The ring
@@ -207,7 +207,7 @@ public sealed partial class MainWindow
         var x = c.X + r + 30;
         var w = max.X - x - 24;
         var y = min.Y + 22;
-        Ui.Eyebrow(dl, $"Today's quota · {Catalog.QuotaNames[G.QuotaSize]}{(G.QuotaInSeed ? " · seed" : "")}", new Vector2(x, y), w, Theme.RoseDeep);
+        Ui.Eyebrow(dl, $"Today's {(G.QuotaInSeed ? "bull" : "cow")} quota · {Catalog.QuotaNames[G.QuotaSize]}", new Vector2(x, y), w, Theme.RoseDeep);
         y += 28;
         string title;
         if (claimed) title = "Quota done for today";
@@ -220,7 +220,10 @@ public sealed partial class MainWindow
         }
 
         y += TextWrapped(dl, fonts.Heading, title, new Vector2(x, y), w, Theme.Ink) + 4;
-        TextWrapped(dl, fonts.Small, $"Pays {G.QuotaCoins:N0} coins when you claim it. A farmer or the owner sets its size, and it resets at midnight Central.", new Vector2(x, y), w, Theme.InkSoft);
+        var more = G.HasSecondQuota
+            ? $" Bull quota: {Units.Oz(F.DaySeedOz, "0.##")} / {Units.Oz(G.BullQuotaNeed, "0.##")} of seed, pays {G.BullQuotaCoins:N0} (claim it in Today's goals)."
+            : "";
+        TextWrapped(dl, fonts.Small, $"Pays {G.QuotaCoins:N0} coins when you claim it. A farmer or the owner sets its size; it resets at midnight Central.{more}", new Vector2(x, y), w, Theme.InkSoft);
         y = max.Y - 22 - 34;   // the buttons sit along the bottom
         var label = claimed ? "Claimed" : $"Claim {G.QuotaCoins:N0} coins";
         if (goal != null && Ui.Button("##heroclaim", label, new Vector2(200, 34), "sage", G.QuotaReached && !claimed,

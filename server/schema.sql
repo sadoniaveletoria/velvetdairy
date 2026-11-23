@@ -455,13 +455,13 @@ CREATE TABLE IF NOT EXISTS member_quota (
   install   TEXT PRIMARY KEY,
   size      INTEGER NOT NULL DEFAULT 1
 );
--- Quota sizes per member per dairy (0.9.99): the cow/bull quota and the farmer quota are set separately.
--- (member_quota above is no longer used.)
-CREATE TABLE IF NOT EXISTS member_quotas (
-  install      TEXT NOT NULL,
-  dairy_id     TEXT NOT NULL,
-  size         INTEGER NOT NULL DEFAULT 1,
-  farmer_size  INTEGER NOT NULL DEFAULT 1,
+-- Quota sizes per member per dairy (0.9.99): the cow quota (milk) and the bull quota (seed) are set separately.
+-- Farmers have no quota. (member_quota above is no longer used.)
+CREATE TABLE IF NOT EXISTS dairy_quotas (
+  install    TEXT NOT NULL,
+  dairy_id   TEXT NOT NULL,
+  size       INTEGER NOT NULL DEFAULT 1,
+  bull_size  INTEGER NOT NULL DEFAULT 1,
   PRIMARY KEY (install, dairy_id)
 );
 

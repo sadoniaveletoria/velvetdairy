@@ -240,8 +240,6 @@ public static class Catalog
     public static readonly int[] QuotaCoins = { 30, 60, 100, 170 };
     public static readonly float[] QuotaGradeMult = { 1f, 1.15f, 1.3f, 1.45f, 1.6f };
     public const float QuotaSeedShare = 0.17f;    // a bull's quota is in seed: this much per oz of milk
-    public const float QuotaFarmerOz = 3f;        // a farmer's is in oz delivered: this many times a cow's
-    public const float QuotaFarmerMult = 1.3f;    // and pays this much more (no grade)
 
     public const float HomeBonus = 0.10f;         // milk and seed when you're milked in your own dairy
     public const float PumpBonus = 0.15f;         // the Velvet pump, for everyone in the dairy

@@ -1332,31 +1332,30 @@ public sealed partial class MainWindow : Window
         Ui.Wrapped("You're paid for reaching your daily quota, not per ounce. A farmer or the owner sets its size; reach it and claim it in Goals once a day. "
                    + "Your milk goes into the dairy's tank, and farmers deliver it to other dairies and the Grand Creamery (which pays them and the dairy fund).", Theme.InkSoft, width);
         Gap(6);
-        if (G.Producer)
+        void QuotaLine(string title, string size, float have, float need, string fmt, string what, int coins)
         {
-            SubHeading("Your quota", width);
-            var reached = G.QuotaReached;
-            ImGui.TextColored(reached ? Theme.SageDeep : Theme.Ink,
-                $"{Catalog.QuotaNames[G.QuotaSize]}: {Units.Oz(G.QuotaHave, G.QuotaInSeed ? "0.##" : "0.#")} / {Units.Oz(G.QuotaNeed, G.QuotaInSeed ? "0.##" : "0")} {(G.QuotaInSeed ? "of seed" : "of milk")} today · pays {G.QuotaCoins:N0} coins");
+            SubHeading(title, width);
+            Ui.Wrapped($"{size}: {Units.Oz(have, fmt)} / {Units.Oz(need, fmt)} {what} today · pays {coins:N0} coins", have >= need - 0.0001f ? Theme.SageDeep : Theme.Ink, width);
             var cur0 = ImGui.GetCursorScreenPos();
-            Ui.Bar(ImGui.GetWindowDrawList(), cur0 + new Vector2(0, 4), cur0 + new Vector2(Math.Min(width, 360), 12), G.QuotaNeed > 0 ? Math.Clamp(G.QuotaHave / G.QuotaNeed, 0, 1) : 0, Theme.HoneyDeep);
+            Ui.Bar(ImGui.GetWindowDrawList(), cur0 + new Vector2(0, 4), cur0 + new Vector2(Math.Min(width, 360), 12), need > 0 ? Math.Clamp(have / need, 0, 1) : 0, Theme.HoneyDeep);
             ImGui.Dummy(new Vector2(width, 16));
         }
 
+        if (G.ProducesMilk) QuotaLine("Your cow quota", Catalog.QuotaNames[G.CowQuotaSize], F.DayOz, G.CowQuotaNeed, "0.#", "of milk", G.CowQuotaCoins);
+        if (G.ProducesSeed) QuotaLine("Your bull quota", Catalog.QuotaNames[G.BullQuotaSize], F.DaySeedOz, G.BullQuotaNeed, "0.##", "of seed", G.BullQuotaCoins);
+
         if (G.IsFarmer)
         {
-            SubHeading("Your farmer quota", width);
-            ImGui.TextColored(F.DayDeliveredOz >= G.FarmerQuotaNeed ? Theme.SageDeep : Theme.Ink,
-                $"{Catalog.QuotaNames[G.FarmerQuotaSize]}: delivered {Units.Oz(F.DayDeliveredOz, "0")} / {Units.Oz(G.FarmerQuotaNeed, "0")} today · pays {G.FarmerQuotaCoins:N0} coins");
-            Ui.Wrapped("Milk dropped off at other dairies, their buy orders and the weekly contract all count. The owner sets its size. "
-                       + "Drop-offs also pay you (the Grand Creamery) and your dairy fund 2 coins an oz.", Theme.InkSoft, width);
+            SubHeading("Farmers", width);
+            Ui.Wrapped("Farmers don't make anything, so they have no quota: they earn by delivering milk. Drop it off at other dairies (the Grand Creamery pays you, and your dairy fund gets 2 coins an oz), "
+                       + "fill other dairies' buy orders, and hand milk the herd (25% of what the milk is worth). Farmer goals pay too.", Theme.InkSoft, width);
         }
 
         Gap(4);
         SubHeading("Quota sizes", width);
         for (var i = 0; i < Catalog.QuotaNames.Length; i++)
             ImGui.TextColored(i == G.QuotaSize ? Theme.RoseDeep : Theme.InkSoft,
-                $"{Catalog.QuotaNames[i]} · {Units.Oz(Catalog.QuotaOz[i], "0")} of milk at level 1 (+2% a level) · {Catalog.QuotaCoins[i]} coins at Grade C" + (i == G.QuotaSize ? "  ·  yours" : ""));
+                $"{Catalog.QuotaNames[i]} · cow {Units.Oz(Catalog.QuotaOz[i], "0")} of milk, bull {Units.Oz(Catalog.QuotaOz[i] * Catalog.QuotaSeedShare, "0.##")} of seed at level 1 (+2% a level) · {Catalog.QuotaCoins[i]} coins at Grade C" + (i == G.QuotaSize ? "  ·  yours" : ""));
         Gap(4);
         SubHeading("Your grade raises it", width);
         var cur = G.CurrentGrade;

@@ -170,7 +170,7 @@ public sealed class HudWindow : Window
         if (G.Producer)
         {
             var qDone = G.QuotaReached;
-            var claimed = G.Goals().FirstOrDefault(gl => gl.Bit == 4) is { } qg && G.Claimed(qg);
+            var claimed = G.Goals().FirstOrDefault(gl => gl.Bit == G.QuotaBit) is { } qg && G.Claimed(qg);
             var qFmt = G.QuotaInSeed ? "0.##" : "0";
             var qText = claimed ? "Quota done today" : qDone ? $"Quota reached: claim {G.QuotaCoins} in Goals"
                 : $"Quota {Units.Oz(G.QuotaHave, qFmt)} / {Units.Oz(G.QuotaNeed, qFmt)}{(G.QuotaInSeed ? " seed" : "")}";

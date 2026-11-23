@@ -208,9 +208,9 @@ public sealed class MembersWindow : Window
                 if (ImGui.IsItemHovered())
                     ImGui.SetTooltip(string.Join("\n", new[]
                     {
-                        m.Has("cow") || m.Has("bull") ? $"Daily quota: {Catalog.QuotaNames[Math.Clamp(m.Quota, 0, 3)]} (a farmer or the owner sets it with ...)" : null,
-                        m.Has("farmer") ? $"Farmer quota: {Catalog.QuotaNames[Math.Clamp(m.FarmerQuota, 0, 3)]} (the owner sets it with ...)" : null,
-                    }.Where(x => x != null).DefaultIfEmpty("No quota: no cow, bull or farmer role.")));
+                        m.Has("cow") ? $"Cow quota: {Catalog.QuotaNames[Math.Clamp(m.Quota, 0, 3)]} (a farmer or the owner sets it with ...)" : null,
+                        m.Has("bull") ? $"Bull quota: {Catalog.QuotaNames[Math.Clamp(m.BullQuota, 0, 3)]} (a farmer or the owner sets it with ...)" : null,
+                    }.Where(x => x != null).DefaultIfEmpty("No quota: only cows and bulls have one.")));
 
                 ImGui.TableNextColumn();
                 DrawLevels(m);
@@ -495,7 +495,7 @@ public sealed class MembersWindow : Window
             else if (G.IsOwner && r == "farmer" && ImGui.MenuItem($"Take the {r} role away")) G.RemoveRole(m, r);   // cow and bull are theirs
         }
 
-        if (G.CanSetQuota(m) && ImGui.BeginMenu($"Daily quota: {Catalog.QuotaNames[Math.Clamp(m.Quota, 0, 3)]}"))
+        if (G.CanSetQuota(m) && ImGui.BeginMenu($"Cow quota: {Catalog.QuotaNames[Math.Clamp(m.Quota, 0, 3)]}"))
         {
             for (var i = 0; i < Catalog.QuotaNames.Length; i++)
                 if (ImGui.MenuItem($"{Catalog.QuotaNames[i]} · {Catalog.QuotaOz[i]} oz at level 1 · {Catalog.QuotaCoins[i]} coins", "", m.Quota == i))
@@ -503,10 +503,10 @@ public sealed class MembersWindow : Window
             ImGui.EndMenu();
         }
 
-        if (G.CanSetQuota(m, true) && ImGui.BeginMenu($"Farmer quota: {Catalog.QuotaNames[Math.Clamp(m.FarmerQuota, 0, 3)]}"))
+        if (G.CanSetQuota(m, true) && ImGui.BeginMenu($"Bull quota: {Catalog.QuotaNames[Math.Clamp(m.BullQuota, 0, 3)]}"))
         {
             for (var i = 0; i < Catalog.QuotaNames.Length; i++)
-                if (ImGui.MenuItem($"{Catalog.QuotaNames[i]} · deliver {Catalog.QuotaOz[i] * Catalog.QuotaFarmerOz:0} oz at level 1 · {Catalog.QuotaCoins[i] * Catalog.QuotaFarmerMult:0} coins", "", m.FarmerQuota == i))
+                if (ImGui.MenuItem($"{Catalog.QuotaNames[i]} · {Catalog.QuotaOz[i] * Catalog.QuotaSeedShare:0.##} oz of seed at level 1 · {Catalog.QuotaCoins[i]} coins", "", m.BullQuota == i))
                     G.SetQuota(m, i, true);
             ImGui.EndMenu();
         }

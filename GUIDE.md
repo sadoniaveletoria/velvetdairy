@@ -143,7 +143,7 @@ A bull's quota is in seed: 0.17 oz of seed for every 1 oz a cow would need. It p
 | Heavy | about 3 oz | 100 |
 | Devoted | about 5.4 oz | 170 |
 
-The same grade multiplier applies (C ×1 up to S+ ×1.6), plus the dairy's level, plus bull wearables: Nose ring +3%, Brass horn caps +5% and Champion bull sash +10%. If you're both a cow and a bull, your quota is in milk.
+The same grade multiplier applies (C ×1 up to S+ ×1.6), plus the dairy's level, plus bull wearables: Nose ring +3%, Brass horn caps +5% and Champion bull sash +10%. If you're both a cow and a bull, you have both quotas: one in milk and one in seed, set separately, each claimed and paid on its own.
 
 ### Breeding
 
@@ -234,16 +234,9 @@ Your **farmer tank** is how much milk you can carry: a 32 oz pail at first. Buy 
 
 Filling jugs also gives farmer XP (a quarter of the oz).
 
-### The farmer's daily quota
+### Farmers have no quota
 
-A farmer's quota counts **milk you deliver** (drop-offs, buy orders and the contract), and the owner sets its size separately from any cow quota you have: 3 times a cow's amount, paying 30% more and not affected by grade.
-
-| Size | Delivered at level 1 | Coins |
-| --- | --- | --- |
-| Light | 18 oz | 39 |
-| Steady | 36 oz | 78 |
-| Heavy | 54 oz | 130 |
-| Devoted | 96 oz | 221 |
+Farmers don't make anything, so they have no quota. Their coins come from delivering milk (drop-offs at other dairies and other dairies' buy orders), their share of hand milking, baking for the shelf and their daily goals. No deliveries, no delivery coins.
 
 ### Farmer daily goals
 
@@ -270,7 +263,7 @@ You can move or resize the box at any time (Dairy > Listing > Move or resize), a
 
 ### Managing members and quotas
 
-Open **Manage members** from Dairy > Overview. From there you can give or remove roles, remove people, and set each member's **Daily quota** (Light, Steady, Heavy or Devoted). Farmers can set quotas too. A bigger quota needs more milk but pays more, so match it to how much each person plays:
+Open **Manage members** from Dairy > Overview. From there you can give or remove roles, remove people, and set each cow's **Cow quota** and each bull's **Bull quota** (Light, Steady, Heavy or Devoted). Farmers can set them too. Farmers have no quota. A bigger quota needs more milk but pays more, so match it to how much each person plays:
 
 - **Light**: plays under an hour a day.
 - **Steady**: about 1–2 hours.
@@ -335,7 +328,7 @@ There is **no daily coin cap**. The only brake is getting **tired** after 12 hou
 
 | Source | Who | How much |
 | --- | --- | --- |
-| **Daily quota** | Cow, bull, farmer | 30 / 60 / 100 / 170 (farmer 39 / 78 / 130 / 221), times grade, wearables and dairy level |
+| **Daily quota** | Cow, bull (both quotas if you're both) | 30 / 60 / 100 / 170, times grade, wearables and dairy level |
 | **Daily goals** | Everyone with a role | 20 each, +40 for all four (60 × 2 sets if you're cow and farmer) |
 | **Hand milking share** | Farmer | 25–30% of the milk's value, no daily limit |
 | **Drop-offs at other dairies** | Farmer, owner | 1.5 per oz, and 2/oz to your dairy fund (daily limit by farmer level) |
@@ -424,8 +417,8 @@ After **12 hours of making milk in one day** you're tired: milk (and seed) comes
 ### A day in each role, at a glance
 
 - **Cow / bull**: log in → walk into your dairy → drink, sit somewhere comfy, have a treat → sit on a stall (or ask a farmer to hand milk you) → keep playing until the HUD says Quota reached → Goals > Claim.
-- **Farmer**: log in → ring the bell → feed everyone from the feed bin → groom two cows → clean a stall → hand milk someone empty → fill jugs → drop milk off at another dairy or ship to the contract → claim goals and your quota → bake treats for the shelf.
-- **Owner**: check the fund → set quotas (and farmer quotas) for new members → buy the next stall tier or feed when you can afford it → turn on the Velvet pump when lots of people are on → keep the weekly contract moving.
+- **Farmer**: log in → ring the bell → feed everyone from the feed bin → groom two cows → clean a stall → hand milk someone empty → fill jugs → drop milk off at another dairy or ship to the contract → claim your goals → bake treats for the shelf.
+- **Owner**: check the fund → set cow and bull quotas for new members → buy the next stall tier or feed when you can afford it → turn on the Velvet pump when lots of people are on → keep the weekly contract moving.
 
 ### Something's wrong
 
