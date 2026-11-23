@@ -618,9 +618,13 @@ public sealed partial class DairyGame
     private void AddBullXp(int amount)
     {
         var before = BullLevel;
+        var had = RewardsNow();
         F.BullXp += Boosted(amount);
-        for (var l = before + 1; l <= BullLevel; l++)
-            Say($"Bull level {l}!" + (Leveling.BullRank(l) is { } t && l % 25 == 0 ? $" You're a {t}." : ""), 1);
+        var after = BullLevel;
+        if (after == before) return;
+        var unlocks = RewardsNow().Except(had).ToList();
+        for (var l = before + 1; l <= after; l++)
+            Say($"Bull level {l}!" + (Leveling.BullRank(l) is { } t && l % 25 == 0 ? $" You're a {t}." : "") + (l == after && unlocks.Count > 0 ? " Unlocked: " + string.Join(", ", unlocks) : ""), 1);
     }
 
     // ----- Breeding stalls -----

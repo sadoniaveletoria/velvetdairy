@@ -1940,7 +1940,7 @@ public sealed partial class MainWindow : Window
         var shown = 0;
         for (var l = lvl + 1; l <= Leveling.MaxLevel && shown < 5; l++)
         {
-            var u = Leveling.UnlocksAt(l, G.Networked).ToList();
+            var u = G.CowUnlocksAt(l).ToList();
             if (u.Count == 0) continue;
             TextLine(Theme.Ink, $"Lv {l}");
             ImGui.SameLine(56);
@@ -1951,7 +1951,7 @@ public sealed partial class MainWindow : Window
         if (shown == 0) TextLine(Theme.InkSoft, "Everything is unlocked.");
 
         SubHeading("How to earn cow xp", width);
-        Ui.Wrapped($"+1 xp for every {Units.Oz(0.2)} of milk you make (more at better grades), a bonus when you're emptied at a stall or by hand, daily goals and care.", Theme.InkSoft, width);
+        Ui.Wrapped($"+1 xp for every {Units.Oz(Leveling.OzPerXpTick, "0.##")} of milk you make (more at better grades), a bonus when you're emptied at a stall or by hand, and daily goals.", Theme.InkSoft, width);
     }
 
     /// <summary>Progress: every role's level at a glance (details on your role pages (Today > Cow, Today > Bull, Herd > Farmer)), plus totals.</summary>

@@ -73,7 +73,7 @@ Cow and bull are yours: you add or drop them, and they hold in every dairy you'r
 ## Playing as a cow
 
 **Making milk**
-- Milk builds up while you play. You start with one 8 oz bottle. Bigger bottles (up to a 16 oz Velvet churn at level 40) and extra bottles (up to **3 bottles**, at levels 10 and 30) come free as level rewards. Well cared for, they fill in about 1 to 3 hours.
+- Milk builds up while you play. You start with one 8 oz bottle. Bigger bottles (up to a 16 oz Velvet churn at level 40) and extra bottles (up to **3 bottles**, at levels 10 and 30) come free as level rewards. Well cared for, they fill in about 45 minutes to 2½ hours.
 - When every bottle is full, no more milk comes, so get milked.
 - No milk is made while you're logged out.
 
@@ -185,7 +185,7 @@ Target someone with Eorzea Milkers and press **Scan** on the HUD (or right-click
 - **Awards:** collect them for coins.
 - **Stats:** your lifetime totals (milk given, best grade, milkings, deliveries, coins). They include **breed counters**: as a cow, how many times a bull has bred you; as a bull, how many cows you've bred (scene breedings, counted from version 0.9.93 on; breeding stalls don't count).
 - **The Shop** sells treats, tonics (Second wind, Pump drops, Udder balm, Dry-off), quality treats and, for farmers, Churn oil, wheat grain for flour and bigger farmer tanks. Everything else that used to be an upgrade (bottles, bedding, troughs, bells, wearables, bull perks) is now a **free level reward**: Market → Shop → Level rewards lists them and the level each comes at. Wearables raise your quota pay.
-- **Comfort items:** Plush bedding (Comfy +10% instead of +6%), Lavender bedding (Comfy +3% more, Happy +2% more), Silk cushion (Comfy +2% more), Bell collar (Happy +1% more), Clean trough (Watered +2% more), Endless spring (Watered +3% more).
+- **Comfort items:** Plush bedding (Comfy +10% instead of +6%), Lavender bedding (Happy +2% more), Silk cushion (Comfy +2% more), Bell collar (Happy +1% more), Clean trough (Watered +2% more), Endless spring (Watered +3% more).
 - **Champion's ribbon** (cow level 28): farmers who hand milk you earn 10% more; being bred lasts 45 minutes; pregnancy gives 5% more milk.
 - The main window shows your Eorzea Milkers version at the bottom of the left side (handy when asking for help).
 

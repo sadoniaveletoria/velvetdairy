@@ -270,7 +270,7 @@ public static class Catalog
         new Upgrade("letdown", "Easy let-down", "bucket", new[] { 120 }, new[] { 10 }, "Stall milking draws your milk 10% faster.", Cow: true),
         new Upgrade("halter", "Silk halter", "ribbon", new[] { 325 }, new[] { 17 }, "A soft silk halter. +3% to your quota pay.", true, Cow: true),
         new Upgrade("steady", "Steady producer", "milk", new[] { 300 }, new[] { 18 }, "You get tired after 14 hours of milk a day instead of 12."),
-        new Upgrade("lavender", "Lavender bedding", "cushion", new[] { 600 }, new[] { 23 }, "Comfy bonus +3% more, and Happy +2% more."),
+        new Upgrade("lavender", "Lavender bedding", "cushion", new[] { 600 }, new[] { 23 }, "Happy bonus +2% more."),
         new Upgrade("mist", "Cooling mist", "water", new[] { 475 }, new[] { 24 }, "Full bottles keep 96 hours before they spoil instead of 72.", Cow: true),
         new Upgrade("velvetbell", "Velvet bell", "bell", new[] { 600 }, new[] { 26 }, "A velvet-wrapped bell. +5% to your quota pay.", true, Cow: true),
         new Upgrade("champion", "Champion's ribbon", "ribbon", new[] { 900 }, new[] { 28 }, "A prized cow: farmers who hand milk you get 10% more pay and farmer xp. Being bred lasts 45 minutes instead of 30, and pregnancy gives 5% more milk.", true, Cow: true),

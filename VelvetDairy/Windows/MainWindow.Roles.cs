@@ -140,18 +140,15 @@ public sealed partial class MainWindow
         DrawCleanStalls(width);
 
         SubHeading("Coming up", width);
-        var tank = Catalog.Upgrades.First(u => u.Id == "farmtank");
-        var shown = 0;
-        for (var i = 0; i < tank.Unlocks.Length && shown < 4; i++)
+        var coming = G.FarmerUnlocks().Where(x => x.Level > G.FarmerLevel).GroupBy(x => x.Level).OrderBy(x => x.Key).Take(4).ToList();
+        foreach (var lv in coming)
         {
-            if (tank.Unlocks[i] <= G.FarmerLevel) continue;
-            TextLine(Theme.Ink, $"Lv {tank.Unlocks[i]}");
+            TextLine(Theme.Ink, $"Lv {lv.Key}");
             ImGui.SameLine(56);
-            TextLine(Theme.InkSoft, $"{Catalog.FarmerTankNames[i + 1]} ({Units.Oz(Catalog.FarmerTankSizes[i + 1])}) in the Shop");
-            shown++;
+            Ui.Wrapped(string.Join(", ", lv.Select(x => x.Name)), Theme.InkSoft, width - 56);
         }
 
-        if (shown == 0) TextLine(Theme.InkSoft, "Every farmer tank is unlocked.");
+        if (coming.Count == 0) TextLine(Theme.InkSoft, "Everything is unlocked.");
 
         SubHeading("What farmers do", width);
         Ui.Wrapped("Hand milk your dairy's cows (Herd Care button): stand close, target them and press Milk; it does the emote and stops when they're empty. You get 25% of what the milk is worth (30% from farmer level 45), with no daily limit.", Theme.Ink, width);
@@ -159,7 +156,7 @@ public sealed partial class MainWindow
         Ui.Wrapped("Invite people and give them roles, the farmer role included.", Theme.Ink, width);
 
         SubHeading("How to earn farmer xp", width);
-        Ui.Wrapped($"Grooming cows ({Catalog.GroomXp} each, every 15 min per cow), cleaning stalls ({Catalog.CleanXp} each), hand milking pay, filling jugs, deliveries to other dairies and contract shipments.", Theme.InkSoft, width);
+        Ui.Wrapped($"Grooming ({Catalog.GroomXp}), feeding and watering ({Catalog.FeedXp} each), cleaning stalls ({Catalog.CleanXp}), ringing the bell, hand milking pay, filling jugs, baking, deliveries to other dairies, contract shipments and farmer goals ({DairyGame.GoalXp} each).", Theme.InkSoft, width);
     }
 
     /// <summary>Hand milking and the Kitchen each open their own window (Herd Care is also on the HUD).</summary>

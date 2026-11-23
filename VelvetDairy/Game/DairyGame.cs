@@ -319,13 +319,13 @@ public sealed partial class DairyGame
                         TakeBonus("Fed", feed.Fed);
                     }
 
-                    if (Has("bull")) F.BullXp += Catalog.FedBullXp;
+                    if (Has("bull")) AddBullXp(Catalog.FedBullXp);
                     break;
                 case "fed":
                     // A farmer fed you something from the dairy shelf: cows get its treat, bulls some bull xp
                     var fedId = i.Grade >= 0 && i.Grade < Catalog.ShelfOrder.Length ? Catalog.ShelfOrder[i.Grade] : "";
                     if (Producer && Catalog.FeedById(fedId) is { } treat) ApplyTreat(treat);
-                    if (Has("bull")) F.BullXp += Catalog.FedBullXp;
+                    if (Has("bull")) AddBullXp(Catalog.FedBullXp);
                     break;
             }
 
@@ -3995,7 +3995,7 @@ public sealed partial class DairyGame
         F.DayClaimed |= 1 << g.Bit;
         var goalPaid = Earn(g.Coins > 0 ? g.Coins : GoalCoins);
         if (g.Farmer) AddFarmerXp(GoalXp);
-        else if (g.Bit == BullQuotaBit || (!ProducesMilk && ProducesSeed)) F.BullXp += GoalXp;   // the bull quota, and a bull who isn't a cow, level as a bull
+        else if (g.Bit == BullQuotaBit || (!ProducesMilk && ProducesSeed)) AddBullXp(GoalXp);   // the bull quota, and a bull who isn't a cow, level as a bull
         else AddXp(GoalXp);
         F.Stats.DailiesDone++;
         // Each set has its own bonus for finishing all four
@@ -4109,16 +4109,59 @@ public sealed partial class DairyGame
         if (!ProducesMilk) return;   // cow xp is only for cows; farmer work gives farmer xp
         amount = Boosted(amount);
         var before = Level;
+        var had = RewardsNow();
         F.Xp += amount;
         var after = Level;
+        if (after == before) return;
+        // What actually became yours (bull things, other roles' foods and the network's feed bin aren't listed)
+        var unlocks = RewardsNow().Except(had).Concat(Leveling.CowPerks.Where(p => p.Level > before && p.Level <= after).Select(p => p.Name)).ToList();
         for (var l = before + 1; l <= after; l++)
-        {
-            var unlocks = Leveling.UnlocksAt(l, Networked).Concat(Leveling.CowPerks.Where(p => p.Level == l).Select(p => p.Name)).ToList();
-            Say($"Cow level {l}! You're a {Leveling.Rank(l)}." + (unlocks.Count > 0 ? " Unlocked: " + string.Join(", ", unlocks) : ""), 1);
-        }
+            Say($"Cow level {l}! You're a {Leveling.Rank(l)}." + (l == after && unlocks.Count > 0 ? " Unlocked: " + string.Join(", ", unlocks) : ""), 1);
     }
 
-    /// <summary>Farmer xp: hand milking pay, filling jugs, deliveries and contracts.</summary>
+    /// <summary>Level rewards and Shop foods you have right now, by name (for "Unlocked: ..." on level up).</summary>
+    private HashSet<string> RewardsNow()
+    {
+        var set = new HashSet<string>();
+        foreach (var u in Catalog.Upgrades.Where(u => u.LevelReward))
+        {
+            var n = Owned(u.Id);
+            if (u.Id == "bottle") { if (n > 0) set.Add($"{BottleName} ({Units.Oz(BottleSize, "0")} bottles)"); continue; }
+            if (u.Id == "rack") { if (n > 0) set.Add($"bottle {1 + n}"); continue; }
+            for (var i = 0; i < n; i++) set.Add(u.MaxLevel > 1 ? $"{u.Name} {i + 1}" : u.Name);
+        }
+
+        foreach (var f in Catalog.Feed.Where(f => !f.Baked && f.Unlock > 1 && FeedUnlocked(f))) set.Add(f.Name);
+        return set;
+    }
+
+    /// <summary>What a cow level will unlock for you (Today > Cow > Coming up): your rewards and foods, not a bull's.</summary>
+    public IEnumerable<string> CowUnlocksAt(int level)
+    {
+        foreach (var f in Catalog.Feed.Where(f => !f.Baked && f.Unlock == level && level > 1 && FeedForYou(f) && FeedUnlockLevel(f) != 99 && f.Role is "" or "both"))
+            yield return f.Name;
+        foreach (var u in Catalog.Upgrades.Where(u => u.LevelReward && !u.Bull))
+            for (var i = 0; i < u.Unlocks.Length; i++)
+                if (u.Unlocks[i] == level)
+                    yield return u.Id == "bottle" ? $"{Catalog.BottleNames[Math.Min(Catalog.BottleNames.Length - 1, i + 2)]} ({Units.Oz(Catalog.BottleSizes[Math.Min(Catalog.BottleSizes.Length - 1, i + 2)], "0")} bottles)"
+                        : u.Id == "rack" ? $"bottle {i + 2}" : u.MaxLevel > 1 ? $"{u.Name} {i + 1}" : u.Name;
+        if (Networked) yield break;
+        for (var t = 2; t < Catalog.StallTierUnlock.Length; t++)
+            if (Catalog.StallTierUnlock[t] == level) yield return Catalog.StallTierNames[t];
+    }
+
+    /// <summary>Everything a farmer level unlocks: bigger tanks to buy, recipes and perks.</summary>
+    public IEnumerable<(int Level, string Name)> FarmerUnlocks()
+    {
+        var tank = Catalog.Upgrades.First(u => u.Id == "farmtank");
+        for (var i = 0; i < tank.Unlocks.Length && i + 1 < Catalog.FarmerTankSizes.Length; i++)
+            yield return (tank.Unlocks[i], $"{Catalog.FarmerTankNames[i + 1]} ({Units.Oz(Catalog.FarmerTankSizes[i + 1])}) in the Shop");
+        foreach (var r in Catalog.Recipes.Where(r => r.FarmerLevel > 1 && !Leveling.FarmerPerks.Any(p => p.Name.EndsWith(r.Name, StringComparison.Ordinal))))
+            yield return (r.FarmerLevel, $"Recipe: {r.Name}");
+        foreach (var p in Leveling.FarmerPerks) yield return p;
+    }
+
+    /// <summary>Farmer xp: care, hand milking pay, filling jugs, baking, deliveries, contracts and goals.</summary>
     private void AddFarmerXp(int amount)
     {
         if (amount <= 0) return;
@@ -4126,10 +4169,7 @@ public sealed partial class DairyGame
         F.FarmerXp += amount;
         for (var l = before + 1; l <= FarmerLevel; l++)
         {
-            var tank = Catalog.Upgrades.First(u => u.Id == "farmtank");
-            var unlock = Array.IndexOf(tank.Unlocks, l);
-            var perks = Leveling.FarmerPerks.Where(p => p.Level == l).Select(p => p.Name).ToList();
-            if (unlock >= 0) perks.Insert(0, $"{Catalog.FarmerTankNames[unlock + 1]} ({Units.Oz(Catalog.FarmerTankSizes[unlock + 1])}) in the Shop");
+            var perks = FarmerUnlocks().Where(x => x.Level == l).Select(x => x.Name).ToList();
             Say($"Farmer level {l}!" + (Leveling.FarmerRank(l) is { } title && l == 100 ? $" You're a {title}." : "") + (perks.Count > 0 ? " Unlocked: " + string.Join(", ", perks) + "." : ""), 1);
         }
     }
