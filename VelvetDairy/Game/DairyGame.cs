@@ -725,14 +725,23 @@ public sealed partial class DairyGame
     public sealed record RatePart(string Name, float Multiplier);
 
     /// <summary>What goes into your milk speed right now, as multipliers.</summary>
+    /// <summary>What your level rewards add on top of a bonus while it's going (they used to make bars last longer).</summary>
+    public float PerkBonus(string bar) => bar switch
+    {
+        "Watered" => (Owned("trough") > 0 ? 0.02f : 0f) + (Owned("spring") > 0 ? 0.03f : 0f),
+        "Comfy" => Owned("silkcushion") > 0 ? 0.02f : 0f,
+        "Happy" => (Owned("bell") > 0 ? 0.01f : 0f) + (Owned("lavender") > 0 ? 0.02f : 0f),
+        _ => 0f,
+    };
+
     public List<RatePart> RateParts(bool includeResting = true, bool seed = false)
     {
         var parts = new List<RatePart>();
         if (seed) parts.Add(new RatePart($"Seed (Grade {Grades.Name(SeedGrade)}: {SeedShare * 100:0.#}% of milk speed)", SeedShare));
         if (Cow.Hunger > 0 && Cow.FedBonus > 0) parts.Add(new RatePart("Fed", 1f + Cow.FedBonus));
-        if (Cow.Thirst > 0 && Cow.WaterBonus > 0) parts.Add(new RatePart("Watered", 1f + Cow.WaterBonus));
-        if (Cow.Comfort > 0 && Cow.ComfortBonus > 0) parts.Add(new RatePart("Comfy", 1f + Cow.ComfortBonus));
-        if (Cow.Mood > 0 && Cow.HappyBonus > 0) parts.Add(new RatePart("Happy", 1f + Cow.HappyBonus));
+        if (Cow.Thirst > 0 && Cow.WaterBonus > 0) parts.Add(new RatePart("Watered", 1f + Cow.WaterBonus + PerkBonus("Watered")));
+        if (Cow.Comfort > 0 && Cow.ComfortBonus > 0) parts.Add(new RatePart("Comfy", 1f + Cow.ComfortBonus + PerkBonus("Comfy")));
+        if (Cow.Mood > 0 && Cow.HappyBonus > 0) parts.Add(new RatePart("Happy", 1f + Cow.HappyBonus + PerkBonus("Happy")));
         var lvl = seed ? BullLevel : Level;
         if (lvl > 1) parts.Add(new RatePart((seed ? "Bull level " : "Level ") + (lvl > Leveling.MilkBonusCap ? $"{lvl} (max bonus)" : $"{lvl}"), 1f + Catalog.LevelBonus * (Math.Min(lvl, Leveling.MilkBonusCap) - 1)));
         if (Contented) parts.Add(new RatePart("Contented (all four bonuses)", 1f + Catalog.ContentBonus));
@@ -1025,20 +1034,19 @@ public sealed partial class DairyGame
         var m = seconds / 60f;
         if (Cow.Milk > Capacity) Cow.Milk = Capacity;
         var fullBefore = FullBottles;
-        var cushion = Owned("cushion") > 0;
-        WatchRest();
+                WatchRest();
         if (Wake != Wakefulness.Awake) HoldBoost(seconds);
 
         // Need bars drain as the bonus wears off, only while you're awake; asleep, dozing or logged out they wait
         if (Wake == Wakefulness.Awake)
         {
-            // In a dairy (yours, or one you're visiting as a guest) your bonuses wear off half as fast
-            var step = 100f / Catalog.NeedMinutes * m * (Where.InDairy ? Catalog.InDairyDrain : 1f);
+            // Every bonus lasts 30 minutes, the same everywhere (perks raise the % instead of making it last longer)
+            var step = 100f / Catalog.NeedMinutes * m;
             Cow.Hunger = Clamp(Cow.Hunger - step);
-            Cow.Thirst = Clamp(Cow.Thirst - step / (Owned("trough") > 0 ? 1.5f : 1f) * (Owned("spring") > 0 ? 0.8f : 1f));
-            Cow.Mood = Clamp(Cow.Mood - step / ((Owned("lavender") > 0 ? 2f : 1f) * (Owned("bell") > 0 ? 1.2f : 1f)));
+            Cow.Thirst = Clamp(Cow.Thirst - step);
+            Cow.Mood = Clamp(Cow.Mood - step);
             // Comfy holds while you sit in your dairy (that's where it comes from)
-            if (!(Where.InDairy && Where.Seated)) Cow.Comfort = Clamp(Cow.Comfort - step / (cushion ? 2f : 1f) * (Owned("silkcushion") > 0 ? 0.85f : 1f));
+            if (!(Where.InDairy && Where.Seated)) Cow.Comfort = Clamp(Cow.Comfort - step);
         }
 
         if (!Overfull && Active == null && ProducesMilk)
@@ -1288,12 +1296,10 @@ public sealed partial class DairyGame
     /// </summary>
     public int FillMinutesNow => (int)Math.Round(NeedMinutesLeft(Catalog.NeedFill));
 
-    /// <summary>A bar that's over an hour, or already full to the top: no more until it's under.</summary>
-    public bool NeedFull(float bar) => NeedMinutesLeft(bar) > NeedTopUpLimit || bar >= 99.5f;
+    /// <summary>A bonus that still has its full 30 minutes: nothing to top up yet.</summary>
+    public bool NeedFull(float bar) => bar >= 99.5f;
 
-    private string FullText(string bar, float v) => NeedMinutesLeft(v) > NeedTopUpLimit
-        ? $"Your {bar} bar is over an hour ({NeedMinutesLeft(v):0} min). Top it up once it's under an hour."
-        : $"Your {bar} bar is full. Top it up once it's gone down.";
+    private string FullText(string bar, float v) => $"Your {bar} bonus still has its full {Catalog.NeedMinutes:0} minutes. Top it up once it's gone down.";
 
     /// <summary>For your status: minutes left on each bar (so farmers know whether grooming or feeding would help).</summary>
     public int[] NeedMinutesNow => new[] { Cow.Hunger, Cow.Thirst, Cow.Comfort, Cow.Mood }.Select(v => (int)Math.Round(NeedMinutesLeft(v))).ToArray();
@@ -1380,7 +1386,7 @@ public sealed partial class DairyGame
         Cow.Comfort = Fill(Cow.Comfort);
         Cow.ComfortBonus = ComfyNow;
         Cow.ComfyReadyUtc = DateTime.UtcNow;
-        CareDone($"Comfy +{ComfyNow * 100:0}%: {NeedMinutesLeft(Cow.Comfort):0} min on the bar. Stay seated to add more.");
+        CareDone($"Comfy +{ComfyNow * 100:0}% for {NeedMinutesLeft(Cow.Comfort):0} minutes. It doesn't run down while you stay seated.");
     }
 
     private void CareDone(string text)
@@ -2145,7 +2151,7 @@ public sealed partial class DairyGame
         var w = GroomWait(cowId);
         if (w > 0) return $"You can groom {cowName} again in {Wait(TimeSpan.FromSeconds(w))}.";
         var needs = Net.Mine?.Members.Concat(Net.Mine.Guests).FirstOrDefault(m => m.Id == cowId)?.Status?.Needs;
-        if (needs is { Count: 4 } && needs[3] > NeedTopUpLimit) return $"{cowName}'s Happy bar is over an hour ({needs[3]} min). Groom them once it's under.";
+        if (needs is { Count: 4 } && needs[3] >= Catalog.NeedMinutes) return $"{cowName}'s Happy bonus still has its full {Catalog.NeedMinutes:0} minutes. Groom them once it's gone down.";
         return null;
     }
 
@@ -2199,7 +2205,7 @@ public sealed partial class DairyGame
         if (distance < 0 || distance > HandRange) return $"Get within {HandRange:0} yalms of {name} first.";
         if (binReady.TryGetValue(id, out var t) && t > now) return $"{name} can be fed again in {Wait(TimeSpan.FromSeconds(t - now))}.";
         var fedMin = Net.Mine?.Members.Concat(Net.Mine.Guests).FirstOrDefault(m => m.Id == id)?.Status?.Needs is { Count: 4 } needs ? needs[0] : 0;
-        if (fedMin > NeedTopUpLimit) return $"{name}'s Fed bar is over an hour ({fedMin} min). Feed them once it's under.";
+        if (fedMin >= Catalog.NeedMinutes) return $"{name}'s Fed bonus still has its full {Catalog.NeedMinutes:0} minutes. Feed them once it's gone down.";
         return null;
     }
 
@@ -3027,7 +3033,7 @@ public sealed partial class DairyGame
     {
         var fills = FillsOf(item);
         if (fills.Count == 0 || fills.Any(f => !NeedFull(f.V) || f.Gives > f.Has + 0.001f)) return null;
-        return fills.Count == 1 ? FullText(fills[0].Bar, fills[0].V) : $"Your {string.Join(" and ", fills.Select(f => f.Bar))} bars are over an hour. Eat again once one is under an hour.";
+        return fills.Count == 1 ? FullText(fills[0].Bar, fills[0].V) : $"Your {string.Join(" and ", fills.Select(f => f.Bar))} bonuses still have their full 30 minutes. Eat again once one has gone down.";
     }
 
     private List<(string Bar, float V, float Has, float Gives)> FillsOf(FeedItem item)
@@ -3049,7 +3055,7 @@ public sealed partial class DairyGame
         if (fills.Count == 0 || fills.Any(f => !NeedFull(f.V))) return null;
         var up = fills.Where(f => f.Gives > f.Has + 0.001f).ToList();
         if (up.Count == 0) return null;
-        return $"{string.Join(" and ", up.Select(f => f.Bar))} {(up.Count == 1 ? "is" : "are")} over an hour: this only raises the bonus to " +
+        return $"{string.Join(" and ", up.Select(f => f.Bar))} {(up.Count == 1 ? "is" : "are")} already full: this only raises the bonus to " +
                string.Join(", ", up.Select(f => $"+{f.Gives * 100:0}%")) + ", it doesn't add time.";
     }
 

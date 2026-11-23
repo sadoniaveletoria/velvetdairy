@@ -112,7 +112,7 @@ public sealed record Upgrade(string Id, string Name, string Icon, int[] Prices, 
 
 public static class Catalog
 {
-    // Each need is a milk bonus. Each use adds 30 minutes (half the bar, up to an hour) and has a 15-minute cooldown.
+    // Each need is a milk bonus that lasts 30 minutes; getting it again sets it back to 30. Each use has a 15-minute cooldown.
     // Food sets Fed, the trough or a mineral block sets Watered, resting sets Comfy, treats set Happy.
     // Using one again adds time, not more bonus; the newest one of a kind sets the bonus. All four at once: Contented on top.
     // ----- Making things (farmers): ingredients go in the pantry; they're only used to make other things -----
@@ -254,32 +254,32 @@ public static class Catalog
     public static readonly IReadOnlyList<Upgrade> Upgrades = new[]
     {
         new Upgrade("stallkit", "Stall kit", "bucket", new[] { 200, 500 }, new[] { 6, 12 }, "Lets you register one more stall."),
-        new Upgrade("cushion", "Plush bedding", "cushion", new[] { 70 }, new[] { 4 }, "Comfy bonus +7% instead of +4%, and the Comfy bar drains half as fast."),
+        new Upgrade("cushion", "Plush bedding", "cushion", new[] { 70 }, new[] { 4 }, "Comfy bonus +7% instead of +4%."),
         new Upgrade("bottle", "Bigger bottle", "bottle", new[] { 50, 135, 275, 550, 10500 }, new[] { 3, 8, 14, 21, 40 }, "Each bottle (and seed vial) holds more."),
         // Up to 4 bottles (6 before 0.9.97, when milk came in faster): the 5th and 6th were refunded
         new Upgrade("rack", "Extra bottle", "milk", new[] { 90, 225, 350 }, new[] { 6, 12, 19 }, "One more bottle (and seed vial). When one fills, the next one starts. Up to 4."),
         // Farmers (and owners) buy a bigger tank to carry milk from the dairy tank; unlocks go by farmer level
         new Upgrade("farmtank", "Bigger farmer tank", "bucket", new[] { 200, 400, 900, 1600, 2500, 4000, 7500 }, new[] { 2, 5, 10, 16, 22, 30, 40 },
             "Carry more milk from the dairy tank to other dairies and the Grand Creamery.", Farmer: true),
-        new Upgrade("trough", "Clean trough", "water", new[] { 90 }, new[] { 5 }, "Watered lasts half again as long."),
-        new Upgrade("bell", "Bell collar", "bell", new[] { 50 }, new[] { 3 }, "A brass bell. The Happy bar drains a little slower.", true),
+        new Upgrade("trough", "Clean trough", "water", new[] { 90 }, new[] { 5 }, "Watered bonus +2% more."),
+        new Upgrade("bell", "Bell collar", "bell", new[] { 50 }, new[] { 3 }, "A brass bell. Happy bonus +1% more.", true),
         new Upgrade("ribbon", "Show ribbon", "ribbon", new[] { 275 }, new[] { 15 }, "Wear your ribbon. +5% to your quota pay.", true, Cow: true),
         new Upgrade("cap", "Gold-cap bottles", "coin", new[] { 550 }, new[] { 25 }, "Bottles with your name on them. +10% to your quota pay.", true, Cow: true),
         // Cow perks and wearables for the higher cow levels
         new Upgrade("letdown", "Easy let-down", "bucket", new[] { 120 }, new[] { 10 }, "Stall milking draws your milk 10% faster.", Cow: true),
         new Upgrade("halter", "Silk halter", "ribbon", new[] { 325 }, new[] { 17 }, "A soft silk halter. +3% to your quota pay.", true, Cow: true),
         new Upgrade("steady", "Steady producer", "milk", new[] { 300 }, new[] { 18 }, "You get tired after 14 hours of milk a day instead of 12."),
-        new Upgrade("lavender", "Lavender bedding", "cushion", new[] { 600 }, new[] { 23 }, "Comfy bonus +3% more, and the Happy bar drains half as fast."),
+        new Upgrade("lavender", "Lavender bedding", "cushion", new[] { 600 }, new[] { 23 }, "Comfy bonus +3% more, and Happy +2% more."),
         new Upgrade("mist", "Cooling mist", "water", new[] { 475 }, new[] { 24 }, "Full bottles keep 96 hours before they spoil instead of 72.", Cow: true),
         new Upgrade("velvetbell", "Velvet bell", "bell", new[] { 600 }, new[] { 26 }, "A velvet-wrapped bell. +5% to your quota pay.", true, Cow: true),
         new Upgrade("champion", "Champion's ribbon", "ribbon", new[] { 900 }, new[] { 28 }, "A prized cow: farmers who hand milk you get 10% more pay and farmer xp. Being bred lasts 45 minutes instead of 30, and pregnancy gives 5% more milk.", true, Cow: true),
         new Upgrade("velvetchamp", "Velvet champion sash", "coin", new[] { 1250 }, new[] { 30 }, "The best cow in Eorzea. +10% to your quota pay.", true, Cow: true),
         // Levels 31 to 100: fewer, bigger rewards
-        new Upgrade("silkcushion", "Silk cushion", "cushion", new[] { 7000 }, new[] { 45 }, "The Comfy bar drains 15% slower (on top of Plush bedding)."),
+        new Upgrade("silkcushion", "Silk cushion", "cushion", new[] { 7000 }, new[] { 45 }, "Comfy bonus +2% more (on top of Plush bedding)."),
         new Upgrade("heirloombell", "Heirloom bell", "bell", new[] { 19000 }, new[] { 55 }, "A family heirloom bell. +3% to your quota pay.", true, Cow: true),
         new Upgrade("nightowl", "Night owl", "milk", new[] { 18000 }, new[] { 62 }, "You get tired 2 hours later each day (on top of Steady producer)."),
         new Upgrade("royalhalter", "Royal halter", "ribbon", new[] { 25000 }, new[] { 70 }, "A halter fit for royalty. +3% to your quota pay.", true, Cow: true),
-        new Upgrade("spring", "Endless spring", "water", new[] { 50000 }, new[] { 85 }, "Watered drains 20% slower."),
+        new Upgrade("spring", "Endless spring", "water", new[] { 50000 }, new[] { 85 }, "Watered bonus +3% more."),
         new Upgrade("sweettooth", "Sweet tooth", "clover", new[] { 45000 }, new[] { 92 }, "Treat milk boosts last 15% longer."),
         // Bulls: unlocked by bull level, only for bulls (a cow who's also a bull gets both sets)
         new Upgrade("nosering", "Nose ring", "ribbon", new[] { 125 }, new[] { 5 }, "A polished brass ring. +3% to your seed quota pay.", true, Bull: true),
@@ -347,11 +347,13 @@ public static class Catalog
     public const float TreatBonus = 0.30f;      // while a treat boost lasts
 
     // ----- Need bonuses -----
-    public const float NeedMinutes = 60f;       // a full need bar (awake play only)
-    public const float NeedFill = 50f;          // each use adds half a bar: 30 minutes
+    // Each bonus lasts 30 minutes from when you get it (awake play only); getting it again sets it back to 30, it never
+    // stacks past that. (Before: each use added 30 minutes up to an hour, and bars drained half as fast in a dairy.)
+    public const float NeedMinutes = 30f;       // a full need bar
+    public const float NeedFill = 100f;         // each use fills it: 30 minutes
     public const double NeedCooldownMinutes = 15; // eat, drink, rest and treat each wait this long between uses
     public const double RestSettleMinutes = 10;
-    public const float InDairyDrain = 0.5f;   // need bars drain this much as fast while you're in a dairy   // sit this long in your dairy and you get Comfy (each further stretch adds more)
+    public const float InDairyDrain = 1f;   // (0.5 before: bars drained half as fast in a dairy)   // need bars drain this much as fast while you're in a dairy   // sit this long in your dairy and you get Comfy (each further stretch adds more)
     public const float TroughBonus = 0.04f;     // Watered from the trough
     public const float ComfyBonus = 0.04f;      // Comfy from resting (Plush bedding 0.07, + Lavender bedding 0.03)
     public const float ComfyCushion = 0.07f;
