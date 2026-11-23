@@ -34,6 +34,7 @@ public sealed class ChangelogWindow : Window
             "Hand milking has no daily limit for farmers any more.",
             "The daily reset is midnight Central time now (it was midnight UTC): quotas, goals, being tired and breeding output.",
             "Upgrades are free: bottles, bedding, troughs, bells, wearables and bull perks come with your level (Shop > Level rewards). Farmers still buy bigger farmer tanks (200 to 7,500; the biggest at farmer level 40).",
+            "Treats you buy yourself now give their bonus (and milk boost) but no time on your bars: time on Happy comes from farmers grooming you, their baked treats and the feeding bell, which fills a bar right up. Playing alone off the network, treats still add time.",
             "Farmers feed you now: your Fed bar comes from the dairy's feed bin (Herd Care > Feed), free and unlimited. The owner unlocks better feed with the fund (Dairy > Feed & pump). You still drink, rest and have treats yourself, but a farmer's baked treats are better than the ones you buy.",
             "New: the Velvet pump (dairy level 5, 2,500 from the fund): everyone's milk and seed +15% for 2 hours. Home pasture: +10% when you're milked in your own dairy.",
             "New in the Shop: Pump drops (+25% milk and seed for 30 min), Udder balm (your next 3 hand milkings give 20% more; no longer an upgrade), Second wind tonic (tire 2 hours later today, for everyone) and Churn oil (farmers' jugs fill twice as fast for an hour).",

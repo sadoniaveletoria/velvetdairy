@@ -1096,7 +1096,16 @@ public sealed partial class DairyGame
         }
 
         if (!FeedForYou(item)) return Fail(item.Role == "bull" ? "That's for bulls." : "That's for cows who are also bulls.");
-        if (NeedsFullFor(item) is { } full) return Fail(full);
+        // On the network, treats you buy give their bonus but no time: a bar's time comes from your farmers (feeding,
+        // grooming, baked treats) and the feeding bell. So it's only worth eating one that's better than what you have.
+        var bonusOnly = InNetDairy && (item.Water > 0 || item.Happy > 0);
+        if (bonusOnly)
+        {
+            var better = (item.Water > Cow.WaterBonus + 0.0001f) || (item.Happy > Cow.HappyBonus + 0.0001f);
+            if (!better && item.BoostMinutes <= 0 && item.Quality <= 0 && item.XpBoostMinutes <= 0)
+                return Fail($"You already have that bonus or a bigger one. Treats you buy give their bonus, not time: farmers and the feeding bell fill your bars.");
+        }
+        else if (NeedsFullFor(item) is { } full) return Fail(full);
         var upgradeOnly = UpgradeOnly(item);
         if (item.RestHours > 0 && F.RestTeaDay == DayClock.Today) return Fail($"You've had {item.Name} today already.");
         if (item.Quality > 0 && QualityTreatWait > TimeSpan.Zero)
@@ -1105,9 +1114,25 @@ public sealed partial class DairyGame
         if (wait > TimeSpan.Zero) return Fail($"You can have that in {Wait(wait)}.");
         F.Pantry[id] = Count(id) - 1;
         var cd = DateTime.UtcNow.AddMinutes(Catalog.NeedCooldownMinutes);
-        if (item.Fed > 0 && !NeedFull(Cow.Hunger)) { Cow.Hunger = Fill(Cow.Hunger); Cow.FedBonus = item.Fed; Cow.FedReadyUtc = cd; }
-        if (item.Water > 0 && !NeedFull(Cow.Thirst)) { Cow.Thirst = Fill(Cow.Thirst); Cow.WaterBonus = item.Water; Cow.WaterReadyUtc = cd; }
-        if (item.Happy > 0 && !NeedFull(Cow.Mood)) { Cow.Mood = Fill(Cow.Mood); Cow.HappyBonus = item.Happy; Cow.HappyReadyUtc = cd; }
+        var bonusNote = "";
+        if (bonusOnly)
+        {
+            // The bonus only: it counts for as long as the bar has time
+            if (item.Water > Cow.WaterBonus) Cow.WaterBonus = item.Water;
+            if (item.Happy > Cow.HappyBonus) Cow.HappyBonus = item.Happy;
+            if (item.Water > 0) Cow.WaterReadyUtc = cd;
+            if (item.Happy > 0) Cow.HappyReadyUtc = cd;
+            var empty = (item.Happy > 0 && Cow.Mood <= 0) || (item.Water > 0 && item.Happy <= 0 && Cow.Thirst <= 0);
+            bonusNote = empty
+                ? $" Your {(item.Happy > 0 ? "Happy" : "Watered")} bar is empty, so the bonus counts once it has time again (a farmer grooming you, a baked treat or the feeding bell{(item.Happy > 0 ? "" : ", or a drink")})."
+                : $" Your {(item.Happy > 0 ? "Happy" : "Watered")} bonus is +{(item.Happy > 0 ? Cow.HappyBonus : Cow.WaterBonus) * 100:0}% for as long as the bar lasts.";
+        }
+        else
+        {
+            if (item.Fed > 0 && !NeedFull(Cow.Hunger)) { Cow.Hunger = Fill(Cow.Hunger); Cow.FedBonus = item.Fed; Cow.FedReadyUtc = cd; }
+            if (item.Water > 0 && !NeedFull(Cow.Thirst)) { Cow.Thirst = Fill(Cow.Thirst); Cow.WaterBonus = item.Water; Cow.WaterReadyUtc = cd; }
+            if (item.Happy > 0 && !NeedFull(Cow.Mood)) { Cow.Mood = Fill(Cow.Mood); Cow.HappyBonus = item.Happy; Cow.HappyReadyUtc = cd; }
+        }
         // A bar over an hour: a bigger bonus still takes over, without adding time
         RaiseBonusIfFull(item);
         if (item.DropsMinutes > 0)
@@ -1178,7 +1203,7 @@ public sealed partial class DairyGame
             extra += $" {item.RestHours} hours off your milking time today.";
         }
 
-        CareDone($"You {(item.Icon == "water" ? "drink" : "eat")} some {item.Name.ToLowerInvariant()}." + (item.BoostMinutes > 0 ? $" Milk boost for {BoostFor(item)} min." : "") + extra
+        CareDone($"You {(item.Icon == "water" ? "drink" : "eat")} some {item.Name.ToLowerInvariant()}." + (item.BoostMinutes > 0 ? $" Milk boost for {BoostFor(item)} min." : "") + bonusNote + extra
                  + (upgradeOnly != null ? " " + upgradeOnly.Replace("this only raises", "it only raised").Replace("it doesn't add time", "no time was added") : ""));
         return true;
     }

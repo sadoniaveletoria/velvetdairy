@@ -1240,7 +1240,7 @@ public sealed partial class MainWindow : Window
     }
 
     /// <summary>What a food or treat does; short leaves out the extras (for the small Care cards; the tooltip has it all).</summary>
-    private string Effects(FeedItem f, bool short_ = false)
+    private string Effects(FeedItem f, bool short_ = false, bool fedByFarmer = false)
     {
         if (short_)
         {
@@ -1256,7 +1256,8 @@ public sealed partial class MainWindow : Window
         if (f.Water != 0) parts.Add($"Watered +{f.Water * 100:0}%");
         if (f.Happy != 0) parts.Add($"Happy +{f.Happy * 100:0}%");
         // 30 minutes, or 60 in your dairy (bars drain half as fast there): the same as the bar will show
-        if (f.Fed != 0 || f.Water != 0 || f.Happy != 0) parts.Add($"+{G.FillMinutesNow}m");
+        // On the network, treats you buy give their bonus but no time (farmers and the feeding bell fill your bars)
+        if (f.Fed != 0 || f.Water != 0 || f.Happy != 0) parts.Add(G.InNetDairy && !fedByFarmer && !Catalog.IsBinFeed(f.Id) ? "bonus only, no time" : $"+{G.FillMinutesNow}m");
         if (f.BoostMinutes != 0) parts.Add($"boost {f.BoostMinutes}m");
         if (f.HoldDays != 0) parts.Add($"no grade slip for {f.HoldDays} days");
         if (f.Quality != 0) parts.Add($"+{f.Quality:0} milk quality");

@@ -405,9 +405,9 @@ public sealed partial class MainWindow
                     ImGui.CloseCurrentPopup();
                 }
 
-                if (ImGui.IsItemHovered()) ImGui.SetTooltip(Units.Text(Effects(f)));
+                if (ImGui.IsItemHovered()) ImGui.SetTooltip(Units.Text(Effects(f, fedByFarmer: true)));
                 ImGui.SameLine();
-                ImGui.TextColored(Theme.InkSoft, Effects(f));
+                ImGui.TextColored(Theme.InkSoft, Effects(f, fedByFarmer: true));
             }
 
             ImGui.EndPopup();
