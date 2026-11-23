@@ -95,7 +95,7 @@ public sealed partial class MainWindow
         {
             SubHeading("You're visiting", width);
             ImGui.TextColored(Theme.Ink, visiting.Name);
-            ImGui.TextColored(Theme.InkSoft, "Deliver milk here from the Creamery tab.");
+            ImGui.TextColored(Theme.InkSoft, "Deliver milk here from Market > Creamery.");
         }
 
         // This week's most active dairies
@@ -348,7 +348,7 @@ public sealed partial class MainWindow
                 Panel("##stallside", new Vector2(mid + 7, top.Y), max, G.IsOwner ? "Stall upgrades" : "Hand milking", w =>
                 {
                     if (G.IsOwner) DrawStallUpgrades(w);
-                    else Ui.Wrapped("Cows: your milking emotes are on Roles > Cow. Farmers: the dairy's cows and the emotes that milk them are in Herd Care (HUD).", Theme.InkSoft, w);
+                    else Ui.Wrapped("Cows: your milking emotes are on Today > Cow. Farmers: the dairy's cows and the emotes that milk them are in Herd Care (HUD).", Theme.InkSoft, w);
                 }, true);
                 break;
             case 3:
@@ -589,12 +589,12 @@ public sealed partial class MainWindow
 
         if (c.Completed)
         {
-            Ui.Wrapped("This week's contract is done. Spare milk can go to other dairies (Creamery > Deliveries).", Theme.SageDeep, width);
+            Ui.Wrapped("This week's contract is done. Spare milk can go to other dairies (Market > Creamery > Deliveries).", Theme.SageDeep, width);
             return;
         }
 
         ImGui.TextColored(Theme.Ink, $"Your jugs: {Units.Oz(G.Carried, "0.#")}");
-        if (G.Carried <= 0) Ui.Wrapped("Fill jugs at your dairy first (Roles > Farmer > Kitchen).", Theme.InkSoft, width);
+        if (G.Carried <= 0) Ui.Wrapped("Fill jugs at your dairy first (Herd > Farmer > Kitchen).", Theme.InkSoft, width);
         var leftOz = (int)Math.Ceiling(c.Left);
         if (G.Carried >= 0.05f)
         {

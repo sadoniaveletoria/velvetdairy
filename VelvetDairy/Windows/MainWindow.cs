@@ -35,7 +35,6 @@ public sealed partial class MainWindow : Window
 
     public const int TabBarn = 0, TabRoles = 1, TabPantry = 2, TabShop = 3, TabCreamery = 4, TabDairy = 5, TabDairies = 6, TabProgress = 7, TabSettings = 8;
 
-    private static readonly string[] Tabs = { "Barn", "Roles", "Pantry", "Shop", "Creamery", "Dairy", "Dairies", "Progress", "Settings" };
     private int tab;
     private bool ticked18;
     private bool tickedNoBackup;
@@ -227,18 +226,7 @@ public sealed partial class MainWindow : Window
         else if (plugin.BackupSetupNeeded) DrawBackupSetup(bodyMin, bodyMax);
         else
         {
-            switch (tab)
-            {
-                case TabBarn: DrawBarn(bodyMin, bodyMax); break;
-                case TabPantry: DrawPantry(bodyMin, bodyMax); break;
-                case TabShop: DrawShop(bodyMin, bodyMax); break;
-                case TabCreamery: DrawCreamery(bodyMin, bodyMax); break;
-                case TabDairy: DrawDairy(bodyMin, bodyMax); break;
-                case TabDairies: DrawNetwork(bodyMin, bodyMax); break;
-                case TabRoles: DrawRoles(bodyMin, bodyMax); break;
-                case TabProgress: DrawProgress(bodyMin, bodyMax); break;
-                default: DrawSettings(bodyMin, bodyMax); break;
-            }
+            DrawPage(bodyMin, bodyMax);
         }
 
         DrawToasts(ImGui.GetForegroundDrawList(), winMin, winMax);
@@ -360,42 +348,12 @@ public sealed partial class MainWindow : Window
         return h;
     }
 
-    /// <summary>Icons for the sidebar, in the same order as <see cref="Tabs"/>.</summary>
-    private static readonly string[] TabIcons = { "bucket", "ribbon", "hay", "coin", "cheese", "milk", "bell", "starclover", "gear" };
-
     private const float SideW = 150f;
 
-    /// <summary>
-    /// The tabs down the left side, each with its icon, and at the bottom the plugins Eorzea Milkers works with
-    /// (a green dot and the name when it's installed). Hover a plugin for what it's for; click a missing one to copy its repository link.
-    /// </summary>
-    private void DrawSidebar(ImDrawListPtr dl, Vector2 o, float h)
+    /// <summary>The plugins Eorzea Milkers works with, at the bottom of the sidebar (a green dot and the name when installed), and the version.
+    /// Hover a plugin for what it's for; click a missing one to copy its repository link.</summary>
+    private void DrawCompanions(ImDrawListPtr dl, Vector2 o, float h, float y)
     {
-        dl.AddRectFilled(o, o + new Vector2(SideW, h), Ui.U(Theme.Paper, 0.9f));
-        dl.AddLine(o + new Vector2(SideW, 0), o + new Vector2(SideW, h), Ui.U(Theme.RoseDeep, 0.22f), 1f);
-
-        const float rowH = 40f;
-        var y = o.Y + 12;
-        for (var i = 0; i < Tabs.Length; i++)
-        {
-            var min = new Vector2(o.X + 10, y);
-            var size = new Vector2(SideW - 20, rowH);
-            ImGui.SetCursorScreenPos(min);
-            if (ImGui.InvisibleButton($"##tab{i}", size)) tab = i;
-            var hovered = ImGui.IsItemHovered();
-            var sel = tab == i;
-            if (sel)
-            {
-                dl.AddRectFilled(min, min + size, Ui.U(Theme.Rose, 0.38f), 8);
-                dl.AddRectFilled(min, min + new Vector2(3, size.Y), Ui.U(Theme.RoseDeep), 2);
-            }
-            else if (hovered) dl.AddRectFilled(min, min + size, Ui.U(Theme.Rose, 0.16f), 8);
-
-            Ui.Icon(dl, TabIcons[i], min + new Vector2(20, size.Y / 2), 13, sel || hovered ? 1f : 0.8f);
-            Ui.Text(dl, fonts.Label, Tabs[i].ToUpperInvariant(), min + new Vector2(40, size.Y / 2), sel ? Theme.Ink : hovered ? Theme.RoseDeep : Theme.InkSoft, 0f, 0.5f);
-            y += rowH + 3;
-        }
-
         // The helper plugins, at the bottom
         var all = plugin.Companions.All(G.Now);
         var lineH = Ui.Measure(fonts.Small, "Ag").Y + 3;
@@ -799,36 +757,6 @@ public sealed partial class MainWindow : Window
     // =====================================================================
     // Barn
     // =====================================================================
-
-    private void DrawBarn(Vector2 min, Vector2 max)
-    {
-        // Not a cow? The barn is your work instead: the herd, the stalls, your tank and your goals
-        if (!G.Producer && G.Networked && (G.IsFarmer || F.NetMember?.IsOwner == true))
-        {
-            DrawFarmBarn(min, max);
-            return;
-        }
-
-        var blocked = G.Blocked();
-        // Top: your bottle and how you're doing. Then Care as one slim row. Milking along the bottom.
-        // The space between Care and Milking is left open for now.
-        var milkH = G.Active != null || !G.AutoStall ? 200f : 112f;
-        const float careH = 122f, gap = 14f;
-        var topH = Math.Min(max.Y - min.Y - milkH - careH - gap * 2, 480f);
-        var topMax = new Vector2(max.X, min.Y + topH);
-        const float leftW = 270f;
-
-        DrawBottleCard(min, new Vector2(min.X + leftW, topMax.Y));
-        Panel("##needs", new Vector2(min.X + leftW + gap, min.Y), topMax, "How you're doing", DrawNeeds);
-        DrawCareRow(new Vector2(min.X, topMax.Y + gap), new Vector2(max.X, topMax.Y + gap + careH));
-        Panel("##milking", new Vector2(min.X, max.Y - milkH), max, G.Active != null ? "Milking now" : "Milking", DrawMilking, true);
-
-        if (blocked != null && blocked != "Not logged in.")
-        {
-            var dl = ImGui.GetWindowDrawList();
-            dl.AddText(min + new Vector2(28, -4), Ui.U(Theme.Warn), blocked);
-        }
-    }
 
     private void DrawFarmBarn(Vector2 min, Vector2 max)
     {
@@ -1461,7 +1389,7 @@ public sealed partial class MainWindow : Window
         var cur = ImGui.GetCursorScreenPos();
         Ui.Bar(ImGui.GetWindowDrawList(), cur + new Vector2(0, 6), cur + new Vector2(Math.Min(width, 360), 14), G.MaxCarry > 0 ? Math.Clamp(G.Carried / G.MaxCarry, 0, 1) : 0, Theme.BlueDeep);
         ImGui.Dummy(new Vector2(width, 20));
-        Ui.Wrapped("Fill it at your dairy (Roles > Farmer > Kitchen). Farmer xp comes from hand milking, grooming, cleaning stalls, baking, filling jugs, deliveries and contracts.", Theme.InkSoft, width);
+        Ui.Wrapped("Fill it at your dairy (Herd > Farmer > Kitchen). Farmer xp comes from hand milking, grooming, cleaning stalls, baking, filling jugs, deliveries and contracts.", Theme.InkSoft, width);
     }
 
     private void DrawBottleShop(float width)
@@ -1726,7 +1654,7 @@ public sealed partial class MainWindow : Window
             var seed = G.Net.Progress?.Tank?.Seed ?? 0;
             Ui.Wrapped($"Breeding stalls: the owner switches a stall to breeding, and farmers or the owner load it with breedings ({Units.Oz(DairyGame.BreedStallSeedOz)} " +
                        $"of seed each, up to {DairyGame.BreedStallMaxLoaded}). A cow who sits in it for {DairyGame.BreedStallMinutes} minutes uses one and is bred (the same bonus as a scene, " +
-                       $"no pregnancy). The seed tank has {Units.Oz(seed, "0.#")} now: bulls fill it, or buy seed on Creamery > Seed market.", seed < DairyGame.BreedStallSeedOz ? Theme.RoseDeep : Theme.InkSoft, width);
+                       $"no pregnancy). The seed tank has {Units.Oz(seed, "0.#")} now: bulls fill it, or buy seed on Market > Creamery > Seed market.", seed < DairyGame.BreedStallSeedOz ? Theme.RoseDeep : Theme.InkSoft, width);
         }
 
         Gap(6);
@@ -1930,7 +1858,7 @@ public sealed partial class MainWindow : Window
         Ui.Wrapped($"+1 xp for every {Units.Oz(0.2)} of milk you make (more at better grades), a bonus when you're emptied at a stall or by hand, daily goals and care.", Theme.InkSoft, width);
     }
 
-    /// <summary>Progress tab: every role's level at a glance (details on the Roles tab), plus totals.</summary>
+    /// <summary>Progress: every role's level at a glance (details on your role pages (Today > Cow, Today > Bull, Herd > Farmer)), plus totals.</summary>
     private void DrawLevelsSummary(float width)
     {
         DrawRoleLevel("Cow level", F.Xp, Theme.RoseDeep, Leveling.Rank(G.Level), width);
@@ -1941,7 +1869,7 @@ public sealed partial class MainWindow : Window
         DrawRoleLevel("Bull level", F.BullXp, Theme.HoneyDeep,
             Leveling.BullRank(G.BullLevel) is { } bt ? $"{bt} · titles at 25, 50, 75 and 100" : "Bull items unlock in the Shop as you level. Titles at 25, 50, 75 and 100.", width);
         Gap(4);
-        if (ImGui.SmallButton("Details on the Roles tab##toroles")) tab = TabRoles;
+        if (ImGui.SmallButton("Role details##toroles")) tab = TabRoles;
 
         SubHeading("Totals", width);
         var st = F.Stats;
@@ -1974,7 +1902,7 @@ public sealed partial class MainWindow : Window
         ImGui.TextColored(Theme.InkSoft, $"New goals in {Mins(G.UntilReset)}.");
         Gap(4);
         var goals = G.Goals();
-        if (goals.Count == 0) Ui.Wrapped("Take a role (Roles tab) to get daily goals.", Theme.InkSoft, width);
+        if (goals.Count == 0) Ui.Wrapped("Take a role (Today > Cow or Bull) to get daily goals.", Theme.InkSoft, width);
         foreach (var farmer in new[] { false, true })
         {
             var set = goals.Where(x => x.Farmer == farmer).ToList();
@@ -2237,9 +2165,9 @@ public sealed partial class MainWindow : Window
 
         SubHeading("How to play", width);
         Ui.Wrapped("1. Join a dairy (Dairies tab, ask the owner for an invite) or start your own on the Dairy tab.\n" +
-                   "2. Cows: milk fills up over time, faster with Fed, Watered, Comfy and Happy (Barn > Care).\n" +
+                   "2. Cows: milk fills up over time, faster with Fed, Watered, Comfy and Happy (Today > Care).\n" +
                    "3. Get milked on one of your dairy's stalls, or by a farmer pressing Milk on you. You're paid by your grade.\n" +
-                   "4. Farmers: Herd Care is on the HUD and the Kitchen is on Roles > Farmer. Fill jugs in the Kitchen, then deliver on the Creamery tab.\n" +
+                   "4. Farmers: Herd Care is on the HUD and the Kitchen is on Herd > Farmer. Fill jugs in the Kitchen, then deliver on Market > Creamery.\n" +
                    "5. Spend coins in the Shop. The full guide is the ? at the top, or /milkers guide.", Theme.Ink, width);
 
         SubHeading("Having trouble?", width);

@@ -25,6 +25,7 @@ public sealed class ChangelogWindow : Window
     {
         new("0.9.99", "Quotas, the feed bin and the Velvet pump", new[]
         {
+            "A new layout: six places down the side instead of nine tabs. Today (your quota as a ring with Claim, your bottles, care, how you're doing, milking and goals, plus your Cow and Bull pages), Herd (the cows and bulls with you, chores, jugs and your Farmer page), Dairy, Market (Shop, Pantry and Creamery), Dairies and Progress. Settings and the Guide are at the bottom.",
             "Pay works like a dairy now: you're paid for reaching your daily quota, not per ounce. A farmer or the owner sets its size (Light, Steady, Heavy or Devoted: bigger pays more). Claim it in Goals. Your grade, wearables and the dairy's level raise it. Daily goals pay 20 each and 40 for all four; \"Give 10 oz\" is now \"Spend 30 minutes in a dairy\".",
             "Bulls' quota is in seed. Farmers have their own farmer quota for milk delivered, set separately by the owner. Quotas belong to each dairy you're in.",
             "Creamery customer orders and visitor orders are gone. Instead, farmers drop milk off at any other dairy they visit (Creamery > Deliveries), no order needed: it goes into that dairy's tank, the Grand Creamery pays the farmer, and the farmer's own dairy fund gets 2 coins an oz. How much you can deliver to other dairies a day grows with your farmer level (30 oz at level 1, plus 5 a level). You can make 10 deliveries a day and drop off at each dairy once a day; filling a buy order counts as a delivery too.",

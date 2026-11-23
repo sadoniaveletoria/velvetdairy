@@ -58,6 +58,6 @@ public sealed class MilkAskWindow : Window
         ImGui.SameLine();
         if (Ui.Button("##asknot", "Not now", new Vector2(130, 32), "cream", true, "They can ask again in 2 minutes.")) G.AnswerMilkAsk(false);
         ImGui.Spacing();
-        ImGui.TextColored(Theme.InkSoft, G.Where.Guest ? "You're a guest here: farmers of this dairy always ask first." : "Roles > Cow: turn on \"start without asking\" to skip this.");
+        ImGui.TextColored(Theme.InkSoft, G.Where.Guest ? "You're a guest here: farmers of this dairy always ask first." : "Today > Cow: turn on \"start without asking\" to skip this.");
     }
 }

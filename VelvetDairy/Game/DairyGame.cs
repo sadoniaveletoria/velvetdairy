@@ -611,7 +611,7 @@ public sealed partial class DairyGame
         }
         else if (!AtHome) return "Go to your dairy to ship milk.";
         if (oz < 1) return "Nothing left to ship.";
-        if (Carried < oz - 0.01f) return $"You carry {Units.Oz(Carried, "0.#")}. Fill jugs at your dairy (Roles > Farmer > Kitchen).";
+        if (Carried < oz - 0.01f) return $"You carry {Units.Oz(Carried, "0.#")}. Fill jugs at your dairy (Herd > Farmer > Kitchen).";
         return null;
     }
 
@@ -1375,8 +1375,8 @@ public sealed partial class DairyGame
         {
             Cow.Spoiled = true;
             Stop("Your milk spoiled.");
-            Say("Your milk has spoiled. Dump it from the HUD or the Barn tab before you can be milked again.", 2);
-            Plugin.ChatGui.Print("Your milk has spoiled. Dump it from the HUD or the Barn tab.", "Eorzea Milkers");
+            Say("Your milk has spoiled. Dump it from the HUD or the Today page before you can be milked again.", 2);
+            Plugin.ChatGui.Print("Your milk has spoiled. Dump it from the HUD or the Today page.", "Eorzea Milkers");
             plugin.SaveConfig();
         }
         else if (left.TotalHours <= 2 && spoilWarned < 2)

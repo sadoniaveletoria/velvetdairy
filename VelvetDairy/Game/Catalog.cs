@@ -411,7 +411,7 @@ public static class Leveling
 
     public static string? BullRank(int level) => level >= 100 ? "Legendary Bull" : level >= 75 ? "Champion Bull" : level >= 50 ? "Prize Bull" : level >= 25 ? "Strong Bull" : null;
 
-    /// <summary>Farmer level rewards that aren't Shop items (shown on level up and on the Roles tab).</summary>
+    /// <summary>Farmer level rewards that aren't Shop items (shown on level up and on your role pages (Today > Cow, Today > Bull, Herd > Farmer)).</summary>
     public static readonly (int Level, string Name)[] FarmerPerks =
     {
         (35, "Recipe: Honey cream cake"), (45, "Hand milking share 30%"), (70, "Recipe: Velvet tart"), (85, "Faster baking (20%)"), (100, "Title: Master Farmer and a crown"),
@@ -429,7 +429,7 @@ public static class Leveling
         return next.Name == null ? null : $"{next.Name} at level {next.Level}";
     }
 
-    /// <summary>What a level gives you (shown when you level up and on the Progress tab).</summary>
+    /// <summary>What a level gives you (shown when you level up and on Progress).</summary>
     /// <summary>What a cow level unlocks. Farmer tanks go by farmer level; on the network, stalls go by dairy level.</summary>
     public static IEnumerable<string> UnlocksAt(int level, bool networked = false)
     {

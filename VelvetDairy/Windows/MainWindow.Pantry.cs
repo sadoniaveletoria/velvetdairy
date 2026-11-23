@@ -7,12 +7,12 @@ using VelvetDairy.Game;
 
 namespace VelvetDairy.Windows;
 
-// Pantry tab: the feed and treats you own. Eat them (inside your dairy), sell back what you don't need, or hide it.
+// Market > Pantry: the feed and treats you own. Eat them (inside your dairy), sell back what you don't need, or hide it.
 public sealed partial class MainWindow
 {
     private const string PantryFood = "Food & treats", PantryIngredients = "Ingredients", PantryShelf = "Dairy shelf";
 
-    /// <summary>Pantry tabs: what you eat, what you bake with, and your dairy's shelf (each its own short list).</summary>
+    /// <summary>Market > Pantrys: what you eat, what you bake with, and your dairy's shelf (each its own short list).</summary>
     private void DrawPantry(Vector2 min, Vector2 max)
     {
         var labels = new List<string> { PantryFood };
@@ -26,7 +26,7 @@ public sealed partial class MainWindow
             case PantryIngredients:
                 Panel("##pantryingr", top, new Vector2(mid - 7, max.Y), "Ingredients", DrawIngredients);
                 Panel("##pantryingrinfo", new Vector2(mid + 7, top.Y), max, "Baking", w =>
-                    Ui.Wrapped("Ingredients are only used to make other things in the Kitchen (Roles > Farmer > Kitchen). Butter is churned from milk in your jugs.", Theme.InkSoft, w), true);
+                    Ui.Wrapped("Ingredients are only used to make other things in the Kitchen (Herd > Farmer > Kitchen). Butter is churned from milk in your jugs.", Theme.InkSoft, w), true);
                 break;
             case PantryShelf:
                 Panel("##pantryshelf", top, new Vector2(mid - 7, max.Y), "Dairy shelf", DrawShelf);
@@ -48,7 +48,7 @@ public sealed partial class MainWindow
         var have = Catalog.Ingredients.Where(i => G.IngredientCount(i.Id) > 0).ToList();
         if (have.Count == 0)
         {
-            Ui.Wrapped("No ingredients yet. Farmers make them in the Kitchen (Roles > Farmer > Kitchen).", Theme.InkSoft, width);
+            Ui.Wrapped("No ingredients yet. Farmers make them in the Kitchen (Herd > Farmer > Kitchen).", Theme.InkSoft, width);
             return;
         }
 

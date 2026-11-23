@@ -20,6 +20,10 @@ Eorzea Milkers is an 18+ game that runs inside Final Fantasy XIV through the Dal
 - **Grade**: how good your milk is: C, B, A, S, S+. A better grade means more pay and more XP.
 - **HUD**: the small always-on box on your screen with your bottles, bars and buttons.
 
+### Finding your way around
+
+The main window has six places down the left side: **Today** (your quota, bottles, care, milking and goals, plus your Cow and Bull pages), **Herd** (farm work and your Farmer page), **Dairy**, **Market** (Shop, Pantry and Creamery), **Dairies** and **Progress**. **Settings** and the **Guide** are at the bottom. Places with more than one page show them as pills along the top.
+
 ### Your first five minutes
 
 1. Type **/milkers** in the chat box and press Enter. The main window opens.
@@ -58,7 +62,7 @@ Each bar is a bonus. When one runs out you just lose that bonus; it never hurts 
 | Bar | How you fill it | Who does it |
 | --- | --- | --- |
 | **Fed** | Feed from the dairy's feed bin | A **farmer or the owner** feeds you (Herd Care > Feed). There's no Eat button on the network: farmers feed you. |
-| **Watered** | Drink | **You** (Barn tab > Drink). Free. |
+| **Watered** | Drink | **You** (Today page > Drink). Free. |
 | **Comfy** | Sit on furniture in your dairy | **You**. After 10 minutes seated you get 30 minutes of Comfy; each further 10 minutes adds 30 more, up to an hour. |
 | **Happy** | Treats, grooming | **You** buy treats; a **farmer** grooms you or feeds you baked treats (these are better). |
 
@@ -68,7 +72,7 @@ Each use fills half a bar (30 minutes). Eating, drinking and treats each have a 
 
 **1. At a stall.** Sit right on a stall's seat inside the dairy. The machine starts on its own and empties your bottles. Stay seated and it starts again once half a bottle refills. Better stall tiers (Wooden, Padded, Velvet, Gilded) pull milk out faster and collect more of it. A stall a farmer just cleaned gives +10%.
 
-**2. By hand.** A farmer stands within 3 yalms, targets you and presses **Milk** in Herd Care. Milk flows until you're empty or they stop. Hand milking collects more than a basic stall, gives you much more XP, and fixes one grade lost to slipping. If you don't want to be milked without asking, turn off "Farmers can start milking me without asking" on Roles > Cow; then you get an **Allow** pop-up first.
+**2. By hand.** A farmer stands within 3 yalms, targets you and presses **Milk** in Herd Care. Milk flows until you're empty or they stop. Hand milking collects more than a basic stall, gives you much more XP, and fixes one grade lost to slipping. If you don't want to be milked without asking, turn off "Farmers can start milking me without asking" on Today > Cow; then you get an **Allow** pop-up first.
 
 ### Your daily quota (this is your pay)
 
@@ -115,7 +119,7 @@ The quota is listed with them as a fifth, separate payment.
 
 ### What a cow spends coins on
 
-Only consumables: treats (clover 15, salt lick 20, cream clover 35), quality treats (cream biscuit 30, golden alfalfa 80, star clover 200: these push your grade up), Pump drops (60), Udder balm (60: next 3 hand milkings +20%), Second wind tonic (150: tire 2 hours later today), Dry-off tonic (150). Everything else, like bottles, bedding and wearables, is a **free level reward**: it unlocks by itself when you reach its level (Shop > Level rewards). Spare coins are best **donated to the dairy fund**.
+Only consumables: treats (clover 15, salt lick 20, cream clover 35), quality treats (cream biscuit 30, golden alfalfa 80, star clover 200: these push your grade up), Pump drops (60), Udder balm (60: next 3 hand milkings +20%), Second wind tonic (150: tire 2 hours later today), Dry-off tonic (150). Everything else, like bottles, bedding and wearables, is a **free level reward**: it unlocks by itself when you reach its level (Market > Shop > Level rewards). Spare coins are best **donated to the dairy fund**.
 
 ## Bulls: seed, breeding and bull XP
 
@@ -180,7 +184,7 @@ Iron oats (30 coins: fills Watered), Bull's salt lick (35: Happy, +25% bull XP f
 
 The farmer is the dairy's worker. They keep cows and bulls fed and happy, milk them by hand, and carry milk out of the tank to other dairies. Farmers are the main way coins come **into** the dairy fund. You can't give yourself Farmer: a farmer or the owner has to give it to you.
 
-Your main tool is **Herd Care**. Open it from the HUD button or Roles > Farmer. It lists every cow and bull in the dairy, how close they are and how full.
+Your main tool is **Herd Care**. Open it from the HUD button or Herd > Farmer. It lists every cow and bull in the dairy, how close they are and how full.
 
 ### Chores (all done inside the dairy)
 
@@ -205,7 +209,7 @@ You're paid a **share** of what that milk is worth: 25% (30% from farmer level 4
 
 ### The kitchen: baking treats
 
-Open **Roles > Farmer > Kitchen**. First fill your jugs from the dairy tank at the top (1 oz a second, twice as fast with **Churn oil**, 40 coins; you have to stay in the dairy while it fills). Then bake:
+Open **Herd > Farmer > Kitchen**. First fill your jugs from the dairy tank at the top (1 oz a second, twice as fast with **Churn oil**, 40 coins; you have to stay in the dairy while it fills). Then bake:
 
 | Recipe | Needs | Makes | Farmer level | XP |
 | --- | --- | --- | --- | --- |
@@ -221,10 +225,10 @@ Baked treats go on the **dairy shelf**. Members buy them (you get 80% of the pri
 
 ### Deliveries: where farmer coins come from
 
-Your **farmer tank** is how much milk you can carry: a 32 oz pail at first. Buy bigger tanks in **Shop > Farmer tank** (200, 400, 900, 1,600, 2,500, 4,000 and 7,500 coins, unlocking at farmer levels 2, 5, 10, 16, 22, 30 and 40, up to 400 oz).
+Your **farmer tank** is how much milk you can carry: a 32 oz pail at first. Buy bigger tanks in **Market > Shop > Farmer tank** (200, 400, 900, 1,600, 2,500, 4,000 and 7,500 coins, unlocking at farmer levels 2, 5, 10, 16, 22, 30 and 40, up to 400 oz).
 
-- **Drop-offs** (Creamery > Deliveries): walk into any other dairy and leave milk from your jugs in their tank, no order needed. The Grand Creamery pays you 1.5 coins an oz, your own **dairy fund gets 2 coins per oz**, and you get 2.5 farmer XP an oz.
-- **Other dairies' buy orders** (Creamery > Deliveries): the milk goes into their tank and the coins they offered go to you.
+- **Drop-offs** (Market > Creamery > Deliveries): walk into any other dairy and leave milk from your jugs in their tank, no order needed. The Grand Creamery pays you 1.5 coins an oz, your own **dairy fund gets 2 coins per oz**, and you get 2.5 farmer XP an oz.
+- **Other dairies' buy orders** (Market > Creamery > Deliveries): the milk goes into their tank and the coins they offered go to you.
 - **Daily delivery limit**: 30 oz a day to other dairies at farmer level 1, plus 5 oz a level (275 at level 50, 525 at level 100). Drop-offs and buy orders share it. You can also make only **10 deliveries a day**, and drop off at each dairy **once a day** (until the daily reset).
 - **The weekly contract**: take jugs to the Grand Creamery (Dairy > Contract shows where) and ship. Each shipment gives you farmer XP (half the oz) and the dairy XP and fund coins.
 
@@ -307,7 +311,7 @@ Only the owner takes roles away.
 
 **The Velvet pump** (Dairy > Feed & pump, from dairy level 5): 2,500 coins turns on +15% milk and seed for everyone in the dairy for 2 hours. Best used when lots of people are on.
 
-**Buy orders** (Creamery > Deliveries): ask other dairies for milk. The coins are held until someone fills the order or you cancel.
+**Buy orders** (Market > Creamery > Deliveries): ask other dairies for milk. The coins are held until someone fills the order or you cancel.
 
 **Shelf prices**: set what members pay for each baked treat, within a range.
 
@@ -343,14 +347,14 @@ Milking itself, at a stall or by hand, **does not pay the cow or bull**. Their p
 
 ### Ways to spend coins
 
-- **Consumables** (Shop > Feed & treats): treats, quality treats, tonics, Pump drops, Udder balm, Churn oil.
-- **Farmer tanks** (Shop > Farmer tank): the only upgrade still bought with coins.
+- **Consumables** (Market > Shop > Feed & treats): treats, quality treats, tonics, Pump drops, Udder balm, Churn oil.
+- **Farmer tanks** (Market > Shop > Farmer tank): the only upgrade still bought with coins.
 - **Baked treats** from the dairy shelf.
 - **Donating** to the dairy fund (Dairy tab). This is the best use of spare coins: it pays for stalls, the feed bin and the pump, which help everyone.
 
 ### Level rewards are free
 
-Bottles, extra bottles, bedding, troughs, wearables and the rest unlock **on their own** when you reach their level (Shop > Level rewards shows what's next). Upgrades bought before this change weren't refunded.
+Bottles, extra bottles, bedding, troughs, wearables and the rest unlock **on their own** when you reach their level (Market > Shop > Level rewards shows what's next). Upgrades bought before this change weren't refunded.
 
 ## Levels, grades, goals, awards, and being tired or asleep
 

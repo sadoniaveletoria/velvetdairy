@@ -135,8 +135,8 @@ public sealed partial class DairyGame
         {
             Cow.SeedSpoiled = true;
             Stop("Your seed spoiled.");
-            Say("Your seed has spoiled. Dump it from the HUD or the Barn tab before you can be milked again.", 2);
-            Plugin.ChatGui.Print("Your seed has spoiled. Dump it from the HUD or the Barn tab.", "Eorzea Milkers");
+            Say("Your seed has spoiled. Dump it from the HUD or the Today page before you can be milked again.", 2);
+            Plugin.ChatGui.Print("Your seed has spoiled. Dump it from the HUD or the Today page.", "Eorzea Milkers");
             plugin.SaveConfig();
             return;
         }

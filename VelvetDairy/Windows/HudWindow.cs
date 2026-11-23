@@ -22,7 +22,7 @@ public sealed class HudWindow : Window
     private const float ButtonRow = 38f;   // farmers get a row of buttons under the card: Herd Care and Kitchen
 
     private bool ShowHandMilk => G.IsFarmer;
-    private bool ShowKitchen => false;   // the Kitchen is on Roles > Farmer; the HUD keeps Herd Care, Scan and Breed
+    private bool ShowKitchen => false;   // the Kitchen is on Herd > Farmer; the HUD keeps Herd Care, Scan and Breed
 
     /// <summary>Targeting another player close by (with the network on): a Scan button for them.</summary>
     private Dalamud.Game.ClientState.Objects.SubKinds.IPlayerCharacter? ScanTarget

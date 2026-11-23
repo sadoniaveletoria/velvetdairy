@@ -7,12 +7,12 @@ using VelvetDairy.Game;
 
 namespace VelvetDairy.Windows;
 
-// Roles tab: one sub-tab per role (Cow, Farmer, Bull), each with its own level and what that role cares about.
+// role pages: one sub-tab per role (Cow, Farmer, Bull), each with its own level and what that role cares about.
 public sealed partial class MainWindow
 {
-    private void DrawRoles(Vector2 min, Vector2 max)
+    private void DrawRoles(Vector2 min, Vector2 max, bool pills = true)
     {
-        var top = SubTabs("roles", new[] { "Cow", "Farmer", "Bull" }, min, max.X - min.X);
+        var top = pills ? SubTabs("roles", new[] { "Cow", "Farmer", "Bull" }, min, max.X - min.X) : min;
         var mid = (min.X + max.X) / 2;
         switch (Sub("roles"))
         {
@@ -337,7 +337,7 @@ public sealed partial class MainWindow
                 feedPick = (c.Name, c.Id, near);
                 ImGui.OpenPopup("##feedpick");
             }
-            else if (clicked == 0 && !G.MilkCow(c.Name, milkEmote, Math.Max(st?.Milk ?? 0, (st?.SeedOz ?? 0) / DairyGame.SeedRatio), st?.Ask == true)) G.Notify($"{milkEmote} isn't an emote the game knows. Ask them to fix their milking emotes (Roles > Cow).", 2);
+            else if (clicked == 0 && !G.MilkCow(c.Name, milkEmote, Math.Max(st?.Milk ?? 0, (st?.SeedOz ?? 0) / DairyGame.SeedRatio), st?.Ask == true)) G.Notify($"{milkEmote} isn't an emote the game knows. Ask them to fix their milking emotes (Today > Cow).", 2);
         }
 
         DrawFeedPicker();
@@ -494,7 +494,7 @@ public sealed partial class MainWindow
         Ui.Text(dl, fonts.Small, "SEED", new Vector2(at.X + w / 2, at.Y + height + 2), Theme.InkSoft, 0.5f);
         Ui.Text(dl, fonts.Small, Units.Num(F.Cow.Seed, "0.##"), new Vector2(at.X + w / 2, at.Y + height + 2 + Ui.Measure(fonts.Small, "Ag").Y), G.SeedSpoiled || G.SeedFull ? Theme.Warn : Theme.Ink, 0.5f);
         if (ImGui.IsMouseHoveringRect(at, at + new Vector2(w, height + 30)))
-            ImGui.SetTooltip(Units.Text($"Seed: {F.Cow.Seed:0.##} / {G.SeedCapacity:0.#} oz\n") + (G.SeedSpoiled ? "Spoiled: dump it (Roles > Bull, or the HUD).\n" : G.SeedFull ? "Full: get milked.\n" : "") + SeedGradeTip());
+            ImGui.SetTooltip(Units.Text($"Seed: {F.Cow.Seed:0.##} / {G.SeedCapacity:0.#} oz\n") + (G.SeedSpoiled ? "Spoiled: dump it (Today > Bull, or the HUD).\n" : G.SeedFull ? "Full: get milked.\n" : "") + SeedGradeTip());
     }
 
     /// <summary>Cows: being bred (a bull of your dairy, in a Corruption scene) and pregnancy (from Corruption).</summary>
