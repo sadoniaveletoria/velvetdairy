@@ -140,9 +140,9 @@ public sealed class HudWindow : Window
     /// <summary>The − in the full HUD's top-right corner folds it to the pill.</summary>
     private void DrawFoldButton(ImDrawListPtr dl, Vector2 o, Vector2 whole)
     {
-        var bp = o + new Vector2(whole.X - 30, 6);
+        var bp = o + new Vector2(whole.X - 38, 10);
         ImGui.SetCursorScreenPos(bp);
-        if (ImGui.InvisibleButton("##hudfold", new Vector2(22, 22)))
+        if (ImGui.InvisibleButton("##hudfold", new Vector2(26, 26)))
         {
             F.HudFolded = true;
             plugin.SaveConfig();
@@ -150,8 +150,10 @@ public sealed class HudWindow : Window
 
         var hov = ImGui.IsItemHovered();
         if (hov) ImGui.SetTooltip("Fold the HUD down to a small pill");
-        dl.AddCircleFilled(bp + new Vector2(11, 11), 10, Ui.U(Theme.Rose, hov ? 0.6f : 0.25f));
-        dl.AddLine(bp + new Vector2(6, 11), bp + new Vector2(16, 11), Ui.U(Theme.RoseDeep), 2f);
+        var c = bp + new Vector2(13, 13);
+        dl.AddCircleFilled(c, 12, Ui.U(hov ? Theme.RoseDeep : Theme.Rose, hov ? 1f : 0.85f));
+        dl.AddCircle(c, 12, Ui.U(Theme.RoseDeep, 0.8f), 0, 1.5f);
+        dl.AddLine(c - new Vector2(6, 0), c + new Vector2(6, 0), Ui.U(hov ? Theme.Paper : Theme.Ink), 2.5f);
     }
 
     /// <summary>Shortens a line with "..." so it always stays inside the card.</summary>
@@ -249,7 +251,7 @@ public sealed class HudWindow : Window
         var mw = Ui.Measure(fonts.Heading, amountText).X;
         var capText = Units.Oz(tCap, seedText ? "0.#" : "0") + (seedText ? " seed" : "");
         // "/ 240 oz · 0 of 5 full", dropping the bottle count (then shortening) when it doesn't fit beside the amount
-        var capRoom = o.X + size.X - 20 - (x + mw + 4);
+        var capRoom = o.X + size.X - 48 - (x + mw + 4);   // the fold button sits in the top-right corner
         var capLine = tCount > 1 ? $"/ {capText} · {tFull} of {tCount} full" : $"/ {capText}";
         if (Ui.Measure(fonts.Small, capLine).X > capRoom && tCount > 1) capLine = $"/ {capText} · {tFull}/{tCount}";
         if (Ui.Measure(fonts.Small, capLine).X > capRoom) capLine = $"/ {capText}";
@@ -264,21 +266,21 @@ public sealed class HudWindow : Window
             var qText = claimed ? "Quota done today" : qDone ? $"Quota reached: claim {G.QuotaCoins}"
                 : $"Quota {Units.Num(G.QuotaHave, qFmt)} / {Units.Oz(G.QuotaNeed, qFmt)}{(G.QuotaInSeed ? " seed" : "")}";
             if (Ui.Measure(fonts.Small, qText).X > room) qText = claimed ? "Quota done" : qDone ? "Claim quota" : $"{Units.Num(G.QuotaHave, qFmt)} / {Units.Num(G.QuotaNeed, qFmt)}";
-            var qw = Ui.Text(dl, fonts.Small, qText, new Vector2(x, o.Y + 37), qDone && !claimed ? Theme.SageDeep : Theme.HoneyDeep).X;
+            var qw = Ui.Text(dl, fonts.Small, qText, new Vector2(x, o.Y + 44), qDone && !claimed ? Theme.SageDeep : Theme.HoneyDeep).X;
             // A thin bar after the words, filling as you go
             if (!claimed && room - qw > 40)
-                Ui.Bar(dl, new Vector2(x + qw + 8, o.Y + 43), new Vector2(x + room, o.Y + 47), G.QuotaNeed > 0 ? Math.Clamp(G.QuotaHave / G.QuotaNeed, 0f, 1f) : 0f, qDone ? Theme.SageDeep : Theme.RoseDeep);
+                Ui.Bar(dl, new Vector2(x + qw + 8, o.Y + 51), new Vector2(x + room, o.Y + 55), G.QuotaNeed > 0 ? Math.Clamp(G.QuotaHave / G.QuotaNeed, 0f, 1f) : 0f, qDone ? Theme.SageDeep : Theme.RoseDeep);
         }
 
         // The grade seal sits on the jug's shoulder, like the Barn's, so it never covers the text
         Ui.Seal(dl, new Vector2(bmin.X + bh / 2 - 4, bmin.Y + bh * 0.2f), 15, Grades.Name(grade), Theme.GradeColor(grade));
 
         // Needs as four thin bars
-        var y = o.Y + 52;
+        var y = o.Y + 64;   // under the quota line
         var bw = size.X - (x - o.X) - 26;
         var needs = new (string Label, float V, Vector4 C)[]
         {
-            ("Fed", cow.Hunger, Theme.HoneyDeep), ("Watered", cow.Thirst, Theme.BlueDeep),
+            ("Fed", cow.Hunger, Theme.HoneyDeep), ("Water", cow.Thirst, Theme.BlueDeep),
             ("Comfy", cow.Comfort, Theme.RoseDeep), ("Happy", cow.Mood, Theme.SageDeep),
         };
         var half = (bw - 10) / 2;
