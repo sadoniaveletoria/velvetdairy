@@ -1590,7 +1590,7 @@ async function groom(env, me, request) {
   if (last && t - last.at < GROOM_COOLDOWN) fail(400, `You can groom ${cow.name} again in ${Math.ceil((GROOM_COOLDOWN - (t - last.at)) / 60)} min.`);
   await env.DB.batch([
     env.DB.prepare(`INSERT INTO grooms (farmer, cow, at) VALUES (?, ?, ?) ON CONFLICT(farmer, cow) DO UPDATE SET at = excluded.at`).bind(me.id, cow.install, t),
-    inboxStmt(env, cow.install, "groom", 0, 0, 0, `${mem.name || "A farmer"} groomed you: Happy +3% and Comfy +2% for 20 minutes.`),
+    inboxStmt(env, cow.install, "groom", 0, 0, 0, `${mem.name || "A farmer"} groomed you: Happy +6% and Comfy +4% for 20 minutes.`),
   ]);
   return { ok: true, next: t + GROOM_COOLDOWN };
 }
@@ -3062,9 +3062,11 @@ async function tickBots(env, dairyId) {
     // What farmers did to it since last time (grooms, feeding)
     const inbox = (await env.DB.prepare("SELECT * FROM inbox WHERE install = ? AND claimed IS NULL").bind(bot.install).all()).results;
     for (const i of inbox) {
-      if (i.kind === "groom") st.happy = Math.min(120, (st.happy || 0) + 60);
-      if (i.kind === "fed") st.happy = Math.min(120, (st.happy || 0) + 60);
-      if (i.kind === "binfed") { st.fed = Math.min(120, (st.fed || 0) + 60); st.fedBonus = [0.04, 0.07, 0.09, 0.12, 0.15][i.grade] || 0.04; }
+      // 0.9.99: each care gives its bonus for 20 minutes, like it does for players
+      if (i.kind === "groom") { st.happy = Math.max(st.happy || 0, 20); st.comfy = Math.max(st.comfy || 0, 20); }
+      if (i.kind === "fed") st.happy = Math.max(st.happy || 0, 20);
+      if (i.kind === "watered") st.water = Math.max(st.water || 0, 20);
+      if (i.kind === "binfed") { st.fed = Math.max(st.fed || 0, 20); st.fedBonus = [0.08, 0.12, 0.15, 0.20, 0.25][i.grade] || 0.08; }
     }
     if (inbox.length) stmts.push(env.DB.prepare("UPDATE inbox SET claimed = ? WHERE install = ? AND claimed IS NULL").bind(t, bot.install));
     // Needs drain (half speed in the dairy, like players); bots look after water, comfy and their own treats now and then
@@ -3193,7 +3195,7 @@ async function botFarmerWork(env, dairyId, bot, bots, herd, bin, mins, t, stmts,
       stmts.push(inboxStmt(env, to.install, "binfed", 0, 0, feedIdx, `${me} fed you ${FEED_BIN[feed].name.toLowerCase()} from the feed bin.`));
       if (!to.player) log.push(`${me} fed ${to.name} ${FEED_BIN[feed].name.toLowerCase()} from the feed bin.`);
     } else if ((happyLow || comfyLow) && Math.random() < 0.5) {
-      stmts.push(inboxStmt(env, to.install, "groom", 0, 0, 0, `${me} groomed you: Happy +3% and Comfy +2% for 20 minutes.`));
+      stmts.push(inboxStmt(env, to.install, "groom", 0, 0, 0, `${me} groomed you: Happy +6% and Comfy +4% for 20 minutes.`));
       if (!to.player) log.push(`${me} groomed ${to.name}.`);
     } else if (happyLow) {
       stmts.push(inboxStmt(env, to.install, "fed", 0, 0, Object.keys(SHELF_ITEMS).indexOf("cookies"), `${me} fed you butter cookies from the dairy shelf.`));

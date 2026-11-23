@@ -1143,6 +1143,14 @@ await test("dev server test bots: an owner adds a cow, a farmer and a bull, and 
     assert.ok(r.data.oz > 0 && r.data.coins > 0);
     assert.equal((await call(owner, "POST", `/v1/dev/bots/${daisy.id}/milk`)).status, 400, "empty now");
     assert.ok((await call(owner, "GET", "/v1/dairy/mine")).data.progress.tank.total > 0, "her milk is in the tank");
+    // The farmer (owner) can care for the bots like anyone
+    const brutus = bots.find(b => b.name === "Brutus Bot");
+    const g = await call(owner, "POST", "/v1/groom", { cow: brutus.id });
+    assert.equal(g.status, 200, "groom a bot: " + JSON.stringify(g.data));
+    const f = await call(owner, "POST", "/v1/feedbin/feed", { item: "hay", to: brutus.id });
+    assert.equal(f.status, 200, "feed a bot: " + JSON.stringify(f.data));
+    const w = await call(owner, "POST", "/v1/feedbin/feed", { item: "water", to: brutus.id });
+    assert.equal(w.status, 200, "water a bot: " + JSON.stringify(w.data));
     // Removing them takes them out of the dairy
     assert.equal((await call(owner, "POST", "/v1/dev/bots", { on: false })).data.bots, 0);
     mine = (await call(owner, "GET", "/v1/dairy/mine")).data;
