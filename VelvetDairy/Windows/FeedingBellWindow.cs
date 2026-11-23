@@ -61,7 +61,7 @@ public sealed class FeedingBellWindow : Window
         foreach (var (bar, color) in new[] { ("Fed", "honey"), ("Watered", "blue"), ("Comfy", "rose"), ("Happy", "sage") })
         {
             var full = plugin.Game.NeedFull(plugin.Game.BarValue(bar));
-            if (Ui.Button($"##bell{bar}", bar, new Vector2(100, 30), color, !full, full ? $"Your {bar} bonus still has its full 30 minutes." : $"Fill your {bar} bar right up, and a 20 minute boost."))
+            if (Ui.Button($"##bell{bar}", bar, new Vector2(100, 30), color, !full, full ? $"Your {bar} bonus still has its full 20 minutes." : $"Fill your {bar} bar right up, and a 20 minute boost."))
             {
                 plugin.Game.ClaimFeeding(bar);
                 shownAt = -1;

@@ -324,11 +324,13 @@ public sealed partial class MainWindow
 
                 var groomWhy = G.GroomProblem(c.Name, c.Id, near);
                 var feedWhy = G.AnyFeedProblem(c.Name, c.Id, near);
+                var waterWhy = G.WaterProblem(c.Name, c.Id, near);
                 buttons = new[]
                 {
                     first,
-                    new Btn($"##groom{c.Id}", "Groom", "sage", groomWhy == null, groomWhy ?? $"Brush them down: their Happy bar gets 30 more minutes, you get {Catalog.GroomXp} farmer xp. Once every 15 minutes per cow."),
+                    new Btn($"##groom{c.Id}", "Groom", "sage", groomWhy == null, groomWhy ?? $"Brush them down: Happy +{Catalog.GroomHappy * 100:0}% and Comfy +{Catalog.GroomComfy * 100:0}% for {Catalog.NeedMinutes:0} minutes, and {Catalog.GroomXp} farmer xp for you. Once every 15 minutes per cow."),
                     new Btn($"##feed{c.Id}", "Feed", "honey", feedWhy == null, feedWhy ?? G.FeedTip),
+                    new Btn($"##water{c.Id}", "Water", "blue", waterWhy == null, waterWhy ?? $"Fresh water: Watered +{Catalog.FarmerWater * 100:0}% for {Catalog.NeedMinutes:0} minutes, and {Catalog.FeedXp} farmer xp for you. Once every 15 minutes each."),
                 };
             }
 
@@ -347,6 +349,7 @@ public sealed partial class MainWindow
                     }
             }
             else if (clicked == 1) G.Groom(c.Name, c.Id, near);
+            else if (clicked == 3) G.WaterCow(c.Name, c.Id, near);
             else if (clicked == 2)
             {
                 // Pick which treat from the shelf

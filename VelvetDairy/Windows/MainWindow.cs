@@ -956,9 +956,9 @@ public sealed partial class MainWindow : Window
         var rows = new (string Icon, string Label, float Value, float Bonus, Vector4 Color, string Tip)[]
         {
             ("hay", "Fed", cow.Hunger, cow.FedBonus, Theme.HoneyDeep, "Your farmers feed you from the dairy's feed bin (Herd Care > Feed). Better feed gives a bigger bonus: wheat grain +4% up to golden mash +15%, as the owner unlocks it."),
-            ("water", "Watered", cow.Thirst, cow.WaterBonus, Theme.BlueDeep, "Drink at the trough (free, +4%) or have a Mineral block (+8%)."),
+            ("water", "Watered", cow.Thirst, cow.WaterBonus, Theme.BlueDeep, "Drink at the trough (free, +4%), or a farmer brings you fresh water (+5%)."),
             ("cushion", "Comfy", cow.Comfort, cow.ComfortBonus, Theme.RoseDeep, $"Sit in your dairy 10 minutes for {Catalog.NeedMinutes:0} minutes of Comfy. It doesn't run down while you sit."),
-            ("clover", "Happy", cow.Mood, cow.HappyBonus, Theme.SageDeep, "A farmer grooming you or feeding you a baked treat, or the feeding bell. (Treats you buy give their own milk bonus instead, listed below.)"),
+            ("clover", "Happy", cow.Mood, cow.HappyBonus, Theme.SageDeep, "A farmer grooming you (it gives a little Comfy too) or feeding you a baked treat, or the feeding bell. (Treats you buy give their own milk bonus instead, listed below.)"),
         };
 
         foreach (var r in rows)
@@ -1036,7 +1036,7 @@ public sealed partial class MainWindow : Window
 
         if (cow.Taint > 0)
             notes.Add(("Your milk tastes off after the dump (one grade lower). Care tasks, milkings and creamery deliveries wear it off.", Theme.RoseDeep));
-        if (notes.Count == 0) notes.Add((G.Contented ? "Contented! Every bonus is going." : "Each bonus lasts 30 minutes; getting it again (or the feeding bell, grooming, a farmer feeding you) sets it back to 30. They wait while you're asleep or away, and running out never hurts.", Theme.SageDeep));
+        if (notes.Count == 0) notes.Add((G.Contented ? "Contented! Every bonus is going." : "Each bonus lasts 20 minutes; getting it again (or the feeding bell, a farmer feeding, watering or grooming you) sets it back to 20. They wait while you're asleep or away, and running out never hurts.", Theme.SageDeep));
         foreach (var (t, c) in notes) Ui.Wrapped(t, c, width);
     }
 
@@ -1069,8 +1069,8 @@ public sealed partial class MainWindow : Window
         var cells = new List<(string Id, string Icon, string Title, string Sub, string Btn, string Color, bool Enabled, string? Tip, Action Act)>();
         var wcd = G.DrinkWait;
         var wetFull = G.NeedFull(F.Cow.Thirst);
-        cells.Add(("##drink", "water", "Drink", wetFull ? "Watered is full (30 min)" : wcd > TimeSpan.Zero ? $"Ready in {DairyGame.Wait(wcd)}" : $"Free · Watered +{Catalog.TroughBonus * 100:0}%",
-            "Drink", "blue", ok && wcd <= TimeSpan.Zero && !wetFull, problem ?? (wetFull ? "Your Watered bonus has its full 30 minutes. Drink again once it's gone down." : $"Free. Watered +{Catalog.TroughBonus * 100:0}%, +{G.FillMinutesNow} minutes."), () => G.Drink()));
+        cells.Add(("##drink", "water", "Drink", wetFull ? "Watered is full (20 min)" : wcd > TimeSpan.Zero ? $"Ready in {DairyGame.Wait(wcd)}" : $"Free · Watered +{Catalog.TroughBonus * 100:0}%",
+            "Drink", "blue", ok && wcd <= TimeSpan.Zero && !wetFull, problem ?? (wetFull ? "Your Watered bonus has its full 20 minutes. Drink again once it's gone down." : $"Free. Watered +{Catalog.TroughBonus * 100:0}%, +{G.FillMinutesNow} minutes."), () => G.Drink()));
         foreach (var item in Catalog.Feed)
         {
             if (!G.FeedUnlocked(item) || F.HiddenFeed!.Contains(item.Id)) continue;
@@ -1206,7 +1206,7 @@ public sealed partial class MainWindow : Window
 
         var ok = problem == null;
         var wcd = G.DrinkWait;
-        if (Row("##drink", "water", "Drink", G.NeedFull(F.Cow.Thirst) ? "Watered is full (30 min)" : wcd > TimeSpan.Zero ? $"Ready in {DairyGame.Wait(wcd)}" : $"Free · Watered +{Catalog.TroughBonus * 100:0}%, +{G.FillMinutesNow}m", "Drink", "blue",
+        if (Row("##drink", "water", "Drink", G.NeedFull(F.Cow.Thirst) ? "Watered is full (20 min)" : wcd > TimeSpan.Zero ? $"Ready in {DairyGame.Wait(wcd)}" : $"Free · Watered +{Catalog.TroughBonus * 100:0}%, +{G.FillMinutesNow}m", "Drink", "blue",
                 ok && wcd <= TimeSpan.Zero && !G.NeedFull(F.Cow.Thirst), problem, width))
             G.Drink();
 

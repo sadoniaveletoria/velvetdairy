@@ -320,7 +320,9 @@ public static class Catalog
     public const float CleanBonus = 0.10f;      // a freshly cleaned stall milks 10% faster and gives 10% more xp (never less than its tier)
     public const int CleanXp = 25;              // farmer xp per stall cleaned (each stall: once an hour, again when half an hour is left)
     public const int GroomXp = 20;              // farmer xp per groom (each cow: once every 15 minutes)
-    public const float GroomHappy = 0.05f;      // Happy bonus a groom gives a cow who has none going
+    public const float GroomHappy = 0.03f;      // a groom: Happy +3% and Comfy +2% for 20 minutes (a bigger bonus already going is kept)
+    public const float GroomComfy = 0.02f;
+    public const float FarmerWater = 0.05f;     // fresh water a farmer brings: Watered +5% (the trough is +4%)
     public const float StallSitRange = 1.5f;    // someone sitting this close to a stall is using it
 
     public const float HandSpeed = 0.35f;        // oz per second while a farmer keeps milking (a looping emote, close, targeting you)
@@ -347,10 +349,10 @@ public static class Catalog
     public const float TreatBonus = 0.30f;      // while a treat boost lasts
 
     // ----- Need bonuses -----
-    // Each bonus lasts 30 minutes from when you get it (awake play only); getting it again sets it back to 30, it never
+    // Each bonus lasts 20 minutes from when you get it (awake play only); getting it again sets it back to 20, it never
     // stacks past that. (Before: each use added 30 minutes up to an hour, and bars drained half as fast in a dairy.)
-    public const float NeedMinutes = 30f;       // a full need bar
-    public const float NeedFill = 100f;         // each use fills it: 30 minutes
+    public const float NeedMinutes = 20f;       // a full need bar: every bonus lasts 20 minutes (like a treat)
+    public const float NeedFill = 100f;         // each use fills it: 20 minutes
     public const double NeedCooldownMinutes = 15; // eat, drink, rest and treat each wait this long between uses
     public const double RestSettleMinutes = 10;
     public const float InDairyDrain = 1f;   // (0.5 before: bars drained half as fast in a dairy)   // need bars drain this much as fast while you're in a dairy   // sit this long in your dairy and you get Comfy (each further stretch adds more)

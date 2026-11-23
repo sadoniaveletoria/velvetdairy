@@ -63,10 +63,10 @@ Each bar is a bonus. When one runs out you just lose that bonus; it never hurts 
 | --- | --- | --- |
 | **Fed** | Feed from the dairy's feed bin | A **farmer or the owner** feeds you (Herd Care > Feed). There's no Eat button on the network: farmers feed you. |
 | **Watered** | Drink | **You** (Today page > Drink). Free. |
-| **Comfy** | Sit on furniture in your dairy | **You**. After 10 minutes seated you get 30 minutes of Comfy; it doesn't run down while you stay seated. |
+| **Comfy** | Sit on furniture in your dairy | **You**. After 10 minutes seated you get 20 minutes of Comfy; it doesn't run down while you stay seated. |
 | **Happy** | Grooming, baked treats, the bell | A **farmer** grooms you or feeds you a baked treat, or rings the **feeding bell** (fills a bar right up). Treats **you** buy don't fill it: they give their own milk bonus for **10 minutes** (20 for the better ones). |
 
-Each bonus lasts **30 minutes** from when you get it; getting it again sets it back to 30 (it never stacks past that). Eating, drinking and treats each have a 15-minute wait between uses. Bonuses only count down while you're awake.
+Each bonus lasts **20 minutes** from when you get it; getting it again sets it back to 20 (it never stacks past that). Eating, drinking and treats each have a 15-minute wait between uses. Bonuses only count down while you're awake.
 
 ### Getting milked: two ways
 
@@ -185,7 +185,8 @@ Your main tool is **Herd Care**. Open it from the HUD button or Herd > Farmer. I
 | --- | --- | --- | --- |
 | **Feed from the feed bin** | Herd Care > pick a cow or bull > Feed > pick a bin feed. Fills their **Fed** bar. Free and unlimited. | 10 | Once per cow every 15 min |
 | **Feed a baked treat** | Herd Care > Feed > pick a treat from the dairy shelf. Gives Happy and a milk boost (bulls get 20 bull XP). | 10 | Once per cow every 15 min |
-| **Groom** | Stand next to them, press Groom. +30 minutes of Happy. | 20 | Once per cow every 15 min |
+| **Groom** | Stand next to them, press Groom. Happy +3% and Comfy +2% for 20 minutes. | 20 | Once per cow every 15 min |
+| **Water** | Herd > Water. Watered +5% for 20 minutes. | 10 | Once per cow every 15 min |
 | **Clean a stall** | Press Clean on a stall nobody is sitting on. Cows milked there get +10% speed and XP for an hour. | 25 | Again when half an hour is left |
 | **Ring the feeding bell** | Herd Care > Bell. Every cow and bull in the dairy fills one bar right up and gets a 20-minute boost. | 10 | Once an hour per dairy |
 | **Load a breeding stall** | Loads one use of a breeding stall from the seed tank. | 8 | Up to 5 loaded |

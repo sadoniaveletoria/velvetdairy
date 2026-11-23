@@ -279,12 +279,24 @@ public sealed partial class DairyGame
                     F.Coins += i.Coins;
                     break;
                 case "groom":
-                    // A farmer groomed you: you're Happy (+5%) even without a treat, and the bar gets 30 more minutes.
-                    // A bigger treat bonus that's still going is kept.
-                    if (Producer && !NeedFull(Cow.Mood))
+                    // A farmer groomed you: a little Happy and a little Comfy, each for 20 minutes (a bigger bonus already
+                    // going is kept, and its 20 minutes start again)
+                    if (Producer)
                     {
                         Cow.HappyBonus = Cow.Mood <= 0 ? Catalog.GroomHappy : Math.Max(Cow.HappyBonus, Catalog.GroomHappy);
                         Cow.Mood = Fill(Cow.Mood);
+                        Cow.ComfortBonus = Cow.Comfort <= 0 ? Catalog.GroomComfy : Math.Max(Cow.ComfortBonus, Catalog.GroomComfy);
+                        Cow.Comfort = Fill(Cow.Comfort);
+                    }
+
+                    break;
+                case "watered":
+                    // A farmer brought you water: Watered for 20 minutes (a bigger bonus already going is kept)
+                    if (Producer)
+                    {
+                        Cow.WaterBonus = Cow.Thirst <= 0 ? Catalog.FarmerWater : Math.Max(Cow.WaterBonus, Catalog.FarmerWater);
+                        Cow.Thirst = Fill(Cow.Thirst);
+                        Cow.WaterReadyUtc = DateTime.UtcNow.AddMinutes(Catalog.NeedCooldownMinutes);
                     }
 
                     break;
@@ -2215,6 +2227,44 @@ public sealed partial class DairyGame
         var bin = BinFeedProblem(name, id, distance);
         if (bin == null) return null;
         return FeedProblem(name, id, distance) == null ? null : bin;
+    }
+
+    private readonly Dictionary<string, double> waterReady = new();
+
+    /// <summary>Why a farmer can't water this cow or bull right now (null when they can).</summary>
+    public string? WaterProblem(string name, string id, float distance)
+    {
+        var b = Blocked();
+        if (b != null) return b;
+        if (!CanCarry) return "Only farmers and the owner water the herd.";
+        if (!AtHome) return "Go to your dairy first.";
+        if (distance < 0 || distance > HandRange) return $"Get within {HandRange:0} yalms of {name} first.";
+        if (waterReady.TryGetValue(id, out var t) && t > now) return $"{name} can be watered again in {Wait(TimeSpan.FromSeconds(t - now))}.";
+        var wetMin = Net.Mine?.Members.Concat(Net.Mine.Guests).FirstOrDefault(m => m.Id == id)?.Status?.Needs is { Count: 4 } needs ? needs[1] : 0;
+        if (wetMin >= Catalog.NeedMinutes) return $"{name}'s Watered bonus still has its full {Catalog.NeedMinutes:0} minutes. Water them once it's gone down.";
+        return null;
+    }
+
+    public void WaterCow(string name, string id, float distance)
+    {
+        if (WaterProblem(name, id, distance) is { } p)
+        {
+            Fail(p);
+            return;
+        }
+
+        Touch();
+        waterReady[id] = now + Catalog.NeedCooldownMinutes * 60;
+        Net.FeedBin("water", id, () =>
+        {
+            AddFarmerXp(Catalog.FeedXp);
+            EarnDairyXp(2);
+            Say($"You bring {name} fresh water: Watered +{Catalog.FarmerWater * 100:0}% for {Catalog.NeedMinutes:0} minutes. +{Catalog.FeedXp} farmer xp", 1);
+        }, e =>
+        {
+            waterReady[id] = now + WaitFromServer(e, 60);
+            Fail(e);
+        });
     }
 
     public void FeedFromBin(string name, string id, float distance, string item)

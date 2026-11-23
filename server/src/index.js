@@ -2128,11 +2128,12 @@ async function buyFeedBin(env, me, item) {
 async function binFeed(env, me, request) {
   const b = await body(request);
   const item = String(b.item || "");
-  if (!FEED_BIN[item]) fail(400, "That isn't a feed.");
+  const water = item === "water";   // farmers water cows and bulls too (always there, no bin needed; its own cooldown)
+  if (!water && !FEED_BIN[item]) fail(400, "That isn't a feed.");
   const mem = await membership(env, me.id);
   if (!mem || !(hasRole(mem, "farmer") || mem.is_owner)) fail(403, "Only farmers and the owner feed from the feed bin.");
   if (!inOwnDairy(me, mem)) fail(400, "Go to your dairy to use its feed bin.");
-  if (!(await feedBinOf(env, mem.dairy_id)).includes(item)) fail(400, `The bin doesn't have ${FEED_BIN[item].name.toLowerCase()} yet.`);
+  if (!water && !(await feedBinOf(env, mem.dairy_id)).includes(item)) fail(400, `The bin doesn't have ${FEED_BIN[item].name.toLowerCase()} yet.`);
   const toId = String(b.to || "");
   const to = await env.DB.prepare(`SELECT install, name, role FROM memberships WHERE install = ?
       AND (dairy_id = ? OR (install IN (SELECT id FROM installs WHERE at_dairy = ? AND last_seen >= ?)
@@ -2140,10 +2141,18 @@ async function binFeed(env, me, request) {
     .bind(toId, mem.dairy_id, mem.dairy_id, now() - ONLINE_WINDOW, mem.dairy_id).first();
   if (!to || !(hasRole(to, "cow") || hasRole(to, "bull"))) fail(400, "You can feed your dairy's cows and bulls (and guests visiting it).");
   const t = now();
-  const last = await env.DB.prepare("SELECT at FROM bin_feeds WHERE member = ?").bind(to.install).first();
-  if (last && last.at + FEED_COOLDOWN > t) fail(400, `${to.name} can be fed again in ${Math.ceil((last.at + FEED_COOLDOWN - t) / 60)} min.`);
+  const key = water ? `${to.install}:water` : to.install;
+  const last = await env.DB.prepare("SELECT at FROM bin_feeds WHERE member = ?").bind(key).first();
+  if (last && last.at + FEED_COOLDOWN > t) fail(400, `${to.name} can be ${water ? "watered" : "fed"} again in ${Math.ceil((last.at + FEED_COOLDOWN - t) / 60)} min.`);
+  if (water) {
+    await env.DB.batch([
+      env.DB.prepare("INSERT INTO bin_feeds (member, at) VALUES (?, ?) ON CONFLICT(member) DO UPDATE SET at = excluded.at").bind(key, t),
+      inboxStmt(env, to.install, "watered", 0, 0, 0, `${mem.name || "A farmer"} brought you fresh water.`),
+    ]);
+    return { ok: true, next: t + FEED_COOLDOWN };
+  }
   await env.DB.batch([
-    env.DB.prepare("INSERT INTO bin_feeds (member, at) VALUES (?, ?) ON CONFLICT(member) DO UPDATE SET at = excluded.at").bind(to.install, t),
+    env.DB.prepare("INSERT INTO bin_feeds (member, at) VALUES (?, ?) ON CONFLICT(member) DO UPDATE SET at = excluded.at").bind(key, t),
     // grade carries which feed it was (its place in FEED_BIN)
     inboxStmt(env, to.install, "binfed", 0, 0, Object.keys(FEED_BIN).indexOf(item),
       `${mem.name || "A farmer"} fed you ${FEED_BIN[item].name.toLowerCase()} from the feed bin.`),

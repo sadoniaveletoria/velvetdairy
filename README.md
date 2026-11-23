@@ -91,7 +91,7 @@ Cow and bull are yours: you add or drop them, and they hold in every dairy you'r
 
 **Bonuses** (the Today page)
 - **Fed** (a farmer or the owner feeds you from the dairy's feed bin; alone off the network you eat feed yourself), **Watered** (drink), **Comfy** (rest) and **Happy** (a farmer grooming you or feeding you a baked treat, or the feeding bell; treats you buy give their own milk bonus for 10–20 minutes instead) each make milk come faster. They're for cows and bulls only: a farmer who isn't also a cow or bull doesn't have them (no Getting comfy when sitting, no food or drink in their Shop or Care, no need bars on the HUD).
-- **Each bonus lasts 30 minutes** from when you get it, the same everywhere. Getting it again (or the feeding bell) sets it back to 30; it never stacks past that. Each has a 15-minute cooldown. Better feed and treats give bigger bonuses.
+- **Each bonus lasts 20 minutes** from when you get it, the same everywhere. Getting it again (or the feeding bell) sets it back to 20; it never stacks past that. Each has a 15-minute cooldown. Better feed and treats give bigger bonuses.
 - **Comfy:** sit on furniture in your dairy (a stall seat counts); there's no button. You get no Comfy until you've stayed seated **10 minutes**, then it adds 30 minutes to the bar. Keep sitting and every further 10 minutes adds another 30, up to a full hour. Get up sooner and that sit gives nothing. The Comfy bar doesn't drain while you sit, and the bar and HUD show how long is left. Sitting itself doesn't speed up milk; Comfy does.
 - **All four at once** makes you **Contented**, a bit faster still.
 - Bars only drain while you're awake and playing. Running out never hurts you; you're just back to normal speed.
@@ -104,7 +104,7 @@ Cow and bull are yours: you add or drop them, and they hold in every dairy you'r
 
 - **Hand milking:** press **Herd Care** on the HUD (or Herd → Farmer), stand near a cow, press **Target**, then **Milk**. Herd Care lists only the cows and bulls who are in your dairy right now (members, and guests visiting a public dairy), and only while you're there too; someone online in a different dairy or out in the world isn't listed. Your character does the milking emote (/beesknees by default, or one you choose) until the cow is empty, then stops by itself. You earn 25% of what the cow is paid, on top of their pay (10% more for a cow wearing the Champion's ribbon).
 - **Your own animation:** if you use Penumbra, pick an animation mod and its options with **Animation…** in the Herd Care window. It switches on only while you milk.
-- **Chores:** **Groom** a cow or bull (they get 30 minutes of Happy), **Feed** a cow or bull from the feed bin (their Fed bar) or a treat from the dairy shelf (their Happy bar; press Feed and pick which; free), and **Clean** an empty stall (cows milked there get a bonus for an hour). All earn farmer XP.
+- **Chores:** **Groom** a cow or bull (Happy +3% and Comfy +2% for 20 minutes), **Feed** a cow or bull from the feed bin (their Fed bar), **Water** them (Watered +5%) or a treat from the dairy shelf (their Happy bar; press Feed and pick which; free), and **Clean** an empty stall (cows milked there get a bonus for an hour). All earn farmer XP.
 - **The Kitchen** (the Kitchen button on the **Herd** page): bake with milk from your jugs. Recipes unlock with your farmer level:
   - **Butter** (level 1): 16 oz of milk → 1 butter.
   - **Butter cookies** (level 3): 1 butter + 8 oz of milk → 3 cookies, for the dairy shelf.
