@@ -104,12 +104,11 @@ public sealed partial class DairyGame
     private void SimulateSeed(float minutes)
     {
         if (!ProducesSeed) return;
-        if (Cow.Seed > SeedCapacity) Cow.Seed = SeedCapacity;
         var fullBefore = FullVials;
         if (!SeedFull && Active == null && !Cow.SeedSpoiled)
         {
             var before = Cow.Seed;
-            Cow.Seed = Math.Min(SeedCapacity, Cow.Seed + SeedPerMinute() * minutes);
+            Cow.Seed = Math.Max(Cow.Seed, Math.Min(SeedCapacity, Cow.Seed + SeedPerMinute() * minutes));
             seedMadeSinceTick += Cow.Seed - before;
             if (FullVials > fullBefore)
                 Say(FullVials >= BottleCount ? "All your seed vials are full. Time to get milked." : $"Seed vial {FullVials} of {BottleCount} is full.", 0);

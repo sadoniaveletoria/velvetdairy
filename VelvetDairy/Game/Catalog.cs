@@ -256,9 +256,9 @@ public static class Catalog
     {
         new Upgrade("stallkit", "Stall kit", "bucket", new[] { 200, 500 }, new[] { 6, 12 }, "Lets you register one more stall."),
         new Upgrade("cushion", "Plush bedding", "cushion", new[] { 70 }, new[] { 4 }, "Comfy bonus +10% instead of +6%."),
-        new Upgrade("bottle", "Bigger bottle", "bottle", new[] { 50, 135, 275, 550, 10500 }, new[] { 3, 8, 14, 21, 40 }, "Each bottle (and seed vial) holds more."),
+        new Upgrade("bottle", "Bigger bottle", "bottle", new[] { 50, 135, 275, 550 }, new[] { 5, 12, 20, 40 }, "Each bottle (and seed vial) holds 2 oz more (0.2 oz for vials)."),
         // Up to 4 bottles (6 before 0.9.97, when milk came in faster): the 5th and 6th were refunded
-        new Upgrade("rack", "Extra bottle", "milk", new[] { 90, 225, 350 }, new[] { 6, 12, 19 }, "One more bottle (and seed vial). When one fills, the next one starts. Up to 4."),
+        new Upgrade("rack", "Extra bottle", "milk", new[] { 90, 350 }, new[] { 10, 30 }, "One more bottle (and seed vial). When one fills, the next one starts. Up to 3."),
         // Farmers (and owners) buy a bigger tank to carry milk from the dairy tank; unlocks go by farmer level
         new Upgrade("farmtank", "Bigger farmer tank", "bucket", new[] { 200, 400, 900, 1600, 2500, 4000, 7500 }, new[] { 2, 5, 10, 16, 22, 30, 40 },
             "Carry more milk from the dairy tank to other dairies and the Grand Creamery.", Farmer: true),
@@ -341,9 +341,9 @@ public static class Catalog
     public static readonly string[] FarmerTankNames = { "Milk pail", "Milk can", "Carrying churn", "Hand cart", "Dairy wagon", "Tanker cart", "Big tanker", "Grand tanker" };
     public static readonly int[] FarmerTankSizes = { 32, 64, 96, 144, 192, 256, 320, 400 };
 
-    public static readonly string[] BottleNames = { "", "Milk bottle", "Cream jar", "Dairy jug", "Big jug", "Milk churn", "Velvet churn" };
-    // Milk is sized at about five times a real person's yield: roughly 125-150 oz a day with good care
-    public static readonly float[] BottleSizes = { 0, 8, 12, 20, 32, 48, 64 };
+    public static readonly string[] BottleNames = { "", "Milk bottle", "Cream jar", "Dairy jug", "Big jug", "Velvet churn" };
+    // 0.9.99: sized so full bottles take about 1-3 hours of well-cared-for play to fill, so getting milked stays part of a session
+    public static readonly float[] BottleSizes = { 0, 8, 10, 12, 14, 16 };
 
     public const float LevelBonus = 0.02f;      // +2% milk per level above 1, up to Leveling.MilkBonusCap (+4% before 0.9.97)
     public const float ContentBonus = 0.15f;    // all four need bonuses active at once

@@ -1051,7 +1051,7 @@ public sealed partial class DairyGame
     private void Simulate(float seconds)
     {
         var m = seconds / 60f;
-        if (Cow.Milk > Capacity) Cow.Milk = Capacity;
+        // Milk over Capacity (bottles got smaller in 0.9.99) stays until you're milked; nothing new comes in meanwhile
         var fullBefore = FullBottles;
                 WatchRest();
         if (Wake != Wakefulness.Awake) HoldBoost(seconds);
@@ -1071,7 +1071,7 @@ public sealed partial class DairyGame
         if (!Overfull && Active == null && ProducesMilk)
         {
             var milkBefore = Cow.Milk;
-            Cow.Milk = Math.Min(Capacity, Cow.Milk + ProductionPerMinute() * m);
+            Cow.Milk = Math.Max(Cow.Milk, Math.Min(Capacity, Cow.Milk + ProductionPerMinute() * m));
             // XP ticks in as milk is made (dozing and tired already slow production; asleep and full make none)
             madeSinceTick += Cow.Milk - milkBefore;
             if (FullBottles > fullBefore)

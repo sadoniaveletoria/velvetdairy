@@ -42,7 +42,7 @@ Cows and bulls slowly fill bottles (or vials) while you're logged in and actuall
 
 While you're logged in and **awake** (see the Levels section for asleep), milk slowly fills your bottles. At level 1, with nothing helping, that's about **5 oz an hour**. No milk is made while you're logged out.
 
-You start with one small bottle. When it's full, milk stops until you're milked, so getting milked often matters. Level rewards give you bigger bottles and more of them, up to 4.
+You start with one small bottle. When it's full, milk stops until you're milked, so getting milked often matters. Level rewards give you bigger bottles and more of them: 8 oz to start, 10 oz at level 5, 12 at 12, 14 at 20 and 16 at 40, with a 2nd bottle at level 10 and a 3rd (the most) at 30. Well cared for, they fill in about 1 to 3 hours, so you'll want milking a few times a session.
 
 Things that make milk come in faster (they add together):
 
