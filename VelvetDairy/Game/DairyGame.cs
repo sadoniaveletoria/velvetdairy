@@ -754,6 +754,10 @@ public sealed partial class DairyGame
     /// <summary>Milk is coming in right now (the bottle animates drops only then): not asleep, full, paused or blocked.</summary>
     public bool MilkComing => ProducesMilk && !Paused && !Overfull && !Spoiled && Blocked() == null && ProductionPerMinute() > 0;
 
+    /// <summary>All your bonuses together, as one speed: 0.71 = milk (or a bull's seed) comes in 71% faster than a plain level 1 cow's.</summary>
+    public float SpeedBonus(bool seed = false) =>
+        RateParts(true, seed).Where(p => !p.Name.StartsWith("Seed (", StringComparison.Ordinal)).Aggregate(1f, (r, p) => r * p.Multiplier) - 1f;
+
     public TimeSpan TreatLeft => Cow.TreatUntilUtc > DateTime.UtcNow ? Cow.TreatUntilUtc - DateTime.UtcNow : TimeSpan.Zero;
 
     public float ProductionPerMinute() => RateParts().Aggregate(BaseRate, (r, p) => r * p.Multiplier);

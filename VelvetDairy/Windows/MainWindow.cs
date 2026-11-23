@@ -931,6 +931,19 @@ public sealed partial class MainWindow : Window
     {
         var dl = ImGui.GetWindowDrawList();
         var cow = F.Cow;
+
+        // Your speed: every bonus together, with the breakdown when you hover it
+        var seedOnly = !G.ProducesMilk && G.ProducesSeed;
+        var speed = G.SpeedBonus(seedOnly);
+        var sp = ImGui.GetCursorScreenPos();
+        var big = $"{(speed >= 0 ? "+" : "")}{speed * 100:0}%";
+        var bs = Ui.Text(dl, fonts.Heading, big, sp, speed >= 0 ? Theme.SageDeep : Theme.RoseDeep);
+        Ui.Text(dl, fonts.Small, seedOnly ? "seed speed" : "milk speed", sp + new Vector2(bs.X + 8, bs.Y - Ui.Measure(fonts.Small, "Ag").Y - 2), Theme.InkSoft);
+        ImGui.Dummy(new Vector2(width, bs.Y + 4));
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip(Units.Text("Everything speeding you up (or slowing you down) right now:\n" + string.Join("\n",
+                G.RateParts(true, seedOnly).Where(p => !p.Name.StartsWith("Seed (", StringComparison.Ordinal))
+                    .Select(p => $"{p.Name}: {(p.Multiplier >= 1 ? "+" : "")}{(p.Multiplier - 1) * 100:0}%"))));
         var status = StatusLine();
         if (status.Length > 0)
         {
