@@ -4127,7 +4127,7 @@ public sealed partial class DairyGame
         {
             var n = Owned(u.Id);
             if (u.Id == "bottle") { if (n > 0) set.Add($"{BottleName} ({Units.Oz(BottleSize, "0")} bottles)"); continue; }
-            if (u.Id == "rack") { if (n > 0) set.Add($"bottle {1 + n}"); continue; }
+            if (u.Id == "rack") { if (n > 0) set.Add(n == 1 ? "a 2nd bottle" : "a 3rd bottle"); continue; }
             for (var i = 0; i < n; i++) set.Add(u.MaxLevel > 1 ? $"{u.Name} {i + 1}" : u.Name);
         }
 
@@ -4144,7 +4144,7 @@ public sealed partial class DairyGame
             for (var i = 0; i < u.Unlocks.Length; i++)
                 if (u.Unlocks[i] == level)
                     yield return u.Id == "bottle" ? $"{Catalog.BottleNames[Math.Min(Catalog.BottleNames.Length - 1, i + 2)]} ({Units.Oz(Catalog.BottleSizes[Math.Min(Catalog.BottleSizes.Length - 1, i + 2)], "0")} bottles)"
-                        : u.Id == "rack" ? $"bottle {i + 2}" : u.MaxLevel > 1 ? $"{u.Name} {i + 1}" : u.Name;
+                        : u.Id == "rack" ? (i == 0 ? "a 2nd bottle" : "a 3rd bottle") : u.MaxLevel > 1 ? $"{u.Name} {i + 1}" : u.Name;
         if (Networked) yield break;
         for (var t = 2; t < Catalog.StallTierUnlock.Length; t++)
             if (Catalog.StallTierUnlock[t] == level) yield return Catalog.StallTierNames[t];
