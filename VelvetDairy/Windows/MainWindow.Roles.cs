@@ -28,7 +28,12 @@ public sealed partial class MainWindow
                 break;
             case 1:
                 Panel("##farmerlevel", top, new Vector2(mid - 7, max.Y), "Farmer level", DrawFarmerRole);
-                Panel("##farmertank", new Vector2(mid + 7, top.Y), max, "Farmer tank", DrawFarmerTankSummary, true);
+                Panel("##farmertank", new Vector2(mid + 7, top.Y), max, "Farmer tank & goals", w =>
+                {
+                    DrawFarmerTankSummary(w);
+                    SubHeading("Today's goals", w);
+                    DrawDaily(w);
+                }, true);
                 break;
             default:
                 Panel("##bulllevel", top, new Vector2(mid - 7, max.Y), "Bull level", w =>

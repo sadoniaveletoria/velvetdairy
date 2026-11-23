@@ -157,7 +157,7 @@ public sealed partial class MainWindow
         var blocked = G.Blocked();
         var rightW = Math.Clamp((max.X - min.X) * 0.34f, 290f, 380f);
         var leftMax = new Vector2(max.X - rightW - gap, max.Y);
-        var heroH = Math.Clamp((max.Y - min.Y) * 0.3f, 176f, 210f);
+        var heroH = Math.Clamp((max.Y - min.Y) * 0.32f, 196f, 224f);
 
         DrawQuotaHero(min, new Vector2(leftMax.X, min.Y + heroH));
         var careMin = new Vector2(min.X, min.Y + heroH + gap);
@@ -196,7 +196,10 @@ public sealed partial class MainWindow
 
         Ui.Text(dl, fonts.Title, $"{frac * 100:0}%", c - new Vector2(0, 8), Theme.Ink, 0.5f, 0.5f);
         var fmt = G.QuotaInSeed ? "0.##" : "0.#";
-        Ui.Text(dl, fonts.Small, $"{Units.Num(have, fmt)} / {Units.Num(need, fmt)} {Units.Unit}", c + new Vector2(0, 20), Theme.InkSoft, 0.5f, 0.5f);
+        // Inside the ring: the unit only when it fits
+        var amount = $"{Units.Num(have, fmt)} / {Units.Num(need, fmt)} {Units.Unit}";
+        if (Ui.Measure(fonts.Small, amount).X > r * 1.45f) amount = $"{Units.Num(have, fmt)} / {Units.Num(need, fmt)}";
+        Ui.Text(dl, fonts.Small, amount, c + new Vector2(0, 20), Theme.InkSoft, 0.5f, 0.5f);
 
         // The words
         var x = c.X + r + 30;
@@ -214,10 +217,9 @@ public sealed partial class MainWindow
             title = mins > 0 ? $"About {Mins(TimeSpan.FromMinutes(mins))} of {(G.QuotaInSeed ? "seed" : "milk")} to go" : "Make milk and get milked to fill it";
         }
 
-        Ui.Text(dl, fonts.Heading, FitText(title, w, fonts.Heading), new Vector2(x, y), Theme.Ink);
-        y += 36;
-        Ui.Text(dl, fonts.Small, FitText($"Pays {G.QuotaCoins:N0} coins when you claim it. A farmer or the owner sets its size; it resets at midnight Central.", w, fonts.Small), new Vector2(x, y), Theme.InkSoft);
-        y += 30;
+        y += TextWrapped(dl, fonts.Heading, title, new Vector2(x, y), w, Theme.Ink) + 4;
+        TextWrapped(dl, fonts.Small, $"Pays {G.QuotaCoins:N0} coins when you claim it. A farmer or the owner sets its size, and it resets at midnight Central.", new Vector2(x, y), w, Theme.InkSoft);
+        y = max.Y - 22 - 34;   // the buttons sit along the bottom
         var label = claimed ? "Claimed" : $"Claim {G.QuotaCoins:N0} coins";
         if (goal != null && Ui.Button("##heroclaim", label, new Vector2(200, 34), "sage", G.QuotaReached && !claimed,
                 claimed ? "Already claimed today." : G.QuotaReached ? $"+{G.QuotaCoins} coins" : "Reach your quota first.", new Vector2(x, y)))
@@ -256,7 +258,8 @@ public sealed partial class MainWindow
     // ----- Herd -----
 
     /// <summary>
-    /// Herd: the cows and bulls in the dairy with you (milk, groom, feed), and beside them your chores, jugs and goals.
+    /// Herd: the cows and bulls in the dairy with you (milk, groom, feed), and beside them your chores and jugs.
+    /// Your farmer level, tank and goals are on the Farmer page.
     /// </summary>
     private void DrawHerd(Vector2 min, Vector2 max)
     {
@@ -273,21 +276,13 @@ public sealed partial class MainWindow
         }
 
         const float gap = 14f;
-        var rightW = Math.Clamp((max.X - min.X) * 0.36f, 300f, 400f);
+        var rightW = Math.Clamp((max.X - min.X) * 0.42f, 340f, 460f);
         var split = max.X - rightW - gap;
         Panel("##herdcows", min, new Vector2(split, max.Y), "The herd", w => DrawHandMilkCows(w, false));
-        var rightMin = new Vector2(split + gap, min.Y);
-        var choresH = Math.Clamp((max.Y - min.Y) * 0.5f, 240f, 360f);
-        Panel("##herdchores", rightMin, new Vector2(max.X, min.Y + choresH), "Chores & jugs", w =>
+        Panel("##herdchores", new Vector2(split + gap, min.Y), max, "Chores & jugs", w =>
         {
             DrawFarmerButtons(w);
             DrawCleanStalls(w);
         }, true);
-        Panel("##herdwork", new Vector2(rightMin.X, min.Y + choresH + gap), max, G.IsFarmer ? $"Farmer level {G.FarmerLevel}" : "Your work", w =>
-        {
-            DrawFarmerTankSummary(w);
-            SubHeading("Today's goals", w);
-            DrawDaily(w);
-        });
     }
 }

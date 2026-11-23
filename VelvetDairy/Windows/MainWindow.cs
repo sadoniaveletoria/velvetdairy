@@ -1018,8 +1018,18 @@ public sealed partial class MainWindow : Window
         var problem = G.CareProblem();
         if (problem != null)
         {
-            var pw = Ui.Measure(fonts.Small, problem).X;
-            Ui.Text(dl, fonts.Small, FitText(problem, width * 0.6f), new Vector2(inMin.X + width - Math.Min(pw, width * 0.6f), inMin.Y + 1), Theme.RoseDeep);
+            // The first sentence, in full (the rest when you hover it)
+            var first = problem.Contains(". ") ? problem[..(problem.IndexOf(". ", StringComparison.Ordinal) + 1)] : problem;
+            var lines = WrapText(first, width * 0.62f);
+            var lh = Ui.Measure(fonts.Small, "Ag").Y;
+            for (var li = 0; li < lines.Count; li++)
+            {
+                var lw = Ui.Measure(fonts.Small, lines[li]).X;
+                Ui.Text(dl, fonts.Small, lines[li], new Vector2(inMin.X + width - lw, inMin.Y + 1 - (lines.Count - 1) * lh + li * lh), Theme.RoseDeep);
+            }
+
+            if (ImGui.IsMouseHoveringRect(new Vector2(inMin.X + width * 0.38f, inMin.Y - lh * lines.Count), new Vector2(inMin.X + width, inMin.Y + lh)))
+                ImGui.SetTooltip(problem);
         }
 
         var ok = problem == null;
@@ -1078,9 +1088,13 @@ public sealed partial class MainWindow : Window
                 var tw = c1.X - (bw > 0 ? bw + 18 : 12) - (c0.X + 46);
                 var titleH = Ui.Measure(fonts.Label, "A").Y;
                 var subH = Ui.Measure(fonts.Small, "Ag").Y;
-                var ty = midY - (titleH + subH + 2) / 2;
-                Ui.Text(dl, fonts.Label, FitText(c.Title.ToUpperInvariant(), tw, fonts.Label), new Vector2(c0.X + 46, ty), Theme.Ink);
-                Ui.Text(dl, fonts.Small, FitText(c.Sub, tw), new Vector2(c0.X + 46, ty + titleH + 2), Theme.InkSoft);
+                var subLines = WrapText(c.Sub, tw);
+                var shownLines = Math.Min(2, subLines.Count);
+                var ty = midY - (titleH + subH * shownLines + 2) / 2;
+                Ui.Text(dl, fonts.Label, c.Title.ToUpperInvariant(), new Vector2(c0.X + 46, ty), Theme.Ink);
+                for (var li = 0; li < shownLines; li++)
+                    Ui.Text(dl, fonts.Small, li == 1 && subLines.Count > 2 ? string.Join(" ", subLines.Skip(1)) : subLines[li], new Vector2(c0.X + 46, ty + titleH + 2 + li * subH), Theme.InkSoft);
+                if (ImGui.IsMouseHoveringRect(c0, new Vector2(c1.X - (bw > 0 ? bw + 14 : 0), c1.Y))) ImGui.SetTooltip($"{c.Title}: {c.Sub}");
             }
             else
             {
@@ -1096,6 +1110,42 @@ public sealed partial class MainWindow : Window
     }
 
     /// <summary>Shortens text with "..." to fit a width.</summary>
+    /// <summary>Splits text into lines that fit the width (whole words; a word longer than the width gets its own line).</summary>
+    private List<string> WrapText(string text, float width, Dalamud.Interface.ManagedFontAtlas.IFontHandle? font = null)
+    {
+        font ??= fonts.Small;
+        var lines = new List<string>();
+        var line = "";
+        foreach (var word in text.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var test = line.Length == 0 ? word : line + " " + word;
+            if (line.Length > 0 && width > 10 && Ui.Measure(font, test).X > width)
+            {
+                lines.Add(line);
+                line = word;
+            }
+            else line = test;
+        }
+
+        if (line.Length > 0) lines.Add(line);
+        return lines;
+    }
+
+    /// <summary>Draws text wrapped to the width, line under line. Returns the height used.</summary>
+    private float TextWrapped(ImDrawListPtr dl, Dalamud.Interface.ManagedFontAtlas.IFontHandle? font, string text, Vector2 pos, float width, Vector4 color)
+    {
+        font ??= fonts.Small;
+        var lineH = Ui.Measure(font, "Ag").Y + 1;
+        var y = 0f;
+        foreach (var l in WrapText(text, width, font))
+        {
+            Ui.Text(dl, font, l, pos + new Vector2(0, y), color);
+            y += lineH;
+        }
+
+        return y;
+    }
+
     private string FitText(string text, float width, Dalamud.Interface.ManagedFontAtlas.IFontHandle? font = null)
     {
         font ??= fonts.Small;
@@ -1389,7 +1439,7 @@ public sealed partial class MainWindow : Window
         var cur = ImGui.GetCursorScreenPos();
         Ui.Bar(ImGui.GetWindowDrawList(), cur + new Vector2(0, 6), cur + new Vector2(Math.Min(width, 360), 14), G.MaxCarry > 0 ? Math.Clamp(G.Carried / G.MaxCarry, 0, 1) : 0, Theme.BlueDeep);
         ImGui.Dummy(new Vector2(width, 20));
-        Ui.Wrapped("Fill it at your dairy (Herd > Farmer > Kitchen). Farmer xp comes from hand milking, grooming, cleaning stalls, baking, filling jugs, deliveries and contracts.", Theme.InkSoft, width);
+        Ui.Wrapped("Fill it at your dairy (Herd > Kitchen). Farmer xp comes from hand milking, grooming, cleaning stalls, baking, filling jugs, deliveries and contracts.", Theme.InkSoft, width);
     }
 
     private void DrawBottleShop(float width)

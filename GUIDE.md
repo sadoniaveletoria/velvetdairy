@@ -209,7 +209,7 @@ You're paid a **share** of what that milk is worth: 25% (30% from farmer level 4
 
 ### The kitchen: baking treats
 
-Open **Herd > Farmer > Kitchen**. First fill your jugs from the dairy tank at the top (1 oz a second, twice as fast with **Churn oil**, 40 coins; you have to stay in the dairy while it fills). Then bake:
+Open **Herd > Kitchen**. First fill your jugs from the dairy tank at the top (1 oz a second, twice as fast with **Churn oil**, 40 coins; you have to stay in the dairy while it fills). Then bake:
 
 | Recipe | Needs | Makes | Farmer level | XP |
 | --- | --- | --- | --- | --- |
