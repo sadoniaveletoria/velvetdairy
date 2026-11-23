@@ -85,7 +85,7 @@ Milking itself doesn't pay coins. Instead, a farmer or the owner types in your q
 | 25 oz | 125 | 5 hours |
 | 50 oz | 250 | a very long day |
 
-When the HUD says **"Quota reached: claim N in Goals"**, press **Claim** on Today (or in Today's goals). You can only claim it once a day.
+When the HUD says **"Claim N"**, press **Claim** on Today (or in Today's goals). You can only claim it once a day. Once your quota is met, the HUD (and the folded pill) shows your bonus instead, all your bonuses together as one speed, like "Bonus +71% speed".
 
 What makes the payment bigger:
 
@@ -412,7 +412,7 @@ After **12 hours of making milk in one day** you're tired: milk (and seed) comes
 
 ### A day in each role, at a glance
 
-- **Cow / bull**: log in → walk into your dairy → drink, sit somewhere comfy (your farmer feeds, waters and grooms you) → sit on a stall (or ask a farmer to hand milk you) → keep playing until the HUD says Quota reached → Goals > Claim.
+- **Cow / bull**: log in → walk into your dairy → drink, sit somewhere comfy (your farmer feeds, waters and grooms you) → sit on a stall (or ask a farmer to hand milk you) → keep playing until the HUD says Claim → Goals > Claim.
 - **Farmer**: log in → ring the bell → feed everyone from the feed bin → groom two cows → clean a stall → hand milk someone empty → fill jugs → drop milk off at another dairy or ship to the contract → claim your goals → bake treats for the shelf.
 - **Owner**: check the fund → set cow and bull quotas for new members → buy the next stall tier or feed when you can afford it → turn on the Velvet pump when lots of people are on → keep the weekly contract moving.
 

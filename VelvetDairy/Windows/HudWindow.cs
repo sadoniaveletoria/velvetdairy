@@ -105,7 +105,7 @@ public sealed class HudWindow : Window
 
             var seedOnly = !G.ProducesMilk && G.ProducesSeed;
             text = Units.Oz(seedOnly ? F.Cow.Seed : F.Cow.Milk, seedOnly ? "0.##" : "0.#");
-            sub = G.Active != null ? "being milked" : $"quota {frac * 100:0}%";
+            sub = G.Active != null ? "being milked" : G.QuotaReached ? $"bonus +{G.SpeedBonus(seedOnly) * 100:0}%" : $"quota {frac * 100:0}%";
         }
         else
         {
@@ -263,12 +263,14 @@ public sealed class HudWindow : Window
             var claimed = G.Goals().FirstOrDefault(gl => gl.Bit == G.QuotaBit) is { } qg && G.Claimed(qg);
             var qFmt = G.QuotaInSeed ? "0.##" : "0";
             var room = o.X + size.X - 20 - x;
-            var qText = claimed ? "Quota done today" : qDone ? $"Quota reached: claim {G.QuotaCoins}"
+            // Once the quota is met, the line shows your bonus instead (all your bonuses together, as on Today)
+            var bonus = $"+{G.SpeedBonus(!G.ProducesMilk && G.ProducesSeed) * 100:0}%";
+            var qText = claimed ? $"Bonus {bonus} speed" : qDone ? $"Claim {G.QuotaCoins} · Bonus {bonus}"
                 : $"Quota {Units.Num(G.QuotaHave, qFmt)} / {Units.Oz(G.QuotaNeed, qFmt)}{(G.QuotaInSeed ? " seed" : "")}";
-            if (Ui.Measure(fonts.Small, qText).X > room) qText = claimed ? "Quota done" : qDone ? "Claim quota" : $"{Units.Num(G.QuotaHave, qFmt)} / {Units.Num(G.QuotaNeed, qFmt)}";
-            var qw = Ui.Text(dl, fonts.Small, qText, new Vector2(x, o.Y + 44), qDone && !claimed ? Theme.SageDeep : Theme.HoneyDeep).X;
+            if (Ui.Measure(fonts.Small, qText).X > room) qText = claimed ? $"Bonus {bonus}" : qDone ? $"Claim · {bonus}" : $"{Units.Num(G.QuotaHave, qFmt)} / {Units.Num(G.QuotaNeed, qFmt)}";
+            var qw = Ui.Text(dl, fonts.Small, qText, new Vector2(x, o.Y + 44), qDone ? Theme.SageDeep : Theme.HoneyDeep).X;
             // A thin bar after the words, filling as you go
-            if (!claimed && room - qw > 40)
+            if (!qDone && room - qw > 40)
                 Ui.Bar(dl, new Vector2(x + qw + 8, o.Y + 51), new Vector2(x + room, o.Y + 55), G.QuotaNeed > 0 ? Math.Clamp(G.QuotaHave / G.QuotaNeed, 0f, 1f) : 0f, qDone ? Theme.SageDeep : Theme.RoseDeep);
         }
 
