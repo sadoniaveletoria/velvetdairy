@@ -1590,7 +1590,7 @@ async function groom(env, me, request) {
   if (last && t - last.at < GROOM_COOLDOWN) fail(400, `You can groom ${cow.name} again in ${Math.ceil((GROOM_COOLDOWN - (t - last.at)) / 60)} min.`);
   await env.DB.batch([
     env.DB.prepare(`INSERT INTO grooms (farmer, cow, at) VALUES (?, ?, ?) ON CONFLICT(farmer, cow) DO UPDATE SET at = excluded.at`).bind(me.id, cow.install, t),
-    inboxStmt(env, cow.install, "groom", 0, 0, 0, `${mem.name || "A farmer"} groomed you. Happy +30 min.`),
+    inboxStmt(env, cow.install, "groom", 0, 0, 0, `${mem.name || "A farmer"} groomed you: Happy +3% and Comfy +2% for 20 minutes.`),
   ]);
   return { ok: true, next: t + GROOM_COOLDOWN };
 }

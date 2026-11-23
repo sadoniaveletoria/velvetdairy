@@ -49,7 +49,7 @@ Things that make milk come in faster (they add together):
 - **Your cow level**: +2% per level, up to level 50 (about double a new cow).
 - **Your grade**: B +10%, A +20%, S +35%, S+ +50% milking speed.
 - **The four bars** (below) and **Contented** (all four going at once: +10% more).
-- **Treats**: +30% for a while.
+- **Treats**: a treat you buy adds its own small bonus for 10 or 20 minutes; a farmer's baked treat also gives a +30% boost (one boost at a time).
 - **Home pasture**: +10% while you're milked in your own dairy.
 - **Velvet pump**: +15% for everyone, when the owner turns it on.
 - **Pump drops** (Shop, 60 coins): +25% for 30 minutes.
@@ -412,7 +412,7 @@ After **12 hours of making milk in one day** you're tired: milk (and seed) comes
 
 ### A day in each role, at a glance
 
-- **Cow / bull**: log in → walk into your dairy → drink, sit somewhere comfy, have a treat → sit on a stall (or ask a farmer to hand milk you) → keep playing until the HUD says Quota reached → Goals > Claim.
+- **Cow / bull**: log in → walk into your dairy → drink, sit somewhere comfy (your farmer feeds, waters and grooms you) → sit on a stall (or ask a farmer to hand milk you) → keep playing until the HUD says Quota reached → Goals > Claim.
 - **Farmer**: log in → ring the bell → feed everyone from the feed bin → groom two cows → clean a stall → hand milk someone empty → fill jugs → drop milk off at another dairy or ship to the contract → claim your goals → bake treats for the shelf.
 - **Owner**: check the fund → set cow and bull quotas for new members → buy the next stall tier or feed when you can afford it → turn on the Velvet pump when lots of people are on → keep the weekly contract moving.
 

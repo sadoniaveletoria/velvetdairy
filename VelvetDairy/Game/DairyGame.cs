@@ -2461,7 +2461,7 @@ public sealed partial class DairyGame
             AddFarmerXp(Catalog.GroomXp);
             F.DayGrooms++;
             EarnDairyXp(2);
-            Say($"You groom {cowName}. Their Happy bar gets 30 more minutes. +{Catalog.GroomXp} farmer xp", 1);
+            Say($"You groom {cowName}: Happy +{Catalog.GroomHappy * 100:0}% and Comfy +{Catalog.GroomComfy * 100:0}% for {Catalog.NeedMinutes:0} minutes. +{Catalog.GroomXp} farmer xp", 1);
         }, e =>
         {
             grooming = false;
