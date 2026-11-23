@@ -21,17 +21,17 @@ public sealed partial class MainWindow
         var y = min.Y;
         if (p != null)
         {
-            const float tileH = 92f;
+            const float tileH = 124f;
             var tw = (max.X - min.X - gap * 3) / 4;
             var tank = p.Tank;
             var c = p.Contract;
             var tiles = new (string Title, string Big, string Small, float Bar, Vector4 Color)[]
             {
                 ("Dairy level", $"{p.Level}", p.NextXp is { } n ? $"{p.Xp:N0} / {n:N0} xp" : "Max level", p.LevelProgress, Theme.SageDeep),
-                ("Dairy fund", $"{p.Fund:N0}", "coins to spend", -1, Theme.HoneyDeep),
-                ("Tanks", Units.Oz(tank?.Total ?? 0, "0"), $"of milk · {Units.Oz(tank?.Seed ?? 0, "0.#")} of seed", -1, Theme.BlueDeep),
-                ("This week's contract", c == null ? "..." : c.Completed ? "Done!" : $"{Units.Num(c.OzDone, "0")} / {Units.Num(c.OzNeed)}",
-                    c == null ? "" : c.Completed ? "Reward paid at the end of the week" : $"{Units.Unit} shipped to the Grand Creamery", c == null ? -1 : c.OzNeed > 0 ? Math.Clamp(c.OzDone / c.OzNeed, 0f, 1f) : 1f, Theme.BlueDeep),
+                ("Dairy fund", $"{p.Fund:N0}", "coins", -1, Theme.HoneyDeep),
+                ("Tanks", Units.Oz(tank?.Total ?? 0, "0"), $"milk · {Units.Oz(tank?.Seed ?? 0, "0.#")} seed", -1, Theme.BlueDeep),
+                ("Contract", c == null ? "..." : c.Completed ? "Done!" : $"{Units.Num(c.OzDone, "0")} / {Units.Num(c.OzNeed)}",
+                    c == null ? "" : c.Completed ? "paid at the week's end" : $"{Units.Unit} shipped this week", c == null ? -1 : c.OzNeed > 0 ? Math.Clamp(c.OzDone / c.OzNeed, 0f, 1f) : 1f, Theme.BlueDeep),
             };
             var dl = ImGui.GetWindowDrawList();
             for (var i = 0; i < tiles.Length; i++)
@@ -40,11 +40,18 @@ public sealed partial class MainWindow
                 var a = new Vector2(min.X + i * (tw + gap), y);
                 var b = a + new Vector2(tw, tileH);
                 Ui.Card(dl, a, b);
-                Ui.Eyebrow(dl, t.Title, a + new Vector2(18, 12), tw - 36, Theme.RoseDeep);
-                Ui.Text(dl, fonts.Heading, t.Big, a + new Vector2(18, 36), Theme.Ink);
-                Ui.Text(dl, fonts.Small, t.Small, a + new Vector2(18, 64), Theme.InkSoft);
-                if (t.Bar >= 0) Ui.Bar(dl, a + new Vector2(tw * 0.5f, 46), a + new Vector2(tw - 18, 52), t.Bar, t.Color);
-                if (ImGui.IsMouseHoveringRect(a, b) && Ui.Measure(fonts.Small, t.Small).X > tw - 36) ImGui.SetTooltip(t.Small);
+                // The same insets as the panels, so nothing touches the card's frame
+                var inner = tw - 56;
+                Ui.Eyebrow(dl, t.Title, a + new Vector2(28, 22), inner, Theme.RoseDeep);
+                Ui.Text(dl, fonts.Heading, t.Big, a + new Vector2(28, 50), Theme.Ink);
+                var below = 50 + Ui.Measure(fonts.Heading, "0").Y + 4;
+                if (t.Bar >= 0)
+                {
+                    Ui.Bar(dl, a + new Vector2(28, below), a + new Vector2(28 + inner, below + 6), t.Bar, t.Color);
+                    below += 12;
+                }
+
+                TextWrapped(dl, fonts.Small, t.Small, a + new Vector2(28, below), inner, Theme.InkSoft);
             }
 
             y += tileH + gap;
@@ -66,16 +73,10 @@ public sealed partial class MainWindow
         }, true);
     }
 
-    /// <summary>What each dairy level unlocks, as a line from 1 to 20 with a mark at each unlock. Returns the bottom.</summary>
+    /// <summary>What each dairy level unlocks, as a row of chips that wraps (green: yours, rose: next, grey: later). Returns the bottom.</summary>
     private float DrawUnlockLine(Vector2 min, float maxX, Network.DairyProgress p)
     {
-        const float h = 118f, maxLevel = 20f;
         var dl = ImGui.GetWindowDrawList();
-        var max = new Vector2(maxX, min.Y + h);
-        Ui.Card(dl, min, max);
-        Ui.Eyebrow(dl, "What each dairy level unlocks", min + new Vector2(18, 12), maxX - min.X - 36, Theme.RoseDeep);
-
-        // Unlocks by level: the feed bin's feeds, the stall tiers and the Velvet pump
         var marks = new SortedDictionary<int, List<string>>();
         void Add(int level, string what)
         {
@@ -87,36 +88,42 @@ public sealed partial class MainWindow
         Add(5, "Velvet stalls");
         Add(12, "Gilded stalls");
         Add(p.PumpLevel, "Velvet pump");
-        Add(20, "Top level");
-
-        var x0 = min.X + 60;
-        var x1 = maxX - 60;
-        var ly = min.Y + 46;
-        var done = Math.Clamp((p.Level - 1) / (maxLevel - 1), 0f, 1f);
-        dl.AddRectFilled(new Vector2(x0, ly - 2), new Vector2(x1, ly + 2), Ui.U(Theme.Linen), 2);
-        dl.AddRectFilled(new Vector2(x0, ly - 2), new Vector2(x0 + (x1 - x0) * done, ly + 2), Ui.U(Theme.SageDeep), 2);
         var next = marks.Keys.FirstOrDefault(l => l > p.Level);
-        var slot = (x1 - x0) / Math.Max(1, marks.Count) + 10;
+
+        // Lay the chips out first, to know how tall the card is
+        var inner = maxX - min.X - 56;
+        const float chipH = 30f, chipGap = 8f;
+        var chips = new List<(string Text, int Level, Vector2 At, float W)>();
+        float cx = 0, cy = 0;
         foreach (var (level, what) in marks)
         {
-            var mx = x0 + (x1 - x0) * Math.Clamp((level - 1) / (maxLevel - 1), 0f, 1f);
-            var owned = p.Level >= level;
-            var col = owned ? Theme.SageDeep : level == next ? Theme.RoseDeep : Theme.StoneDeep;
-            if (owned) dl.AddCircleFilled(new Vector2(mx, ly), 8, Ui.U(col));
-            else
+            var text = $"Lv {level} · {string.Join(", ", what)}";
+            var w = Ui.Measure(fonts.Small, text).X + 24;
+            if (cx > 0 && cx + w > inner)
             {
-                dl.AddCircleFilled(new Vector2(mx, ly), 8, Ui.U(Theme.Paper));
-                dl.AddCircle(new Vector2(mx, ly), 8, Ui.U(col), 0, 2.5f);
+                cx = 0;
+                cy += chipH + chipGap;
             }
 
-            Ui.Text(dl, fonts.Small, $"Lv {level}", new Vector2(mx, ly + 14), col, 0.5f, 0f);
-            var lineH = Ui.Measure(fonts.Small, "Ag").Y;
-            var ty = ly + 14 + lineH;
-            foreach (var line in WrapText(string.Join(" · ", what), Math.Min(slot, 120)))
-            {
-                Ui.Text(dl, fonts.Small, line, new Vector2(mx, ty), owned ? Theme.SageDeep : Theme.InkSoft, 0.5f, 0f);
-                ty += lineH;
-            }
+            chips.Add((text, level, new Vector2(cx, cy), w));
+            cx += w + chipGap;
+        }
+
+        var h = 24 + 32 + cy + chipH + 24;
+        var max = new Vector2(maxX, min.Y + h);
+        Ui.Card(dl, min, max);
+        var nextText = next > 0 ? $"Level {p.Level} · next unlock at level {next}" : $"Level {p.Level} · everything unlocked";
+        Ui.Eyebrow(dl, $"What each dairy level unlocks · {nextText}", min + new Vector2(28, 22), inner, Theme.RoseDeep);
+        var o = min + new Vector2(28, 24 + 32);
+        foreach (var ch in chips)
+        {
+            var a = o + ch.At;
+            var b = a + new Vector2(ch.W, chipH);
+            var owned = p.Level >= ch.Level;
+            var col = owned ? Theme.SageDeep : ch.Level == next ? Theme.RoseDeep : Theme.StoneDeep;
+            dl.AddRectFilled(a, b, Ui.U(owned ? Theme.Sage : ch.Level == next ? Theme.Rose : Theme.Stone, owned ? 0.45f : 0.35f), chipH / 2);
+            dl.AddRect(a, b, Ui.U(col, 0.7f), chipH / 2, ImDrawFlags.None, 1.2f);
+            Ui.Text(dl, fonts.Small, ch.Text, a + new Vector2(12, chipH / 2), Theme.Ink, 0f, 0.5f);
         }
 
         return max.Y;
