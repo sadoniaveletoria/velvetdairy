@@ -43,8 +43,9 @@ Cow and bull are yours: you add or drop them, and they hold in every dairy you'r
 ## The HUD
 
 - The small HUD shows your bottle (and seed vials for bulls), your grade and what's happening now. Double-click or right-click it to open the main window.
-- Its buttons: **Herd Care** (farmers), and while you target another player close by, **Scan**, plus **Breed** if you're both cow and bull and so are they (members of your dairy). The Kitchen is on **Herd → Farmer**.
+- Its buttons: **Herd Care** (farmers), and while you target another player close by, **Scan**, plus **Breed** if you're both cow and bull and so are they (members of your dairy). The Kitchen button is on the **Herd** page.
 - **It only shows while you're in a dairy** (yours, or one you're visiting). Elsewhere it hides to keep your screen clear, even when you're full or being milked by hand. Want it everywhere? Untick **Only while I'm in a dairy** in Settings. `/milkers hud` (or the Settings box) hides it completely.
+- The **−** in the HUD's top-right corner folds it down to a small pill showing your quota as a ring and how much milk you have (a farmer's jugs if you don't make any). The **+** opens it again.
 
 ---
 
@@ -106,7 +107,7 @@ Cow and bull are yours: you add or drop them, and they hold in every dairy you'r
 - **Hand milking:** press **Herd Care** on the HUD (or Herd → Farmer), stand near a cow, press **Target**, then **Milk**. Herd Care lists only the cows and bulls who are in your dairy right now (members, and guests visiting a public dairy), and only while you're there too; someone online in a different dairy or out in the world isn't listed. Your character does the milking emote (/beesknees by default, or one you choose) until the cow is empty, then stops by itself. You earn 25% of what the cow is paid, on top of their pay (10% more for a cow wearing the Champion's ribbon).
 - **Your own animation:** if you use Penumbra, pick an animation mod and its options with **Animation…** in the Herd Care window. It switches on only while you milk.
 - **Chores:** **Groom** a cow or bull (they get 30 minutes of Happy), **Feed** a cow or bull from the feed bin (their Fed bar) or a treat from the dairy shelf (their Happy bar; press Feed and pick which; free), and **Clean** an empty stall (cows milked there get a bonus for an hour). All earn farmer XP.
-- **The Kitchen** (the Kitchen button on **Herd → Farmer**): bake with milk from your jugs. Recipes unlock with your farmer level:
+- **The Kitchen** (the Kitchen button on the **Herd** page): bake with milk from your jugs. Recipes unlock with your farmer level:
   - **Butter** (level 1): 16 oz of milk → 1 butter.
   - **Butter cookies** (level 3): 1 butter + 8 oz of milk → 3 cookies, for the dairy shelf.
   - **Flour** (level 6): 2 wheat grain (from the Shop) → 1 flour.

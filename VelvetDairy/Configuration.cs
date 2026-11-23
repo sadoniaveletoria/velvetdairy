@@ -68,6 +68,7 @@ public class Configuration : IPluginConfiguration
             f.ShowHud = from.ShowHud;
             f.LockHud = from.LockHud;
             f.HudOnlyInDairy = from.HudOnlyInDairy;
+            f.HudFolded = from.HudFolded;
             f.ChatEcho = from.ChatEcho;
             f.SoundOn = from.SoundOn;
             f.SoundVolume = from.SoundVolume;
@@ -97,6 +98,7 @@ public class FarmSave
     public bool Confirmed18 { get; set; }
     public bool ShowHud { get; set; } = true;
     public bool LockHud { get; set; }
+    public bool HudFolded { get; set; }               // the HUD folded down to a small pill (its - and + buttons)
     public bool HudOnlyInDairy { get; set; } = true;   // the HUD hides while you're not in a dairy (yours or one you're visiting)
     public bool ChatEcho { get; set; } = true;
     public bool AutoStall { get; set; } = true;       // sitting in a stall starts milking by itself

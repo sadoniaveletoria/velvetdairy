@@ -63,7 +63,7 @@ public sealed class HudWindow : Window
 
     public override void PreDraw()
     {
-        Size = HudSize + new Vector2(0, ShowButtons ? ButtonRow : 0);
+        Size = F.HudFolded ? PillSize : HudSize + new Vector2(0, ShowButtons ? ButtonRow : 0);
         if (F.LockHud) Flags |= ImGuiWindowFlags.NoMove;
         else Flags &= ~ImGuiWindowFlags.NoMove;
         ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, Vector2.Zero);
@@ -71,6 +71,88 @@ public sealed class HudWindow : Window
     }
 
     public override void PostDraw() => ImGui.PopStyleVar(2);
+
+    private static readonly Vector2 PillSize = new(250, 46);
+
+    /// <summary>
+    /// The folded HUD: a small pill with your quota as a ring and how much milk (or seed) you have, or a farmer's jugs.
+    /// The + unfolds it; right-click or double-click opens the main window, as on the full HUD; drag it to move it.
+    /// </summary>
+    private void DrawFolded()
+    {
+        var dl = ImGui.GetWindowDrawList();
+        var o = ImGui.GetWindowPos();
+        var s = ImGui.GetWindowSize();
+        var r = s.Y / 2;
+        dl.AddRectFilled(o, o + s, Ui.U(Theme.Paper), r);
+        dl.AddRect(o, o + s, Ui.U(Theme.RoseDeep, 0.45f), r, ImDrawFlags.None, 1.5f);
+
+        var c = o + new Vector2(r, r);
+        string text, sub;
+        if (G.Producer)
+        {
+            // Quota ring
+            var frac = G.QuotaNeed > 0 ? Math.Clamp(G.QuotaHave / G.QuotaNeed, 0f, 1f) : 0f;
+            dl.AddCircle(c, r - 12, Ui.U(Theme.Linen), 32, 5f);
+            var steps = Math.Max(2, (int)(40 * frac));
+            for (var i = 0; i < steps && frac > 0.001f; i++)
+            {
+                var a0 = -MathF.PI / 2 + MathF.PI * 2 * frac * i / steps;
+                var a1 = -MathF.PI / 2 + MathF.PI * 2 * frac * (i + 1) / steps;
+                dl.AddLine(c + new Vector2(MathF.Cos(a0), MathF.Sin(a0)) * (r - 12), c + new Vector2(MathF.Cos(a1), MathF.Sin(a1)) * (r - 12),
+                    Ui.U(G.QuotaReached ? Theme.SageDeep : Theme.RoseDeep), 5f);
+            }
+
+            var seedOnly = !G.ProducesMilk && G.ProducesSeed;
+            text = Units.Oz(seedOnly ? F.Cow.Seed : F.Cow.Milk, seedOnly ? "0.##" : "0.#");
+            sub = G.Active != null ? "being milked" : $"quota {frac * 100:0}%";
+        }
+        else
+        {
+            Ui.Icon(dl, "bucket", c, 12);
+            text = $"Jugs {Units.Num(G.Carried, "0.#")} / {Units.Oz(G.MaxCarry, "0")}";
+            sub = "";
+        }
+
+        var tx = o.X + s.Y + 4;
+        var tw = Ui.Text(dl, fonts.Small, text, new Vector2(tx, o.Y + r), Theme.Ink, 0f, 0.5f).X;
+        if (sub.Length > 0) Ui.Text(dl, fonts.Small, sub, new Vector2(tx + tw + 10, o.Y + r), G.QuotaReached ? Theme.SageDeep : Theme.InkSoft, 0f, 0.5f);
+
+        // + unfolds
+        var bp = o + new Vector2(s.X - 36, r - 13);
+        ImGui.SetCursorScreenPos(bp);
+        if (ImGui.InvisibleButton("##hudunfold", new Vector2(26, 26)))
+        {
+            F.HudFolded = false;
+            plugin.SaveConfig();
+        }
+
+        var hov = ImGui.IsItemHovered();
+        if (hov) ImGui.SetTooltip("Unfold the HUD");
+        dl.AddCircleFilled(bp + new Vector2(13, 13), 12, Ui.U(Theme.Rose, hov ? 0.6f : 0.3f));
+        dl.AddLine(bp + new Vector2(7, 13), bp + new Vector2(19, 13), Ui.U(Theme.RoseDeep), 2f);
+        dl.AddLine(bp + new Vector2(13, 7), bp + new Vector2(13, 19), Ui.U(Theme.RoseDeep), 2f);
+
+        if (ImGui.IsWindowHovered() && !ImGui.IsAnyItemHovered() && (ImGui.IsMouseClicked(ImGuiMouseButton.Right) || ImGui.IsMouseDoubleClicked(ImGuiMouseButton.Left)))
+            plugin.MainWindow.Toggle();
+    }
+
+    /// <summary>The − in the full HUD's top-right corner folds it to the pill.</summary>
+    private void DrawFoldButton(ImDrawListPtr dl, Vector2 o, Vector2 whole)
+    {
+        var bp = o + new Vector2(whole.X - 30, 6);
+        ImGui.SetCursorScreenPos(bp);
+        if (ImGui.InvisibleButton("##hudfold", new Vector2(22, 22)))
+        {
+            F.HudFolded = true;
+            plugin.SaveConfig();
+        }
+
+        var hov = ImGui.IsItemHovered();
+        if (hov) ImGui.SetTooltip("Fold the HUD down to a small pill");
+        dl.AddCircleFilled(bp + new Vector2(11, 11), 10, Ui.U(Theme.Rose, hov ? 0.6f : 0.25f));
+        dl.AddLine(bp + new Vector2(6, 11), bp + new Vector2(16, 11), Ui.U(Theme.RoseDeep), 2f);
+    }
 
     /// <summary>Shortens a line with "..." so it always stays inside the card.</summary>
     private string Fit(string text, float width)
@@ -84,11 +166,17 @@ public sealed class HudWindow : Window
     {
         // Clicking in Eorzea Milkers's own windows counts as being awake (mouse movement alone doesn't)
         if (ImGui.IsWindowHovered(ImGuiHoveredFlags.ChildWindows) && ImGui.IsMouseClicked(ImGuiMouseButton.Left)) G.Touch();
+        if (F.HudFolded)
+        {
+            DrawFolded();
+            return;
+        }
 
         var dl = ImGui.GetWindowDrawList();
         var o = ImGui.GetWindowPos();
         var whole = ImGui.GetWindowSize();
         Ui.Card(dl, o, o + whole, false, G.Level >= 75);   // cow level 75: velvet frame
+        DrawFoldButton(dl, o, whole);
 
         // Cow level 50: your title in gold along the top edge (with the crown when you have it)
         if (G.Level >= 50 || G.Crowned)
