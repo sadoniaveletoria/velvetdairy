@@ -336,8 +336,7 @@ public sealed partial class MainWindow
         switch (Sub("dairynet"))
         {
             case 0:
-                Panel("##netplace", top, new Vector2(mid - 7, max.Y), "Your dairy", DrawNetPlace);
-                Panel("##netlevel", new Vector2(mid + 7, top.Y), max, "Level, fund and tank", DrawDairyLevel, true);
+                DrawDairyOverview(top, max);
                 break;
             case 1:
                 Panel("##contract", top, new Vector2(mid - 7, max.Y), "This week's creamery contract", DrawContract);

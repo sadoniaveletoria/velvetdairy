@@ -172,9 +172,14 @@ public sealed class HudWindow : Window
             var qDone = G.QuotaReached;
             var claimed = G.Goals().FirstOrDefault(gl => gl.Bit == G.QuotaBit) is { } qg && G.Claimed(qg);
             var qFmt = G.QuotaInSeed ? "0.##" : "0";
-            var qText = claimed ? "Quota done today" : qDone ? $"Quota reached: claim {G.QuotaCoins} in Goals"
-                : $"Quota {Units.Oz(G.QuotaHave, qFmt)} / {Units.Oz(G.QuotaNeed, qFmt)}{(G.QuotaInSeed ? " seed" : "")}";
-            Ui.Text(dl, fonts.Small, Fit(qText, o.X + size.X - 20 - x), new Vector2(x, o.Y + 37), qDone && !claimed ? Theme.SageDeep : Theme.HoneyDeep);
+            var room = o.X + size.X - 20 - x;
+            var qText = claimed ? "Quota done today" : qDone ? $"Quota reached: claim {G.QuotaCoins}"
+                : $"Quota {Units.Num(G.QuotaHave, qFmt)} / {Units.Oz(G.QuotaNeed, qFmt)}{(G.QuotaInSeed ? " seed" : "")}";
+            if (Ui.Measure(fonts.Small, qText).X > room) qText = claimed ? "Quota done" : qDone ? "Claim quota" : $"{Units.Num(G.QuotaHave, qFmt)} / {Units.Num(G.QuotaNeed, qFmt)}";
+            var qw = Ui.Text(dl, fonts.Small, qText, new Vector2(x, o.Y + 37), qDone && !claimed ? Theme.SageDeep : Theme.HoneyDeep).X;
+            // A thin bar after the words, filling as you go
+            if (!claimed && room - qw > 40)
+                Ui.Bar(dl, new Vector2(x + qw + 8, o.Y + 43), new Vector2(x + room, o.Y + 47), G.QuotaNeed > 0 ? Math.Clamp(G.QuotaHave / G.QuotaNeed, 0f, 1f) : 0f, qDone ? Theme.SageDeep : Theme.RoseDeep);
         }
 
         // The grade seal sits on the jug's shoulder, like the Barn's, so it never covers the text
@@ -196,7 +201,11 @@ public sealed class HudWindow : Window
         {
             var bx = x + (i % 2) * (half + 10);
             var by = y + (i / 2) * (labelH + 12);
-            Ui.Text(dl, fonts.Small, Fit(needs[i].Label, half), new Vector2(bx, by), Theme.InkSoft);
+            // "Fed 46m": how long the bonus lasts (twice as long in a dairy)
+            var mins = needs[i].V / 100f * Catalog.NeedMinutes / (G.Where.InDairy ? Catalog.InDairyDrain : 1f);
+            var label = needs[i].V > 0 ? $"{needs[i].Label} {(mins >= 1 ? $"{mins:0}m" : "<1m")}" : needs[i].Label;
+            if (Ui.Measure(fonts.Small, label).X > half) label = needs[i].V > 0 ? $"{needs[i].Label[..1]} {(mins >= 1 ? $"{mins:0}m" : "<1m")}" : needs[i].Label;
+            Ui.Text(dl, fonts.Small, label, new Vector2(bx, by), needs[i].V < 20 && needs[i].V > 0 ? Theme.RoseDeep : Theme.InkSoft);
             Ui.Bar(dl, new Vector2(bx, by + labelH + 2), new Vector2(bx + half, by + labelH + 6), needs[i].V / 100f, Theme.NeedColor(needs[i].V, needs[i].C));
         }
 
