@@ -449,6 +449,7 @@ public sealed class MemberStatus
     public string Scan { get; set; } = "anyone";
     public long W { get; set; }                         // when the server last stored this (unix seconds)
     public List<int> Needs { get; set; } = new();       // minutes left on Fed, Watered, Comfy, Happy
+    public List<float> NeedPct { get; set; } = new();   // the bonus each of those gives (0.04 = +4%)
     public bool Bot { get; set; }                       // a dev server test bot (no character in the game world)
     public bool StudTonic { get; set; }          // a bull who had a Stud draught: his next breeding is stronger
     public string Breeding { get; set; } = "";   // both cow and bull: the scene partner (Name@World) they chose to breed this scene

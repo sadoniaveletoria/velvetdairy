@@ -7,7 +7,7 @@ namespace VelvetDairy.Windows;
 
 /// <summary>
 /// Feeding time: a farmer rang the dairy's feeding bell. A pop-up near the top of the screen with the bell's chime:
-/// pick one bar to fill right up (and get a 20 minute boost). It goes away after a few minutes if you don't pick.
+/// pick one bar to get an extra bonus on top of it for 15 minutes. It goes away after a few minutes if you don't pick.
 /// </summary>
 public sealed class FeedingBellWindow : Window
 {
@@ -56,12 +56,11 @@ public sealed class FeedingBellWindow : Window
     {
         const string title = "Feeding time!";
         using (fonts.For(fonts.Heading, title)!.Push()) ImGui.TextColored(Theme.RoseDeep, title);
-        ImGui.TextColored(Theme.Ink, $"{by} rang the feeding bell. Pick a bar to fill right up (and a 20 minute boost):");
+        ImGui.TextColored(Theme.Ink, $"{by} rang the feeding bell. Pick a bar: its bonus goes on top of what you have, for {VelvetDairy.Game.Catalog.BellMinutes} minutes.");
         ImGui.Spacing();
         foreach (var (bar, color) in new[] { ("Fed", "honey"), ("Watered", "blue"), ("Comfy", "rose"), ("Happy", "sage") })
         {
-            var full = plugin.Game.NeedFull(plugin.Game.BarValue(bar));
-            if (Ui.Button($"##bell{bar}", bar, new Vector2(100, 30), color, !full, full ? $"Your {bar} bonus still has its full 20 minutes." : $"Fill your {bar} bar right up, and a 20 minute boost."))
+            if (Ui.Button($"##bell{bar}", $"{bar} +{plugin.Game.BellBonus(bar) * 100:0}%", new Vector2(120, 30), color, true, $"+{plugin.Game.BellBonus(bar) * 100:0}% on top of your {bar} bonus for {VelvetDairy.Game.Catalog.BellMinutes} minutes."))
             {
                 plugin.Game.ClaimFeeding(bar);
                 shownAt = -1;

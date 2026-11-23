@@ -225,6 +225,7 @@ public static class Catalog
     public static readonly string[] BinOrder = { "hay", "grain", "honeyoats", "premium", "goldenmash" };
     // Deliveries to other dairies (buy orders and drop-offs): a daily limit by farmer level, and what a drop-off pays (matches the server)
     public const int DairyGoalMinutes = 30;
+    public const int BellMinutes = 15;   // the feeding bell: its bonus goes on top of a bar's for this long
     // On the network a treat you buy gives its own bonus for a while instead of time on your bars: 10 minutes for the
     // cheap ones, 20 for the better ones (35 coins and up)
     public static int TreatMinutes(FeedItem f) => f.Price >= 35 ? 20 : 10;   // daily goal: spend this long (awake) in a dairy

@@ -1036,7 +1036,7 @@ public sealed partial class MainWindow : Window
 
         if (cow.Taint > 0)
             notes.Add(("Your milk tastes off after the dump (one grade lower). Care tasks, milkings and creamery deliveries wear it off.", Theme.RoseDeep));
-        if (notes.Count == 0) notes.Add((G.Contented ? "Contented! Every bonus is going." : "Each bonus lasts 20 minutes; getting it again (or the feeding bell, a farmer feeding, watering or grooming you) sets it back to 20. They wait while you're asleep or away, and running out never hurts.", Theme.SageDeep));
+        if (notes.Count == 0) notes.Add((G.Contented ? "Contented! Every bonus is going." : "Each bonus lasts 20 minutes. The same one can't go on top while it's going; a bigger one takes over. The feeding bell always adds on top, for 15 minutes. They wait while you're asleep or away, and running out never hurts.", Theme.SageDeep));
         foreach (var (t, c) in notes) Ui.Wrapped(t, c, width);
     }
 
@@ -1068,9 +1068,9 @@ public sealed partial class MainWindow : Window
         var ok = problem == null;
         var cells = new List<(string Id, string Icon, string Title, string Sub, string Btn, string Color, bool Enabled, string? Tip, Action Act)>();
         var wcd = G.DrinkWait;
-        var wetFull = G.NeedFull(F.Cow.Thirst);
-        cells.Add(("##drink", "water", "Drink", wetFull ? "Watered is full (20 min)" : wcd > TimeSpan.Zero ? $"Ready in {DairyGame.Wait(wcd)}" : $"Free · Watered +{Catalog.TroughBonus * 100:0}%",
-            "Drink", "blue", ok && wcd <= TimeSpan.Zero && !wetFull, problem ?? (wetFull ? "Your Watered bonus has its full 20 minutes. Drink again once it's gone down." : $"Free. Watered +{Catalog.TroughBonus * 100:0}%, +{G.FillMinutesNow} minutes."), () => G.Drink()));
+        var wetFull = !G.CanTakeBonus("Watered", Catalog.TroughBonus);
+        cells.Add(("##drink", "water", "Drink", wetFull ? "Watered bonus going" : wcd > TimeSpan.Zero ? $"Ready in {DairyGame.Wait(wcd)}" : $"Free · Watered +{Catalog.TroughBonus * 100:0}%",
+            "Drink", "blue", ok && wcd <= TimeSpan.Zero && !wetFull, problem ?? (wetFull ? "Your Watered bonus is going. Drink again once it runs out (a bigger one, like a farmer's fresh water, can still take over)." : $"Free. Watered +{Catalog.TroughBonus * 100:0}%, +{G.FillMinutesNow} minutes."), () => G.Drink()));
         foreach (var item in Catalog.Feed)
         {
             if (!G.FeedUnlocked(item) || F.HiddenFeed!.Contains(item.Id)) continue;
@@ -1206,8 +1206,8 @@ public sealed partial class MainWindow : Window
 
         var ok = problem == null;
         var wcd = G.DrinkWait;
-        if (Row("##drink", "water", "Drink", G.NeedFull(F.Cow.Thirst) ? "Watered is full (20 min)" : wcd > TimeSpan.Zero ? $"Ready in {DairyGame.Wait(wcd)}" : $"Free · Watered +{Catalog.TroughBonus * 100:0}%, +{G.FillMinutesNow}m", "Drink", "blue",
-                ok && wcd <= TimeSpan.Zero && !G.NeedFull(F.Cow.Thirst), problem, width))
+        if (Row("##drink", "water", "Drink", !G.CanTakeBonus("Watered", Catalog.TroughBonus) ? "Watered bonus going" : wcd > TimeSpan.Zero ? $"Ready in {DairyGame.Wait(wcd)}" : $"Free · Watered +{Catalog.TroughBonus * 100:0}%, +{G.FillMinutesNow}m", "Drink", "blue",
+                ok && wcd <= TimeSpan.Zero && G.CanTakeBonus("Watered", Catalog.TroughBonus), problem, width))
             G.Drink();
 
         var shown = 0;

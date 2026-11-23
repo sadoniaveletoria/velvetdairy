@@ -50,7 +50,7 @@ public sealed class MilkingWindow : Window
             var why = G.BellProblem();
             var wait = G.BellWait;
             if (Ui.Button("##ringbell", wait > TimeSpan.Zero ? $"Bell ready in {DairyGame.Wait(wait)}" : "Ring the feeding bell", new Vector2(210, 30), "honey", why == null,
-                    why ?? "Everyone in the dairy hears it: each cow and bull picks a bar to fill right up, and gets a 20 minute boost. Once an hour."))
+                    why ?? "Everyone in the dairy hears it: each cow and bull picks a bar and gets an extra bonus on top of it for 15 minutes. Once an hour."))
                 G.RingFeedingBell();
         }
 

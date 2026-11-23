@@ -168,7 +168,7 @@ public sealed partial class MainWindow
         var buttons = new System.Collections.Generic.List<Btn>();
         if (G.IsFarmer) buttons.Add(new Btn("##farmhandmilk", "Herd Care", "rose", true, "Your dairy's cows and bulls: milk, groom and feed them."));
         var bellWhy = G.CanCarry ? G.BellProblem() : "";
-        if (G.CanCarry) buttons.Add(new Btn("##farmbell", "Ring the bell", "honey", bellWhy == null, bellWhy ?? "Everyone in the dairy fills one bar right up and gets a 20-minute boost. Once an hour."));
+        if (G.CanCarry) buttons.Add(new Btn("##farmbell", "Ring the bell", "honey", bellWhy == null, bellWhy ?? "Everyone in the dairy picks a bar and gets an extra bonus on top of it for 15 minutes. Once an hour."));
         if (G.CanCarry) buttons.Add(new Btn("##farmkitchen", "Kitchen", "honey", true, "Fill your jugs from the dairy tank and bake."));
         if (buttons.Count == 0) return;
         Gap(4);

@@ -630,6 +630,7 @@ public sealed class NetClient : IDisposable
                 BreedWait = g.IsCow && g.BreedCooldownLeft > TimeSpan.Zero ? DateTimeOffset.UtcNow.Add(g.BreedCooldownLeft).ToUnixTimeSeconds() : 0,
                 Scan = F.ScanAllow,
                 Needs = g.NeedMinutesNow.ToList(),
+                NeedPct = new List<float> { F.Cow.FedBonus, F.Cow.WaterBonus, F.Cow.ComfortBonus, F.Cow.HappyBonus },
                 Quality = (int)F.Quality, TotalOz = (int)F.Stats.TotalOz,
                 Emotes = g.Producer ? g.MilkEmotesForFarmers() : new List<string>(),
                 HandBy = g.Active is { Kind: VelvetDairy.Game.SessionKind.Hand, Hand: { IsTest: false } h } ? h.Name : "",
