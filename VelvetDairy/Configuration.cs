@@ -331,6 +331,8 @@ public class CowState
     public float Milk { get; set; } = 3;       // oz waiting to be milked (across all your bottles)
     public DateTime BoostUntilUtc { get; set; } = DateTime.MinValue;   // treat boost
     public DateTime DropsUntilUtc { get; set; } = DateTime.MinValue;   // Pump drops
+    public float TreatPct { get; set; }                                 // a treat you bought: its own bonus, for a while (not your bars)
+    public DateTime TreatUntilUtc { get; set; } = DateTime.MinValue;
     public DateTime? FullSinceUtc { get; set; }   // when every bottle became full (spoils 72 h later)
     public bool Spoiled { get; set; }             // bottles have gone bad: dump them before anything else
     public float Taint { get; set; }              // off taste left from dumping (0-100); one grade lower while it lasts

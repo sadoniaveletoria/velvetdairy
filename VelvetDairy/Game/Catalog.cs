@@ -224,7 +224,10 @@ public static class Catalog
     /// <summary>Feed that fills the Fed bar: only farmers give it, from the dairy's feed bin (the server's FEED_BIN order).</summary>
     public static readonly string[] BinOrder = { "hay", "grain", "honeyoats", "premium", "goldenmash" };
     // Deliveries to other dairies (buy orders and drop-offs): a daily limit by farmer level, and what a drop-off pays (matches the server)
-    public const int DairyGoalMinutes = 30;   // daily goal: spend this long (awake) in a dairy
+    public const int DairyGoalMinutes = 30;
+    // On the network a treat you buy gives its own bonus for a while instead of time on your bars: 10 minutes for the
+    // cheap ones, 20 for the better ones (35 coins and up)
+    public static int TreatMinutes(FeedItem f) => f.Price >= 35 ? 20 : 10;   // daily goal: spend this long (awake) in a dairy
     public const int DeliveriesPerDay = 10;   // drop-offs and buy orders filled, together, a day (one drop-off per dairy a day)
     public const int DeliverOzBase = 30, DeliverOzPerLevel = 5;   // 30 oz at level 1, 275 at 50, 525 at 100
     public const float DeliverPay = 0.25f;                        // of milk's price an oz (the Grand Creamery pays)

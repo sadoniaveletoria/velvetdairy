@@ -64,7 +64,7 @@ Each bar is a bonus. When one runs out you just lose that bonus; it never hurts 
 | **Fed** | Feed from the dairy's feed bin | A **farmer or the owner** feeds you (Herd Care > Feed). There's no Eat button on the network: farmers feed you. |
 | **Watered** | Drink | **You** (Today page > Drink). Free. |
 | **Comfy** | Sit on furniture in your dairy | **You**. After 10 minutes seated you get 30 minutes of Comfy; each further 10 minutes adds 30 more, up to an hour. |
-| **Happy** | Grooming, baked treats, the bell | A **farmer** grooms you or feeds you a baked treat, or rings the **feeding bell** (fills a bar right up). Treats **you** buy give their bonus and milk boost but **no time**. |
+| **Happy** | Grooming, baked treats, the bell | A **farmer** grooms you or feeds you a baked treat, or rings the **feeding bell** (fills a bar right up). Treats **you** buy don't fill it: they give their own milk bonus for **10 minutes** (20 for the better ones). |
 
 Each use fills half a bar (30 minutes). Eating, drinking and treats each have a 15-minute wait between uses. Inside a dairy your bars drain half as fast. Bars only count down while you're awake.
 

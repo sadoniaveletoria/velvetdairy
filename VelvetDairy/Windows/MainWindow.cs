@@ -1242,8 +1242,11 @@ public sealed partial class MainWindow : Window
     /// <summary>What a food or treat does; short leaves out the extras (for the small Care cards; the tooltip has it all).</summary>
     private string Effects(FeedItem f, bool short_ = false, bool fedByFarmer = false)
     {
+        // On the network a treat you buy is its own milk bonus for a while; your bars come from farmers, the bell, drinking and resting
+        var ownBonus = G.InNetDairy && !fedByFarmer && !Catalog.IsBinFeed(f.Id) && (f.Water != 0 || f.Happy != 0);
         if (short_)
         {
+            if (ownBonus) return $"milk +{Math.Max(f.Water, f.Happy) * 100:0}% {Catalog.TreatMinutes(f)}m";
             var main = f.Fed != 0 ? $"Fed +{f.Fed * 100:0}%" : f.Water != 0 ? $"Watered +{f.Water * 100:0}%" : f.Happy != 0 ? $"Happy +{f.Happy * 100:0}%"
                 : f.Quality != 0 ? $"+{f.Quality:0} quality" : f.HoldDays != 0 ? $"holds grade {f.HoldDays}d" : f.BoostMinutes != 0 ? $"boost {f.BoostMinutes}m"
                 : f.DropsMinutes != 0 ? $"+{Catalog.DropsBonus * 100:0}% {f.DropsMinutes}m" : f.BalmMilkings != 0 ? $"+{Catalog.BalmBonus * 100:0}% x{f.BalmMilkings}"
@@ -1252,12 +1255,15 @@ public sealed partial class MainWindow : Window
         }
 
         var parts = new List<string>();
-        if (f.Fed != 0) parts.Add($"Fed +{f.Fed * 100:0}%");
-        if (f.Water != 0) parts.Add($"Watered +{f.Water * 100:0}%");
-        if (f.Happy != 0) parts.Add($"Happy +{f.Happy * 100:0}%");
-        // 30 minutes, or 60 in your dairy (bars drain half as fast there): the same as the bar will show
-        // On the network, treats you buy give their bonus but no time (farmers and the feeding bell fill your bars)
-        if (f.Fed != 0 || f.Water != 0 || f.Happy != 0) parts.Add(G.InNetDairy && !fedByFarmer && !Catalog.IsBinFeed(f.Id) ? "bonus only, no time" : $"+{G.FillMinutesNow}m");
+        if (ownBonus) parts.Add($"milk +{Math.Max(f.Water, f.Happy) * 100:0}% for {Catalog.TreatMinutes(f)}m (your bars aren't touched)");
+        else
+        {
+            if (f.Fed != 0) parts.Add($"Fed +{f.Fed * 100:0}%");
+            if (f.Water != 0) parts.Add($"Watered +{f.Water * 100:0}%");
+            if (f.Happy != 0) parts.Add($"Happy +{f.Happy * 100:0}%");
+            // 30 minutes, or 60 in your dairy (bars drain half as fast there): the same as the bar will show
+            if (f.Fed != 0 || f.Water != 0 || f.Happy != 0) parts.Add($"+{G.FillMinutesNow}m");
+        }
         if (f.BoostMinutes != 0) parts.Add($"boost {f.BoostMinutes}m");
         if (f.HoldDays != 0) parts.Add($"no grade slip for {f.HoldDays} days");
         if (f.Quality != 0) parts.Add($"+{f.Quality:0} milk quality");

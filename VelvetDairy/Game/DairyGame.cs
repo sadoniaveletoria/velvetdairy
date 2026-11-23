@@ -740,6 +740,7 @@ public sealed partial class DairyGame
         if (PumpOn) parts.Add(new RatePart("Velvet pump (the whole dairy)", 1f + Catalog.PumpBonus));
         if (Cow.DropsUntilUtc > DateTime.UtcNow) parts.Add(new RatePart("Pump drops", 1f + Catalog.DropsBonus));
         if (BoostLeft > TimeSpan.Zero) parts.Add(new RatePart("Treat boost", 1f + Catalog.TreatBonus));
+        if (Cow.TreatUntilUtc > DateTime.UtcNow && Cow.TreatPct > 0) parts.Add(new RatePart($"Treat ({TreatLeft.Minutes + 1}m left)", 1f + Cow.TreatPct));
         if (!seed && BredLeft > TimeSpan.Zero) parts.Add(new RatePart($"Bred by {F.BredBy}", 1f + BredBonusNow));
         if (!seed && PregnancyBonus > 0) parts.Add(new RatePart($"Pregnant ({StageName(Preg.Stage)})", 1f + PregnancyBonus));
         if (includeResting && Wake == Wakefulness.Dozing) parts.Add(new RatePart("Dozing (no activity for 15 min)", 0.5f));
@@ -752,6 +753,8 @@ public sealed partial class DairyGame
     /// <summary>oz per minute right now.</summary>
     /// <summary>Milk is coming in right now (the bottle animates drops only then): not asleep, full, paused or blocked.</summary>
     public bool MilkComing => ProducesMilk && !Paused && !Overfull && !Spoiled && Blocked() == null && ProductionPerMinute() > 0;
+
+    public TimeSpan TreatLeft => Cow.TreatUntilUtc > DateTime.UtcNow ? Cow.TreatUntilUtc - DateTime.UtcNow : TimeSpan.Zero;
 
     public float ProductionPerMinute() => RateParts().Aggregate(BaseRate, (r, p) => r * p.Multiplier);
 
@@ -1096,16 +1099,10 @@ public sealed partial class DairyGame
         }
 
         if (!FeedForYou(item)) return Fail(item.Role == "bull" ? "That's for bulls." : "That's for cows who are also bulls.");
-        // On the network, treats you buy give their bonus but no time: a bar's time comes from your farmers (feeding,
-        // grooming, baked treats) and the feeding bell. So it's only worth eating one that's better than what you have.
+        // On the network, a treat you buy gives its own bonus for 10 or 20 minutes and leaves your bars alone: their time
+        // comes from your farmers (feeding, grooming, baked treats), the feeding bell, drinking and resting.
         var bonusOnly = InNetDairy && (item.Water > 0 || item.Happy > 0);
-        if (bonusOnly)
-        {
-            var better = (item.Water > Cow.WaterBonus + 0.0001f) || (item.Happy > Cow.HappyBonus + 0.0001f);
-            if (!better && item.BoostMinutes <= 0 && item.Quality <= 0 && item.XpBoostMinutes <= 0)
-                return Fail($"You already have that bonus or a bigger one. Treats you buy give their bonus, not time: farmers and the feeding bell fill your bars.");
-        }
-        else if (NeedsFullFor(item) is { } full) return Fail(full);
+        if (!bonusOnly && NeedsFullFor(item) is { } full) return Fail(full);
         var upgradeOnly = UpgradeOnly(item);
         if (item.RestHours > 0 && F.RestTeaDay == DayClock.Today) return Fail($"You've had {item.Name} today already.");
         if (item.Quality > 0 && QualityTreatWait > TimeSpan.Zero)
@@ -1117,15 +1114,18 @@ public sealed partial class DairyGame
         var bonusNote = "";
         if (bonusOnly)
         {
-            // The bonus only: it counts for as long as the bar has time
-            if (item.Water > Cow.WaterBonus) Cow.WaterBonus = item.Water;
-            if (item.Happy > Cow.HappyBonus) Cow.HappyBonus = item.Happy;
+            // Its own bonus for a while (a bigger one already going stays; the same or bigger restarts the clock)
+            var pct = Math.Max(item.Happy, item.Water);
+            var mins = Catalog.TreatMinutes(item);
+            if (Cow.TreatUntilUtc <= DateTime.UtcNow || pct >= Cow.TreatPct)
+            {
+                Cow.TreatPct = pct;
+                Cow.TreatUntilUtc = DateTime.UtcNow.AddMinutes(mins);
+            }
+
             if (item.Water > 0) Cow.WaterReadyUtc = cd;
             if (item.Happy > 0) Cow.HappyReadyUtc = cd;
-            var empty = (item.Happy > 0 && Cow.Mood <= 0) || (item.Water > 0 && item.Happy <= 0 && Cow.Thirst <= 0);
-            bonusNote = empty
-                ? $" Your {(item.Happy > 0 ? "Happy" : "Watered")} bar is empty, so the bonus counts once it has time again (a farmer grooming you, a baked treat or the feeding bell{(item.Happy > 0 ? "" : ", or a drink")})."
-                : $" Your {(item.Happy > 0 ? "Happy" : "Watered")} bonus is +{(item.Happy > 0 ? Cow.HappyBonus : Cow.WaterBonus) * 100:0}% for as long as the bar lasts.";
+            bonusNote = $" Milk +{Cow.TreatPct * 100:0}% for {Wait(TreatLeft)}.";
         }
         else
         {
