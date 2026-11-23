@@ -132,7 +132,7 @@ public sealed partial class MainWindow
 
     /// <summary>
     /// Today: the daily quota and Care with your bottles beside them, then how you're doing and today's goals across the
-    /// width; while you're being milked the milking shows under your bottles. Someone who isn't a cow or bull sees their farm work instead.
+    /// width; while you're being milked the bottles card turns into the milking. Someone who isn't a cow or bull sees their farm work instead.
     /// </summary>
     private void DrawToday(Vector2 min, Vector2 max)
     {
@@ -162,19 +162,29 @@ public sealed partial class MainWindow
         DrawQuotaHero(min, new Vector2(leftMax.X, min.Y + heroH));
         var careMin = new Vector2(min.X, min.Y + heroH + gap);
         DrawCareRow(careMin, new Vector2(leftMax.X, careMin.Y + careH));
-        // Your bottles beside the quota and Care, the same height as the two of them
+        // Your bottles beside the quota and Care, the same height as the two of them. While you're being milked the
+        // whole card turns into the milking (who, how much, Stop) and goes back to your bottles when it ends.
         var rightMin = new Vector2(max.X - rightW, min.Y);
         var lowY = careMin.Y + careH + gap;
-        DrawBottleCard(rightMin, new Vector2(max.X, lowY - gap));
+        var cardMax = new Vector2(max.X, lowY - gap);
+        if (G.Active != null) Panel("##milking", rightMin, cardMax, "Milking now", DrawMilking, true);
+        else
+        {
+            DrawBottleCard(rightMin, cardMax);
+            // Stalls don't start by themselves for you: the Start stall button sits on the card
+            if (!G.AutoStall)
+            {
+                var problem = G.StallProblem();
+                if (Ui.Button("##todaystall", "Start stall", new Vector2(120, 30), "blue", problem == null, problem ?? "Starts the stall you're sitting on.",
+                        new Vector2(rightMin.X + 16, cardMax.Y - 46)))
+                    G.StartStall();
+            }
+        }
 
-        // Below: how you're doing and today's goals across the width. While you're being milked (or with starting by
-        // itself turned off) the milking shows under your bottles, and those two take the rest.
-        var milking = G.Active != null || !G.AutoStall;
-        var lowMax = milking ? leftMax : max;
-        var mid = (min.X + lowMax.X) / 2;
+        // Below: how you're doing and today's goals across the whole width
+        var mid = (min.X + max.X) / 2;
         Panel("##needs", new Vector2(min.X, lowY), new Vector2(mid - gap / 2, max.Y), "How you're doing", DrawNeeds);
-        Panel("##todaygoals", new Vector2(mid + gap / 2, lowY), lowMax, "Today's goals", DrawDaily);
-        if (milking) Panel("##milking", new Vector2(rightMin.X, lowY), max, G.Active != null ? "Milking now" : "Milking", DrawMilking, true);
+        Panel("##todaygoals", new Vector2(mid + gap / 2, lowY), max, "Today's goals", DrawDaily);
 
         if (blocked != null && blocked != "Not logged in.")
             ImGui.GetWindowDrawList().AddText(min + new Vector2(28, -4), Ui.U(Theme.Warn), blocked);
