@@ -1069,7 +1069,7 @@ public sealed partial class MainWindow : Window
         var perRow = more > 0 ? fits : Math.Min(fits, Math.Max(cells.Count, 3));   // at least three across, so a short row doesn't stretch
         var shown = more > 0 ? perRow - 1 : cells.Count;
         var cellW = (width - cellGap * (perRow - 1)) / perRow;
-        var y = inMin.Y + 30;
+        var y = inMin.Y + 22;   // the cards sit close under the heading, clear of the frame below
         for (var i = 0; i < perRow; i++)
         {
             var c0 = new Vector2(inMin.X + i * (cellW + cellGap), y);

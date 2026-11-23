@@ -21,7 +21,7 @@ public sealed partial class MainWindow
         var y = min.Y;
         if (p != null)
         {
-            const float tileH = 124f;
+            const float tileH = 126f;
             var tw = (max.X - min.X - gap * 3) / 4;
             var tank = p.Tank;
             var c = p.Contract;
@@ -43,15 +43,11 @@ public sealed partial class MainWindow
                 // The same insets as the panels, so nothing touches the card's frame
                 var inner = tw - 56;
                 Ui.Eyebrow(dl, t.Title, a + new Vector2(28, 22), inner, Theme.RoseDeep);
-                Ui.Text(dl, fonts.Heading, t.Big, a + new Vector2(28, 50), Theme.Ink);
-                var below = 50 + Ui.Measure(fonts.Heading, "0").Y + 4;
-                if (t.Bar >= 0)
-                {
-                    Ui.Bar(dl, a + new Vector2(28, below), a + new Vector2(28 + inner, below + 6), t.Bar, t.Color);
-                    below += 12;
-                }
-
-                TextWrapped(dl, fonts.Small, t.Small, a + new Vector2(28, below), inner, Theme.InkSoft);
+                var bigSize = Ui.Text(dl, fonts.Heading, t.Big, a + new Vector2(28, 48), Theme.Ink);
+                // The bar sits beside the big number (not under it), so the card stays short and nothing reaches its frame
+                if (t.Bar >= 0 && inner - bigSize.X > 50)
+                    Ui.Bar(dl, a + new Vector2(28 + bigSize.X + 14, 48 + bigSize.Y / 2 - 3), a + new Vector2(28 + inner, 48 + bigSize.Y / 2 + 3), t.Bar, t.Color);
+                TextWrapped(dl, fonts.Small, t.Small, a + new Vector2(28, 48 + bigSize.Y + 4), inner, Theme.InkSoft);
             }
 
             y += tileH + gap;
