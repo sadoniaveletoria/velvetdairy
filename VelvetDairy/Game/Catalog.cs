@@ -223,6 +223,12 @@ public static class Catalog
 
     /// <summary>Feed that fills the Fed bar: only farmers give it, from the dairy's feed bin (the server's FEED_BIN order).</summary>
     public static readonly string[] BinOrder = { "hay", "grain", "honeyoats", "premium", "goldenmash" };
+    // Deliveries to other dairies (buy orders and drop-offs): a daily limit by farmer level, and what a drop-off pays (matches the server)
+    public const int DairyGoalMinutes = 30;   // daily goal: spend this long (awake) in a dairy
+    public const int DeliverOzBase = 30, DeliverOzPerLevel = 5;   // 30 oz at level 1, 275 at 50, 525 at 100
+    public const float DeliverPay = 0.25f;                        // of milk's price an oz (the Grand Creamery pays)
+    public const float DeliverXpPerOz = 2.5f;                     // farmer xp an oz dropped off
+
     public static bool IsBinFeed(string id) => Array.IndexOf(BinOrder, id) >= 0;
 
     // ----- Daily quota: the main pay (milking itself doesn't pay since 0.9.99) -----
@@ -251,7 +257,7 @@ public static class Catalog
         new Upgrade("rack", "Extra bottle", "milk", new[] { 90, 225, 350 }, new[] { 6, 12, 19 }, "One more bottle (and seed vial). When one fills, the next one starts. Up to 4."),
         // Farmers (and owners) buy a bigger tank to carry milk from the dairy tank; unlocks go by farmer level
         new Upgrade("farmtank", "Bigger farmer tank", "bucket", new[] { 200, 400, 900, 1600, 2500, 4000, 7500 }, new[] { 2, 5, 10, 16, 22, 30, 40 },
-            "Carry more milk from the dairy tank to customers, other dairies and the Grand Creamery.", Farmer: true),
+            "Carry more milk from the dairy tank to other dairies and the Grand Creamery.", Farmer: true),
         new Upgrade("trough", "Clean trough", "water", new[] { 90 }, new[] { 5 }, "Watered lasts half again as long."),
         new Upgrade("bell", "Bell collar", "bell", new[] { 50 }, new[] { 3 }, "A brass bell. The Happy bar drains a little slower.", true),
         new Upgrade("ribbon", "Show ribbon", "ribbon", new[] { 275 }, new[] { 15 }, "Wear your ribbon. +5% to your quota pay.", true, Cow: true),
@@ -454,8 +460,8 @@ public static class Awards
         new Award("gradeA", "Rich and creamy", "Give Grade A milk.", f => f.Stats.BestGrade >= 2),
         new Award("gradeS", "Cream of the crop", "Give Grade S milk.", f => f.Stats.BestGrade >= 3),
         new Award("gradeSS", "Pure velvet", "Give Grade S+ milk.", f => f.Stats.BestGrade >= 4),
-        new Award("order1", "Open for business", "Fill a creamery order.", f => f.Stats.OrdersFilled >= 1),
-        new Award("order25", "Regular supplier", "Fill 25 creamery orders.", f => f.Stats.OrdersFilled >= 25),
+        new Award("order1", "Open for business", "Make your first delivery.", f => f.Stats.OrdersFilled >= 1),
+        new Award("order25", "Regular supplier", "Make 25 deliveries.", f => f.Stats.OrdersFilled >= 25),
         new Award("care50", "Well kept", "Do 50 care tasks.", f => f.Stats.CareTasks >= 50),
         new Award("daily7", "Routine", "Finish 7 daily goals.", f => f.Stats.DailiesDone >= 7),
         new Award("gilded", "Gilded", "Upgrade a stall to Gilded.", f => f.Stats.BestStallTier >= 4 || (f.Stalls != null && f.Stalls.Any(s => s.Tier >= 4))),

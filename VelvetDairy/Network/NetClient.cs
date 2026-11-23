@@ -774,13 +774,13 @@ public sealed class NetClient : IDisposable
             ok();
         }, failed, dev: true);
 
-    /// <summary>Milk used on the creamery's own customer and visitor orders (so it can't also go to a contract).</summary>
+    /// <summary>Milk used up locally (so it can't also go to a contract).</summary>
     public void UseCarried(float oz, bool order = false) =>
         Call<IdReply>("POST", "/v1/carry/use", new { oz = Math.Round(oz, 2), order }, _ => { if (order) MineWithin(5); }, e => Plugin.Log.Debug($"Carry use: {e}"));
 
-    /// <summary>A farmer or the owner sets a member's daily quota size.</summary>
-    public void SetQuota(string memberId, int size, Action ok, Action<string> failed) =>
-        Call<object>("PUT", $"/v1/members/{memberId}/quota", new { size }, _ => { nextMine = 0; ok(); }, failed);
+    /// <summary>A farmer or the owner sets a member's daily quota size (farmer: their farmer quota, which only the owner sets).</summary>
+    public void SetQuota(string memberId, int size, bool farmer, Action ok, Action<string> failed) =>
+        Call<object>("PUT", $"/v1/members/{memberId}/quota", new { size, farmer }, _ => { nextMine = 0; ok(); }, failed);
 
     /// <summary>The owner unlocks a feed type for the dairy's feed bin with the fund.</summary>
     public void BuyFeedBin(string item, Action ok, Action<string> failed) =>
@@ -793,6 +793,10 @@ public sealed class NetClient : IDisposable
     /// <summary>Dev server: the owner adds or removes the test bots (a cow, a farmer and a bull).</summary>
     public void SetBots(bool on, Action ok, Action<string> failed) =>
         Call<object>("POST", "/v1/dev/bots", new { on }, _ => { nextMine = 0; ok(); }, failed);
+
+    /// <summary>Drops milk off at the other dairy you're standing in (no order needed): their tank gets it, the Grand Creamery pays you.</summary>
+    public void DeliverHere(int oz, int level, Action<DropReply> ok, Action<string> failed) =>
+        Call<DropReply>("POST", "/v1/deliver", new { oz, grade = 0, level }, r => { Poke(); ok(r); }, failed);
 
     /// <summary>Dev server: make (with an area) or remove your bot-run public test dairy, for testing visits.</summary>
     public void SetTestDairy(object body, Action ok, Action<string> failed) =>
@@ -1133,10 +1137,10 @@ public sealed class NetClient : IDisposable
             Poke();
         }, failed);
 
-    public void Fill(BuyOrder o, int grade, Action<FillReply> ok, Action<string> failed)
+    public void Fill(BuyOrder o, int grade, int level, Action<FillReply> ok, Action<string> failed)
     {
         var here = Estate.Current();
-        Call<FillReply>("POST", $"/v1/orders/{o.Id}/fill", new { grade, houseId = here?.HouseId.ToString(), pos = plugin.Game.Position() }, r =>
+        Call<FillReply>("POST", $"/v1/orders/{o.Id}/fill", new { grade, level, houseId = here?.HouseId.ToString(), pos = plugin.Game.Position() }, r =>
         {
             RefreshOrders(o.DairyId);
             Poke();

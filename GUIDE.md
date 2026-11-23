@@ -30,7 +30,7 @@ Eorzea Milkers is an 18+ game that runs inside Final Fantasy XIV through the Dal
 
 ### The whole game in one paragraph
 
-Cows and bulls slowly fill bottles (or vials) while you're logged in and actually playing. Getting milked, at a stall or by a farmer's hand, empties them into the dairy tank and gives you XP. Each day you have a quota; reach it, claim it, and that's your pay. Farmers keep everyone fed and happy, milk them by hand, and carry milk from the tank to customers, which earns the farmer coins and puts coins in the dairy fund. The owner spends the fund on better stalls, better feed and the Velvet pump, which makes everyone's milk come in faster.
+Cows and bulls slowly fill bottles (or vials) while you're logged in and actually playing. Getting milked, at a stall or by a farmer's hand, empties them into the dairy tank and gives you XP. Each day you have a quota; reach it, claim it, and that's your pay. Farmers keep everyone fed and happy, milk them by hand, and carry milk from the tank to other dairies, which earns the farmer coins and puts coins in the dairy fund. The owner spends the fund on better stalls, better feed and the Velvet pump, which makes everyone's milk come in faster.
 
 ## Cows: making milk, getting milked, getting paid
 
@@ -57,7 +57,7 @@ Each bar is a bonus. When one runs out you just lose that bonus; it never hurts 
 
 | Bar | How you fill it | Who does it |
 | --- | --- | --- |
-| **Fed** | Feed from the dairy's feed bin | A **farmer or the owner** feeds you (Herd Care > Feed). You can't feed yourself in a networked dairy. |
+| **Fed** | Feed from the dairy's feed bin | A **farmer or the owner** feeds you (Herd Care > Feed). There's no Eat button on the network: farmers feed you. |
 | **Watered** | Drink | **You** (Barn tab > Drink). Free. |
 | **Comfy** | Sit on furniture in your dairy | **You**. After 10 minutes seated you get 30 minutes of Comfy; each further 10 minutes adds 30 more, up to an hour. |
 | **Happy** | Treats, grooming | **You** buy treats; a **farmer** grooms you or feeds you baked treats (these are better). |
@@ -91,9 +91,9 @@ What makes the payment bigger:
 
 ### Daily goals (cow)
 
-Four small goals reset each day. Each pays **20 coins and 40 XP**, and finishing all four pays **40 more**:
+Four small goals reset each day at midnight Central time. Each pays **20 coins and 40 XP**, and finishing all four pays **40 more**:
 
-1. Give 10 oz of milk.
+1. Spend 30 minutes in a dairy (awake).
 2. Get milked at a stall.
 3. Do 3 care tasks (drink, rest, treat and so on).
 4. Get hand milked.
@@ -106,7 +106,7 @@ The quota is listed with them as a fifth, separate payment.
 - **Being emptied at a stall**: a bonus of 2.75 XP per oz, times the stall's tier bonus.
 - **Being hand milked**: 8.25 XP per oz plus 10 for the session, which is about three times a stall.
 - **Daily goals**: 40 XP each.
-- Care tasks and orders add small amounts too.
+- Care tasks add small amounts too.
 
 ### Things to watch
 
@@ -178,7 +178,7 @@ Iron oats (30 coins: fills Watered), Bull's salt lick (35: Happy, +25% bull XP f
 
 ## Farmers: care, hand milking, the kitchen and deliveries
 
-The farmer is the dairy's worker. They keep cows and bulls fed and happy, milk them by hand, and carry milk out of the tank to customers. Farmers are the main way coins come **into** the dairy fund. You can't give yourself Farmer: a farmer or the owner has to give it to you.
+The farmer is the dairy's worker. They keep cows and bulls fed and happy, milk them by hand, and carry milk out of the tank to other dairies. Farmers are the main way coins come **into** the dairy fund. You can't give yourself Farmer: a farmer or the owner has to give it to you.
 
 Your main tool is **Herd Care**. Open it from the HUD button or Roles > Farmer. It lists every cow and bull in the dairy, how close they are and how full.
 
@@ -201,7 +201,7 @@ The better the dairy's feed bin (the owner buys upgrades), the bigger the Fed bo
 2. In Herd Care press **Milk**. Your plugin does your milking emote or pose for you.
 3. Milk flows until they're empty, or until you stop, step away or change target.
 
-You're paid a **share** of what that milk is worth: 25% (30% from farmer level 45; 10% more for a cow with the Champion's ribbon), up to 4,500 coins a day. Each payment also gives farmer XP (an eighth of the coins, at least 5). Udder balm on the cow gives 20% more milk.
+You're paid a **share** of what that milk is worth: 25% (30% from farmer level 45; 10% more for a cow with the Champion's ribbon), with no daily limit. Each payment also gives farmer XP (an eighth of the coins, at least 5). Udder balm on the cow gives 20% more milk.
 
 ### The kitchen: baking treats
 
@@ -223,16 +223,16 @@ Baked treats go on the **dairy shelf**. Members buy them (you get 80% of the pri
 
 Your **farmer tank** is how much milk you can carry: a 32 oz pail at first. Buy bigger tanks in **Shop > Farmer tank** (200, 400, 900, 1,600, 2,500, 4,000 and 7,500 coins, unlocking at farmer levels 2, 5, 10, 16, 22, 30 and 40, up to 400 oz).
 
-- **Creamery orders** (Creamery tab): deliver from your jugs. Pays you coins plus farmer XP, and the **dairy fund gets 2 coins per oz**. Better customers come as your farmer level rises.
-- **Visitor orders**: two a day per public dairy, delivered in person.
-- **Other dairies' buy orders** (Creamery > Deliveries): the milk goes into their tank and their coins go to you.
+- **Drop-offs** (Creamery > Deliveries): walk into any other dairy and leave milk from your jugs in their tank, no order needed. The Grand Creamery pays you 1.5 coins an oz, your own **dairy fund gets 2 coins per oz**, and you get 2.5 farmer XP an oz.
+- **Other dairies' buy orders** (Creamery > Deliveries): the milk goes into their tank and the coins they offered go to you.
+- **Daily delivery limit**: 30 oz a day to other dairies at farmer level 1, plus 5 oz a level (275 at level 50, 525 at level 100). Drop-offs and buy orders share it.
 - **The weekly contract**: take jugs to the Grand Creamery (Dairy > Contract shows where) and ship. Each shipment gives you farmer XP (half the oz) and the dairy XP and fund coins.
 
 Filling jugs also gives farmer XP (a quarter of the oz).
 
 ### The farmer's daily quota
 
-A farmer's quota counts **milk you deliver** (orders, visitors and the contract): 3 times a cow's amount, paying 30% more and not affected by grade.
+A farmer's quota counts **milk you deliver** (drop-offs, buy orders and the contract), and the owner sets its size separately from any cow quota you have: 3 times a cow's amount, paying 30% more and not affected by grade.
 
 | Size | Delivered at level 1 | Coins |
 | --- | --- | --- |
@@ -243,11 +243,11 @@ A farmer's quota counts **milk you deliver** (orders, visitors and the contract)
 
 ### Farmer daily goals
 
-Each pays 20 coins and 40 farmer XP (+40 coins for all four): **Groom 2 cows**, **Clean a stall**, **Fill an order or ship to the contract**, **Hand milk a cow until they're empty**. If you're also a cow you get both sets.
+Each pays 20 coins and 40 farmer XP (+40 coins for all four): **Groom 2 cows**, **Clean a stall**, **Deliver to another dairy or ship to the contract**, **Hand milk a cow until they're empty**. If you're also a cow you get both sets.
 
 ### Farmer XP summary
 
-Groom 20 · Clean 25 · Feed 10 · Bell 10 · Load breeding stall 8 · Baking 6–60 · Filling jugs ¼ per oz · Hand milking pay ⅛ of coins (min 5) · Contract ½ per oz · Orders (shown on each order) · Goals 40 each.
+Groom 20 · Clean 25 · Feed 10 · Bell 10 · Load breeding stall 8 · Baking 6–60 · Filling jugs ¼ per oz · Hand milking pay ⅛ of coins (min 5) · Contract ½ per oz · Drop-offs 2.5 per oz · Goals 40 each.
 
 ## Owners: running the dairy
 
@@ -278,7 +278,7 @@ Only the owner takes roles away.
 ### The dairy fund: where it comes from
 
 - **Donations** from members.
-- **Creamery orders**: 2 coins per oz a farmer delivers.
+- **Drop-offs**: 2 coins per oz your farmers leave at other dairies.
 - **The weekly contract** reward.
 - **Shelf sales**: 20% of every baked treat sold.
 
@@ -319,7 +319,7 @@ Each level gives **+2% quota pay** to everyone, unlocks better stall tiers (Velv
 
 ### The weekly contract
 
-Every Monday at 00:00 UTC the Grand Creamery gives the dairy a contract: **600 oz at dairy level 1, plus 150 oz a level** (up to 3,500). Any milk counts. Farmers or the owner fill jugs and ship them at the Grand Creamery. When it's full, the dairy gets 1.5 dairy XP and 4 fund coins per oz of the contract (600 oz = 900 XP and 2,400 coins). If it isn't full by Monday you still get half of the share you delivered.
+Every Monday at 00:00 UTC (the weekly contract still runs on UTC) the Grand Creamery gives the dairy a contract: **600 oz at dairy level 1, plus 150 oz a level** (up to 3,500). Any milk counts. Farmers or the owner fill jugs and ship them at the Grand Creamery. When it's full, the dairy gets 1.5 dairy XP and 4 fund coins per oz of the contract (600 oz = 900 XP and 2,400 coins). If it isn't full by Monday you still get half of the share you delivered.
 
 **Weekend milk contest** (Saturday and Sunday, UTC): milk pumped into the tank also fills the contract, so it counts twice.
 
@@ -333,9 +333,8 @@ There is **no daily coin cap**. The only brake is getting **tired** after 12 hou
 | --- | --- | --- |
 | **Daily quota** | Cow, bull, farmer | 30 / 60 / 100 / 170 (farmer 39 / 78 / 130 / 221), times grade, wearables and dairy level |
 | **Daily goals** | Everyone with a role | 20 each, +40 for all four (60 × 2 sets if you're cow and farmer) |
-| **Hand milking share** | Farmer | 25–30% of the milk's value, up to 4,500 a day |
-| **Creamery orders** | Farmer, owner | oz × price × 0.25 + 3, and 2/oz to the fund |
-| **Visitor orders** | Farmer, owner | oz × price × 0.3 + 5 |
+| **Hand milking share** | Farmer | 25–30% of the milk's value, no daily limit |
+| **Drop-offs at other dairies** | Farmer, owner | 1.5 per oz, and 2/oz to your dairy fund (daily limit by farmer level) |
 | **Other dairies' buy orders** | Farmer, owner | Whatever the buyer offered |
 | **Shelf sales** | Farmer (baker) | 80% of the price |
 | **Selling back** | Everyone | Pantry items at half price |
@@ -364,7 +363,7 @@ Cow, bull and farmer each have their own level, from 1 to 100. Gaining or losing
 - Around level 50, about **4,700 XP** per level.
 - In the 90s, **13,000–16,000 XP** per level.
 
-The first ten levels go by in an evening or two; the 90s take days each. Every 25 levels you get a new title. Cow and bull levels make milk or seed 2% faster per level (up to 50). Farmer level unlocks bigger tanks, better customers and new recipes.
+The first ten levels go by in an evening or two; the 90s take days each. Every 25 levels you get a new title. Cow and bull levels make milk or seed 2% faster per level (up to 50). Farmer level unlocks bigger tanks, new recipes and a bigger daily delivery limit.
 
 ### Grades (milk and seed quality)
 
@@ -388,7 +387,7 @@ They reset every day. Each pays 20 coins and 40 XP, and all four pay 40 more. Co
 
 ### Awards (badges, one time)
 
-First pail (first milking) · Personal touch (first hand milking) · Twenty ounces · Two hundred ounces · Milk river (1,000 oz) · Rich and creamy (Grade A) · Cream of the crop (Grade S) · Pure velvet (Grade S+) · Open for business (first order) · Regular supplier (25 orders) · Well kept (50 care tasks) · Routine (7 daily goals) · Gilded (a Gilded stall) · Well off (earn 5,000 coins).
+First pail (first milking) · Personal touch (first hand milking) · Twenty ounces · Two hundred ounces · Milk river (1,000 oz) · Rich and creamy (Grade A) · Cream of the crop (Grade S) · Pure velvet (Grade S+) · Open for business (first delivery) · Regular supplier (25 deliveries) · Well kept (50 care tasks) · Routine (7 daily goals) · Gilded (a Gilded stall) · Well off (earn 5,000 coins).
 
 ### Awake, dozing and asleep
 
@@ -404,7 +403,7 @@ Bars and treat timers pause while you're dozing, asleep or logged out, so you do
 
 ### Tired
 
-After **12 hours of making milk in one day** you're tired: milk (and seed) comes in at half speed until the daily reset. Steady producer (level 18) makes it 14 hours, Night owl (level 62) adds 2 more, and a Second wind tonic adds 2 hours for one day.
+After **12 hours of making milk in one day** you're tired: milk (and seed) comes in at half speed until the daily reset (midnight Central time). Steady producer (level 18) makes it 14 hours, Night owl (level 62) adds 2 more, and a Second wind tonic adds 2 hours for one day.
 
 ## Quick reference and troubleshooting
 
@@ -421,8 +420,8 @@ After **12 hours of making milk in one day** you're tired: milk (and seed) comes
 ### A day in each role, at a glance
 
 - **Cow / bull**: log in → walk into your dairy → drink, sit somewhere comfy, have a treat → sit on a stall (or ask a farmer to hand milk you) → keep playing until the HUD says Quota reached → Goals > Claim.
-- **Farmer**: log in → ring the bell → feed everyone from the feed bin → groom two cows → clean a stall → hand milk someone empty → fill jugs → deliver orders or ship to the contract → claim goals and your quota → bake treats for the shelf.
-- **Owner**: check the fund → set quotas for new members → buy the next stall tier or feed when you can afford it → turn on the Velvet pump when lots of people are on → keep the weekly contract moving.
+- **Farmer**: log in → ring the bell → feed everyone from the feed bin → groom two cows → clean a stall → hand milk someone empty → fill jugs → drop milk off at another dairy or ship to the contract → claim goals and your quota → bake treats for the shelf.
+- **Owner**: check the fund → set quotas (and farmer quotas) for new members → buy the next stall tier or feed when you can afford it → turn on the Velvet pump when lots of people are on → keep the weekly contract moving.
 
 ### Something's wrong
 

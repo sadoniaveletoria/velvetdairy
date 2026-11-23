@@ -1049,12 +1049,15 @@ await test("quotas, the feed bin, the Velvet pump and order fund pay", async () 
   // Quotas: farmers set cows' and bulls', the owner anyone's
   assert.equal((await call(carl, "PUT", `/v1/members/${alice.id}/quota`, { size: 2 })).status, 403, "bulls can't set quotas");
   assert.equal((await call(bob, "PUT", `/v1/members/${carl.id}/quota`, { size: 3 })).status, 200);
-  assert.equal((await call(bob, "PUT", `/v1/members/${bob.id}/quota`, { size: 3 })).status, 403, "not your own as a farmer");
-  assert.equal((await call(alice, "PUT", `/v1/members/${bob.id}/quota`, { size: 0 })).status, 200, "the owner sets a farmer's");
-  assert.equal((await call(alice, "PUT", `/v1/members/${bob.id}/quota`, { size: 9 })).status, 400);
+  assert.equal((await call(bob, "PUT", `/v1/members/${bob.id}/quota`, { size: 3, farmer: true })).status, 403, "not your own as a farmer");
+  assert.equal((await call(bob, "PUT", `/v1/members/${carl.id}/quota`, { size: 3, farmer: true })).status, 400, "a bull has no farmer quota");
+  assert.equal((await call(alice, "PUT", `/v1/members/${bob.id}/quota`, { size: 0 })).status, 400, "a farmer has no cow quota");
+  assert.equal((await call(alice, "PUT", `/v1/members/${bob.id}/quota`, { size: 0, farmer: true })).status, 200, "the owner sets a farmer's");
+  assert.equal((await call(alice, "PUT", `/v1/members/${bob.id}/quota`, { size: 9, farmer: true })).status, 400);
   const q = (await call(carl, "GET", "/v1/dairy/mine")).data.members;
   assert.equal(q.find(m => m.id === carl.id).quota, 3);
-  assert.equal(q.find(m => m.id === bob.id).quota, 0);
+  assert.equal(q.find(m => m.id === carl.id).farmerQuota, 1, "the two sizes are separate");
+  assert.equal(q.find(m => m.id === bob.id).farmerQuota, 0);
   // Feed bin: wheat from the start; better feed needs dairy level and the fund
   let p = (await call(alice, "GET", "/v1/dairy/mine")).data.progress;
   assert.deepEqual(p.feedBin, ["hay"]);
@@ -1083,6 +1086,31 @@ await test("quotas, the feed bin, the Velvet pump and order fund pay", async () 
   const used = (await call(bob, "POST", "/v1/carry/use", { oz: 30, order: true })).data;
   assert.equal(used.fund, 40, "20 oz carried, 2 coins an oz");
   assert.equal((await call(alice, "GET", "/v1/dairy/mine")).data.progress.fund, 1540);
+});
+
+await test("farmers drop milk off at any other dairy, capped a day by farmer level", async () => {
+  const owner = player("Dot Dropoff"), fred = player("Fred Ferry"), host = player("Hal Host");
+  const HA = "6660001112221", HB = "6660001112222";
+  for (const x of [owner, fred, host]) await beat(x);
+  assert.equal((await call(owner, "PUT", "/v1/dairy", dairyBody({ houseId: HA, name: "Ferry Farm", ownerName: "Dot Dropoff", ward: 21, plot: 3, roles: [] }))).status, 200);
+  assert.equal((await call(host, "PUT", "/v1/dairy", dairyBody({ houseId: HB, name: "Far Pasture", isPublic: true, ownerName: "Hal Host", ward: 21, plot: 4, roles: ["cow"] }))).status, 200);
+  const inv = await call(owner, "POST", "/v1/invites", { toHash: fred.hash, toName: "Fred Ferry", role: "farmer" });
+  assert.equal((await call(fred, "POST", `/v1/invites/${inv.data.id}/accept`, { charHash: fred.hash, name: "Fred Ferry", worldName: "Gilgamesh" })).status, 200);
+  sqlite.prepare("INSERT INTO carried (install, oz) VALUES (?, 100) ON CONFLICT(install) DO UPDATE SET oz = 100").run(fred.id);
+  // Not at home
+  await beat(fred, { houseId: HA, awake: true });
+  assert.equal((await call(fred, "POST", "/v1/deliver", { oz: 10, grade: 0, level: 1 })).status, 400, "not your own dairy");
+  await beat(fred, { houseId: HB, awake: true });
+  const r = await call(fred, "POST", "/v1/deliver", { oz: 20, grade: 2, level: 1 });
+  assert.equal(r.status, 200, JSON.stringify(r.data));
+  assert.equal(r.data.coins, 50, "20 oz x 10 (Grade A) x 0.25");
+  assert.equal(r.data.fund, 40);
+  assert.equal(r.data.left, 10, "level 1: 30 oz a day");
+  assert.equal((await call(fred, "POST", "/v1/deliver", { oz: 20, grade: 0, level: 1 })).status, 400, "over the level 1 cap");
+  assert.equal((await call(fred, "POST", "/v1/deliver", { oz: 20, grade: 0, level: 10 })).status, 200, "75 oz at level 10");
+  assert.equal((await call(host, "GET", "/v1/dairy/mine")).data.progress.tank.total, 40, "the milk went into their tank");
+  assert.equal((await call(owner, "GET", "/v1/dairy/mine")).data.progress.fund, 80, "2 coins an oz to the farmer's own dairy");
+  assert.equal((await call(owner, "POST", "/v1/deliver", { oz: 5, grade: 0, level: 1 })).status, 400, "the owner isn't standing in another dairy");
 });
 
 await test("dev server test bots: an owner adds a cow, a farmer and a bull, and milks the bots", async () => {
@@ -1130,10 +1158,14 @@ await test("dev server test dairy: a bot-run public dairy you visit as a guest",
     assert.equal(r.here?.guest, true, JSON.stringify(r.here));
     assert.equal(r.here.stalls.length, 1);
     assert.ok(r.here.farmers.some(f => f.name === "Clyde Bot"), "the bot farmer is on");
-    // Making it again moves it (one per tester); removing it takes everything away
+    // Making it again moves it (one per tester, same dairy, old stalls cleared); removing it takes everything away
     const again = await call(tess, "POST", "/v1/dev/testdairy", { on: true, area: { ...area, x: 400 } });
     assert.equal(again.status, 200, JSON.stringify(again.data));
-    assert.ok(!(await call(tess, "GET", "/v1/dairies")).data.dairies.some(d => d.id === made.data.id), "the old one is gone");
+    assert.equal(again.data.id, made.data.id);
+    const moved = (await beat(tess, { pos: { territory: 135, world: 40, house: "", x: 401, y: 10, z: 299 }, awake: true })).data;
+    assert.equal(moved.here?.guest, true);
+    assert.equal(moved.here.stalls.length, 0);
+
     assert.equal((await call(tess, "POST", "/v1/dev/testdairy", { on: false })).status, 200);
     assert.ok(!(await call(tess, "GET", "/v1/dairies")).data.dairies.some(d => d.name === "Test Pasture (dev)"));
     assert.equal((await call(tess, "POST", "/v1/dev/testdairy/stall", { x: 1, y: 1, z: 1 })).status, 400, "no test dairy now");

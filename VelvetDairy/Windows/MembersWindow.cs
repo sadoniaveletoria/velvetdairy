@@ -205,7 +205,12 @@ public sealed class MembersWindow : Window
 
                 ImGui.TableNextColumn();
                 ImGui.TextColored(RoleColor(m.AllRoles.Count == 1 ? m.AllRoles[0] : ""), (m.IsOwner ? "Owner · " : "") + m.RoleText);
-                if (ImGui.IsItemHovered()) ImGui.SetTooltip($"Daily quota: {Catalog.QuotaNames[Math.Clamp(m.Quota, 0, 3)]} (a farmer or the owner sets it with ...)");
+                if (ImGui.IsItemHovered())
+                    ImGui.SetTooltip(string.Join("\n", new[]
+                    {
+                        m.Has("cow") || m.Has("bull") ? $"Daily quota: {Catalog.QuotaNames[Math.Clamp(m.Quota, 0, 3)]} (a farmer or the owner sets it with ...)" : null,
+                        m.Has("farmer") ? $"Farmer quota: {Catalog.QuotaNames[Math.Clamp(m.FarmerQuota, 0, 3)]} (the owner sets it with ...)" : null,
+                    }.Where(x => x != null).DefaultIfEmpty("No quota: no cow, bull or farmer role.")));
 
                 ImGui.TableNextColumn();
                 DrawLevels(m);
@@ -495,6 +500,14 @@ public sealed class MembersWindow : Window
             for (var i = 0; i < Catalog.QuotaNames.Length; i++)
                 if (ImGui.MenuItem($"{Catalog.QuotaNames[i]} · {Catalog.QuotaOz[i]} oz at level 1 · {Catalog.QuotaCoins[i]} coins", "", m.Quota == i))
                     G.SetQuota(m, i);
+            ImGui.EndMenu();
+        }
+
+        if (G.CanSetQuota(m, true) && ImGui.BeginMenu($"Farmer quota: {Catalog.QuotaNames[Math.Clamp(m.FarmerQuota, 0, 3)]}"))
+        {
+            for (var i = 0; i < Catalog.QuotaNames.Length; i++)
+                if (ImGui.MenuItem($"{Catalog.QuotaNames[i]} · deliver {Catalog.QuotaOz[i] * Catalog.QuotaFarmerOz:0} oz at level 1 · {Catalog.QuotaCoins[i] * Catalog.QuotaFarmerMult:0} coins", "", m.FarmerQuota == i))
+                    G.SetQuota(m, i, true);
             ImGui.EndMenu();
         }
 

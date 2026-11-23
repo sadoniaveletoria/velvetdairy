@@ -55,7 +55,7 @@ Cow and bull are yours: you add or drop them, and they hold in every dairy you'r
 - **The private place** (optional) is a second spot just for members, like your home or apartment. Use the whole house, or draw borders around part of it. Everything works there, but visitors never see it.
 - **Stalls** are seats (a chair, bench or bed) that milk whoever sits on them. Put them in either place. The first is free; each one after costs more from the dairy fund (500, 2,000, 4,500, 8,000…). Raising a stall a tier costs 300 (Padded), 1,000 (Velvet) and 2,500 (Gilded). Upgrade them to Wooden, Padded, Velvet and Gilded for faster milking.
 - **Stall markers** (Settings, on by default): a small green dot above each stall, only on your screen, so you can see which seats milk you.
-- **The dairy fund** is shared money, filled by members' donations, creamery orders (2 coins an oz delivered) and the weekly contract. The owner spends it on stalls, stall upgrades, the **feed bin** and the **Velvet pump** (Dairy → Feed & pump).
+- **The dairy fund** is shared money, filled by members' donations, its farmers' drop-offs at other dairies (2 coins an oz) and the weekly contract. The owner spends it on stalls, stall upgrades, the **feed bin** and the **Velvet pump** (Dairy → Feed & pump).
 - **The feed bin:** farmers feed cows and bulls from it for free (Herd Care → Feed), each one every 15 minutes; it fills their Fed bar. Wheat grain is there from the start; the owner unlocks Sweet grain (dairy level 3, 2,000), Honey oats (6, 6,000), Velvet blend (10, 15,000) and Golden mash (15, 35,000) from the fund.
 - **The Velvet pump** (dairy level 5): 2,500 from the fund runs it for 2 hours; everyone milked in the dairy makes milk and seed 15% faster.
 - **Home pasture:** being milked in your own dairy gives +10% milk and seed.
@@ -75,12 +75,12 @@ Cow and bull are yours: you add or drop them, and they hold in every dairy you'r
 **Getting milked** (only inside your dairy)
 - **At a stall:** sit on its seat and it starts by itself. You don't need to get up between milkings: stay seated and it starts again once half a bottle has refilled, and sitting there builds Comfy like any seat in your dairy. (After 30 minutes without touching the keyboard, mouse or controller you start dozing and it won't start a new milking until you move, emote or click something.)
 - **By hand:** a farmer of your dairy stands close, targets you and presses **Milk**. Hand milking is faster, pays more and makes up a lost grade.
-- **You're paid for your daily quota**, not per ounce. A farmer or the owner sets each member's size (members list → ...): Light (6 oz at level 1, 30 coins), Steady (12 oz, 60), Heavy (18 oz, 100) or Devoted (32 oz, 170); the oz grow 2% a level up to 50. Bulls' quota is in seed; farmers' is milk delivered (orders, visitors, buy orders, contract). Reach it, then claim it in **Goals**. Your grade (C x1 up to S+ x1.6), your wearables and the dairy's level raise it. Daily goals pay 20 coins each and 40 more for all four.
-- **No daily limit on pay:** everything you earn is paid in full, however long you play. The only brake is getting **tired**: after 12 hours of making milk in a day, milk (and seed) comes in at half speed, so pay halves too, until midnight UTC.
+- **You're paid for your daily quota**, not per ounce. A farmer or the owner sets each member's size (members list → ...): Light (6 oz at level 1, 30 coins), Steady (12 oz, 60), Heavy (18 oz, 100) or Devoted (32 oz, 170); the oz grow 2% a level up to 50. Bulls' quota is in seed. Farmers have a separate farmer quota for milk delivered (drop-offs, buy orders, contract), which the owner sets. Quotas belong to each dairy you're in. Reach it, then claim it in **Goals**. Your grade (C x1 up to S+ x1.6), your wearables and the dairy's level raise it. Daily goals pay 20 coins each and 40 more for all four.
+- **No daily limit on pay:** everything you earn is paid in full, however long you play. The only brake is getting **tired**: after 12 hours of making milk in a day, milk (and seed) comes in at half speed, so pay halves too, until the daily reset at midnight Central time. Quotas, daily goals and breeding output reset then too.
 - **Ask first (optional):** turn off "Farmers can start milking me without asking" on Roles → Cow and you get an Allow / Not now pop-up each time a farmer presses Milk on you.
 
 **Your grade**
-- Your grade is about you, not your milk. Higher grades raise your quota pay and milk you faster: B +10%, A +20%, S +35%, S+ +50% speed. (Grade no longer adds to the amount collected: the stall's tier does.) Milk itself is just milk: any of it fills any order.
+- Your grade is about you, not your milk. Higher grades raise your quota pay and milk you faster: B +10%, A +20%, S +35%, S+ +50% speed. (Grade no longer adds to the amount collected: the stall's tier does.) Milk itself is just milk: any of it fills any order or delivery.
 - Everyone starts at **Grade C**. Being milked, deliveries and quality treats build your **milk quality**, which unlocks B (150), A (800), S (2,600) and S+ (6,000).
 - **Keep getting milked:** after 3 days without a milking your grade slips one step. One milking brings it back. Going away? A **Dry-off tonic** holds your grade for 7 days.
 
@@ -111,8 +111,9 @@ Cow and bull are yours: you add or drop them, and they hold in every dairy you'r
   Pick how many with − and +; each one in a batch takes a little longer than the last. A progress bar shows how it's going; it pauses if you leave the dairy, and **Stop** keeps what's finished. **Ingredients are shared:** butter and flour go into the dairy pantry, and every farmer can bake with them. Treats go on the **dairy shelf**, where members buy them (you get 80%) or farmers feed them to cows and bulls.
 - **Jugs:** fill them from the dairy tank at the top of the **Kitchen** window. Bigger farmer tanks unlock as your farmer level grows.
 - **Deliveries:**
-  - **Customer orders**, with a new one every 20 minutes.
-  - **Other dairies' buy orders**, public or private. Fill them from inside your own dairy, or in person at a public dairy (same pay).
+  - **Drop-offs:** walk into any other dairy and leave milk from your jugs in their tank (Creamery → Deliveries), no order needed. The Grand Creamery pays you 1.5 coins an oz, your own dairy fund gets 2 coins an oz, and you get farmer XP.
+  - **Other dairies' buy orders**, public or private. Fill them from inside your own dairy, or in person at their dairy (same pay).
+  - **Daily limit:** you can deliver 30 oz a day to other dairies at farmer level 1, plus 5 oz a level (525 at level 100). Drop-offs and buy orders share it.
   - **The weekly contract** (600 oz at dairy level 1, plus 150 a level, up to 3,500), delivered in person at any **Grand Creamery**. **Dairy → Contract** shows where they are. Fill it for the full reward; if it isn't full by Monday, your dairy still gets the share it delivered.
 
 ---
@@ -122,7 +123,7 @@ Cow and bull are yours: you add or drop them, and they hold in every dairy you'r
 Breeding needs the Corruption plugin for both of you; balance may still change as we see how it plays.
 - **Bulls** make seed and get milked, the way cows make milk, with the same four bonuses. Seed fills small vials; a bull's daily quota is in seed. Add the Bull role to yourself on the Roles tab.
 - **Breeding needs** the [Corruption](https://github.com/RaylaPetal/corruption) plugin (0.3.5 or newer) and Cummy, for both of you. The bull's Corruption needs **Let other plugins control Corruption** turned on (Settings → Other plugins). The cow's Cummy blocks always apply.
-- **When a bull of your dairy finishes in a Corruption scene with a cow of your dairy, she's bred:** +5% milk for 30 minutes (less if the bull's seed output is low that day; 45 minutes with the Champion's ribbon). Once per scene, and a cow can be bred again 20 minutes after the last time. The bull gets up to 40 bull xp; after 20 breedings in a day his seed output (and xp) drops, resetting at midnight UTC.
+- **When a bull of your dairy finishes in a Corruption scene with a cow of your dairy, she's bred:** +5% milk for 30 minutes (less if the bull's seed output is low that day; 45 minutes with the Champion's ribbon). Once per scene, and a cow can be bred again 20 minutes after the last time. The bull gets up to 40 bull xp; after 20 breedings in a day his seed output (and xp) drops, resetting at midnight Central time.
 - **Who breeds whom** in Eorzea Milkers follows your roles in the dairy: a bull can breed a cow. Whether it can become a **pregnancy** is Corruption's: its Pregnancy settings (can carry, can breed) must allow it. If they don't, the scene note says so; the bred bonus and bull xp still count.
 - **Both cow and bull?** With a partner who's also both (the **Breed** button only shows then), whoever is doing the breeding targets the other and presses **Breed** on the HUD (or right-click them → Eorzea Milkers → Breed). Only that way counts, and finishing doesn't breed anyone until one of you has pressed it. Press it again to cancel. It's used up once you've bred them, so press it again next time. If you both press it, neither counts until one of you cancels.
 - **Bred bonus over:** when a cow's bred bonus runs out, everyone with the HUD in the dairy she's standing in gets a small pop-up with a soft bell ("Rayla's bred bonus has run out"), and so does she. (She can be bred again 20 minutes after the last time, so by then she's ready.)
@@ -176,10 +177,10 @@ Target someone with Eorzea Milkers and press **Scan** on the HUD (or right-click
 ## Levels, coins and goals
 
 - **Levels go to 100.** Each takes longer than the last: the first ten come quickly, the last ones take days. Reaching 100 is about six months for a dedicated player or a year of casual play.
-- **Cow levels** make milk faster (up to level 50) and unlock feed and upgrades. **Farmer levels** unlock bigger tanks and better orders.
+- **Cow levels** make milk faster (up to level 50) and unlock feed and upgrades. **Farmer levels** unlock bigger tanks, new recipes and a bigger daily delivery limit.
 - **Daily goals** (Progress tab): four for cows and four for farmers, with a bonus for finishing a set.
 - **Awards:** collect them for coins.
-- **Stats:** your lifetime totals (milk given, best grade, milkings, orders, coins). They include **breed counters**: as a cow, how many times a bull has bred you; as a bull, how many cows you've bred (scene breedings, counted from version 0.9.93 on; breeding stalls don't count).
+- **Stats:** your lifetime totals (milk given, best grade, milkings, deliveries, coins). They include **breed counters**: as a cow, how many times a bull has bred you; as a bull, how many cows you've bred (scene breedings, counted from version 0.9.93 on; breeding stalls don't count).
 - **The Shop** sells treats, tonics (Second wind, Pump drops, Udder balm, Dry-off), quality treats and, for farmers, Churn oil, wheat grain for flour and bigger farmer tanks. Everything else that used to be an upgrade (bottles, bedding, troughs, bells, wearables, bull perks) is now a **free level reward**: Shop → Level rewards lists them and the level each comes at. Wearables raise your quota pay.
 - **Comfort items:** Plush bedding (Comfy +7% instead of +4%, Comfy bar drains half as fast), Lavender bedding (Comfy +3% more, Happy bar drains half as fast), Silk cushion (Comfy bar drains 15% slower on top), Bell collar (Happy drains a little slower), Clean trough (Watered lasts half again as long), Endless spring (Watered drains 20% slower).
 - **Champion's ribbon** (cow level 28): farmers who hand milk you earn 10% more; being bred lasts 45 minutes; pregnancy gives 5% more milk.

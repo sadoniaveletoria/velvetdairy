@@ -92,13 +92,13 @@ public sealed partial class MainWindow
             };
 
             var itemProblem = item.OilMinutes > 0 ? (G.CanCarry ? null : "For farmers.")
-                : Catalog.IsBinFeed(item.Id) && G.InNetDairy ? "Your Fed bar comes from your farmers' feed bin now. Sell this back."
+                : Catalog.IsBinFeed(item.Id) && G.Networked ? "Your Fed bar comes from your farmers' feed bin now."
                 : problem;
-            var buttons = new List<Btn>
-            {
-                new($"##eat{item.Id}", item.OilMinutes > 0 ? "Use" : "Eat", "honey", itemProblem == null && have > 0 && !waiting,
-                    itemProblem ?? (have <= 0 ? "You're out. Buy more in the Shop." : waiting ? $"Quality treats share a {Grades.QualityTreatHours:0}-hour cooldown." : item.Desc)),
-            };
+            var buttons = new List<Btn>();
+            // Bin feeds aren't eaten on the network: farmers feed you from the dairy's feed bin (wheat grain still makes flour)
+            if (!(G.Networked && Catalog.IsBinFeed(item.Id)))
+                buttons.Add(new($"##eat{item.Id}", item.OilMinutes > 0 ? "Use" : "Eat", "honey", itemProblem == null && have > 0 && !waiting,
+                    itemProblem ?? (have <= 0 ? "You're out. Buy more in the Shop." : waiting ? $"Quality treats share a {Grades.QualityTreatHours:0}-hour cooldown." : item.Desc)));
             if (have > 0 && !item.Baked) buttons.Add(new Btn($"##psell1{item.Id}", $"Sell 1 - {back}", "cream", true, $"Sell one back for {back} coins (half price)."));
             if (have > 1 && !item.Baked) buttons.Add(new Btn($"##psellall{item.Id}", $"Sell all - {back * have}", "cream", true, $"Sell all {have} back for {back * have} coins."));
             buttons.Add(new Btn($"##phide{item.Id}", hidden ? "Show" : "Hide", "cream", true,

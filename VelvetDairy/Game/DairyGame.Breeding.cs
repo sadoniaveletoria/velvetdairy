@@ -595,7 +595,7 @@ public sealed partial class DairyGame
         if (Owned("breedpen") > 0) EarnDairyXp(BreedPenDairyXp);   // the dairy only counts it while you're in it
         AddBullXp(xp);
         var next = SeedNow;
-        Say($"You bred {cowName}. +{xp} bull xp" + (next < 100 ? $". You're getting tired: seed output {next}% for the next one (resets at midnight UTC)." : "."), 1);
+        Say($"You bred {cowName}. +{xp} bull xp" + (next < 100 ? $". You're getting tired: seed output {next}% for the next one (resets at midnight Central time)." : "."), 1);
         plugin.SaveConfig();
     }
 

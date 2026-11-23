@@ -23,7 +23,10 @@ const MAX_ORDER_OZ = 400;   // the biggest farmer tank: a farmer delivers an ord
 const MIN_COINS_PER_OZ = 1;
 const MAX_COINS_PER_OZ = 40;        // twice the best creamery price, so orders can't be used to hand out coins
 const DAILY_POST_COINS = 3000;      // coins one install can put into buy orders per day
-const DAILY_DELIVER_OZ = 1000;      // more than anyone can make in a day at max level
+// How much milk a farmer can deliver to other dairies a day (buy orders and drop-offs together), by farmer level
+const DELIVER_OZ_BASE = 30, DELIVER_OZ_PER_LEVEL = 5;   // 30 oz at level 1, 275 at 50, 525 at 100
+const deliverCap = (level) => DELIVER_OZ_BASE + DELIVER_OZ_PER_LEVEL * (Math.max(1, Math.min(100, Math.floor(Number(level) || 1))) - 1);
+const DELIVER_PAY = 0.25;           // a drop-off pays the farmer this much of the milk's grade price an oz (the Grand Creamery pays)
 const MAX_STALLS = 6;
 const MAX_MEMBERS = 40;
 const GRADES = 5;
@@ -42,7 +45,6 @@ const GRADE_PRICE = [6, 8, 10, 12, 14];   // coins per oz the dairy pays a cow, 
 const PAY_PER_LEVEL = 0.02;         // each dairy level adds 2% to what it pays
 const FARMER_CUT = 0.25;            // a farmer gets this share of what the cow was paid for a hand milking
 const FARMER_CUT_BIG = 0.30, FARMER_CUT_BIG_LEVEL = 45;   // ...and this much from farmer level 45
-const FARMER_DAILY_COINS = 4500;
 const COW_DAILY_HAND_OZ = 800;
 const MAX_TAKE_OZ = 400;   // the biggest farmer tank (Catalog.FarmerTankSizes): Fill up can take that much at once
 // Baked treats members buy off their dairy's shelf: item -> default price and the owner's allowed range (coins each)
@@ -167,7 +169,10 @@ class HttpError extends Error {
 
 const fail = (status, message) => { throw new HttpError(status, message); };
 const now = () => Math.floor(Date.now() / 1000);
-const today = () => new Date().toISOString().slice(0, 10);
+// The daily reset is midnight Central time (America/Chicago, so it moves with daylight saving)
+const DAY_TZ = "America/Chicago";
+const dayFmt = new Intl.DateTimeFormat("en-CA", { timeZone: DAY_TZ, year: "numeric", month: "2-digit", day: "2-digit" });
+const today = () => dayFmt.format(new Date());
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), { status, headers: { "content-type": "application/json" } });
@@ -369,6 +374,7 @@ async function route(request, env) {
     ["GET", /^\/v1\/player$/, () => lookupPlayer(env, new URL(request.url))],
     ["POST", /^\/v1\/dairy\/contract\/ship$/, () => shipToContract(env, me, request)],
     ["POST", /^\/v1\/carry\/use$/, () => useCarried(env, me, request)],
+    ["POST", /^\/v1\/deliver$/, () => deliverHere(env, me, request)],
     ["PUT", /^\/v1\/dev\/creamery$/, () => setCreamery(env, request)],
     ["DELETE", /^\/v1\/dev\/creamery\/(\d)$/, m => removeCreamery(env, request, Number(m[1]))],
     ["GET", /^\/v1\/leaderboard$/, () => leaderboard(env, me)],
@@ -1090,8 +1096,8 @@ async function myDairy(env, me) {
   const d = await env.DB.prepare("SELECT * FROM dairies WHERE id = ?").bind(mem.dairy_id).first();
   const t = now();
   const members = (await env.DB.prepare(`
-      SELECT m.install, m.role, m.name, m.world_name, m.status, i.last_seen, i.version, i.at_dairy, COALESCE(q.size, 1) AS quota
-      FROM memberships m LEFT JOIN installs i ON i.id = m.install LEFT JOIN member_quota q ON q.install = m.install
+      SELECT m.install, m.role, m.name, m.world_name, m.status, i.last_seen, i.version, i.at_dairy, COALESCE(q.size, 1) AS quota, COALESCE(q.farmer_size, 1) AS farmer_quota
+      FROM memberships m LEFT JOIN installs i ON i.id = m.install LEFT JOIN member_quotas q ON q.install = m.install AND q.dairy_id = m.dairy_id
       WHERE m.dairy_id = ? ORDER BY m.joined`).bind(d.id).all()).results;
   const stalls = (await env.DB.prepare(
     "SELECT s.*, COALESCE(c.until, 0) AS clean_until, (b.stall_id IS NOT NULL) AS breed, COALESCE(b.loaded, 0) AS loaded FROM stalls s LEFT JOIN stall_clean c ON c.stall_id = s.id LEFT JOIN breed_stalls b ON b.stall_id = s.id WHERE s.dairy_id = ? ORDER BY s.created")
@@ -1114,7 +1120,7 @@ async function myDairy(env, me) {
       online: (m.last_seen || 0) >= t - ONLINE_WINDOW, lastSeen: m.last_seen || 0, version: m.version || "", status: safeParse(m.status),
       // In THIS dairy right now (their plugin's own "in a dairy" can mean another dairy they're visiting)
       here: (m.last_seen || 0) >= t - ONLINE_WINDOW && m.at_dairy === d.id,
-      quota: m.quota,
+      quota: m.quota, farmerQuota: m.farmer_quota,
     })),
     stalls: stalls.map(s => ({ id: s.id, name: s.name, x: s.x, y: s.y, z: s.z, tier: s.tier, cleanUntil: s.clean_until > t ? s.clean_until : 0, breed: !!s.breed, loaded: s.loaded || 0 })),
     progress: await progressOut(env, d.id, stalls.length),
@@ -1307,6 +1313,7 @@ async function deleteDairy(env, me) {
   for (const m of others) await notice(env, m.install, `${d.name} closed, so you're no longer a member.`);
   await env.DB.batch([
     env.DB.prepare("DELETE FROM memberships WHERE dairy_id = ?").bind(d.id),
+    env.DB.prepare("DELETE FROM member_quotas WHERE dairy_id = ?").bind(d.id),
     env.DB.prepare("DELETE FROM stalls WHERE dairy_id = ?").bind(d.id),
     env.DB.prepare("DELETE FROM dairy_progress WHERE dairy_id = ?").bind(d.id),
     env.DB.prepare("DELETE FROM donations WHERE dairy_id = ?").bind(d.id),
@@ -1408,6 +1415,7 @@ async function leave(env, me) {
   if (mem.is_owner) fail(400, "You own this dairy. Close it instead (Dairy tab).");
   await env.DB.batch([
     env.DB.prepare("DELETE FROM memberships WHERE install = ? AND dairy_id = ?").bind(me.id, mem.dairy_id),
+    env.DB.prepare("DELETE FROM member_quotas WHERE install = ? AND dairy_id = ?").bind(me.id, mem.dairy_id),
     env.DB.prepare("DELETE FROM active_dairy WHERE install = ?").bind(me.id),
   ]);
   return { ok: true };
@@ -1421,7 +1429,10 @@ async function removeMember(env, me, target) {
   if (them.is_owner) fail(400, "The owner can't be removed.");
   const allowed = mem.is_owner || (hasRole(mem, "farmer") && !hasRole(them, "farmer"));
   if (!allowed) fail(403, "You can't remove them.");
-  await env.DB.prepare("DELETE FROM memberships WHERE install = ? AND dairy_id = ?").bind(target, mem.dairy_id).run();
+  await env.DB.batch([
+    env.DB.prepare("DELETE FROM memberships WHERE install = ? AND dairy_id = ?").bind(target, mem.dairy_id),
+    env.DB.prepare("DELETE FROM member_quotas WHERE install = ? AND dairy_id = ?").bind(target, mem.dairy_id),
+  ]);
   await notice(env, target, `You were removed from ${mem.dairy_name}.`);
   return { ok: true };
 }
@@ -1824,7 +1835,7 @@ async function handPay(env, me, request) {
   // Farmer level 45 and up get a bigger share (the farmer's plugin shares its level with the dairy)
   // A prized cow (Champion's ribbon) earns her farmer 10% more
   const cut = ((safeParse(farmer.status)?.farmerLevel || 0) >= FARMER_CUT_BIG_LEVEL ? FARMER_CUT_BIG : FARMER_CUT) * (b.prized === true ? 1.1 : 1);
-  const coins = Math.min(Math.round(counted * GRADE_PRICE[grade] * (seed ? SEED_PRICE_MULT : 1) * payBonus(p.level) * cut), FARMER_DAILY_COINS - farmUsed);
+  const coins = Math.round(counted * GRADE_PRICE[grade] * (seed ? SEED_PRICE_MULT : 1) * payBonus(p.level) * cut);   // no daily cap for farmers
   if (coins <= 0) return { ok: true, coins: 0 };
   await env.DB.batch([
     env.DB.prepare(`INSERT INTO member_pump (install, day, oz) VALUES (?, ?, ?)
@@ -1832,8 +1843,8 @@ async function handPay(env, me, request) {
     env.DB.prepare(`INSERT INTO member_pump (install, day, oz) VALUES (?, ?, ?)
       ON CONFLICT(install, day) DO UPDATE SET oz = oz + excluded.oz`).bind(farmKey, day, coins),
     // grade 1 marks game-made coins (the plugin counts them toward the day's tapering earnings); 0 = from another player
-    inboxStmt(env, farmer.install, "payout", coins, 0, 1, seed ? `${mem.name || "A bull"} paid you ${coins} coins for hand milking ${Math.round(counted * 100) / 100} oz of seed.`
-      : `${mem.name || "A cow"} paid you ${coins} coins for hand milking ${Math.round(counted * 10) / 10} oz.`),
+    inboxStmt(env, farmer.install, "payout", coins, 0, 1, seed ? `+${coins} coins for hand milking ${Math.round(counted * 100) / 100} oz of seed from ${mem.name || "a bull"}.`
+      : `+${coins} coins for hand milking ${Math.round(counted * 10) / 10} oz from ${mem.name || "a cow"}.`),
   ]);
   return { ok: true, coins };
 }
@@ -2070,7 +2081,10 @@ async function useCarried(env, me, request) {
 
 // ---------------------------------------------------------------- quotas, the feed bin, the Velvet pump
 
-/** A farmer or the owner sets a member's daily quota size. Farmers set it for cows and bulls; the owner for anyone. */
+/**
+ * A farmer or the owner sets a member's daily quota size in this dairy. There are two: the cow/bull quota (milk or seed
+ * given) and the farmer quota (milk delivered). Farmers set cow/bull quotas for others; the owner sets any of them.
+ */
 async function setQuota(env, me, install, request) {
   const b = await body(request);
   const size = int(b.size, 0, QUOTA_SIZES - 1, "size");
@@ -2078,10 +2092,15 @@ async function setQuota(env, me, install, request) {
   if (!mem || !(mem.is_owner || hasRole(mem, "farmer"))) fail(403, "Only farmers and the owner set quotas.");
   const to = await env.DB.prepare("SELECT install, role FROM memberships WHERE install = ? AND dairy_id = ?").bind(install, mem.dairy_id).first();
   if (!to) fail(404, "They aren't in your dairy.");
-  if (!mem.is_owner && !(hasRole(to, "cow") || hasRole(to, "bull"))) fail(403, "Farmers set quotas for cows and bulls; the owner sets them for farmers.");
+  const farmerQuota = b.farmer === true;
+  if (farmerQuota ? !hasRole(to, "farmer") : !(hasRole(to, "cow") || hasRole(to, "bull")))
+    fail(400, farmerQuota ? "They aren't a farmer." : "They aren't a cow or a bull.");
+  if (!mem.is_owner && farmerQuota) fail(403, "The owner sets farmers' quotas.");
   if (!mem.is_owner && install === me.id) fail(403, "The owner sets your quota.");
-  await env.DB.prepare("INSERT INTO member_quota (install, size) VALUES (?, ?) ON CONFLICT(install) DO UPDATE SET size = excluded.size").bind(install, size).run();
-  return { ok: true, size };
+  const col = farmerQuota ? "farmer_size" : "size";
+  await env.DB.prepare(`INSERT INTO member_quotas (install, dairy_id, ${col}) VALUES (?, ?, ?) ON CONFLICT(install, dairy_id) DO UPDATE SET ${col} = excluded.${col}`)
+    .bind(install, mem.dairy_id, size).run();
+  return { ok: true, size, farmer: farmerQuota };
 }
 
 async function feedBinOf(env, dairyId) {
@@ -2340,7 +2359,8 @@ async function fillOrder(env, me, id, request) {
 
   const day = today();
   const delivered = me.deliver_day === day ? me.deliver_oz : 0;
-  if (delivered + o.oz > DAILY_DELIVER_OZ) fail(400, `You can deliver up to ${DAILY_DELIVER_OZ} oz a day.`);
+  const cap = deliverCap(b.level);
+  if (delivered + o.oz > cap) fail(400, `At your farmer level you can deliver up to ${cap} oz a day to other dairies (${Math.max(0, Math.floor(cap - delivered))} left today).`);
 
   if (!(await useCarriedOz(env, me.id, o.oz))) fail(400, "Fill jugs from your dairy's tank first: you can only deliver milk you've carried out.");
 
@@ -2364,7 +2384,44 @@ async function fillOrder(env, me, id, request) {
     addXpStmt(env, d.id, o.oz * DELIVERY_XP_PER_OZ),
   ]);
   if (home && home.dairy_id !== d.id) await addXpStmt(env, home.dairy_id, o.oz * DELIVERER_XP_PER_OZ).run();
-  return { ok: true, coins: o.coins + bonus, bonus, inPerson, oz: o.oz, dairy: d.name };
+  return { ok: true, coins: o.coins + bonus, bonus, inPerson, oz: o.oz, dairy: d.name, left: Math.max(0, cap - delivered - o.oz) };
+}
+
+/**
+ * A farmer (or owner) drops milk off at another dairy they're standing in: no order needed. The milk goes into that
+ * dairy's tank, the Grand Creamery pays the farmer, and the farmer's own dairy fund gets 2 coins an oz. Capped a day
+ * by farmer level (shared with buy orders).
+ */
+async function deliverHere(env, me, request) {
+  const b = await body(request);
+  const mem = await membership(env, me.id);
+  if (!mem || !(mem.is_owner || hasRole(mem, "farmer"))) fail(403, "Only farmers and owners deliver milk.");
+  const grade = int(b.grade, 0, GRADES - 1, "grade");
+  const oz = Math.floor(Math.max(0, Math.min(MAX_ORDER_OZ, Number(b.oz) || 0)));
+  if (oz < 1) fail(400, "Deliver at least 1 oz.");
+  if (!me.at_dairy || me.last_seen < now() - ONLINE_WINDOW) fail(400, "Stand inside the dairy you're delivering to.");
+  if (me.at_dairy === mem.dairy_id) fail(400, "That's your own dairy: deliver to another one.");
+  const d = await env.DB.prepare("SELECT * FROM dairies WHERE id = ?").bind(me.at_dairy).first();
+  if (!d) fail(400, "Stand inside the dairy you're delivering to.");
+  const day = today();
+  const delivered = me.deliver_day === day ? me.deliver_oz : 0;
+  const cap = deliverCap(b.level);
+  if (delivered + oz > cap) fail(400, `At your farmer level you can deliver up to ${cap} oz a day to other dairies (${Math.max(0, Math.floor(cap - delivered))} left today).`);
+  if (!(await useCarriedOz(env, me.id, oz))) fail(400, "You don't have that much milk in your jugs (fill them from your dairy's tank).");
+  const coins = Math.round(oz * GRADE_PRICE[grade] * DELIVER_PAY);
+  const fund = Math.round(oz * ORDER_FUND_PER_OZ);
+  await env.DB.batch([
+    env.DB.prepare("UPDATE installs SET deliver_day = ?, deliver_oz = ? WHERE id = ?").bind(day, delivered + oz, me.id),
+    inboxStmt(env, me.id, "payout", coins, 0, 1, `The Grand Creamery paid you ${coins} coins for ${oz} oz delivered to ${d.name}.`),
+    env.DB.prepare(`INSERT INTO dairy_tank (dairy_id, grade, oz) VALUES (?, 0, ?)
+      ON CONFLICT(dairy_id, grade) DO UPDATE SET oz = oz + excluded.oz`).bind(d.id, oz),
+    inboxStmt(env, d.owner, "notice", 0, 0, 0, `${mem.name || "A farmer"} delivered ${oz} oz of milk into your dairy's tank.`),
+    addXpStmt(env, d.id, oz * DELIVERY_XP_PER_OZ),
+    env.DB.prepare(`INSERT INTO dairy_progress (dairy_id, fund, week) VALUES (?, ?, ?)
+      ON CONFLICT(dairy_id) DO UPDATE SET fund = fund + excluded.fund`).bind(mem.dairy_id, fund, weekKey()),
+    addXpStmt(env, mem.dairy_id, oz * DELIVERER_XP_PER_OZ),
+  ]);
+  return { ok: true, coins, fund, oz, dairy: d.name, left: Math.max(0, cap - delivered - oz), cap };
 }
 
 function gradeName(g) {
@@ -2894,17 +2951,26 @@ async function removeTestDairy(env, me) {
 async function setTestDairy(env, me, request) {
   if (env.BOTS !== "on") fail(404, "Not found.");
   const b = await body(request);
-  await removeTestDairy(env, me);
-  if (b.on !== true) return { ok: true };
+  if (b.on !== true) { await removeTestDairy(env, me); return { ok: true }; }
   const area = readArea(b.area);
   if (!area) fail(400, "Stand where the test dairy should go.");
   if (isIsland(area.territory)) fail(400, "Test dairies can't go on an island: visitors can't tell whose island it is.");
   const t = now();
-  const ownerId = await newBotInstall(env, t, null, "owner", "none", "Test Bot", { by: me.id });
-  const req = new Request("https://dev/v1/dairy", { method: "PUT", body: JSON.stringify({
+  const makeReq = () => new Request("https://dev/v1/dairy", { method: "PUT", body: JSON.stringify({
     name: "Test Pasture (dev)", description: "A bot-run public dairy for testing visits.", isPublic: true, showOwner: true,
     ownerName: "Test Bot", worldName: clean(b.worldName, 30), dcName: clean(b.dcName, 30), namesFor: area.world, roles: [],
     area: b.area, outdoorWard: b.outdoorWard, outdoorPlot: b.outdoorPlot, districtKind: b.districtKind }) });
+  // Already have one: move it (the old one stays if the new spot is taken). Its old stalls are left behind, so they go.
+  const had = await testDairyOf(env, me);
+  if (had?.dairy_id) {
+    await putDairy(env, { id: had.install }, makeReq());
+    await env.DB.prepare("DELETE FROM stalls WHERE dairy_id = ?").bind(had.dairy_id).run();
+    await tickBots(env, had.dairy_id);
+    return { ok: true, id: had.dairy_id, moved: true };
+  }
+  await removeTestDairy(env, me);
+  const ownerId = await newBotInstall(env, t, null, "owner", "none", "Test Bot", { by: me.id });
+  const req = makeReq();
   let id;
   try {
     ({ id } = await putDairy(env, { id: ownerId }, req));
@@ -2945,10 +3011,22 @@ async function tickBots(env, dairyId) {
   const bots = (await env.DB.prepare("SELECT * FROM dev_bots WHERE dairy_id = ? AND kind != 'owner'").bind(dairyId).all()).results;
   if (!bots.length) return;
   const t = now();
-  // Real members in the dairy right now (what the bot farmer can groom and feed)
-  const herd = (await env.DB.prepare(`SELECT m.install, m.name, m.role, m.status FROM memberships m JOIN installs i ON i.id = m.install
-      WHERE m.dairy_id = ? AND i.at_dairy = ? AND i.last_seen >= ? AND i.version != 'bot'`).bind(dairyId, dairyId, t - ONLINE_WINDOW).all()).results
-    .filter(m => hasRole(m, "cow") || hasRole(m, "bull"));
+  // Each bot's name (Daisy, Bessie, Hank, Clyde...)
+  const names = {};
+  for (const r of (await env.DB.prepare("SELECT install, name FROM memberships WHERE dairy_id = ?").bind(dairyId).all()).results) names[r.install] = r.name;
+  const nameOf = (bot) => names[bot.install] || (bot.kind === "cow" ? "Daisy Bot" : bot.kind === "bull" ? "Brutus Bot" : "Hank Bot");
+  // Real players the bot farmer looks after: this dairy's cows and bulls who are in ANY dairy right now (so the tester
+  // gets cared for while visiting), and players visiting this one. Their status comes from whichever membership has it.
+  const herdRows = (await env.DB.prepare(`SELECT m.install, m.name, m.role, m.status, m.dairy_id FROM memberships m JOIN installs i ON i.id = m.install
+      WHERE i.version != 'bot' AND i.last_seen >= ? AND i.at_dairy IS NOT NULL
+        AND (m.install IN (SELECT install FROM memberships WHERE dairy_id = ?) OR i.at_dairy = ?)`).bind(t - ONLINE_WINDOW, dairyId, dairyId).all()).results;
+  const herdBy = new Map();
+  for (const r of herdRows) {
+    if (!(hasRole(r, "cow") || hasRole(r, "bull"))) continue;
+    const had = herdBy.get(r.install);
+    if (!had || (r.status && !had.status) || r.dairy_id === dairyId) herdBy.set(r.install, r);
+  }
+  const herd = [...herdBy.values()];
   const bin = await feedBinOf(env, dairyId);
   const stmts = [];
   const log = [];   // what the bots did this time, for the players' chat
@@ -2976,8 +3054,8 @@ async function tickBots(env, dairyId) {
       st.milk = Math.min(BOT_MILK_CAP, (st.milk || 0) + speed * mins);
       // About every 30 minutes (or when she's full) she sits on a stall and gets milked into the tank
       if (st.milk >= 5 && (st.milk >= BOT_MILK_CAP || Math.random() < Math.min(1, mins / 30))) {
-        log.push(`Daisy Bot was milked at a stall: ${Math.round(st.milk * 10) / 10} oz into the dairy tank.`);
-        stmts.push(...botPumpStmts(env, dairyId, bot, "Daisy Bot", st.milk, false));
+        log.push(`${nameOf(bot)} was milked at a stall: ${Math.round(st.milk * 10) / 10} oz into the dairy tank.`);
+        stmts.push(...botPumpStmts(env, dairyId, bot, nameOf(bot), st.milk, false));
         st.quality = (st.quality || 0) + st.milk * 5;
         st.milk = 0;
       }
@@ -2985,8 +3063,8 @@ async function tickBots(env, dairyId) {
     if (bot.kind === "bull") {
       st.seed = Math.min(BOT_SEED_CAP, (st.seed || 0) + speed * 0.15 * mins);
       if (st.seed >= 0.5 && (st.seed >= BOT_SEED_CAP || Math.random() < Math.min(1, mins / 30))) {
-        log.push(`Brutus Bot was milked at a stall: ${Math.round(st.seed * 100) / 100} oz of seed into the seed tank.`);
-        stmts.push(...botPumpStmts(env, dairyId, bot, "Brutus Bot", st.seed, true));
+        log.push(`${nameOf(bot)} was milked at a stall: ${Math.round(st.seed * 100) / 100} oz of seed into the seed tank.`);
+        stmts.push(...botPumpStmts(env, dairyId, bot, nameOf(bot), st.seed, true));
         st.quality = (st.quality || 0) + st.seed * 50;
         st.seed = 0;
       }
@@ -2997,7 +3075,7 @@ async function tickBots(env, dairyId) {
     if (st.owed >= 50) {
       const coins = Math.floor(st.owed);
       st.owed -= coins;
-      const name = bot.kind === "cow" ? "Daisy Bot" : bot.kind === "bull" ? "Brutus Bot" : "Hank Bot";
+      const name = nameOf(bot);
       stmts.push(env.DB.prepare(`INSERT INTO dairy_progress (dairy_id, fund, week) VALUES (?, ?, ?) ON CONFLICT(dairy_id) DO UPDATE SET fund = fund + excluded.fund`).bind(dairyId, coins, weekKey()));
       stmts.push(env.DB.prepare(`INSERT INTO donations (dairy_id, install, name, coins) VALUES (?, ?, ?, ?) ON CONFLICT(dairy_id, install) DO UPDATE SET coins = coins + excluded.coins`).bind(dairyId, bot.install, name, coins));
       log.push(`${name} donated ${coins} coins to the dairy fund.`);
@@ -3010,27 +3088,27 @@ async function tickBots(env, dairyId) {
         ds.bredUntil = t + 30 * 60;
         daisy.state = JSON.stringify(ds);
         stmts.push(env.DB.prepare("UPDATE dev_bots SET state = ? WHERE install = ?").bind(daisy.state, daisy.install));
-        log.push("Brutus Bot bred Daisy Bot: she makes 5% more milk for 30 minutes.");
+        log.push(`${nameOf(bot)} bred ${nameOf(daisy)}: she makes 5% more milk for 30 minutes.`);
       }
     }
-    if (bot.kind === "farmer") await botFarmerWork(env, dairyId, bot, bots, herd, bin, mins, t, stmts, log);
+    if (bot.kind === "farmer") await botFarmerWork(env, dairyId, bot, bots, herd, bin, mins, t, stmts, log, nameOf);
     st.level = Math.min(100, 1 + Math.floor(((st.quality || 0) / 200)));
     const status = {
       bot: true, inDairy: true, milk: Math.round((st.milk || 0) * 10) / 10, cap: bot.kind === "cow" ? BOT_MILK_CAP : 0, grade: st.grade, spoiled: false,
       level: bot.kind === "cow" ? st.level : 0, farmerLevel: bot.kind === "farmer" ? 10 : 0, bullLevel: bot.kind === "bull" ? st.level : 0,
       seedOz: Math.round((st.seed || 0) * 100) / 100, seedCap: bot.kind === "bull" ? BOT_SEED_CAP : 0, seedGrade: st.grade,
       needs: [st.fed, st.water, st.comfy, st.happy].map(x => Math.round(x)), emotes: [], anyEmote: true, ask: false, handBy: "", milking: "", w: t,
-      bredBy: (st.bredUntil || 0) > t ? "Brutus Bot" : "", bredPct: (st.bredUntil || 0) > t ? 5 : 0, bredUntil: st.bredUntil || 0,
+      bredBy: (st.bredUntil || 0) > t ? (bots.filter(x => x.kind === "bull").map(nameOf)[0] || "a bull") : "", bredPct: (st.bredUntil || 0) > t ? 5 : 0, bredUntil: st.bredUntil || 0,
     };
     bot.state = JSON.stringify(st);   // later bots this tick (Brutus, Hank) work from this, not the old state
     stmts.push(env.DB.prepare("UPDATE dev_bots SET state = ?, last = ? WHERE install = ?").bind(bot.state, t, bot.install));
     stmts.push(env.DB.prepare("UPDATE memberships SET status = ? WHERE install = ?").bind(JSON.stringify(status), bot.install));
     stmts.push(env.DB.prepare("UPDATE installs SET last_seen = ?, at_dairy = ? WHERE id = ?").bind(t, dairyId, bot.install));
   }
-  // Everyone in the dairy who's a player gets what the bots did (the dev plugin prints it in chat)
+  // The dairy's players and anyone visiting get what the bots did (the dev plugin prints it in chat)
   if (log.length) {
-    const here = (await env.DB.prepare(`SELECT m.install FROM memberships m JOIN installs i ON i.id = m.install
-        WHERE m.dairy_id = ? AND i.version != 'bot' AND i.last_seen >= ?`).bind(dairyId, t - ONLINE_WINDOW).all()).results;
+    const here = (await env.DB.prepare(`SELECT id AS install FROM installs WHERE version != 'bot' AND last_seen >= ?
+        AND (id IN (SELECT install FROM memberships WHERE dairy_id = ?) OR at_dairy = ?)`).bind(t - ONLINE_WINDOW, dairyId, dairyId).all()).results;
     for (const p of here) for (const line of log.slice(0, 12)) stmts.push(inboxStmt(env, p.install, "botlog", 0, 0, 0, line));
   }
   if (stmts.length) await env.DB.batch(stmts);
@@ -3071,27 +3149,28 @@ async function milkBot(env, me, install) {
  * gives a shelf treat when Happy is low, hand milks a player cow or bull who's filling up (their plugin runs it as a
  * hand milking by Hank), cleans the stalls, rings the feeding bell about once an hour, and makes deliveries.
  */
-async function botFarmerWork(env, dairyId, bot, bots, herd, bin, mins, t, stmts, log) {
+async function botFarmerWork(env, dairyId, bot, bots, herd, bin, mins, t, stmts, log, nameOf) {
+  const me = nameOf(bot);
   const turns = Math.min(24, Math.floor(mins / 5) + (Math.random() < (mins % 5) / 5 ? 1 : 0));
   if (!turns) return;
   const feed = bin[bin.length - 1] || "hay";
   const feedIdx = Object.keys(FEED_BIN).indexOf(feed);
   // Everyone he looks after: players in the dairy (with their shared status) and the bot cow and bull
   const others = herd.map(m => ({ install: m.install, name: m.name, st: safeParse(m.status) || {}, player: true }))
-    .concat(bots.filter(x => x.kind !== "farmer").map(x => ({ install: x.install, name: x.kind === "cow" ? "Daisy Bot" : "Brutus Bot", st: safeParse(x.state) || {}, player: false })));
+    .concat(bots.filter(x => x.kind !== "farmer").map(x => ({ install: x.install, name: nameOf(x), st: safeParse(x.state) || {}, player: false })));
   for (let n = 0; n < turns && others.length; n++) {
     const to = others[Math.floor(Math.random() * others.length)];
     const needs = Array.isArray(to.st.needs) ? to.st.needs : [to.st.fed, to.st.water, to.st.comfy, to.st.happy];
     const fedLow = (needs[0] ?? 0) < 60, happyLow = (needs[3] ?? 0) < 60;
     if (fedLow) {
-      stmts.push(inboxStmt(env, to.install, "binfed", 0, 0, feedIdx, `Hank Bot fed you ${FEED_BIN[feed].name.toLowerCase()} from the feed bin.`));
-      if (!to.player) log.push(`Hank Bot fed ${to.name} ${FEED_BIN[feed].name.toLowerCase()} from the feed bin.`);
+      stmts.push(inboxStmt(env, to.install, "binfed", 0, 0, feedIdx, `${me} fed you ${FEED_BIN[feed].name.toLowerCase()} from the feed bin.`));
+      if (!to.player) log.push(`${me} fed ${to.name} ${FEED_BIN[feed].name.toLowerCase()} from the feed bin.`);
     } else if (happyLow && Math.random() < 0.5) {
-      stmts.push(inboxStmt(env, to.install, "groom", 0, 0, 0, "Hank Bot groomed you. Happy +30 min."));
-      if (!to.player) log.push(`Hank Bot groomed ${to.name}.`);
+      stmts.push(inboxStmt(env, to.install, "groom", 0, 0, 0, `${me} groomed you. Happy +30 min.`));
+      if (!to.player) log.push(`${me} groomed ${to.name}.`);
     } else if (happyLow) {
-      stmts.push(inboxStmt(env, to.install, "fed", 0, 0, Object.keys(SHELF_ITEMS).indexOf("cookies"), "Hank Bot fed you butter cookies from the dairy shelf."));
-      if (!to.player) log.push(`Hank Bot fed ${to.name} butter cookies.`);
+      stmts.push(inboxStmt(env, to.install, "fed", 0, 0, Object.keys(SHELF_ITEMS).indexOf("cookies"), `${me} fed you butter cookies from the dairy shelf.`));
+      if (!to.player) log.push(`${me} fed ${to.name} butter cookies.`);
     } else if (!to.player && (Number(to.st.milk) >= 10 || Number(to.st.seed) >= 1) && Math.random() < 0.4) {
       // Hank hand milks the bot cow or bull now and then (into the tank)
       const seed = Number(to.st.seed) >= 1 && !(Number(to.st.milk) >= 10);
@@ -3102,29 +3181,29 @@ async function botFarmerWork(env, dairyId, bot, bots, herd, bin, mins, t, stmts,
       row.state = JSON.stringify(ns);
       stmts.push(env.DB.prepare("UPDATE dev_bots SET state = ? WHERE install = ?").bind(row.state, row.install));
       stmts.push(...botPumpStmts(env, dairyId, row, to.name, oz, seed));
-      log.push(`Hank Bot hand milked ${to.name}: ${Math.round(oz * 100) / 100} oz${seed ? " of seed" : ""} into the tank.`);
+      log.push(`${me} hand milked ${to.name}: ${Math.round(oz * 100) / 100} oz${seed ? " of seed" : ""} into the tank.`);
     }
     // Hand milk a player who's filling up and not being milked (their plugin runs it; one ask every ~10 minutes at most)
     const cap = Number(to.st.cap) || 0, seedCap = Number(to.st.seedCap) || 0;
     const full = (cap > 0 && Number(to.st.milk) >= cap * 0.5) || (seedCap > 0 && Number(to.st.seedOz) >= seedCap * 0.5);
     if (to.player && full && !to.st.handBy && !to.st.stall) {
       const asked = await env.DB.prepare("SELECT MAX(created) AS at FROM inbox WHERE install = ? AND kind = 'botmilk'").bind(to.install).first();
-      if (!asked?.at || t - asked.at > 600) stmts.push(inboxStmt(env, to.install, "botmilk", 0, 0, 0, "Hank Bot comes over to hand milk you."));
+      if (!asked?.at || t - asked.at > 600) stmts.push(inboxStmt(env, to.install, "botmilk", 0, 0, 0, `${me} comes over to hand milk you.`));
     }
   }
   // Clean every stall (fresh for an hour)
   const stalls = (await env.DB.prepare("SELECT id FROM stalls WHERE dairy_id = ?").bind(dairyId).all()).results;
   for (const s of stalls)
-    stmts.push(env.DB.prepare("INSERT INTO stall_clean (stall_id, dairy_id, until, by_name) VALUES (?, ?, ?, 'Hank Bot') ON CONFLICT(stall_id) DO UPDATE SET until = MAX(until, excluded.until), by_name = excluded.by_name").bind(s.id, dairyId, t + CLEAN_SECONDS));
+    stmts.push(env.DB.prepare("INSERT INTO stall_clean (stall_id, dairy_id, until, by_name) VALUES (?, ?, ?, ?) ON CONFLICT(stall_id) DO UPDATE SET until = MAX(until, excluded.until), by_name = excluded.by_name").bind(s.id, dairyId, t + CLEAN_SECONDS, me));
   // The feeding bell, about once an hour while a player is here
   if (herd.length) {
     const bell = await bellOf(env, dairyId);
     if (t >= bell.readyAt && Math.random() < 0.5) {
-      stmts.push(env.DB.prepare("INSERT INTO dairy_notice (dairy_id, install, kind, name, created) VALUES (?, ?, 'feedingBell', 'Hank Bot', ?)").bind(dairyId, bot.install, t));
-      log.push("Hank Bot rang the feeding bell.");
+      stmts.push(env.DB.prepare("INSERT INTO dairy_notice (dairy_id, install, kind, name, created) VALUES (?, ?, 'feedingBell', ?, ?)").bind(dairyId, bot.install, me, t));
+      log.push(`${me} rang the feeding bell.`);
     }
   }
-  // Deliveries: some milk out of the tank to customers (a third of it at most, so the tank fills up too), and the
+  // Deliveries: some milk out of the tank to other dairies (a third of it at most, so the tank fills up too), and the
   // dairy fund gets its 2 coins an oz; and now and then a shipment to the weekly contract
   const tank = await tankOf(env, dairyId);
   const total = tank?.total || 0;
@@ -3136,11 +3215,11 @@ async function botFarmerWork(env, dairyId, bot, bots, herd, bin, mins, t, stmts,
       await env.DB.batch([
         env.DB.prepare("UPDATE dairy_tank SET oz = MAX(0, oz - ?) WHERE dairy_id = ? AND grade = 0").bind(ship, dairyId),
         env.DB.prepare("UPDATE contracts SET oz_done = MIN(oz_need, oz_done + ?) WHERE dairy_id = ? AND week = ? AND completed IS NULL").bind(ship, dairyId, c.week),
-        env.DB.prepare(`INSERT INTO contract_contrib (dairy_id, week, install, name, oz) VALUES (?, ?, ?, 'Hank Bot', ?)
-          ON CONFLICT(dairy_id, week, install) DO UPDATE SET oz = oz + excluded.oz`).bind(dairyId, c.week, bot.install, ship),
+        env.DB.prepare(`INSERT INTO contract_contrib (dairy_id, week, install, name, oz) VALUES (?, ?, ?, ?, ?)
+          ON CONFLICT(dairy_id, week, install) DO UPDATE SET oz = oz + excluded.oz`).bind(dairyId, c.week, bot.install, me, ship),
         addXpStmt(env, dairyId, Math.round(ship * CONTRACT_XP_PER_OZ)),
       ]);
-      log.push(`Hank Bot shipped ${ship} oz to this week's creamery contract (${Math.min(c.oz_need, c.oz_done + ship)} / ${c.oz_need}).`);
+      log.push(`${me} shipped ${ship} oz to this week's creamery contract (${Math.min(c.oz_need, c.oz_done + ship)} / ${c.oz_need}).`);
       const d = await env.DB.prepare("SELECT name FROM dairies WHERE id = ?").bind(dairyId).first();
       if (c.oz_done + ship >= c.oz_need) await finishContract(env, dairyId, d?.name || "Your dairy", c.week);
       return;
@@ -3148,7 +3227,7 @@ async function botFarmerWork(env, dairyId, bot, bots, herd, bin, mins, t, stmts,
   }
   const take = Math.floor(Math.min(total / 3, 16 * turns));
   if (take >= 1) {
-    log.push(`Hank Bot delivered ${Math.round(take)} oz to customers: +${Math.round(take * ORDER_FUND_PER_OZ)} coins for the dairy fund.`);
+    log.push(`${me} delivered ${Math.round(take)} oz to another dairy: +${Math.round(take * ORDER_FUND_PER_OZ)} coins for the dairy fund.`);
     stmts.push(env.DB.prepare("UPDATE dairy_tank SET oz = MAX(0, oz - ?) WHERE dairy_id = ? AND grade = 0").bind(take, dairyId));
     stmts.push(env.DB.prepare(`INSERT INTO dairy_progress (dairy_id, fund, week) VALUES (?, ?, ?) ON CONFLICT(dairy_id) DO UPDATE SET fund = fund + excluded.fund`).bind(dairyId, Math.round(take * ORDER_FUND_PER_OZ), weekKey()));
   }

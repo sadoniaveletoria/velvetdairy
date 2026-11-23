@@ -156,7 +156,7 @@ public class FarmSave
     public float DayDeliveredOz { get; set; }         // oz a farmer delivered today (orders, visitors, contract): their quota
     public int BalmLeft { get; set; }                 // Udder balm: hand milkings left that give more
     public DateTime OilUntilUtc { get; set; } = DateTime.MinValue;   // Churn oil: jugs fill faster until then
-    public int DayDelivered { get; set; }             // customer orders, visitor orders, buy-order deliveries, contract shipments
+    public int DayDelivered { get; set; }             // drop-offs, buy-order deliveries, contract shipments
     public int DayCowsMilked { get; set; }
     // Breeding (with the Corruption plugin)
     public DateTime BredAtUtc { get; set; }            // a cow: when a bull of her dairy last bred her
@@ -198,6 +198,8 @@ public class FarmSave
     public bool ShowOwnerHud { get; set; } = true;   // no longer used (the owner HUD was removed); kept so old saves load
     public bool ShowStallMarkers { get; set; } = true;   // a colored box on the ground around each stall (only you see it)
     public string VisitDay { get; set; } = "";
+    public float DayInDairyMinutes { get; set; }  // awake minutes inside a dairy today (a daily goal)
+    public float DayToOthersOz { get; set; }      // milk delivered to other dairies today (buy orders and drop-offs): capped by farmer level
     public float DayAwakeMinutes { get; set; }
     public int DayStall { get; set; }                 // stall milkings today (daily goal for cows)
     public bool StockPaidOut { get; set; }

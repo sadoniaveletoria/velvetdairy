@@ -14,6 +14,7 @@ public sealed partial class MainWindow
     private string listDescription = "";
     private bool listLoaded;
     private int orderOz = 16;
+    private int dropOz;
     private int orderCoins = -1;
     private string dirFilter = "";
     private bool dirPublicOnly;
@@ -120,7 +121,7 @@ public sealed partial class MainWindow
         SubHeading("How it works", width);
         Ui.Wrapped("Owners register their own estate as a dairy and invite farmers, cows and bulls. Farmers can invite cows and bulls. " +
                    "Public dairies show their address here so anyone can visit; private ones only show their name. " +
-                   "Farmers fill other dairies' buy orders from inside their own dairy (or in person at a public one), and the creamery's visitor orders in person at public dairies. " +
+                   "Farmers fill other dairies' buy orders from inside their own dairy (or in person at a public one), and can drop milk off at any other dairy they visit. " +
                    "Dairies level up from what their members do inside them; higher levels get more stalls and better stall tiers and list first.", Theme.InkSoft, width);
         if (!Lifestream.Installed)
         {
@@ -588,7 +589,7 @@ public sealed partial class MainWindow
 
         if (c.Completed)
         {
-            Ui.Wrapped("This week's contract is done. Spare milk can go to Customer orders or Deliveries (Creamery tab).", Theme.SageDeep, width);
+            Ui.Wrapped("This week's contract is done. Spare milk can go to other dairies (Creamery > Deliveries).", Theme.SageDeep, width);
             return;
         }
 
@@ -970,8 +971,7 @@ public sealed partial class MainWindow
             SubHeading("Buy orders from other dairies", width);
             JugsNote(width);
             net.RefreshBoard();
-            Ui.Wrapped("Deliver from inside your own dairy with milk in your jugs; it goes straight into their tank. " +
-                       "Public dairies pay 10% more if you deliver in person at their dairy.", Theme.InkSoft, width);
+            Ui.Wrapped("Deliver from inside your own dairy (or in person at theirs) with milk in your jugs; it goes straight into their tank and they pay what they offered.", Theme.InkSoft, width);
             if (net.Board.Count == 0) ImGui.TextColored(Theme.InkSoft, "No open buy orders right now.");
             foreach (var o in net.Board.ToList())
             {
@@ -990,26 +990,26 @@ public sealed partial class MainWindow
             Gap(8);
         }
 
-        // Visiting someone else's public dairy: the creamery's visitor orders (buy orders are in the list above)
+        // Standing in another dairy: drop milk off in their tank, no order needed (the Grand Creamery pays you)
         var visiting = G.VisitingDairy;
+        if (G.CanCarry)
+        {
+        SubHeading(visiting != null ? $"Drop milk off at {visiting.Name}" : "Drop milk off at another dairy", width);
+        Ui.Wrapped($"Bring milk from your jugs to any other dairy and leave it in their tank. The Grand Creamery pays you {Catalog.DeliverPay * Grades.All[0].Price:0.#} coins an oz, "
+                   + $"your own dairy fund gets 2 coins an oz, and you get farmer xp. You can deliver {Units.Oz(G.DeliverCap, "0")} a day to other dairies "
+                   + $"(buy orders count too; it grows with your farmer level): {Units.Oz(G.DeliverLeft, "0")} left today.", Theme.InkSoft, width);
         if (visiting != null)
         {
-            SubHeading($"Visitor orders at {visiting.Name}", width);
-
-            foreach (var o in G.VisitorOrders(visiting.Id))
-            {
-                var can = G.CanCarry && G.CanFill(o);
-                var clicked = ListRow(Ico("bottle"), $"{o.Customer} (visitor order)", Theme.Ink,
-                    new[]
-                    {
-                        new Line($"{Units.Oz(o.Oz)} of milk", Theme.InkSoft),
-                        new Line($"Pays {o.Coins} coins · {o.Xp} xp (the creamery pays)", Theme.HoneyDeep),
-                    },
-                    new[] { new Btn($"##vfill{visiting.Id}{o.Id}", "Deliver", "sage", can, can ? null : G.CanCarry ? "Fill your jugs from your dairy tank first." : "Only farmers and owners deliver milk.") }, width);
-                if (clicked == 0) G.FillVisitorOrder(visiting.Id, o);
-            }
-
-            if (G.VisitorOrders(visiting.Id).Count == 0) ImGui.TextColored(Theme.InkSoft, "No visitor orders left here today.");
+            var most = (int)Math.Floor(Math.Min(G.Carried, G.DeliverLeft));
+            dropOz = Math.Clamp(dropOz <= 0 ? most : dropOz, 0, Math.Max(0, most));
+            ImGui.SetNextItemWidth(130);
+            if (ImGui.InputInt("oz##dropoz", ref dropOz, 1, 8)) dropOz = Math.Clamp(dropOz, 0, Math.Max(0, most));
+            ImGui.SameLine();
+            var why = G.DropProblem(dropOz);
+            if (Ui.Button("##dropoff", $"Deliver · {DairyGame.DropPay(dropOz)} coins", new Vector2(190, 28), "sage", why == null, why)) G.DropOff(dropOz);
+        }
+        else ImGui.TextColored(Theme.InkSoft, "Walk into another dairy (a public one, or another one you belong to) to drop milk off.");
+        Gap(8);
         }
 
         // Owners: buy milk from other players' cows

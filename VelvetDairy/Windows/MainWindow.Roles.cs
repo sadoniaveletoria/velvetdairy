@@ -149,12 +149,12 @@ public sealed partial class MainWindow
         if (shown == 0) ImGui.TextColored(Theme.InkSoft, "Every farmer tank is unlocked.");
 
         SubHeading("What farmers do", width);
-        Ui.Wrapped("Hand milk your dairy's cows (Herd Care button): stand close, target them and press Milk; it does the emote and stops when they're empty. You get 25% of what the cow is paid, on top.", Theme.Ink, width);
-        Ui.Wrapped("Fill your farmer tank from the dairy tank (top of the Kitchen) and deliver it: customer orders, other dairies' buy and visitor orders, and the weekly contract at the Grand Creamery.", Theme.Ink, width);
+        Ui.Wrapped("Hand milk your dairy's cows (Herd Care button): stand close, target them and press Milk; it does the emote and stops when they're empty. You get 25% of what the milk is worth (30% from farmer level 45), with no daily limit.", Theme.Ink, width);
+        Ui.Wrapped("Fill your farmer tank from the dairy tank (top of the Kitchen) and deliver it: drop it off at any other dairy, fill other dairies' buy orders, or ship it to the weekly contract at the Grand Creamery. How much you can deliver to other dairies a day grows with your farmer level.", Theme.Ink, width);
         Ui.Wrapped("Invite people and give them roles, the farmer role included.", Theme.Ink, width);
 
         SubHeading("How to earn farmer xp", width);
-        Ui.Wrapped($"Grooming cows ({Catalog.GroomXp} each, every 15 min per cow), cleaning stalls ({Catalog.CleanXp} each), hand milking pay, filling jugs, customer orders, deliveries and contract shipments.", Theme.InkSoft, width);
+        Ui.Wrapped($"Grooming cows ({Catalog.GroomXp} each, every 15 min per cow), cleaning stalls ({Catalog.CleanXp} each), hand milking pay, filling jugs, deliveries to other dairies and contract shipments.", Theme.InkSoft, width);
     }
 
     /// <summary>Hand milking and the Kitchen each open their own window (Herd Care is also on the HUD).</summary>
@@ -341,7 +341,7 @@ public sealed partial class MainWindow
         }
 
         DrawFeedPicker();
-        Ui.Wrapped("You get 25% of what the cow or bull is paid, on top of their pay, plus farmer xp. A bull's seed is milked the same way, into the dairy's seed tank.", Theme.InkSoft, width);
+        Ui.Wrapped("You get 25% of what the milk is worth (30% from farmer level 45), plus farmer xp. A bull's seed is milked the same way, into the dairy's seed tank.", Theme.InkSoft, width);
     }
 
     private (string Name, string Id, float Near) feedPick;
@@ -412,7 +412,7 @@ public sealed partial class MainWindow
         SubHeading("Breeding", width);
         Ui.Wrapped("Bulls breed their dairy's cows in a scene with the Corruption plugin. When you finish in a scene with a cow of your dairy, you've bred them: they get a little more milk for a while, and you get bull xp.",
             Theme.Ink, width);
-        Ui.Wrapped($"There's no limit on how often you breed, but you tire: after {G.FreshBreedsNow} breedings a day your breeding output drops 20% each time (down to {G.SeedFloor * 100:0}%), which makes the cow's bonus and your xp smaller. It's back to full at midnight UTC.",
+        Ui.Wrapped($"There's no limit on how often you breed, but you tire: after {G.FreshBreedsNow} breedings a day your breeding output drops 20% each time (down to {G.SeedFloor * 100:0}%), which makes the cow's bonus and your xp smaller. It's back to full at midnight Central time.",
             Theme.InkSoft, width);
         Ui.Wrapped("Getting a cow pregnant is up to Corruption (their cycle and settings); Eorzea Milkers shows it when it happens.", Theme.InkSoft, width);
         if (!G.CorruptionOn) Ui.Wrapped("Corruption isn't installed or loaded, so breeding doesn't count yet. It's on GitHub: RaylaPetal/corruption.", Theme.Warn, width);
@@ -440,7 +440,7 @@ public sealed partial class MainWindow
         Gap(4);
         SeedQualityBar(width);
         Ui.Wrapped("Seed works like milk: the same needs (Fed, Watered, Comfy, Happy) speed it up, it's milked at stalls or by a farmer's hand into your dairy's seed tank, and it counts toward your daily quota. "
-                   + $"Your vials hold a tenth of your bottles. Seed comes in at {DairyGame.SeedRateByGrade[0] * 100:0}% of milk speed at Grade C, up to {DairyGame.SeedRateByGrade[^1] * 100:0}% at S+, and each oz pays {DairyGame.SeedPriceMult:0}x milk's price.",
+                   + $"Your vials hold a tenth of your bottles. Seed comes in at {DairyGame.SeedRateByGrade[0] * 100:0}% of milk speed at Grade C, up to {DairyGame.SeedRateByGrade[^1] * 100:0}% at S+. Hand milking a bull pays the farmer {DairyGame.SeedPriceMult:0}x milk's price an oz of seed.",
             Theme.InkSoft, width);
 
         SubHeading("Breeding output", width);
@@ -448,7 +448,7 @@ public sealed partial class MainWindow
         ImGui.TextColored(seed >= 100 ? Theme.SageDeep : Theme.HoneyDeep, $"{seed}% for your next breeding · bred today: {F.DayBreeds}");
         ImGui.TextColored(Theme.InkSoft, F.DayBreeds < G.FreshBreedsNow
             ? $"{G.FreshBreedsNow - F.DayBreeds} more at full output today"
-            : "You're tired: each breeding today gives a bit less. Full again at midnight UTC.");
+            : "You're tired: each breeding today gives a bit less. Full again at midnight Central time.");
         Ui.Wrapped($"Each breeding: up to {DairyGame.BreedXp} bull xp, and the cow gets +{DairyGame.BredBonus * 100:0}% milk for {DairyGame.BredMinutes} minutes, both scaled by your breeding output.", Theme.InkSoft, width);
     }
 

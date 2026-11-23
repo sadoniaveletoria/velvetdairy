@@ -679,8 +679,8 @@ public sealed partial class MainWindow : Window
         var pmin = c - new Vector2(w / 2, h / 2);
         Panel("##gate", pmin, pmin + new Vector2(w, h), "Adults only", width =>
         {
-            Ui.Wrapped("Eorzea Milkers is an adult roleplay game. You play the cow: keep yourself fed and comfortable inside your dairy, " +
-                       "get milked in your dairy's stalls or by a farmer you trust, and get paid for every ounce.", Theme.Ink, width);
+            Ui.Wrapped("Eorzea Milkers is an adult roleplay dairy game. Play a cow or a bull who gets milked at stalls or by a farmer you trust, " +
+                       "a farmer who cares for the herd and delivers the milk, or the owner who runs the dairy. Reach your daily quota to get paid.", Theme.Ink, width);
             Gap(10);
             Ui.Wrapped("Everything happens in this window and your own chat log. Nothing is ever said in public chat, and nothing moves your character for you.", Theme.InkSoft, width);
             Gap(14);
@@ -1103,6 +1103,7 @@ public sealed partial class MainWindow : Window
         foreach (var item in Catalog.Feed)
         {
             if (!G.FeedUnlocked(item) || F.HiddenFeed!.Contains(item.Id)) continue;
+            if (G.Networked && Catalog.IsBinFeed(item.Id)) continue;   // farmers feed you from the feed bin (wheat grain is for the kitchen)
             var have = G.Count(item.Id);
             if (have <= 0) continue;
             var wait = item.HoldDays > 0 ? TimeSpan.Zero : G.FeedWait(item);
@@ -1122,7 +1123,7 @@ public sealed partial class MainWindow : Window
 
         // Nothing to eat: the last card points at the Shop
         if (cells.Count == 1)
-            cells.Add(("##careshop", "clover", "Pantry empty", G.InNetDairy ? "Buy treats in the Shop" : "Buy feed in the Shop", "Shop", "cream", true, G.InNetDairy ? "Buy treats and tonics (farmers feed you from the dairy's feed bin)." : "Buy feed and treats.", () => tab = TabShop));
+            cells.Add(("##careshop", "clover", "No treats", G.Networked ? "Buy treats in the Shop" : "Buy feed in the Shop", "Shop", "cream", true, G.Networked ? "Buy treats and tonics. Farmers feed you from the dairy's feed bin." : "Buy feed and treats.", () => tab = TabShop));
 
         const float cellGap = 10f, cellH = 58f;
         var fits = Math.Clamp((int)((width + cellGap) / (230 + cellGap)), 2, 6);
@@ -1194,6 +1195,7 @@ public sealed partial class MainWindow : Window
         foreach (var item in Catalog.Feed)
         {
             if (!G.FeedUnlocked(item) || F.HiddenFeed!.Contains(item.Id)) continue;
+            if (G.Networked && Catalog.IsBinFeed(item.Id)) continue;   // farmers feed you from the feed bin
             var have = G.Count(item.Id);
             if (have <= 0) continue;   // Care only lists what you have right now (the Pantry can show the rest)
             shown++;
@@ -1212,7 +1214,7 @@ public sealed partial class MainWindow : Window
                 G.UseFeed(item.Id);
         }
 
-        if (shown == 0) Ui.Wrapped(G.InNetDairy ? "Your pantry is empty. Buy treats in the Shop." : "Your pantry is empty. Buy feed in the Shop.", Theme.InkSoft, width);
+        if (shown == 0) Ui.Wrapped(G.Networked ? "No treats in your pantry. Buy them in the Shop (farmers feed you from the dairy's feed bin)." : "Your pantry is empty. Buy feed in the Shop.", Theme.InkSoft, width);
         Gap(4);
         if (ImGui.SmallButton("Open pantry##carepantry")) tab = TabPantry;
         ImGui.SameLine();
@@ -1333,14 +1335,13 @@ public sealed partial class MainWindow : Window
     {
         // The seed market is for every member (owners buy and sell; others can see it)
         var labels = new List<string> { "Your pay" };
-        if (G.CanCarry) labels.AddRange(new[] { "Customer orders", "Deliveries" });
+        if (G.CanCarry && G.Networked) labels.Add("Deliveries");
         if (G.Networked && F.NetMember != null) labels.Add("Seed market");
         var top = SubTabs("creamery", labels.ToArray(), min, max.X - min.X);
         var (cmin, cmax) = Column(top, max, 760);
         var pick = labels[Math.Clamp(Sub("creamery"), 0, labels.Count - 1)];
         switch (pick)
         {
-            case "Customer orders": Panel("##orders", cmin, cmax, "Creamery orders", DrawOrders, true); return;
             case "Deliveries": Panel("##netorders", cmin, cmax, "Deliveries to other dairies", DrawNetOrders, true); return;
             case "Seed market": Panel("##seedmarket", cmin, cmax, "Seed market", DrawSeedMarket, true); return;
             default: Panel("##pay", cmin, cmax, "Your pay", DrawPay); return;
@@ -1351,7 +1352,7 @@ public sealed partial class MainWindow : Window
     private void DrawPay(float width)
     {
         Ui.Wrapped("You're paid for reaching your daily quota, not per ounce. A farmer or the owner sets its size; reach it and claim it in Goals once a day. "
-                   + "Your milk goes into the dairy's tank, and farmers deliver it to customers (which pays them and the dairy fund).", Theme.InkSoft, width);
+                   + "Your milk goes into the dairy's tank, and farmers deliver it to other dairies and the Grand Creamery (which pays them and the dairy fund).", Theme.InkSoft, width);
         Gap(6);
         if (G.Producer)
         {
@@ -1368,8 +1369,9 @@ public sealed partial class MainWindow : Window
         {
             SubHeading("Your farmer quota", width);
             ImGui.TextColored(F.DayDeliveredOz >= G.FarmerQuotaNeed ? Theme.SageDeep : Theme.Ink,
-                $"{Catalog.QuotaNames[G.QuotaSize]}: delivered {Units.Oz(F.DayDeliveredOz, "0")} / {Units.Oz(G.FarmerQuotaNeed, "0")} today · pays {G.FarmerQuotaCoins:N0} coins");
-            Ui.Wrapped("Orders, visitor orders, buy orders and the weekly contract all count. Each creamery order also pays you, and the dairy fund 2 coins an oz.", Theme.InkSoft, width);
+                $"{Catalog.QuotaNames[G.FarmerQuotaSize]}: delivered {Units.Oz(F.DayDeliveredOz, "0")} / {Units.Oz(G.FarmerQuotaNeed, "0")} today · pays {G.FarmerQuotaCoins:N0} coins");
+            Ui.Wrapped("Milk dropped off at other dairies, their buy orders and the weekly contract all count. The owner sets its size. "
+                       + "Drop-offs also pay you (the Grand Creamery) and your dairy fund 2 coins an oz.", Theme.InkSoft, width);
         }
 
         Gap(4);
@@ -1394,8 +1396,8 @@ public sealed partial class MainWindow : Window
         ImGui.TextColored(Theme.InkSoft, $"Milk given today: {Units.Oz(F.DayOz, "0.#")}");
         ImGui.TextColored(Theme.InkSoft, $"Earned today: {F.DayEarned:N0}" + (G.ProducesSeed ? $" · seed: {F.DaySeedEarned:N0}" : ""));
         ImGui.TextColored(G.Tired ? Theme.HoneyDeep : Theme.InkSoft, G.Tired
-            ? $"Tired: after {G.TiredHours} hours of milk today, milk (and its pay) comes in at half speed until the daily reset."
-            : $"No daily limit on pay. After {G.TiredHours} hours of milk in a day you get tired: milk comes in at half speed until the daily reset.");
+            ? $"Tired: after {G.TiredHours} hours of milk today, milk comes in at half speed until the daily reset (midnight Central time)."
+            : $"No daily limit on pay. After {G.TiredHours} hours of milk in a day you get tired: milk comes in at half speed until the daily reset (midnight Central time).");
     }
 
     /// <summary>One line on what you carry, with a button to the Kitchen where jugs are filled.</summary>
@@ -1406,40 +1408,6 @@ public sealed partial class MainWindow : Window
         if (ImGui.SmallButton("Fill jugs##jugsnote")) plugin.Kitchen.IsOpen = true;
         if (ImGui.IsItemHovered()) ImGui.SetTooltip(Units.Text("Jugs are filled from the dairy tank at the top of the Kitchen window."));
         Gap(4);
-    }
-
-    private void DrawOrders(float width)
-    {
-        var orders = F.Orders!;
-        JugsNote(width);
-        if (orders.Count == 0) Ui.Wrapped("No orders right now.", Theme.InkSoft, width);
-
-        foreach (var o in orders.ToList())
-        {
-            var have = G.Carried;
-            var can = G.CanFill(o);
-            var clicked = ListRow(Ico("bottle"), o.Customer, Theme.Ink,
-                new[]
-                {
-                    new Line($"{Units.Oz(o.Oz)} of milk", Theme.InkSoft),
-                    new Line($"Pays {o.Coins} coins · {o.Xp} xp", Theme.HoneyDeep),
-                    new Line($"You have {Units.Num(Math.Min(have, o.Oz), "0")} of {Units.Num(o.Oz)} {Units.Unit}", can ? Theme.SageDeep : Theme.InkSoft),
-                },
-                new[]
-                {
-                    new Btn($"##decl{o.Id}", "Pass", "cream", true, "Turn it down. A new order comes in 20 minutes."),
-                    new Btn($"##fill{o.Id}", "Deliver", "sage", can, can ? null : "Not enough milk of that grade yet."),
-                }, width, have / o.Oz, can ? Theme.SageDeep : Theme.BlueDeep);
-            if (clicked == 0) G.Decline(o);
-            else if (clicked == 1) G.Fill(o);
-        }
-
-        if (orders.Count < 3)
-        {
-            var wait = F.NextOrderUtc - DateTime.UtcNow;
-            ImGui.TextColored(Theme.InkSoft, wait.TotalSeconds > 0 ? $"Next order in {Mins(wait)}." : "A new order is on its way.");
-        }
-
     }
 
     // =====================================================================
@@ -1471,7 +1439,7 @@ public sealed partial class MainWindow : Window
 
     private void DrawFarmerTankShop(float width)
     {
-        Ui.Wrapped("Farmers and owners carry milk from the dairy tank to customers, other dairies and the Grand Creamery. A bigger tank carries more per trip. New sizes unlock with your farmer level.",
+        Ui.Wrapped("Farmers and owners carry milk from the dairy tank to other dairies and the Grand Creamery. A bigger tank carries more per trip. New sizes unlock with your farmer level.",
             Theme.InkSoft, width);
         Gap(6);
         UpgradeRow(Catalog.Upgrades.First(u => u.Id == "farmtank"), width);

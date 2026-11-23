@@ -25,14 +25,17 @@ public sealed class ChangelogWindow : Window
     {
         new("0.9.99", "Quotas, the feed bin and the Velvet pump", new[]
         {
-            "Pay works like a dairy now: you're paid for reaching your daily quota, not per ounce. A farmer or the owner sets its size (Light, Steady, Heavy or Devoted: bigger pays more). Claim it in Goals. Your grade, wearables and the dairy's level raise it. Daily goals pay 20 each and 40 for all four.",
-            "Bulls' quota is in seed; farmers' is milk delivered (orders, visitors, buy orders and the contract). Creamery orders pay the farmer and the dairy fund (2 coins an oz).",
+            "Pay works like a dairy now: you're paid for reaching your daily quota, not per ounce. A farmer or the owner sets its size (Light, Steady, Heavy or Devoted: bigger pays more). Claim it in Goals. Your grade, wearables and the dairy's level raise it. Daily goals pay 20 each and 40 for all four; \"Give 10 oz\" is now \"Spend 30 minutes in a dairy\".",
+            "Bulls' quota is in seed. Farmers have their own farmer quota for milk delivered, set separately by the owner. Quotas belong to each dairy you're in.",
+            "Creamery customer orders and visitor orders are gone. Instead, farmers drop milk off at any other dairy they visit (Creamery > Deliveries), no order needed: it goes into that dairy's tank, the Grand Creamery pays the farmer, and the farmer's own dairy fund gets 2 coins an oz. How much you can deliver to other dairies a day grows with your farmer level (30 oz at level 1, plus 5 a level; buy orders count too).",
+            "Hand milking has no daily limit for farmers any more.",
+            "The daily reset is midnight Central time now (it was midnight UTC): quotas, goals, being tired and breeding output.",
             "Upgrades are free: bottles, bedding, troughs, bells, wearables and bull perks come with your level (Shop > Level rewards). Farmers still buy bigger farmer tanks (200 to 7,500; the biggest at farmer level 40).",
             "Farmers feed you now: your Fed bar comes from the dairy's feed bin (Herd Care > Feed), free and unlimited. The owner unlocks better feed with the fund (Dairy > Feed & pump). You still drink, rest and have treats yourself, but a farmer's baked treats are better than the ones you buy.",
             "New: the Velvet pump (dairy level 5, 2,500 from the fund): everyone's milk and seed +15% for 2 hours. Home pasture: +10% when you're milked in your own dairy.",
             "New in the Shop: Pump drops (+25% milk and seed for 30 min), Udder balm (your next 3 hand milkings give 20% more; no longer an upgrade), Second wind tonic (tire 2 hours later today, for everyone) and Churn oil (farmers' jugs fill twice as fast for an hour).",
             "Filling jugs takes time: 1 oz a second, staying in the dairy.",
-            "Your quota shows on the mini HUD under your milk. The owner can feed from the feed bin too, and playing alone off the network you still feed yourself.",
+            "Your quota shows on the mini HUD under your milk. The owner can feed from the feed bin too. Feed isn't eaten from your pantry on the network any more (no Eat button); playing alone off the network you still feed yourself.",
             "Dozing and falling asleep now only look at real key, mouse or controller input. A Corruption scene (which moves and emotes you, and posts emote lines as you) no longer keeps you awake while you're away. Support info says what last counted as you being there.",
             "Bulls: seed comes in faster at the lower grades (15% of milk speed at Grade C) and gives less xp per oz (breedings make up the rest).",
             "Dairy fund prices: new stalls 500, 2,000, 4,500, 8,000..., stall tiers 300, 1,000 and 2,500. The weekly contract is 600 oz at dairy level 1, plus 150 a level, up to 3,500.",
