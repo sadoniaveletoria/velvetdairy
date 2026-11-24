@@ -151,22 +151,24 @@ public sealed class KitchenWindow : Window
         var q = search.Trim();
         foreach (var group in new[] { "Ingredients", "Treats" })
         {
-            var recipes = Catalog.Recipes.Where(r => Group(r) == group && (q.Length == 0 || r.Name.Contains(q, StringComparison.OrdinalIgnoreCase))).ToList();
+            // Lab treats only show once your dairy has found them: what's still out there is a surprise
+            var recipes = Catalog.Recipes.Where(r => Group(r) == group && (!Catalog.IsLabTreat(r.Id) || G.LabFound(r.Id))
+                                                     && (q.Length == 0 || r.Name.Contains(q, StringComparison.OrdinalIgnoreCase))).ToList();
             if (recipes.Count == 0) continue;
             ImGui.TextColored(Theme.RoseDeep, group.ToUpperInvariant());
             foreach (var r in recipes)
             {
                 if (selected.Length == 0) selected = r.Id;
                 var ready = G.MakeProblem(r) == null;
-                var labLocked = r.Id == "studhoney" && !G.LabFound("studhoney");
-                var locked = G.FarmerLevel < r.FarmerLevel || labLocked;
+                // A lab treat you've found can be baked whatever your level (the level is only when it can be drawn)
+                var locked = G.FarmerLevel < r.FarmerLevel && !Catalog.IsLabTreat(r.Id);
                 var dl = ImGui.GetWindowDrawList();
                 var p = ImGui.GetCursorScreenPos();
                 var h = ImGui.GetTextLineHeight();
                 dl.AddCircleFilled(p + new Vector2(5, h / 2 + 1), 3.5f, ImGui.ColorConvertFloat4ToU32(ready ? Theme.SageDeep : Theme.InkSoft with { W = 0.4f }));
                 // On the right: how many the dairy has (on the shelf, or in the pantry), or the level a locked one needs
                 var have = Have(r);
-                var right = labLocked ? "Lab" : locked ? $"Lv {r.FarmerLevel}" : $"{have}";
+                var right = locked ? $"Lv {r.FarmerLevel}" : $"{have}";
                 var rowW = ImGui.GetContentRegionAvail().X;
                 var cw = ImGui.CalcTextSize(right).X;
                 ImGui.SetCursorScreenPos(p + new Vector2(14, 0));
@@ -187,21 +189,20 @@ public sealed class KitchenWindow : Window
         if (G.Networked && F.NetMember != null && (q.Length == 0 || "experimental lab".Contains(q, StringComparison.OrdinalIgnoreCase)))
         {
             ImGui.TextColored(Theme.RoseDeep, "LAB");
-            var found = G.Net.Progress?.Lab?.Count ?? 0;
+            var found = G.Net.Lab?.Found.Count ?? G.Net.Progress?.Lab?.Count ?? 0;
             var labLocked = G.FarmerLevel < Catalog.LabLevel;
             if (labLocked) ImGui.PushStyleColor(ImGuiCol.Text, Theme.InkSoft with { W = 0.6f });
-            if (ImGui.Selectable(labLocked ? $"Experimental lab (farmer level {Catalog.LabLevel})##klab" : $"Experimental lab ({found}/4 found)##klab", selected == "lab")) selected = "lab";
+            if (ImGui.Selectable(labLocked ? $"Experimental lab (farmer level {Catalog.LabLevel})##klab" : $"Experimental lab ({found} found)##klab", selected == "lab")) selected = "lab";
             if (labLocked) ImGui.PopStyleColor();
             if (ImGui.IsItemHovered()) ImGui.SetTooltip(Units.Text(labLocked ? $"Opens at farmer level {Catalog.LabLevel}, when you can make flour." : "Seed from the seed tank and a catalyst, for discoveries only your dairy has."));
         }
     }
 
-    private string labProject = "labmash";
-    private int labCatalyst, labHeat;
+    private int labCatalyst;
 
     /// <summary>
-    /// The Experimental lab: 2 oz of seed with a catalyst (butter, flour or milk) at a heat. Each dairy's best catalyst and
-    /// heat for each project is hidden and its own; getting closer gives more research. 20 research makes the discovery.
+    /// The Experimental lab: seed and a catalyst go into research, and nobody knows what it is until it's found. The
+    /// first experiment secretly draws a treat or a rare find the dairy doesn't have yet, from what your farmer level allows.
     /// </summary>
     private void DrawLab(float width)
     {
@@ -209,65 +210,48 @@ public sealed class KitchenWindow : Window
         var lab = G.Net.Lab;
         ImGui.TextColored(Theme.Ink, "Experimental lab");
         Ui.Wrapped($"Each experiment takes {Units.Oz(lab?.SeedOz ?? 2, "0")} of seed from the dairy's seed tank and a catalyst: 1 butter or 1 flour from the dairy pantry, " +
-                   $"or {Units.Oz(lab?.MilkOz ?? 4, "0")} of milk from your jugs. Pick a heat too. Every dairy's best catalyst and heat for each project is different and hidden: " +
-                   "the right pair gives 6 research, one of the two gives 3 (and you're told which), neither gives 1. 20 research makes the discovery for your whole dairy.", Theme.InkSoft, width);
+                   $"or {Units.Oz(lab?.MilkOz ?? 4, "0")} of milk from your jugs. Nobody knows what you're researching until it's found: a new treat for the Kitchen, " +
+                   "or a rare find that makes something in the dairy better. Higher farmer levels open rarer, stronger ones. What's found is the whole dairy's.", Theme.InkSoft, width);
         if (lab == null)
         {
             ImGui.TextColored(G.Net.LabError != null ? Theme.Warn : Theme.InkSoft, G.Net.LabError != null ? $"Couldn't load the lab: {G.Net.LabError} (trying again)" : "Loading...");
             return;
         }
 
+        ImGui.Spacing();
         ImGui.TextColored(Theme.BlueDeep, $"Seed tank: {Units.Oz(lab.Tank, "0.#")}");
-        ImGui.Spacing();
-        foreach (var pr in lab.Projects)
-        {
-            var label = pr.Done ? $"{pr.Name} · found" : $"{pr.Name} · {pr.Points} / {lab.Need}";
-            if (ImGui.RadioButton($"{label}##lp{pr.Id}", labProject == pr.Id)) labProject = pr.Id;
-        }
-
-        var cur = lab.Projects.FirstOrDefault(x => x.Id == labProject) ?? lab.Projects.FirstOrDefault();
-        if (cur == null) return;
-        ImGui.Spacing();
-        ImGui.Separator();
-        ImGui.TextColored(Theme.Ink, cur.Name);
-        Ui.Wrapped(cur.What, Theme.InkSoft, width);
-        ImGui.PushStyleColor(ImGuiCol.PlotHistogram, cur.Done ? Theme.SageDeep : Theme.HoneyDeep);
-        ImGui.ProgressBar(Math.Clamp(cur.Points / (float)Math.Max(1, lab.Need), 0, 1), new Vector2(Math.Min(width, 320), 10), "");
+        ImGui.TextColored(Theme.Ink, lab.Current is { } c ? $"Researching: something unknown · {c.Points} / {lab.Need}" : "No research going: your next experiment starts something new.");
+        ImGui.PushStyleColor(ImGuiCol.PlotHistogram, Theme.HoneyDeep);
+        ImGui.ProgressBar(Math.Clamp((lab.Current?.Points ?? 0) / (float)Math.Max(1, lab.Need), 0, 1), new Vector2(Math.Min(width, 320), 10), "");
         ImGui.PopStyleColor();
-        if (cur.Done)
-        {
-            ImGui.TextColored(Theme.SageDeep, "Discovered: your dairy has it.");
-            return;
-        }
-
-        string Nice(string x) => x.Length == 0 ? "?" : char.ToUpperInvariant(x[0]) + x[1..];
-        ImGui.TextColored(Theme.Ink, $"Best catalyst: {Nice(cur.Catalyst)} · best heat: {Nice(cur.Heat)}");
-        if (cur.Tried.Count > 0)
-        {
-            ImGui.TextColored(Theme.InkSoft, "Tried: " + string.Join(", ", cur.Tried.TakeLast(6).Select(t => $"{Nice(t.Catalyst)}/{t.Heat} +{t.Gain}")));
-        }
+        Ui.Wrapped(lab.Left > 0 ? $"{lab.Left} still to find at your farmer level" + (lab.Later > 0 ? $", and {lab.Later} more at higher levels." : ".")
+            : lab.Later > 0 ? $"Your dairy has found everything your farmer level allows. {lab.Later} more open at higher levels." : "Your dairy has found everything!", Theme.InkSoft, width);
 
         ImGui.Spacing();
         ImGui.TextColored(Theme.Ink, "Catalyst");
         for (var i = 0; i < Catalog.LabCatalysts.Length; i++)
         {
-            var c = Catalog.LabCatalysts[i];
-            var have = c == "milk" ? $"{Units.Oz(G.Carried, "0")} in your jugs" : $"{G.Net.DairyPantry.GetValueOrDefault(c)} in the pantry";
+            var cat = Catalog.LabCatalysts[i];
+            var have = cat == "milk" ? $"{Units.Oz(G.Carried, "0")} in your jugs" : $"{G.Net.DairyPantry.GetValueOrDefault(cat)} in the pantry";
+            var nice = char.ToUpperInvariant(cat[0]) + cat[1..];
             if (i > 0) ImGui.SameLine();
-            if (ImGui.RadioButton($"{Nice(c)} ({have})##lc{i}", labCatalyst == i)) labCatalyst = i;
-        }
-
-        ImGui.TextColored(Theme.Ink, "Heat");
-        for (var i = 0; i < Catalog.LabHeats.Length; i++)
-        {
-            if (i > 0) ImGui.SameLine();
-            if (ImGui.RadioButton($"{Nice(Catalog.LabHeats[i])}##lh{i}", labHeat == i)) labHeat = i;
+            if (ImGui.RadioButton($"{nice} ({have})##lc{i}", labCatalyst == i)) labCatalyst = i;
         }
 
         ImGui.Spacing();
-        var why = G.LabProblem(Catalog.LabCatalysts[labCatalyst]);
-        if (Ui.Button("##labtry", "Experiment", new Vector2(140, 28), "rose", why == null, why ?? $"+{Catalog.LabXp} farmer xp, and some dairy xp."))
-            G.LabTry(cur.Id, Catalog.LabCatalysts[labCatalyst], Catalog.LabHeats[labHeat]);
+        var why = lab.Left == 0 && lab.Current == null ? "Nothing left to find at your farmer level." : G.LabProblem(Catalog.LabCatalysts[labCatalyst]);
+        if (Ui.Button("##labtry", "Experiment", new Vector2(140, 28), "rose", why == null, why ?? $"+2 to 5 research, +{Catalog.LabXp} farmer xp, and some dairy xp."))
+            G.LabTry(Catalog.LabCatalysts[labCatalyst]);
+
+        if (lab.Found.Count == 0) return;
+        ImGui.Spacing();
+        ImGui.Separator();
+        ImGui.TextColored(Theme.RoseDeep, $"FOUND ({lab.Found.Count} of {lab.Total})");
+        foreach (var f in lab.Found.OrderBy(x => x.Level))
+        {
+            ImGui.TextColored(Theme.Ink, f.Name + (f.Kind == "treat" ? " · a Kitchen recipe" : ""));
+            Ui.Wrapped(f.What, Theme.InkSoft, width);
+        }
     }
 
     private void DrawRecipe(float width)

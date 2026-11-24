@@ -1155,8 +1155,8 @@ public sealed class NetClient : IDisposable
         }, e => LabError = e);
     }
 
-    public void LabTry(string project, string catalyst, string heat, Action<LabTryReply> ok, Action<string> failed) =>
-        Call<LabTryReply>("POST", "/v1/lab/try", new { project, catalyst, heat }, r =>
+    public void LabTry(string catalyst, Action<LabTryReply> ok, Action<string> failed) =>
+        Call<LabTryReply>("POST", "/v1/lab/try", new { catalyst }, r =>
         {
             RefreshLab(true);
             RefreshPantry(true);

@@ -55,7 +55,27 @@ const SHELF_ITEMS = {
   cheese: { name: "Cheese", price: 25, min: 5, max: 100 },   // new items go at the end: fed notices carry the item's place here
   cake: { name: "Honey cream cakes", price: 110, min: 20, max: 400 },
   tart: { name: "Velvet tarts", price: 160, min: 30, max: 600 },
-  studhoney: { name: "Stud's honey", price: 90, min: 20, max: 300, lab: true },   // a lab discovery
+  studhoney: { name: "Stud's honey", price: 90, min: 20, max: 300, lab: true },   // lab discoveries from here on
+  crullers: { name: "Honey crullers", price: 40, min: 10, max: 160, lab: true },
+  scones: { name: "Oat scones", price: 40, min: 10, max: 160, lab: true },
+  milktea: { name: "Milk tea", price: 44, min: 11, max: 176, lab: true },
+  shortbread: { name: "Shortbread", price: 48, min: 12, max: 192, lab: true },
+  creampuffs: { name: "Cream puffs", price: 58, min: 14, max: 232, lab: true },
+  clovertarts: { name: "Clover tarts", price: 62, min: 15, max: 248, lab: true },
+  cinnamon: { name: "Cinnamon rolls", price: 66, min: 16, max: 264, lab: true },
+  custard: { name: "Warm custard", price: 75, min: 18, max: 300, lab: true },
+  eclairs: { name: "Velvet eclairs", price: 85, min: 21, max: 340, lab: true },
+  spicedloaf: { name: "Spiced loaf", price: 93, min: 23, max: 372, lab: true },
+  sorbet: { name: "Melon sorbet", price: 102, min: 25, max: 408, lab: true },
+  pillowcakes: { name: "Pillow cakes", price: 111, min: 27, max: 444, lab: true },
+  toffee: { name: "Honeycomb toffee", price: 121, min: 30, max: 484, lab: true },
+  heartypie: { name: "Hearty pie", price: 129, min: 32, max: 516, lab: true },
+  cordial: { name: "Rose cordial", price: 138, min: 34, max: 552, lab: true },
+  brulee: { name: "Creme brulee", price: 156, min: 39, max: 624, lab: true },
+  souffle: { name: "Golden souffle", price: 166, min: 41, max: 664, lab: true },
+  pavlova: { name: "Starfruit pavlova", price: 183, min: 45, max: 732, lab: true },
+  truffles: { name: "Midnight truffles", price: 195, min: 48, max: 780, lab: true },
+  weddingcake: { name: "Velvet wedding cake", price: 210, min: 52, max: 840, lab: true },
 };
 const SHELF_BAKER_SHARE = 0.8;      // the rest goes to the dairy fund
 const SHELF_MAX_STOCK = 200;        // per item per dairy      // delivering a buy order in person at the buyer's public area pays 10% more
@@ -1172,7 +1192,7 @@ async function progressOut(env, dairyId, stallCount) {
     feedBin: await feedBinOf(env, dairyId),
     feedBinShop: Object.entries(FEED_BIN).filter(([, f]) => !f.lab).map(([item, f]) => ({ item, name: f.name, level: f.level, price: f.price })),
     lab: await labDoneOf(env, dairyId),
-    pumpUntil: await pumpUntilOf(env, dairyId), pumpCost: PUMP_COST, pumpLevel: PUMP_LEVEL, pumpMinutes: PUMP_SECONDS / 60,
+    pumpUntil: await pumpUntilOf(env, dairyId), pumpCost: PUMP_COST, pumpLevel: PUMP_LEVEL, pumpMinutes: (PUMP_SECONDS + ((await labDoneOf(env, dairyId)).includes("pumpoil") ? 1800 : 0)) / 60,
   };
 }
 
@@ -1601,11 +1621,12 @@ async function groom(env, me, request) {
     .bind(cowId, "cow", "bull", mem.dairy_id, mem.dairy_id, now() - ONLINE_WINDOW, mem.dairy_id).first();
   if (!cow) fail(400, "They aren't a cow or bull in your dairy (or visiting it).");
   const t = now();
+  const silk = await labCareFlag(env, mem.dairy_id, "silkbrush");   // Silk brushes (a lab find): a better groom
   const last = await env.DB.prepare("SELECT at FROM grooms WHERE farmer = ? AND cow = ?").bind(me.id, cow.install).first();
   if (last && t - last.at < GROOM_COOLDOWN) fail(400, `You can groom ${cow.name} again in ${Math.ceil((GROOM_COOLDOWN - (t - last.at)) / 60)} min.`);
   await env.DB.batch([
     env.DB.prepare(`INSERT INTO grooms (farmer, cow, at) VALUES (?, ?, ?) ON CONFLICT(farmer, cow) DO UPDATE SET at = excluded.at`).bind(me.id, cow.install, t),
-    inboxStmt(env, cow.install, "groom", 0, 0, 0, `${mem.name || "A farmer"} groomed you: Happy +6% and Comfy +4% for 20 minutes.`),
+    inboxStmt(env, cow.install, "groom", 0, 0, silk, `${mem.name || "A farmer"} groomed you: Happy +${silk ? 8 : 6}% and Comfy +${silk ? 6 : 4}% for 20 minutes.`),
   ]);
   return { ok: true, next: t + GROOM_COOLDOWN };
 }
@@ -2163,9 +2184,10 @@ async function binFeed(env, me, request) {
   const last = await env.DB.prepare("SELECT at FROM bin_feeds WHERE member = ?").bind(key).first();
   if (last && last.at + FEED_COOLDOWN > t) fail(400, `${to.name} can be ${water ? "watered" : "fed"} again in ${Math.ceil((last.at + FEED_COOLDOWN - t) / 60)} min.`);
   if (water) {
+    const spring = await labCareFlag(env, mem.dairy_id, "springwater");   // Spring water (a lab find): better water
     await env.DB.batch([
       env.DB.prepare("INSERT INTO bin_feeds (member, at) VALUES (?, ?) ON CONFLICT(member) DO UPDATE SET at = excluded.at").bind(key, t),
-      inboxStmt(env, to.install, "watered", 0, 0, 0, `${mem.name || "A farmer"} brought you fresh water.`),
+      inboxStmt(env, to.install, "watered", 0, 0, spring, `${mem.name || "A farmer"} brought you ${spring ? "spring water" : "fresh water"}.`),
     ]);
     return { ok: true, next: t + FEED_COOLDOWN };
   }
@@ -2189,9 +2211,10 @@ async function startPump(env, me) {
   if (p.level < PUMP_LEVEL) fail(400, `The Velvet pump needs dairy level ${PUMP_LEVEL}.`);
   const t = now();
   const until = await pumpUntilOf(env, d.id);
-  if (until - t > PUMP_SECONDS) fail(400, "The pump is already running for over 2 hours.");
+  const pumpSecs = (await labDoneOf(env, d.id)).includes("pumpoil") ? PUMP_SECONDS + 1800 : PUMP_SECONDS;   // Pump oil (a lab find)
+  if (until - t > pumpSecs) fail(400, `The pump is already running for over ${pumpSecs / 3600} hours.`);
   if (!(await spendFund(env, d.id, PUMP_COST))) fail(400, `The Velvet pump costs ${PUMP_COST.toLocaleString("en-US")} coins from the dairy fund.`);
-  const next = Math.max(until, t) + PUMP_SECONDS;
+  const next = Math.max(until, t) + pumpSecs;
   await env.DB.prepare("INSERT INTO dairy_pump (dairy_id, until) VALUES (?, ?) ON CONFLICT(dairy_id) DO UPDATE SET until = excluded.until").bind(d.id, next).run();
   return { ok: true, until: next };
 }
@@ -3412,17 +3435,42 @@ async function seasonPour(env, me, request) {
   return { ok: true, oz, xp, total: Math.round(total * 10) / 10, pct: seasonPct(total), tank: Math.round((await seedTank(env, mem.dairy_id)) * 100) / 100 };
 }
 
-// The Experimental lab: farmers (and the owner) put 2 oz of seed with a catalyst (butter, flour or 4 oz of milk from
-// their jugs) at a heat (low, medium, high). Each dairy's best catalyst and heat for each project is hidden and its own.
-// The right pair gives 6 research, one of the two 3 (and says which), neither 1. 20 research finishes a project.
+// The Experimental lab (from farmer level 6). Farmers and the owner put seed and a catalyst (1 butter or 1 flour from the
+// dairy pantry, or 4 oz of milk from their jugs) into research. Nobody knows what they're researching: the first
+// experiment secretly draws something the dairy hasn't found yet, from what the farmer's level allows (rare finds come
+// up half as often as treats). Each experiment adds 2-5 research; at 20 it's revealed, for the whole dairy.
 const LAB_SEED_OZ = 2, LAB_MILK_OZ = 4, LAB_NEED = 20, LAB_XP = 10, LAB_LEVEL = 6;   // farmer level 6: when flour opens
-const LAB_PROJECTS = {
-  labmash: { name: "Lab mash", what: "A feed for the bin: Fed +28% for 20 minutes, more than Golden mash." },
-  studhoney: { name: "Stud's honey", what: "A Kitchen recipe for the shelf: Fed +12% and Happy +12% at once, for 20 minutes." },
-  muskoil: { name: "Musk oil", what: "Velvet musk lasts 2 hours instead of 1." },
-  culture: { name: "Fertile culture", what: "Loading a breeding stall takes 2 oz of seed instead of 3." },
+const LAB_POOL = {
+  crullers: { name: "Honey crullers", level: 6, kind: "treat", weight: 1, what: "A shelf treat: Happy +9% for 20 minutes." },
+  scones: { name: "Oat scones", level: 6, kind: "treat", weight: 1, what: "A shelf treat: Fed +9% for 20 minutes." },
+  milktea: { name: "Milk tea", level: 8, kind: "treat", weight: 1, what: "A shelf treat: Watered +8% for 20 minutes." },
+  shortbread: { name: "Shortbread", level: 10, kind: "treat", weight: 1, what: "A shelf treat: Happy +6% and Comfy +6% for 20 minutes." },
+  studhoney: { name: "Stud's honey", level: 12, kind: "treat", weight: 1, what: "A shelf treat: Fed +12% and Happy +12% for 20 minutes." },
+  creampuffs: { name: "Cream puffs", level: 16, kind: "treat", weight: 1, what: "A shelf treat: Happy +13% for 20 minutes." },
+  clovertarts: { name: "Clover tarts", level: 18, kind: "treat", weight: 1, what: "A shelf treat: Fed +10% and Watered +6% for 20 minutes." },
+  cinnamon: { name: "Cinnamon rolls", level: 20, kind: "treat", weight: 1, what: "A shelf treat: Fed +11% and Happy +8% for 20 minutes." },
+  custard: { name: "Warm custard", level: 25, kind: "treat", weight: 1, what: "A shelf treat: Comfy +10% for 20 minutes." },
+  eclairs: { name: "Velvet eclairs", level: 31, kind: "treat", weight: 1, what: "A shelf treat: Happy +16% for 20 minutes." },
+  spicedloaf: { name: "Spiced loaf", level: 35, kind: "treat", weight: 1, what: "A shelf treat: Fed +14% for 20 minutes." },
+  sorbet: { name: "Melon sorbet", level: 40, kind: "treat", weight: 1, what: "A shelf treat: Watered +14% for 20 minutes." },
+  pillowcakes: { name: "Pillow cakes", level: 45, kind: "treat", weight: 1, what: "A shelf treat: Happy +8% and Comfy +12% for 20 minutes." },
+  toffee: { name: "Honeycomb toffee", level: 51, kind: "treat", weight: 1, what: "A shelf treat: Happy +19% for 20 minutes." },
+  heartypie: { name: "Hearty pie", level: 55, kind: "treat", weight: 1, what: "A shelf treat: Fed +18% for 20 minutes." },
+  cordial: { name: "Rose cordial", level: 60, kind: "treat", weight: 1, what: "A shelf treat: Happy +8% and Watered +15% for 20 minutes." },
+  brulee: { name: "Creme brulee", level: 70, kind: "treat", weight: 1, what: "A shelf treat: Happy +10% and Comfy +15% for 20 minutes." },
+  souffle: { name: "Golden souffle", level: 76, kind: "treat", weight: 1, what: "A shelf treat: Fed +20% and Happy +20% for 20 minutes." },
+  pavlova: { name: "Starfruit pavlova", level: 85, kind: "treat", weight: 1, what: "A shelf treat: Fed +12%, Happy +12%, Comfy +12% and Watered +12% for 20 minutes." },
+  truffles: { name: "Midnight truffles", level: 92, kind: "treat", weight: 1, what: "A shelf treat: Happy +24% for 20 minutes, and a milk boost for 30 minutes." },
+  weddingcake: { name: "Velvet wedding cake", level: 100, kind: "treat", weight: 1, what: "A shelf treat: Fed +22%, Happy +22% and Comfy +12% for 20 minutes." },
+  labmash: { name: "Lab mash", level: 6, kind: "find", weight: 0.5, what: "A feed for the bin: Fed +28% for 20 minutes, more than Golden mash." },
+  muskoil: { name: "Musk oil", level: 6, kind: "find", weight: 0.5, what: "Velvet musk lasts 2 hours instead of 1." },
+  culture: { name: "Fertile culture", level: 6, kind: "find", weight: 0.5, what: "Loading a breeding stall takes 2 oz of seed instead of 3." },
+  silkbrush: { name: "Silk brushes", level: 10, kind: "find", weight: 0.5, what: "Grooming gives Happy +8% and Comfy +6% (instead of 6% and 4%)." },
+  springwater: { name: "Spring water", level: 10, kind: "find", weight: 0.5, what: "Farmers' water gives Watered +14% (instead of 10%)." },
+  bellrope: { name: "Velvet bell rope", level: 15, kind: "find", weight: 0.5, what: "The feeding bell's bonus lasts 20 minutes instead of 15." },
+  pumpoil: { name: "Pump oil", level: 20, kind: "find", weight: 0.5, what: "Each Velvet pump start runs 2\u00bd hours instead of 2." },
 };
-const LAB_CATALYSTS = ["butter", "flour", "milk"], LAB_HEATS = ["low", "medium", "high"];
+const LAB_CATALYSTS = ["butter", "flour", "milk"];
 
 async function labDoneOf(env, dairyId) {
   return (await env.DB.prepare("SELECT project FROM lab_research WHERE dairy_id = ? AND points >= ?").bind(dairyId, LAB_NEED).all()).results.map(r => r.project);
@@ -3432,40 +3480,57 @@ async function breedOzOf(env, dairyId) {
   return (await labDoneOf(env, dairyId)).includes("culture") ? 2 : BREED_STALL_OZ;
 }
 
-/** The hidden answer for a dairy's project: the same every time, different for each dairy. */
-async function labSecret(dairyId, project) {
-  const h = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`lab:${dairyId}:${project}`)));
-  return { catalyst: h[0] % LAB_CATALYSTS.length, heat: h[1] % LAB_HEATS.length };
+/** The farmer level the lab goes by (from the plugin's status; the owner without a farmer level counts as the lab's level). */
+function labLevelOf(mem) {
+  return Math.max(LAB_LEVEL, Number(safeParse(mem.status)?.farmerLevel) || 0);
+}
+
+function labFound(id) {
+  const p = LAB_POOL[id];
+  return { id, name: p?.name || id, kind: p?.kind || "find", level: p?.level || 0, what: p?.what || "" };
 }
 
 async function labView(env, me) {
   const mem = await membership(env, me.id);
-  if (!mem) return { projects: [], tank: 0 };
-  const rows = (await env.DB.prepare("SELECT * FROM lab_research WHERE dairy_id = ?").bind(mem.dairy_id).all()).results;
+  if (!mem) return { found: [], tank: 0 };
+  const rows = (await env.DB.prepare("SELECT project, points, tries FROM lab_research WHERE dairy_id = ? ORDER BY updated DESC").bind(mem.dairy_id).all()).results;
+  const done = rows.filter(r => r.points >= LAB_NEED).map(r => r.project);
+  const cur = rows.find(r => r.points < LAB_NEED && LAB_POOL[r.project]);
+  const lvl = labLevelOf(mem);
+  const pool = Object.entries(LAB_POOL);
   return {
     need: LAB_NEED, seedOz: LAB_SEED_OZ, milkOz: LAB_MILK_OZ, tank: Math.round((await seedTank(env, mem.dairy_id)) * 100) / 100,
     canTry: !!(mem.is_owner || hasRole(mem, "farmer")),
-    projects: Object.entries(LAB_PROJECTS).map(([id, p]) => {
-      const r = rows.find(x => x.project === id);
-      return { id, name: p.name, what: p.what, points: r?.points || 0, tries: r?.tries || 0, done: (r?.points || 0) >= LAB_NEED,
-        catalyst: r && r.found_catalyst >= 0 ? LAB_CATALYSTS[r.found_catalyst] : "", heat: r && r.found_heat >= 0 ? LAB_HEATS[r.found_heat] : "",
-        tried: r?.tried ? JSON.parse(r.tried) : [] };
-    }),
+    current: cur ? { points: cur.points, tries: cur.tries } : null,                 // never what it is: that's the surprise
+    found: done.filter(id => LAB_POOL[id]).map(labFound),
+    left: pool.filter(([id, p]) => p.level <= lvl && !done.includes(id)).length,      // still to find at your level
+    later: pool.filter(([id, p]) => p.level > lvl && !done.includes(id)).length,      // waiting for higher farmer levels
+    total: pool.length,
   };
 }
 
 async function labTry(env, me, request) {
   const b = await body(request);
-  const project = String(b.project || "");
-  if (!LAB_PROJECTS[project]) fail(400, "That isn't a lab project.");
-  const c = LAB_CATALYSTS.indexOf(String(b.catalyst || "")), h = LAB_HEATS.indexOf(String(b.heat || ""));
-  if (c < 0 || h < 0) fail(400, "Pick a catalyst and a heat.");
+  const c = LAB_CATALYSTS.indexOf(String(b.catalyst || ""));
+  if (c < 0) fail(400, "Pick a catalyst.");
   const mem = await pantryMember(env, me, true);
   const flvl = Number(safeParse(mem.status)?.farmerLevel) || 0;
   if (flvl > 0 && flvl < LAB_LEVEL) fail(400, `The lab opens at farmer level ${LAB_LEVEL}, with flour.`);
   const t = now();
-  const row = await env.DB.prepare("SELECT * FROM lab_research WHERE dairy_id = ? AND project = ?").bind(mem.dairy_id, project).first();
-  if ((row?.points || 0) >= LAB_NEED) fail(400, `${LAB_PROJECTS[project].name} is already discovered.`);
+  const rows = (await env.DB.prepare("SELECT project, points FROM lab_research WHERE dairy_id = ? ORDER BY updated DESC").bind(mem.dairy_id).all()).results;
+  const done = rows.filter(r => r.points >= LAB_NEED).map(r => r.project);
+  let cur = rows.find(r => r.points < LAB_NEED && LAB_POOL[r.project]);
+  if (!cur) {
+    // Draw what this research turns out to be: anything not found yet that your farmer level allows
+    const lvl = labLevelOf(mem);
+    const open = Object.entries(LAB_POOL).filter(([id, p]) => p.level <= lvl && !done.includes(id));
+    if (open.length === 0) fail(400, "Your dairy has discovered everything your farmer level allows. Higher levels open more.");
+    let roll = Math.random() * open.reduce((a, [, p]) => a + p.weight, 0);
+    let pick = open[open.length - 1][0];
+    for (const [id, p] of open) { roll -= p.weight; if (roll <= 0) { pick = id; break; } }
+    cur = { project: pick, points: 0 };
+  }
+
   // The catalyst first (it can be refunded), then the seed
   const cat = LAB_CATALYSTS[c];
   if (cat === "milk") {
@@ -3479,23 +3544,20 @@ async function labTry(env, me, request) {
     else await env.DB.prepare("UPDATE dairy_pantry SET qty = qty + 1 WHERE dairy_id = ? AND item = ?").bind(mem.dairy_id, cat).run();
     fail(400, `Each experiment takes ${LAB_SEED_OZ} oz from the seed tank.`);
   }
-  const secret = await labSecret(mem.dairy_id, project);
-  const catOk = secret.catalyst === c, heatOk = secret.heat === h;
-  const gain = catOk && heatOk ? 6 : catOk || heatOk ? 3 : 1;
-  const points = Math.min(LAB_NEED, (row?.points || 0) + gain);
-  const foundC = catOk ? c : row?.found_catalyst ?? -1, foundH = heatOk ? h : row?.found_heat ?? -1;
-  const tried = row?.tried ? JSON.parse(row.tried) : [];
-  tried.push({ catalyst: cat, heat: LAB_HEATS[h], gain });
+
+  const gain = 2 + Math.floor(Math.random() * 4);   // 2-5
+  const points = Math.min(LAB_NEED, cur.points + gain);
   await env.DB.batch([
-    env.DB.prepare(`INSERT INTO lab_research (dairy_id, project, points, tries, found_catalyst, found_heat, tried, updated) VALUES (?, ?, ?, 1, ?, ?, ?, ?)
-      ON CONFLICT(dairy_id, project) DO UPDATE SET points = excluded.points, tries = tries + 1, found_catalyst = excluded.found_catalyst,
-        found_heat = excluded.found_heat, tried = excluded.tried, updated = excluded.updated`)
-      .bind(mem.dairy_id, project, points, foundC, foundH, JSON.stringify(tried.slice(-12)), t),
+    env.DB.prepare(`INSERT INTO lab_research (dairy_id, project, points, tries, updated) VALUES (?, ?, ?, 1, ?)
+      ON CONFLICT(dairy_id, project) DO UPDATE SET points = excluded.points, tries = tries + 1, updated = excluded.updated`)
+      .bind(mem.dairy_id, cur.project, points, t),
     addXpStmt(env, mem.dairy_id, LAB_XP),
   ]);
-  const done = points >= LAB_NEED;
-  const hint = catOk && heatOk ? "A breakthrough: the right catalyst at the right heat!"
-    : catOk ? `The ${PANTRY_ITEMS[cat]?.toLowerCase() ?? "milk"} reacts well, but the heat is off.`
-    : heatOk ? `The heat is right, but ${cat === "milk" ? "milk" : PANTRY_ITEMS[cat].toLowerCase()} isn't the catalyst.` : "Nothing much happens. Try something else.";
-  return { ok: true, gain, points, done, hint, catalystRight: catOk, heatRight: heatOk, tank: Math.round((await seedTank(env, mem.dairy_id)) * 100) / 100 };
+  const done2 = points >= LAB_NEED;
+  return { ok: true, gain, points, done: done2, found: done2 ? labFound(cur.project) : null, tank: Math.round((await seedTank(env, mem.dairy_id)) * 100) / 100 };
+}
+
+/** The lab's finds that change how care works, as a flag on the care notice (grade 1 = the better version). */
+async function labCareFlag(env, dairyId, id) {
+  return (await labDoneOf(env, dairyId)).includes(id) ? 1 : 0;
 }

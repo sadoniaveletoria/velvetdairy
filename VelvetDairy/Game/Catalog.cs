@@ -98,7 +98,9 @@ public sealed record FeedItem(
     // Bull and cow-and-bull foods: who can buy it ("" anyone, "bull", "both" = a cow who's also a bull), and what it does
     string Role = "", float XpBoost = 0, int XpBoostMinutes = 0, int RestoreBreeds = 0, float NextSeedBonus = 0, bool StudTonic = false, int RestHours = 0,
     // Pump drops: milk and seed faster for this long. Udder balm: this many hand milkings give more. Churn oil: jugs fill faster.
-    int DropsMinutes = 0, int BalmMilkings = 0, int OilMinutes = 0);
+    int DropsMinutes = 0, int BalmMilkings = 0, int OilMinutes = 0,
+    // Lab treats can also give Comfy
+    float Comfy = 0);
 
 /// <summary>Something you buy once or in levels.</summary>
 public sealed record Upgrade(string Id, string Name, string Icon, int[] Prices, int[] Unlocks, string Desc, bool Cosmetic = false, bool Farmer = false, bool Bull = false, bool Cow = false)
@@ -167,10 +169,70 @@ public static class Catalog
         new Recipe("tart", "Velvet tart", "tart", 2, 24, 0, 70, 60, 130,
             "2 flour, 2 butter and 24 oz of milk make 2 velvet tarts for the dairy shelf: the best treat there is. Members buy them; you get 80% of the price.",
             Uses: "flour", UsesCount: 2, ToShelf: true, Uses2: "butter", UsesCount2: 2),
-        // An Experimental lab discovery: only once your dairy has found it
-        new Recipe("studhoney", "Stud's honey", "studhoney", 2, 8, 0, 1, 20, 60,
-            "1 butter and 8 oz of milk make 2 jars of Stud's honey for the dairy shelf: Fed +12% and Happy +12% at once, for 20 minutes. Found in the Experimental lab.",
-            Uses: "butter", UsesCount: 1, ToShelf: true),
+        // Experimental lab treats: only once your dairy has found them (the farmer level is when they can be drawn)
+        new Recipe("crullers", "Honey crullers", "crullers", 2, 8, 0, 6, 18, 51,
+            "1 flour, 1 butter and 8 oz of milk make 2 for the dairy shelf. A shelf treat: Happy +9% for 20 minutes.",
+            Uses: "flour", UsesCount: 1, ToShelf: true, Uses2: "butter", UsesCount2: 1),
+        new Recipe("scones", "Oat scones", "scones", 2, 8, 0, 6, 18, 51,
+            "1 flour, 1 butter and 8 oz of milk make 2 for the dairy shelf. A shelf treat: Fed +9% for 20 minutes.",
+            Uses: "flour", UsesCount: 1, ToShelf: true, Uses2: "butter", UsesCount2: 1),
+        new Recipe("milktea", "Milk tea", "milktea", 2, 8, 0, 8, 19, 53,
+            "1 flour, 1 butter and 8 oz of milk make 2 for the dairy shelf. A shelf treat: Watered +8% for 20 minutes.",
+            Uses: "flour", UsesCount: 1, ToShelf: true, Uses2: "butter", UsesCount2: 1),
+        new Recipe("shortbread", "Shortbread", "shortbread", 2, 8, 0, 10, 20, 55,
+            "1 flour, 1 butter and 8 oz of milk make 2 for the dairy shelf. A shelf treat: Happy +6% and Comfy +6% for 20 minutes.",
+            Uses: "flour", UsesCount: 1, ToShelf: true, Uses2: "butter", UsesCount2: 1),
+        new Recipe("studhoney", "Stud's honey", "studhoney", 2, 8, 0, 12, 21, 57,
+            "1 flour, 1 butter and 8 oz of milk make 2 for the dairy shelf. A shelf treat: Fed +12% and Happy +12% for 20 minutes.",
+            Uses: "flour", UsesCount: 1, ToShelf: true, Uses2: "butter", UsesCount2: 1),
+        new Recipe("creampuffs", "Cream puffs", "creampuffs", 2, 8, 0, 16, 23, 61,
+            "1 flour, 1 butter and 8 oz of milk make 2 for the dairy shelf. A shelf treat: Happy +13% for 20 minutes.",
+            Uses: "flour", UsesCount: 1, ToShelf: true, Uses2: "butter", UsesCount2: 1),
+        new Recipe("clovertarts", "Clover tarts", "clovertarts", 2, 8, 0, 18, 24, 63,
+            "1 flour, 1 butter and 8 oz of milk make 2 for the dairy shelf. A shelf treat: Fed +10% and Watered +6% for 20 minutes.",
+            Uses: "flour", UsesCount: 1, ToShelf: true, Uses2: "butter", UsesCount2: 1),
+        new Recipe("cinnamon", "Cinnamon rolls", "cinnamon", 2, 12, 0, 20, 25, 65,
+            "1 flour, 1 butter and 12 oz of milk make 2 for the dairy shelf. A shelf treat: Fed +11% and Happy +8% for 20 minutes.",
+            Uses: "flour", UsesCount: 1, ToShelf: true, Uses2: "butter", UsesCount2: 1),
+        new Recipe("custard", "Warm custard", "custard", 2, 12, 0, 25, 27, 70,
+            "1 flour, 1 butter and 12 oz of milk make 2 for the dairy shelf. A shelf treat: Comfy +10% for 20 minutes.",
+            Uses: "flour", UsesCount: 1, ToShelf: true, Uses2: "butter", UsesCount2: 1),
+        new Recipe("eclairs", "Velvet eclairs", "eclairs", 2, 12, 0, 31, 30, 76,
+            "1 flour, 1 butter and 12 oz of milk make 2 for the dairy shelf. A shelf treat: Happy +16% for 20 minutes.",
+            Uses: "flour", UsesCount: 1, ToShelf: true, Uses2: "butter", UsesCount2: 1),
+        new Recipe("spicedloaf", "Spiced loaf", "spicedloaf", 2, 12, 0, 35, 32, 80,
+            "1 flour, 1 butter and 12 oz of milk make 2 for the dairy shelf. A shelf treat: Fed +14% for 20 minutes.",
+            Uses: "flour", UsesCount: 1, ToShelf: true, Uses2: "butter", UsesCount2: 1),
+        new Recipe("sorbet", "Melon sorbet", "sorbet", 2, 16, 0, 40, 35, 85,
+            "2 flour, 1 butter and 16 oz of milk make 2 for the dairy shelf. A shelf treat: Watered +14% for 20 minutes.",
+            Uses: "flour", UsesCount: 2, ToShelf: true, Uses2: "butter", UsesCount2: 1),
+        new Recipe("pillowcakes", "Pillow cakes", "pillowcakes", 2, 16, 0, 45, 37, 90,
+            "2 flour, 1 butter and 16 oz of milk make 2 for the dairy shelf. A shelf treat: Happy +8% and Comfy +12% for 20 minutes.",
+            Uses: "flour", UsesCount: 2, ToShelf: true, Uses2: "butter", UsesCount2: 1),
+        new Recipe("toffee", "Honeycomb toffee", "toffee", 2, 16, 0, 51, 40, 96,
+            "2 flour, 2 butter and 16 oz of milk make 2 for the dairy shelf. A shelf treat: Happy +19% for 20 minutes.",
+            Uses: "flour", UsesCount: 2, ToShelf: true, Uses2: "butter", UsesCount2: 2),
+        new Recipe("heartypie", "Hearty pie", "heartypie", 2, 16, 0, 55, 42, 100,
+            "2 flour, 2 butter and 16 oz of milk make 2 for the dairy shelf. A shelf treat: Fed +18% for 20 minutes.",
+            Uses: "flour", UsesCount: 2, ToShelf: true, Uses2: "butter", UsesCount2: 2),
+        new Recipe("cordial", "Rose cordial", "cordial", 2, 20, 0, 60, 45, 105,
+            "2 flour, 2 butter and 20 oz of milk make 2 for the dairy shelf. A shelf treat: Happy +8% and Watered +15% for 20 minutes.",
+            Uses: "flour", UsesCount: 2, ToShelf: true, Uses2: "butter", UsesCount2: 2),
+        new Recipe("brulee", "Creme brulee", "brulee", 2, 20, 0, 70, 50, 115,
+            "2 flour, 2 butter and 20 oz of milk make 2 for the dairy shelf. A shelf treat: Happy +10% and Comfy +15% for 20 minutes.",
+            Uses: "flour", UsesCount: 2, ToShelf: true, Uses2: "butter", UsesCount2: 2),
+        new Recipe("souffle", "Golden souffle", "souffle", 2, 20, 0, 76, 53, 121,
+            "2 flour, 2 butter and 20 oz of milk make 2 for the dairy shelf. A shelf treat: Fed +20% and Happy +20% for 20 minutes.",
+            Uses: "flour", UsesCount: 2, ToShelf: true, Uses2: "butter", UsesCount2: 2),
+        new Recipe("pavlova", "Starfruit pavlova", "pavlova", 2, 24, 0, 85, 57, 130,
+            "3 flour, 2 butter and 24 oz of milk make 2 for the dairy shelf. A shelf treat: Fed +12%, Happy +12%, Comfy +12% and Watered +12% for 20 minutes.",
+            Uses: "flour", UsesCount: 3, ToShelf: true, Uses2: "butter", UsesCount2: 2),
+        new Recipe("truffles", "Midnight truffles", "truffles", 2, 24, 0, 92, 61, 137,
+            "3 flour, 2 butter and 24 oz of milk make 2 for the dairy shelf. A shelf treat: Happy +24% for 20 minutes, and a milk boost for 30 minutes.",
+            Uses: "flour", UsesCount: 3, ToShelf: true, Uses2: "butter", UsesCount2: 2),
+        new Recipe("weddingcake", "Velvet wedding cake", "weddingcake", 2, 28, 0, 100, 65, 145,
+            "3 flour, 3 butter and 28 oz of milk make 2 for the dairy shelf. A shelf treat: Fed +22%, Happy +22% and Comfy +12% for 20 minutes.",
+            Uses: "flour", UsesCount: 3, ToShelf: true, Uses2: "butter", UsesCount2: 3),
     };
 
     public static Ingredient? IngredientById(string id) => Ingredients.FirstOrDefault(i => i.Id == id);
@@ -182,7 +244,11 @@ public static class Catalog
 
     /// <summary>Treats are baked; ingredients (butter, flour) are made.</summary>
     // Cookies and buns are baked; butter, flour and cheese are made
-    public static bool IsBaked(Recipe r) => r.Id is "cookies" or "buns" or "cake" or "tart" or "studhoney";
+    public static bool IsBaked(Recipe r) => r.Id is "cookies" or "buns" or "cake" or "tart" || IsLabTreat(r.Id);
+
+    /// <summary>A treat your dairy has to discover in the Experimental lab before anyone can bake it.</summary>
+    public static bool IsLabTreat(string id) => LabTreats.Contains(id);
+    public static readonly HashSet<string> LabTreats = new() { "crullers", "scones", "milktea", "shortbread", "studhoney", "creampuffs", "clovertarts", "cinnamon", "custard", "eclairs", "spicedloaf", "sorbet", "pillowcakes", "toffee", "heartypie", "cordial", "brulee", "souffle", "pavlova", "truffles", "weddingcake" };
     public static string Verb(Recipe r) => IsBaked(r) ? "Bake" : "Make";
     public static string Doing(Recipe r) => IsBaked(r) ? "Baking" : "Making";
 
@@ -207,7 +273,28 @@ public static class Catalog
         new FeedItem("cheese", "Cheese", "cheese", 0, 1, "Made by your dairy's farmers. A little happy, and a milk boost for 10 minutes.", Happy: 0.07f, BoostMinutes: 10, Baked: true),
         new FeedItem("cake", "Honey cream cake", "cake", 0, 1, "Baked by your dairy's farmers. Filling, very happy, and a milk boost for 25 minutes.", Fed: 0.10f, Happy: 0.15f, BoostMinutes: 25, Baked: true),
         new FeedItem("tart", "Velvet tart", "tart", 0, 1, "Baked by your dairy's farmers. The best treat: filling, very happy, and a milk boost for 30 minutes.", Fed: 0.13f, Happy: 0.18f, BoostMinutes: 30, Baked: true),
-        new FeedItem("studhoney", "Stud's honey", "cake", 0, 1, "Made by your dairy's farmers from an Experimental lab discovery: Fed and Happy at once.", Fed: 0.12f, Happy: 0.12f, Baked: true),
+        // Experimental lab treats: each dairy discovers them, at random, as its farmers level
+        new FeedItem("crullers", "Honey crullers", "biscuit", 0, 1, "Twisted, honey-glazed and still warm. A shelf treat: Happy +9% for 20 minutes.", Happy: 0.09f, Baked: true),
+        new FeedItem("scones", "Oat scones", "grain", 0, 1, "Hearty oat scones with a buttery crumb. A shelf treat: Fed +9% for 20 minutes.", Fed: 0.09f, Baked: true),
+        new FeedItem("milktea", "Milk tea", "milk", 0, 1, "Sweet, milky tea to sip. A shelf treat: Watered +8% for 20 minutes.", Water: 0.08f, Baked: true),
+        new FeedItem("shortbread", "Shortbread", "biscuit", 0, 1, "Rich, crumbly and soothing. A shelf treat: Happy +6% and Comfy +6% for 20 minutes.", Happy: 0.06f, Comfy: 0.06f, Baked: true),
+        new FeedItem("studhoney", "Stud's honey", "cake", 0, 1, "Thick honey cream: filling and sweet at once. A shelf treat: Fed +12% and Happy +12% for 20 minutes.", Fed: 0.12f, Happy: 0.12f, Baked: true),
+        new FeedItem("creampuffs", "Cream puffs", "cake", 0, 1, "Light pastry bursting with cream. A shelf treat: Happy +13% for 20 minutes.", Happy: 0.13f, Baked: true),
+        new FeedItem("clovertarts", "Clover tarts", "clover", 0, 1, "Fresh clover in a juicy little tart. A shelf treat: Fed +10% and Watered +6% for 20 minutes.", Fed: 0.1f, Water: 0.06f, Baked: true),
+        new FeedItem("cinnamon", "Cinnamon rolls", "buns", 0, 1, "Soft, spiced and dripping with icing. A shelf treat: Fed +11% and Happy +8% for 20 minutes.", Fed: 0.11f, Happy: 0.08f, Baked: true),
+        new FeedItem("custard", "Warm custard", "milk", 0, 1, "A bowl of warm vanilla custard. Very cosy. A shelf treat: Comfy +10% for 20 minutes.", Comfy: 0.1f, Baked: true),
+        new FeedItem("eclairs", "Velvet eclairs", "cake", 0, 1, "Glossy, cream-filled and very indulgent. A shelf treat: Happy +16% for 20 minutes.", Happy: 0.16f, Baked: true),
+        new FeedItem("spicedloaf", "Spiced loaf", "grain", 0, 1, "A thick slice of spiced fruit loaf. A shelf treat: Fed +14% for 20 minutes.", Fed: 0.14f, Baked: true),
+        new FeedItem("sorbet", "Melon sorbet", "water", 0, 1, "Icy, sweet and refreshing. A shelf treat: Watered +14% for 20 minutes.", Water: 0.14f, Baked: true),
+        new FeedItem("pillowcakes", "Pillow cakes", "cake", 0, 1, "Soft as a pillow, and just as comforting. A shelf treat: Happy +8% and Comfy +12% for 20 minutes.", Happy: 0.08f, Comfy: 0.12f, Baked: true),
+        new FeedItem("toffee", "Honeycomb toffee", "premium", 0, 1, "Crunchy golden honeycomb. A shelf treat: Happy +19% for 20 minutes.", Happy: 0.19f, Baked: true),
+        new FeedItem("heartypie", "Hearty pie", "tart", 0, 1, "A deep, filling farmhouse pie. A shelf treat: Fed +18% for 20 minutes.", Fed: 0.18f, Baked: true),
+        new FeedItem("cordial", "Rose cordial", "water", 0, 1, "Rosewater and honey over ice. A shelf treat: Happy +8% and Watered +15% for 20 minutes.", Water: 0.15f, Happy: 0.08f, Baked: true),
+        new FeedItem("brulee", "Creme brulee", "tart", 0, 1, "Crack the burnt-sugar top; silky beneath. A shelf treat: Happy +10% and Comfy +15% for 20 minutes.", Happy: 0.1f, Comfy: 0.15f, Baked: true),
+        new FeedItem("souffle", "Golden souffle", "premium", 0, 1, "Tall, golden and melting. A shelf treat: Fed +20% and Happy +20% for 20 minutes.", Fed: 0.2f, Happy: 0.2f, Baked: true),
+        new FeedItem("pavlova", "Starfruit pavlova", "starclover", 0, 1, "A cloud of meringue and starfruit: everything at once. A shelf treat: Fed +12%, Happy +12%, Comfy +12% and Watered +12% for 20 minutes.", Fed: 0.12f, Water: 0.12f, Happy: 0.12f, Comfy: 0.12f, Baked: true),
+        new FeedItem("truffles", "Midnight truffles", "cake", 0, 1, "Dark velvet truffles: very happy, and a milk boost for 30 minutes. A shelf treat: Happy +24% for 20 minutes, and a milk boost for 30 minutes.", Happy: 0.24f, BoostMinutes: 30, Baked: true),
+        new FeedItem("weddingcake", "Velvet wedding cake", "cake", 0, 1, "Three tiers of the finest the dairy can make. A shelf treat: Fed +22%, Happy +22% and Comfy +12% for 20 minutes.", Fed: 0.22f, Happy: 0.22f, Comfy: 0.12f, Baked: true),
         new FeedItem("cookies", "Butter cookies", "biscuit", 0, 1, "Baked by your dairy's farmers. Happy, and a milk boost for 15 minutes.", Happy: 0.10f, BoostMinutes: 15, Baked: true),
         new FeedItem("buns", "Cream buns", "biscuit", 0, 1, "Baked by your dairy's farmers. Filling, happy, and a milk boost for 20 minutes.", Fed: 0.08f, Happy: 0.12f, BoostMinutes: 20, Baked: true),
         // Going away: keeps your grade from slipping
@@ -233,6 +320,8 @@ public static class Catalog
     // Deliveries to other dairies (buy orders and drop-offs): a daily limit by farmer level, and what a drop-off pays (matches the server)
     public const int DairyGoalMinutes = 30;
     public const int BellMinutes = 15;   // the feeding bell: its bonus goes on top of a bar's for this long
+    public const int BellRopeMinutes = 20;   // with Velvet bell rope (a lab find)
+    public const float SilkGroomHappy = 0.08f, SilkGroomComfy = 0.06f, SpringWater = 0.14f;   // Silk brushes and Spring water (lab finds)
     // On the network a treat you buy gives its own bonus for a while instead of time on your bars: 10 minutes for the
     // cheap ones, 20 for the better ones (35 coins and up)
     public static int TreatMinutes(FeedItem f) => f.Price >= 35 ? 20 : 10;   // daily goal: spend this long (awake) in a dairy
@@ -313,7 +402,7 @@ public static class Catalog
     public const float HandYield = 1.25f;
     /// <summary>What can go on the dairy shelf, in the server's order (a "fed" inbox item says which by its place here).</summary>
     // Same order as the server's SHELF_ITEMS (a fed notice carries the item's place in it): new items go at the end
-    public static readonly string[] ShelfOrder = { "cookies", "buns", "cheese", "cake", "tart", "studhoney" };
+    public static readonly string[] ShelfOrder = { "cookies", "buns", "cheese", "cake", "tart", "crullers", "scones", "milktea", "shortbread", "studhoney", "creampuffs", "clovertarts", "cinnamon", "custard", "eclairs", "spicedloaf", "sorbet", "pillowcakes", "toffee", "heartypie", "cordial", "brulee", "souffle", "pavlova", "truffles", "weddingcake" };
     public const int DailyPaidOz = 1500;   // milk you're paid for each day; past it you still get xp (matches the server's daily tank limit)
 
     // No daily limit on coins (removed in 0.10.0: it was 1,500 in full, then half up to 4,000, then a tenth). The only
@@ -324,7 +413,6 @@ public static class Catalog
     public const int LabXp = 12;           // farmer xp for an experiment in the Experimental lab
     public const int LabLevel = 6;         // farmer level the lab opens at (when flour does)
     public static readonly string[] LabCatalysts = { "butter", "flour", "milk" };
-    public static readonly string[] LabHeats = { "low", "medium", "high" };
     public const int FeedXp = 10;          // farmer xp for feeding a cow or bull from the shelf
     public const int FedBullXp = 20;       // bull xp for being fed
     /// <summary>Your cow grade (C, B, A, S, S+) milks you this much faster and gives this much more milk.</summary>

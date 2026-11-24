@@ -83,7 +83,7 @@ public sealed class SeasonPourReply
     public float Tank { get; set; }
 }
 
-/// <summary>The Experimental lab: the dairy's research projects.</summary>
+/// <summary>The Experimental lab: the research going on (what it is stays a secret) and what the dairy has found.</summary>
 public sealed class LabView
 {
     public int Need { get; set; } = 20;
@@ -91,27 +91,26 @@ public sealed class LabView
     public float MilkOz { get; set; } = 4;
     public float Tank { get; set; }
     public bool CanTry { get; set; }
-    public List<LabProject> Projects { get; set; } = new();
+    public LabCurrent? Current { get; set; }
+    public List<LabFind> Found { get; set; } = new();
+    public int Left { get; set; }    // still to find at your farmer level
+    public int Later { get; set; }   // waiting for higher farmer levels
+    public int Total { get; set; }
 }
 
-public sealed class LabProject
+public sealed class LabCurrent
+{
+    public int Points { get; set; }
+    public int Tries { get; set; }
+}
+
+public sealed class LabFind
 {
     public string Id { get; set; } = "";
     public string Name { get; set; } = "";
+    public string Kind { get; set; } = "";   // "treat" (a Kitchen recipe) or "find"
+    public int Level { get; set; }
     public string What { get; set; } = "";
-    public int Points { get; set; }
-    public int Tries { get; set; }
-    public bool Done { get; set; }
-    public string Catalyst { get; set; } = "";   // found so far ("" = not yet)
-    public string Heat { get; set; } = "";
-    public List<LabTried> Tried { get; set; } = new();
-}
-
-public sealed class LabTried
-{
-    public string Catalyst { get; set; } = "";
-    public string Heat { get; set; } = "";
-    public int Gain { get; set; }
 }
 
 public sealed class LabTryReply
@@ -119,7 +118,7 @@ public sealed class LabTryReply
     public int Gain { get; set; }
     public int Points { get; set; }
     public bool Done { get; set; }
-    public string Hint { get; set; } = "";
+    public LabFind? Found { get; set; }
     public float Tank { get; set; }
 }
 

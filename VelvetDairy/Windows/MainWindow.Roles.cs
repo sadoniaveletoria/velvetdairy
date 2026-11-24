@@ -328,9 +328,9 @@ public sealed partial class MainWindow
                 buttons = new[]
                 {
                     first,
-                    new Btn($"##groom{c.Id}", "Groom", "sage", groomWhy == null, groomWhy ?? $"Brush them down: Happy +{Catalog.GroomHappy * 100:0}% and Comfy +{Catalog.GroomComfy * 100:0}% for {Catalog.NeedMinutes:0} minutes, and {Catalog.GroomXp} farmer xp for you. Once every 15 minutes per cow."),
+                    new Btn($"##groom{c.Id}", "Groom", "sage", groomWhy == null, groomWhy ?? $"Brush them down: Happy +{G.GroomHappyNow * 100:0}% and Comfy +{G.GroomComfyNow * 100:0}% for {Catalog.NeedMinutes:0} minutes, and {Catalog.GroomXp} farmer xp for you. Once every 15 minutes per cow."),
                     new Btn($"##feed{c.Id}", "Feed", "honey", feedWhy == null, feedWhy ?? G.FeedTip),
-                    new Btn($"##water{c.Id}", "Water", "blue", waterWhy == null, waterWhy ?? $"Fresh water: Watered +{Catalog.FarmerWater * 100:0}% for {Catalog.NeedMinutes:0} minutes, and {Catalog.FeedXp} farmer xp for you. Once every 15 minutes each."),
+                    new Btn($"##water{c.Id}", "Water", "blue", waterWhy == null, waterWhy ?? $"{(G.LabFound("springwater") ? "Spring water" : "Fresh water")}: Watered +{G.WaterNow * 100:0}% for {Catalog.NeedMinutes:0} minutes, and {Catalog.FeedXp} farmer xp for you. Once every 15 minutes each."),
                     new Btn($"##musk{c.Id}", "Musk", "rose", muskWhy == null, muskWhy ?? $"Velvet musk ({Units.Oz(Catalog.MuskOz, "0")} from the seed tank): for an hour ({(G.LabFound("muskoil") ? "two with Musk oil" : "two once the lab finds Musk oil")}) every bit of farmer care on them gives half as much again. +{Catalog.MuskXp} farmer xp."),
                 };
             }

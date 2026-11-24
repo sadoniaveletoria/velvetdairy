@@ -287,8 +287,9 @@ public sealed partial class DairyGame
                     // going is kept, and its 20 minutes start again)
                     if (Producer)
                     {
-                        TakeBonus("Happy", Musked(Catalog.GroomHappy));
-                        TakeBonus("Comfy", Musked(Catalog.GroomComfy));
+                        // Grade 1: the farmer's dairy has Silk brushes (a lab find)
+                        TakeBonus("Happy", Musked(i.Grade == 1 ? Catalog.SilkGroomHappy : Catalog.GroomHappy));
+                        TakeBonus("Comfy", Musked(i.Grade == 1 ? Catalog.SilkGroomComfy : Catalog.GroomComfy));
                     }
 
                     break;
@@ -296,7 +297,7 @@ public sealed partial class DairyGame
                     // A farmer brought you water: Watered for 20 minutes (a bigger bonus already going is kept)
                     if (Producer)
                     {
-                        TakeBonus("Watered", Musked(Catalog.FarmerWater));
+                        TakeBonus("Watered", Musked(i.Grade == 1 ? Catalog.SpringWater : Catalog.FarmerWater));   // 1: Spring water (a lab find)
                         Cow.WaterReadyUtc = DateTime.UtcNow.AddMinutes(Catalog.NeedCooldownMinutes);
                     }
 
@@ -508,8 +509,9 @@ public sealed partial class DairyGame
         Touch();
         Cow.BellBar = bar;
         Cow.BellPct = BellBonus(bar);
-        Cow.BellUntilUtc = DateTime.UtcNow.AddMinutes(Catalog.BellMinutes);
-        CareDone($"Feeding time: +{Cow.BellPct * 100:0}% on top of your {bar} bonus for {Catalog.BellMinutes} minutes.");
+        var bellMins = LabFound("bellrope") ? Catalog.BellRopeMinutes : Catalog.BellMinutes;   // Velvet bell rope (a lab find)
+        Cow.BellUntilUtc = DateTime.UtcNow.AddMinutes(bellMins);
+        CareDone($"Feeding time: +{Cow.BellPct * 100:0}% on top of your {bar} bonus for {bellMins} minutes.");
     }
 
     /// <summary>How much milk you can carry: your farmer tank (bought in the Shop, like a cow's bottles).</summary>
@@ -803,6 +805,11 @@ public sealed partial class DairyGame
     public bool MuskOn => Cow.MuskUntilUtc > DateTime.UtcNow;
     public TimeSpan MuskLeft => Left(Cow.MuskUntilUtc);
     private float Musked(float bonus) => MuskOn ? bonus * (1f + Catalog.MuskBoost) : bonus;
+
+    // Care your dairy's lab finds make better (Silk brushes, Spring water)
+    public float GroomHappyNow => LabFound("silkbrush") ? Catalog.SilkGroomHappy : Catalog.GroomHappy;
+    public float GroomComfyNow => LabFound("silkbrush") ? Catalog.SilkGroomComfy : Catalog.GroomComfy;
+    public float WaterNow => LabFound("springwater") ? Catalog.SpringWater : Catalog.FarmerWater;
 
     /// <summary>A discovery your dairy made in the Experimental lab.</summary>
     public bool LabFound(string id) => Net.Progress?.Lab?.Contains(id) == true;
@@ -1265,10 +1272,14 @@ public sealed partial class DairyGame
         var cd = DateTime.UtcNow.AddMinutes(Catalog.NeedCooldownMinutes);
         if (item.Happy > 0) Cow.HappyReadyUtc = cd;
         if (item.Fed > 0) Cow.FedReadyUtc = cd;
+        if (item.Comfy > 0) Cow.ComfyReadyUtc = cd;
+        if (item.Water > 0) Cow.WaterReadyUtc = cd;
         RaiseBonusIfFull(item);
         // A bar over an hour doesn't take more time (the same as eating it yourself)
         TakeBonus("Fed", Musked(item.Fed));
         TakeBonus("Happy", Musked(item.Happy));
+        TakeBonus("Comfy", Musked(item.Comfy));
+        TakeBonus("Watered", Musked(item.Water));
 
         if (item.BoostMinutes > 0)
         {
@@ -2187,7 +2198,7 @@ public sealed partial class DairyGame
         if (w > 0) return $"You can groom {cowName} again in {Wait(TimeSpan.FromSeconds(w))}.";
         var needs = Net.Mine?.Members.Concat(Net.Mine.Guests).FirstOrDefault(m => m.Id == cowId)?.Status?.Needs;
         var (gm, gp) = TargetNeeds(cowId);
-        if (BonusBlocks(gm[3], gp[3], Catalog.GroomHappy * MuskFor(cowId)) && BonusBlocks(gm[2], gp[2], Catalog.GroomComfy * MuskFor(cowId)))
+        if (BonusBlocks(gm[3], gp[3], GroomHappyNow * MuskFor(cowId)) && BonusBlocks(gm[2], gp[2], GroomComfyNow * MuskFor(cowId)))
             return $"{cowName} already has Happy and Comfy going at least as big as a groom gives. Groom them once one runs out.";
         return null;
     }
@@ -2235,7 +2246,7 @@ public sealed partial class DairyGame
         var (mins, pct) = TargetNeeds(id);
         var k = MuskFor(id);
         var helps = (f.Fed > 0 && !BonusBlocks(mins[0], pct[0], f.Fed * k)) || (f.Happy > 0 && !BonusBlocks(mins[3], pct[3], f.Happy * k))
-                    || (f.Water > 0 && !BonusBlocks(mins[1], pct[1], f.Water * k)) || f.Quality > 0 || f.BoostMinutes > 0;
+                    || (f.Water > 0 && !BonusBlocks(mins[1], pct[1], f.Water * k)) || (f.Comfy > 0 && !BonusBlocks(mins[2], pct[2], f.Comfy * k)) || f.Quality > 0 || f.BoostMinutes > 0;
         return helps ? null : "They already have that bonus or a bigger one going.";
     }
 
@@ -2345,7 +2356,7 @@ public sealed partial class DairyGame
         return experimenting ? "One moment..." : null;
     }
 
-    public void LabTry(string project, string catalyst, string heat)
+    public void LabTry(string catalyst)
     {
         if (LabProblem(catalyst) is { } p)
         {
@@ -2356,7 +2367,7 @@ public sealed partial class DairyGame
         Touch();
         experimenting = true;
         var milkOz = Net.Lab?.MilkOz ?? 4;
-        Net.LabTry(project, catalyst, heat, r =>
+        Net.LabTry(catalyst, r =>
         {
             experimenting = false;
             if (catalyst == "milk")
@@ -2372,9 +2383,8 @@ public sealed partial class DairyGame
             }
 
             AddFarmerXp(Catalog.LabXp);
-            var name = Net.Lab?.Projects.FirstOrDefault(x => x.Id == project)?.Name ?? project;
-            Say(r.Done ? $"Discovery! Your dairy found {name}. +{Catalog.LabXp} farmer xp"
-                : $"{r.Hint} +{r.Gain} research ({r.Points} / {Net.Lab?.Need ?? 20}). +{Catalog.LabXp} farmer xp", 1);
+            Say(r.Found is { } f ? $"Discovery! Your dairy found {f.Name}: {f.What} +{Catalog.LabXp} farmer xp"
+                : $"The mixture bubbles: +{r.Gain} research ({r.Points} / {Net.Lab?.Need ?? 20}). +{Catalog.LabXp} farmer xp", 1);
             plugin.SaveConfig();
         }, e =>
         {
@@ -2395,7 +2405,7 @@ public sealed partial class DairyGame
         if (distance < 0 || distance > HandRange) return $"Get within {HandRange:0} yalms of {name} first.";
         if (waterReady.TryGetValue(id, out var t) && t > now) return $"{name} can be watered again in {Wait(TimeSpan.FromSeconds(t - now))}.";
         var (mins, pct) = TargetNeeds(id);
-        if (BonusBlocks(mins[1], pct[1], Catalog.FarmerWater * MuskFor(id))) return $"{name} already has Watered +{pct[1] * 100:0}% ({mins[1]} min left). Only a bigger one can take over.";
+        if (BonusBlocks(mins[1], pct[1], WaterNow * MuskFor(id))) return $"{name} already has Watered +{pct[1] * 100:0}% ({mins[1]} min left). Only a bigger one can take over.";
         return null;
     }
 
@@ -3421,8 +3431,8 @@ public sealed partial class DairyGame
         if (!CanCarry) return "Only farmers bake.";
         if (F.Bake != null) return "You're already baking something. Wait for it or cancel it.";
         if (!AtHome) return "Go to your dairy to use its kitchen.";
-        if (FarmerLevel < r.FarmerLevel) return $"Unlocks at farmer level {r.FarmerLevel} (you're {FarmerLevel}).";
-        if (r.Id == "studhoney" && !LabFound("studhoney")) return "Your dairy finds this recipe in the Experimental lab (Kitchen > Lab).";
+        if (FarmerLevel < r.FarmerLevel && !Catalog.IsLabTreat(r.Id)) return $"Unlocks at farmer level {r.FarmerLevel} (you're {FarmerLevel}).";
+        if (Catalog.IsLabTreat(r.Id) && !LabFound(r.Id)) return "Your dairy hasn't discovered this in the Experimental lab yet.";
         if (count < 1) return "Pick how many to make.";
         if (r.ToShelf && (!Networked || F.NetMember == null)) return "Baking for the shelf needs your dairy on the network.";
         foreach (var (id, per) in r.Needs())
@@ -4294,7 +4304,7 @@ public sealed partial class DairyGame
         var tank = Catalog.Upgrades.First(u => u.Id == "farmtank");
         for (var i = 0; i < tank.Unlocks.Length && i + 1 < Catalog.FarmerTankSizes.Length; i++)
             yield return (tank.Unlocks[i], $"{Catalog.FarmerTankNames[i + 1]} ({Units.Oz(Catalog.FarmerTankSizes[i + 1])}) in the Shop");
-        foreach (var r in Catalog.Recipes.Where(r => r.FarmerLevel > 1 && !Leveling.FarmerPerks.Any(p => p.Name.EndsWith(r.Name, StringComparison.Ordinal))))
+        foreach (var r in Catalog.Recipes.Where(r => r.FarmerLevel > 1 && !Catalog.IsLabTreat(r.Id) && !Leveling.FarmerPerks.Any(p => p.Name.EndsWith(r.Name, StringComparison.Ordinal))))
             yield return (r.FarmerLevel, $"Recipe: {r.Name}");
         yield return (Catalog.LabLevel, "the Experimental lab (Kitchen)");
         foreach (var p in Leveling.FarmerPerks) yield return p;
