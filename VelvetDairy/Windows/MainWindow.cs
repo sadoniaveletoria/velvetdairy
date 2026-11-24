@@ -1392,7 +1392,7 @@ public sealed partial class MainWindow : Window
         var s = G.Net.Season;
         if (s == null)
         {
-            TextLine(Theme.InkSoft, "Loading...");
+            TextLine(G.Net.SeasonError != null ? Theme.Warn : Theme.InkSoft, G.Net.SeasonError != null ? $"Couldn't load the season: {G.Net.SeasonError} (trying again)" : "Loading...");
             return;
         }
 

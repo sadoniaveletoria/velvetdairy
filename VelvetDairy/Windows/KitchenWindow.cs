@@ -210,7 +210,7 @@ public sealed class KitchenWindow : Window
                    "the right pair gives 6 research, one of the two gives 3 (and you're told which), neither gives 1. 20 research makes the discovery for your whole dairy.", Theme.InkSoft, width);
         if (lab == null)
         {
-            ImGui.TextColored(Theme.InkSoft, "Loading...");
+            ImGui.TextColored(G.Net.LabError != null ? Theme.Warn : Theme.InkSoft, G.Net.LabError != null ? $"Couldn't load the lab: {G.Net.LabError} (trying again)" : "Loading...");
             return;
         }
 

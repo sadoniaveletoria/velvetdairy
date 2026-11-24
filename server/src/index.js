@@ -3387,7 +3387,7 @@ async function seasonView(env, me) {
     nextName: next.name, nextOpens: next.opens,
     total: Math.round(total * 10) / 10, tiers: SEASON_TIERS, pct: t < cur.bonusUntil && t >= cur.opens ? seasonPct(total) : 0,
     mine: Math.round(mine * 10) / 10, tank: mem ? Math.round((await seedTank(env, mem.dairy_id)) * 100) / 100 : 0,
-    canPour: !!mem && (mem.is_owner || hasRole(mem, "farmer")),
+    canPour: !!mem && !!(mem.is_owner || hasRole(mem, "farmer")),
     top: await seasonTop(env, cur.id, mem?.dairy_id, 10),
     xpPerOz: SEASON_XP_PER_OZ,
   };
@@ -3444,7 +3444,7 @@ async function labView(env, me) {
   const rows = (await env.DB.prepare("SELECT * FROM lab_research WHERE dairy_id = ?").bind(mem.dairy_id).all()).results;
   return {
     need: LAB_NEED, seedOz: LAB_SEED_OZ, milkOz: LAB_MILK_OZ, tank: Math.round((await seedTank(env, mem.dairy_id)) * 100) / 100,
-    canTry: mem.is_owner || hasRole(mem, "farmer"),
+    canTry: !!(mem.is_owner || hasRole(mem, "farmer")),
     projects: Object.entries(LAB_PROJECTS).map(([id, p]) => {
       const r = rows.find(x => x.project === id);
       return { id, name: p.name, what: p.what, points: r?.points || 0, tries: r?.tries || 0, done: (r?.points || 0) >= LAB_NEED,

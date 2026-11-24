@@ -1218,6 +1218,7 @@ await test("seed uses: Velvet musk, the breeding season and the Experimental lab
   // The breeding season: closed on the live server outside its weekend (forced here), open all month on the dev server
   env.BOTS = "on";
   try {
+    assert.equal((await call(ola, "GET", "/v1/season")).data.canPour, true, "a real true for the owner");
     const v = (await call(fern, "GET", "/v1/season")).data;
     assert.equal(v.open, true, JSON.stringify(v));
     assert.equal(v.canPour, true);
@@ -1252,6 +1253,7 @@ await test("seed uses: Velvet musk, the breeding season and the Experimental lab
     gains.push(r.gain);
   }
   assert.ok(gains.every(g => [1, 3, 6].includes(g)), JSON.stringify(gains));
+  assert.equal((await call(ola, "GET", "/v1/lab")).data.canTry, true, "a real true for the owner (the plugin can't read 1)");
   const view = (await call(fern, "GET", "/v1/lab")).data;
   const cult = view.projects.find(x => x.id === "culture");
   assert.ok(cult.points > 0 && cult.tries > 0);

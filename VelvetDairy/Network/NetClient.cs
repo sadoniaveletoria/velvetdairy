@@ -1117,13 +1117,18 @@ public sealed class NetClient : IDisposable
 
     /// <summary>The Breeding season (Creamery > Breeding season): every 30 seconds while it's open on screen.</summary>
     public SeasonView? Season { get; private set; }
+    public string? SeasonError { get; private set; }
     private DateTime lastSeason = DateTime.MinValue;
 
     public void RefreshSeason(bool now = false)
     {
         if (!now && DateTime.UtcNow - lastSeason < TimeSpan.FromSeconds(30)) return;
         lastSeason = DateTime.UtcNow;
-        Call<SeasonView>("GET", "/v1/season", null, r => Season = r);
+        Call<SeasonView>("GET", "/v1/season", null, r =>
+        {
+            Season = r;
+            SeasonError = null;
+        }, e => SeasonError = e);
     }
 
     public void SeasonPour(float oz, Action<SeasonPourReply> ok, Action<string> failed) =>
@@ -1136,13 +1141,18 @@ public sealed class NetClient : IDisposable
 
     /// <summary>The Experimental lab (Kitchen > Lab).</summary>
     public LabView? Lab { get; private set; }
+    public string? LabError { get; private set; }
     private DateTime lastLab = DateTime.MinValue;
 
     public void RefreshLab(bool now = false)
     {
         if (!now && DateTime.UtcNow - lastLab < TimeSpan.FromSeconds(30)) return;
         lastLab = DateTime.UtcNow;
-        Call<LabView>("GET", "/v1/lab", null, r => Lab = r);
+        Call<LabView>("GET", "/v1/lab", null, r =>
+        {
+            Lab = r;
+            LabError = null;
+        }, e => LabError = e);
     }
 
     public void LabTry(string project, string catalyst, string heat, Action<LabTryReply> ok, Action<string> failed) =>
