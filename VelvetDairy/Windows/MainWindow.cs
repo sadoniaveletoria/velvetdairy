@@ -1549,10 +1549,10 @@ public sealed partial class MainWindow : Window
     {
         var list = new List<Tile>();
         if (G.ProducesMilk)
-            list.Add(new("Cow quota", $"{Units.Num(F.DayOz, "0.#")} / {Units.Num(G.CowQuotaNeed, "0.#")}", $"{Units.Unit} of milk today · pays {G.CowQuotaCoins:N0}",
+            list.Add(new("Cow quota", $"{Units.Num(F.DayOz, "0.#")} / {Units.Num(G.CowQuotaNeed, "0.#")}", $"milk today · pays {G.CowQuotaCoins:N0}",
                 G.CowQuotaNeed > 0 ? F.DayOz / G.CowQuotaNeed : 0, Theme.HoneyDeep));
         if (G.ProducesSeed)
-            list.Add(new("Bull quota", $"{Units.Num(F.DaySeedOz, "0.##")} / {Units.Num(G.BullQuotaNeed, "0.##")}", $"{Units.Unit} of seed today · pays {G.BullQuotaCoins:N0}",
+            list.Add(new("Bull quota", $"{Units.Num(F.DaySeedOz, "0.##")} / {Units.Num(G.BullQuotaNeed, "0.##")}", $"seed today · pays {G.BullQuotaCoins:N0}",
                 G.BullQuotaNeed > 0 ? F.DaySeedOz / G.BullQuotaNeed : 0, Theme.HoneyDeep));
         if (G.ProducesMilk || G.ProducesSeed)
         {
@@ -1561,7 +1561,7 @@ public sealed partial class MainWindow : Window
         }
 
         if (G.CanCarry && G.Networked)
-            list.Add(new("Drop-offs left", Units.Oz(G.DeliverLeft, "0"), $"{Math.Max(0, Catalog.DeliveriesPerDay - F.DayDeliveries)} of {Catalog.DeliveriesPerDay} deliveries left today", -1, Theme.SageDeep));
+            list.Add(new("Drop-offs left", Units.Oz(G.DeliverLeft, "0"), $"{Math.Max(0, Catalog.DeliveriesPerDay - F.DayDeliveries)} of {Catalog.DeliveriesPerDay} deliveries left", -1, Theme.SageDeep));
         list.Add(new("Earned today", $"{F.DayEarned:N0}", "coins", -1, Theme.HoneyDeep));
         return list.ToArray();
     }

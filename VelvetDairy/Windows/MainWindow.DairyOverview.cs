@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
+using Dalamud.Interface.ManagedFontAtlas;
 using VelvetDairy.Game;
 
 namespace VelvetDairy.Windows;
@@ -55,27 +56,38 @@ public sealed partial class MainWindow
     /// <summary>A row of summary tiles across the top of a page (the same look on every page). Returns where the page goes on below them.</summary>
     private float DrawTiles(Vector2 min, float maxX, IReadOnlyList<Tile> tiles)
     {
-        const float gap = 14f, tileH = 126f;
+        const float gap = 14f;
         if (tiles.Count == 0) return min.Y;
         var tw = (maxX - min.X - gap * (tiles.Count - 1)) / tiles.Count;
+        var inner = tw - 56;   // the same insets as the panels, so nothing touches the card's frame
         var dl = ImGui.GetWindowDrawList();
+        var lineH = Ui.Measure(fonts.Small, "Ag").Y + 1;
+        // Lay every tile out first: the row is as tall as its tallest tile, so a line that wraps never runs off the card
+        var laid = new List<(IFontHandle? Font, Vector2 Big, int Lines)>();
+        var tileH = 0f;
+        foreach (var t in tiles)
+        {
+            var font = Ui.Measure(fonts.Heading, t.Big).X <= inner ? fonts.Heading : null;   // too wide: the body font
+            var big = Ui.Measure(font, t.Big);
+            var lines = t.Small.Length == 0 ? 0 : WrapText(t.Small, inner, fonts.Small).Count();
+            laid.Add((font, big, lines));
+            tileH = Math.Max(tileH, 48 + big.Y + 4 + lines * lineH + 22);
+        }
+
+        tileH = Math.Max(tileH, 112f);
         for (var i = 0; i < tiles.Count; i++)
         {
             var t = tiles[i];
+            var (font, big, _) = laid[i];
             var a = new Vector2(min.X + i * (tw + gap), min.Y);
             var b = a + new Vector2(tw, tileH);
             Ui.Card(dl, a, b);
-            // The same insets as the panels, so nothing touches the card's frame
-            var inner = tw - 56;
             Ui.Eyebrow(dl, t.Title, a + new Vector2(28, 22), inner, Theme.RoseDeep);
-            var big = t.Big;
-            // A big number that doesn't fit drops to the body font rather than running out of the card
-            var font = Ui.Measure(fonts.Heading, big).X <= inner ? fonts.Heading : null;
-            var bigSize = Ui.Text(dl, font, big, a + new Vector2(28, 48), Theme.Ink);
+            Ui.Text(dl, font, t.Big, a + new Vector2(28, 48), Theme.Ink);
             // The bar sits beside the big number (not under it), so the card stays short and nothing reaches its frame
-            if (t.Bar >= 0 && inner - bigSize.X > 50)
-                Ui.Bar(dl, a + new Vector2(28 + bigSize.X + 14, 48 + bigSize.Y / 2 - 3), a + new Vector2(28 + inner, 48 + bigSize.Y / 2 + 3), Math.Clamp(t.Bar, 0f, 1f), t.Color);
-            TextWrapped(dl, fonts.Small, t.Small, a + new Vector2(28, 48 + bigSize.Y + 4), inner, Theme.InkSoft);
+            if (t.Bar >= 0 && inner - big.X > 50)
+                Ui.Bar(dl, a + new Vector2(28 + big.X + 14, 48 + big.Y / 2 - 3), a + new Vector2(28 + inner, 48 + big.Y / 2 + 3), Math.Clamp(t.Bar, 0f, 1f), t.Color);
+            TextWrapped(dl, fonts.Small, t.Small, a + new Vector2(28, 48 + big.Y + 4), inner, Theme.InkSoft);
         }
 
         return min.Y + tileH + gap;
