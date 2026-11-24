@@ -2335,6 +2335,7 @@ public sealed partial class DairyGame
         var b = Blocked();
         if (b != null) return b;
         if (!CanCarry) return "Only farmers and the owner use the lab.";
+        if (FarmerLevel < Catalog.LabLevel) return $"The lab opens at farmer level {Catalog.LabLevel}, with flour (you're {FarmerLevel}).";
         if (!AtHome) return "Go to your dairy to use its lab.";
         var lab = Net.Lab;
         if (lab == null) return "One moment...";
@@ -4295,6 +4296,7 @@ public sealed partial class DairyGame
             yield return (tank.Unlocks[i], $"{Catalog.FarmerTankNames[i + 1]} ({Units.Oz(Catalog.FarmerTankSizes[i + 1])}) in the Shop");
         foreach (var r in Catalog.Recipes.Where(r => r.FarmerLevel > 1 && !Leveling.FarmerPerks.Any(p => p.Name.EndsWith(r.Name, StringComparison.Ordinal))))
             yield return (r.FarmerLevel, $"Recipe: {r.Name}");
+        yield return (Catalog.LabLevel, "the Experimental lab (Kitchen)");
         foreach (var p in Leveling.FarmerPerks) yield return p;
     }
 

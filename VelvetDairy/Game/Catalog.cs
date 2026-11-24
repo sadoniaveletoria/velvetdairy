@@ -322,6 +322,7 @@ public static class Catalog
     public const float MuskOz = 5f, MuskBoost = 0.5f;
     public const int MuskXp = 15;          // farmer xp for putting musk on someone
     public const int LabXp = 12;           // farmer xp for an experiment in the Experimental lab
+    public const int LabLevel = 6;         // farmer level the lab opens at (when flour does)
     public static readonly string[] LabCatalysts = { "butter", "flour", "milk" };
     public static readonly string[] LabHeats = { "low", "medium", "high" };
     public const int FeedXp = 10;          // farmer xp for feeding a cow or bull from the shelf

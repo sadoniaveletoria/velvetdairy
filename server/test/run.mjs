@@ -1246,6 +1246,9 @@ await test("seed uses: Velvet musk, the breeding season and the Experimental lab
   sqlite.prepare("INSERT INTO dairy_pantry (dairy_id, item, qty) VALUES (?, 'butter', 50) ON CONFLICT(dairy_id, item) DO UPDATE SET qty = 50").run(did);
   sqlite.prepare("INSERT INTO dairy_pantry (dairy_id, item, qty) VALUES (?, 'flour', 50) ON CONFLICT(dairy_id, item) DO UPDATE SET qty = 50").run(did);
   assert.equal((await call(cleo, "POST", "/v1/lab/try", { project: "culture", catalyst: "butter", heat: "low" })).status, 403, "farmers and the owner");
+  sqlite.prepare("UPDATE memberships SET status = ? WHERE install = ?").run(JSON.stringify({ farmerLevel: 3 }), fern.id);
+  assert.match((await call(fern, "POST", "/v1/lab/try", { project: "culture", catalyst: "butter", heat: "low" })).data.error, /farmer level 6/);
+  sqlite.prepare("UPDATE memberships SET status = ? WHERE install = ?").run(JSON.stringify({ farmerLevel: 6 }), fern.id);
   let gains = [];
   for (const cat of ["butter", "flour"]) for (const heat of ["low", "medium", "high"]) {
     const r = (await call(fern, "POST", "/v1/lab/try", { project: "culture", catalyst: cat, heat })).data;

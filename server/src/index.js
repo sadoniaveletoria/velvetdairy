@@ -3415,7 +3415,7 @@ async function seasonPour(env, me, request) {
 // The Experimental lab: farmers (and the owner) put 2 oz of seed with a catalyst (butter, flour or 4 oz of milk from
 // their jugs) at a heat (low, medium, high). Each dairy's best catalyst and heat for each project is hidden and its own.
 // The right pair gives 6 research, one of the two 3 (and says which), neither 1. 20 research finishes a project.
-const LAB_SEED_OZ = 2, LAB_MILK_OZ = 4, LAB_NEED = 20, LAB_XP = 10;
+const LAB_SEED_OZ = 2, LAB_MILK_OZ = 4, LAB_NEED = 20, LAB_XP = 10, LAB_LEVEL = 6;   // farmer level 6: when flour opens
 const LAB_PROJECTS = {
   labmash: { name: "Lab mash", what: "A feed for the bin: Fed +28% for 20 minutes, more than Golden mash." },
   studhoney: { name: "Stud's honey", what: "A Kitchen recipe for the shelf: Fed +12% and Happy +12% at once, for 20 minutes." },
@@ -3461,6 +3461,8 @@ async function labTry(env, me, request) {
   const c = LAB_CATALYSTS.indexOf(String(b.catalyst || "")), h = LAB_HEATS.indexOf(String(b.heat || ""));
   if (c < 0 || h < 0) fail(400, "Pick a catalyst and a heat.");
   const mem = await pantryMember(env, me, true);
+  const flvl = Number(safeParse(mem.status)?.farmerLevel) || 0;
+  if (flvl > 0 && flvl < LAB_LEVEL) fail(400, `The lab opens at farmer level ${LAB_LEVEL}, with flour.`);
   const t = now();
   const row = await env.DB.prepare("SELECT * FROM lab_research WHERE dairy_id = ? AND project = ?").bind(mem.dairy_id, project).first();
   if ((row?.points || 0) >= LAB_NEED) fail(400, `${LAB_PROJECTS[project].name} is already discovered.`);

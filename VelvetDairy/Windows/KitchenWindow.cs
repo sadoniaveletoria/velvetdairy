@@ -188,8 +188,11 @@ public sealed class KitchenWindow : Window
         {
             ImGui.TextColored(Theme.RoseDeep, "LAB");
             var found = G.Net.Progress?.Lab?.Count ?? 0;
-            if (ImGui.Selectable($"Experimental lab ({found}/4 found)##klab", selected == "lab")) selected = "lab";
-            if (ImGui.IsItemHovered()) ImGui.SetTooltip(Units.Text("Seed from the seed tank and a catalyst, for discoveries only your dairy has."));
+            var labLocked = G.FarmerLevel < Catalog.LabLevel;
+            if (labLocked) ImGui.PushStyleColor(ImGuiCol.Text, Theme.InkSoft with { W = 0.6f });
+            if (ImGui.Selectable(labLocked ? $"Experimental lab (farmer level {Catalog.LabLevel})##klab" : $"Experimental lab ({found}/4 found)##klab", selected == "lab")) selected = "lab";
+            if (labLocked) ImGui.PopStyleColor();
+            if (ImGui.IsItemHovered()) ImGui.SetTooltip(Units.Text(labLocked ? $"Opens at farmer level {Catalog.LabLevel}, when you can make flour." : "Seed from the seed tank and a catalyst, for discoveries only your dairy has."));
         }
     }
 
