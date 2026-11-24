@@ -1456,7 +1456,7 @@ public sealed partial class MainWindow : Window
             for (var l = lvl + 1; l <= Leveling.MaxLevel && at == 0; l++)
                 if (G.CowUnlocksAt(l).FirstOrDefault() is { } n) { next = n; at = l; }
             list.Add(new(G.ProducesMilk ? "Cow level" : "Bull level", $"{lvl}", at > 0 ? $"Next reward at {at}: {next}" : "Every reward is yours", -1, Theme.RoseDeep));
-            var milk = G.ProducesMilk ? G.Cow.Milk : G.Cow.Seed;
+            var milk = G.ProducesMilk ? F.Cow.Milk : F.Cow.Seed;
             var cap = G.ProducesMilk ? G.Capacity : G.SeedCapacity;
             list.Add(new(G.ProducesMilk ? "Bottles" : "Vials", $"{G.BottleCount} x {Units.Oz(G.ProducesMilk ? G.BottleSize : G.VialSize, G.ProducesMilk ? "0" : "0.#")}",
                 $"{G.BottleName}s · {Units.Oz(milk, "0.#")} in them now", cap > 0 ? milk / cap : 0, Theme.BlueDeep));
