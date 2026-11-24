@@ -154,11 +154,41 @@ The dairy's seed tank isn't only for breeding stalls:
 
 - **Velvet musk** (Herd Care > **Musk**): a farmer or the owner puts musk on a cow or bull for **5 oz** from the seed tank. For an hour, every bit of farmer care on them (grooming, feeding, watering, shelf treats) gives **half as much again**: a groom gives Happy +9% instead of +6%. One at a time; you can't put it on yourself. +15 farmer XP. Herd Care shows who's wearing it.
 - **The Breeding season** (Market > Creamery > **Breeding season**): the **first Friday to Sunday of every month** (Central time). Farmers and the owner pour seed from the seed tank into one meter for the whole network. At **250 oz** everyone's milk and seed is **+3%**, at **750 oz +6%**, at **1,500 oz +10%**, from the moment a tier is reached until a week after the season closes. Each oz gives your dairy 2 dairy XP and you 1 farmer XP. When it closes, the top three dairies carry **Season champion**, **runner-up** and **third** on the Dairies list until the next season.
-- **The Experimental lab** (Kitchen > **Experimental lab**, from farmer level 6, when flour opens): each experiment takes **2 oz of seed** plus a catalyst (1 butter or 1 flour from the dairy pantry, or 4 oz of milk from your jugs) at a heat (low, medium or high). Each dairy's best catalyst and heat for each project is hidden and different from every other dairy's. The right pair gives 6 research, one of the two gives 3 (and tells you which), neither gives 1. **20 research** makes the discovery, for your whole dairy:
-  - **Lab mash**: a feed for the bin, Fed +28% (more than Golden mash).
-  - **Stud's honey**: a Kitchen recipe for the shelf (1 butter + 8 oz of milk makes 2), Fed +12% and Happy +12% at once.
-  - **Musk oil**: Velvet musk lasts 2 hours.
-  - **Fertile culture**: loading a breeding stall takes 2 oz of seed instead of 3.
+- **The Experimental lab** (Kitchen > **Experimental lab**, from farmer level 6, when flour opens): each experiment takes **2 oz of seed** plus a catalyst (1 butter or 1 flour from the dairy pantry, or 4 oz of milk from your jugs) and adds **2 to 5 research**. Nobody knows what's being researched: the first experiment secretly draws something your dairy hasn't found yet, from what your farmer level allows. At **20 research** it's revealed, and it's the whole dairy's. Anyone in the dairy can then bake a found treat, whatever their level. Rare finds come up half as often as treats.
+  - **Treats** (Kitchen recipes for the shelf; flour, butter and milk; each bonus for 20 minutes):
+
+  | Farmer level | Treat | Gives |
+  |---|---|---|
+  | 6 | Honey crullers | Happy +9% for 20 minutes. |
+  | 6 | Oat scones | Fed +9% for 20 minutes. |
+  | 8 | Milk tea | Watered +8% for 20 minutes. |
+  | 10 | Shortbread | Happy +6% and Comfy +6% for 20 minutes. |
+  | 12 | Stud's honey | Fed +12% and Happy +12% for 20 minutes. |
+  | 16 | Cream puffs | Happy +13% for 20 minutes. |
+  | 18 | Clover tarts | Fed +10% and Watered +6% for 20 minutes. |
+  | 20 | Cinnamon rolls | Fed +11% and Happy +8% for 20 minutes. |
+  | 25 | Warm custard | Comfy +10% for 20 minutes. |
+  | 31 | Velvet eclairs | Happy +16% for 20 minutes. |
+  | 35 | Spiced loaf | Fed +14% for 20 minutes. |
+  | 40 | Melon sorbet | Watered +14% for 20 minutes. |
+  | 45 | Pillow cakes | Happy +8% and Comfy +12% for 20 minutes. |
+  | 51 | Honeycomb toffee | Happy +19% for 20 minutes. |
+  | 55 | Hearty pie | Fed +18% for 20 minutes. |
+  | 60 | Rose cordial | Happy +8% and Watered +15% for 20 minutes. |
+  | 70 | Creme brulee | Happy +10% and Comfy +15% for 20 minutes. |
+  | 76 | Golden souffle | Fed +20% and Happy +20% for 20 minutes. |
+  | 85 | Starfruit pavlova | Fed +12%, Happy +12%, Comfy +12% and Watered +12% for 20 minutes. |
+  | 92 | Midnight truffles | Happy +24% for 20 minutes, and a milk boost for 30 minutes. |
+  | 100 | Velvet wedding cake | Fed +22%, Happy +22% and Comfy +12% for 20 minutes. |
+
+  - **Rare finds:**
+  - **Lab mash** (farmer level 6+): A feed for the bin: Fed +28% for 20 minutes, more than Golden mash.
+  - **Musk oil** (farmer level 6+): Velvet musk lasts 2 hours instead of 1.
+  - **Fertile culture** (farmer level 6+): Loading a breeding stall takes 2 oz of seed instead of 3.
+  - **Silk brushes** (farmer level 10+): Grooming gives Happy +8% and Comfy +6% (instead of 6% and 4%).
+  - **Spring water** (farmer level 10+): Farmers' water gives Watered +14% (instead of 10%).
+  - **Velvet bell rope** (farmer level 15+): The feeding bell's bonus lasts 20 minutes instead of 15.
+  - **Pump oil** (farmer level 20+): Each Velvet pump start runs 2½ hours instead of 2.
 
 ### Bull XP: where it comes from
 
