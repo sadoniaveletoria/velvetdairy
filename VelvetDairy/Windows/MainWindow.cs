@@ -1459,7 +1459,7 @@ public sealed partial class MainWindow : Window
             var milk = G.ProducesMilk ? F.Cow.Milk : F.Cow.Seed;
             var cap = G.ProducesMilk ? G.Capacity : G.SeedCapacity;
             list.Add(new(G.ProducesMilk ? "Bottles" : "Vials", $"{G.BottleCount} x {Units.Oz(G.ProducesMilk ? G.BottleSize : G.VialSize, G.ProducesMilk ? "0" : "0.#")}",
-                $"{G.BottleName}s · {Units.Oz(milk, "0.#")} in them now", cap > 0 ? milk / cap : 0, Theme.BlueDeep));
+                G.ProducesMilk ? $"{G.BottleName}s · {Units.Oz(milk, "0.#")} in them now" : $"{Units.Oz(milk, "0.##")} of seed in them now", cap > 0 ? milk / cap : 0, Theme.BlueDeep));
         }
 
         if (G.CanCarry)
