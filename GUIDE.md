@@ -148,6 +148,18 @@ Breeding works with the **Corruption** plugin. When a bull from your dairy finis
 - **Breeding stalls**: the owner can switch a stall to breeding. A cow sits in it for 5 minutes and is bred (no pregnancy; that only comes from Corruption). Each use takes 3 oz from the dairy's seed tank. Farmers load these stalls.
 - **Pregnancy** comes from Corruption and adds milk by trimester until the birth.
 
+### More uses for seed
+
+The dairy's seed tank isn't only for breeding stalls:
+
+- **Velvet musk** (Herd Care > **Musk**): a farmer or the owner puts musk on a cow or bull for **5 oz** from the seed tank. For an hour, every bit of farmer care on them (grooming, feeding, watering, shelf treats) gives **half as much again**: a groom gives Happy +9% instead of +6%. One at a time; you can't put it on yourself. +15 farmer XP. Herd Care shows who's wearing it.
+- **The Breeding season** (Market > Creamery > **Breeding season**): the **first Friday to Sunday of every month** (Central time). Farmers and the owner pour seed from the seed tank into one meter for the whole network. At **250 oz** everyone's milk and seed is **+3%**, at **750 oz +6%**, at **1,500 oz +10%**, from the moment a tier is reached until a week after the season closes. Each oz gives your dairy 2 dairy XP and you 1 farmer XP. When it closes, the top three dairies carry **Season champion**, **runner-up** and **third** on the Dairies list until the next season.
+- **The Experimental lab** (Kitchen > **Experimental lab**): each experiment takes **2 oz of seed** plus a catalyst (1 butter or 1 flour from the dairy pantry, or 4 oz of milk from your jugs) at a heat (low, medium or high). Each dairy's best catalyst and heat for each project is hidden and different from every other dairy's. The right pair gives 6 research, one of the two gives 3 (and tells you which), neither gives 1. **20 research** makes the discovery, for your whole dairy:
+  - **Lab mash**: a feed for the bin, Fed +28% (more than Golden mash).
+  - **Stud's honey**: a Kitchen recipe for the shelf (1 butter + 8 oz of milk makes 2), Fed +12% and Happy +12% at once.
+  - **Musk oil**: Velvet musk lasts 2 hours.
+  - **Fertile culture**: loading a breeding stall takes 2 oz of seed instead of 3.
+
 ### Bull XP: where it comes from
 
 - **Making seed**: XP as seed comes in, but bulls get 40% of what the same amount of milk would give a cow, because they also level from breeding.
