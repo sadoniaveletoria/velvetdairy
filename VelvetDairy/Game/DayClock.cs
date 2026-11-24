@@ -27,6 +27,10 @@ public static class DayClock
     /// <summary>The time in Central time right now.</summary>
     public static DateTime Now => TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, Zone);
 
+    /// <summary>A unix time as a Central-time date and time, e.g. "Fri Dec 4, 12:00 AM".</summary>
+    public static string Show(long unix) =>
+        TimeZoneInfo.ConvertTimeFromUtc(DateTimeOffset.FromUnixTimeSeconds(unix).UtcDateTime, Zone).ToString("ddd MMM d, h:mm tt", System.Globalization.CultureInfo.InvariantCulture);
+
     /// <summary>How long until the next daily reset.</summary>
     public static TimeSpan UntilReset
     {

@@ -55,6 +55,7 @@ const SHELF_ITEMS = {
   cheese: { name: "Cheese", price: 25, min: 5, max: 100 },   // new items go at the end: fed notices carry the item's place here
   cake: { name: "Honey cream cakes", price: 110, min: 20, max: 400 },
   tart: { name: "Velvet tarts", price: 160, min: 30, max: 600 },
+  studhoney: { name: "Stud's honey", price: 90, min: 20, max: 300, lab: true },   // a lab discovery
 };
 const SHELF_BAKER_SHARE = 0.8;      // the rest goes to the dairy fund
 const SHELF_MAX_STOCK = 200;        // per item per dairy      // delivering a buy order in person at the buyer's public area pays 10% more
@@ -70,6 +71,7 @@ const FEED_BIN = {
   honeyoats: { name: "Honey oats", level: 6, price: 6000 },
   premium: { name: "Velvet blend", level: 10, price: 15000 },
   goldenmash: { name: "Golden mash", level: 15, price: 35000 },
+  labmash: { name: "Lab mash", level: 1, price: 0, lab: true },   // discovered in the Experimental lab, never bought
 };
 // The Velvet pump: everyone's milk and seed in the dairy +15% for 2 hours, paid from the fund (dairy level 5 and up)
 const PUMP_COST = 2500, PUMP_SECONDS = 2 * 3600, PUMP_LEVEL = 5;
@@ -344,6 +346,11 @@ async function route(request, env) {
     ["POST", /^\/v1\/seed\/sales\/(\d+)\/buy$/, m => buySeed(env, me, Number(m[1]), request)],
     ["POST", /^\/v1\/seed\/sales\/(\d+)\/close$/, m => closeSeedSale(env, me, Number(m[1]))],
     ["POST", /^\/v1\/groom$/, () => groom(env, me, request)],
+    ["POST", /^\/v1\/musk$/, () => applyMusk(env, me, request)],
+    ["GET", /^\/v1\/season$/, () => seasonView(env, me)],
+    ["POST", /^\/v1\/season\/pour$/, () => seasonPour(env, me, request)],
+    ["GET", /^\/v1\/lab$/, () => labView(env, me)],
+    ["POST", /^\/v1\/lab\/try$/, () => labTry(env, me, request)],
     ["GET", /^\/v1\/shelf$/, () => shelfView(env, me)],
     ["POST", /^\/v1\/shelf\/stock$/, () => shelfStock(env, me, request)],
     ["POST", /^\/v1\/shelf\/buy$/, () => shelfBuy(env, me, request)],
@@ -901,6 +908,7 @@ async function heartbeat(env, me, request) {
     applications: mem && (await canAnswer(env, mem)) ? (await env.DB.prepare(
       "SELECT COUNT(*) AS n FROM applications WHERE dairy_id = ? AND status = 'pending'").bind(mem.dairy_id).first()).n : 0,
     inbox: waiting.n,
+    season: await seasonBonusOf(env, t),
     time: t,
   };
 }
@@ -1087,7 +1095,11 @@ async function listDairies(env, me) {
     WHERE d.updated >= ? OR d.owner = ?
     ORDER BY COALESCE(p.xp, 0) DESC, here DESC, d.is_public DESC, d.updated DESC
     LIMIT 500`).bind(t - ONLINE_WINDOW, t - LISTING_MAX_AGE, me.id).all();
-  return { online: await onlineCount(env), dairies: rows.results.map(r => listing(r, me)), applications: await myApplications(env, me) };
+  // Last season's top three wear their titles on the list
+  const { cur } = seasonAt(env, t);
+  const titles = t >= cur.closes ? Object.fromEntries((await env.DB.prepare(`SELECT dairy_id, SUM(oz) AS oz FROM season_pours WHERE season = ?
+      GROUP BY dairy_id ORDER BY oz DESC LIMIT 3`).bind(cur.id).all()).results.map((r, i) => [r.dairy_id, SEASON_TITLES[i]])) : {};
+  return { online: await onlineCount(env), dairies: rows.results.map(r => ({ ...listing(r, me), seasonTitle: titles[r.id] || "" })), applications: await myApplications(env, me) };
 }
 
 /** Everything about the dairy you belong to: members (with their shared status), stalls, pending invites. */
@@ -1098,8 +1110,10 @@ async function myDairy(env, me) {
   const d = await env.DB.prepare("SELECT * FROM dairies WHERE id = ?").bind(mem.dairy_id).first();
   const t = now();
   const members = (await env.DB.prepare(`
-      SELECT m.install, m.role, m.name, m.world_name, m.status, i.last_seen, i.version, i.at_dairy, q.milk_oz AS quota_oz, q.seed_oz AS bull_quota_oz
+      SELECT m.install, m.role, m.name, m.world_name, m.status, i.last_seen, i.version, i.at_dairy, q.milk_oz AS quota_oz, q.seed_oz AS bull_quota_oz,
+        COALESCE(mk.until, 0) AS musk_until
       FROM memberships m LEFT JOIN installs i ON i.id = m.install LEFT JOIN quota_amounts q ON q.install = m.install AND q.dairy_id = m.dairy_id
+        LEFT JOIN musks mk ON mk.install = m.install
       WHERE m.dairy_id = ? ORDER BY m.joined`).bind(d.id).all()).results;
   const stalls = (await env.DB.prepare(
     "SELECT s.*, COALESCE(c.until, 0) AS clean_until, (b.stall_id IS NOT NULL) AS breed, COALESCE(b.loaded, 0) AS loaded FROM stalls s LEFT JOIN stall_clean c ON c.stall_id = s.id LEFT JOIN breed_stalls b ON b.stall_id = s.id WHERE s.dairy_id = ? ORDER BY s.created")
@@ -1122,7 +1136,7 @@ async function myDairy(env, me) {
       online: (m.last_seen || 0) >= t - ONLINE_WINDOW, lastSeen: m.last_seen || 0, version: m.version || "", status: safeParse(m.status),
       // In THIS dairy right now (their plugin's own "in a dairy" can mean another dairy they're visiting)
       here: (m.last_seen || 0) >= t - ONLINE_WINDOW && m.at_dairy === d.id,
-      quotaOz: m.quota_oz, bullQuotaOz: m.bull_quota_oz,
+      quotaOz: m.quota_oz, bullQuotaOz: m.bull_quota_oz, muskUntil: m.musk_until,
     })),
     stalls: stalls.map(s => ({ id: s.id, name: s.name, x: s.x, y: s.y, z: s.z, tier: s.tier, cleanUntil: s.clean_until > t ? s.clean_until : 0, breed: !!s.breed, loaded: s.loaded || 0 })),
     progress: await progressOut(env, d.id, stalls.length),
@@ -1156,7 +1170,8 @@ async function progressOut(env, dairyId, stallCount) {
     payBonus: payBonus(p.level),
     contract: await contractOut(env, dairyId, p.level),
     feedBin: await feedBinOf(env, dairyId),
-    feedBinShop: Object.entries(FEED_BIN).map(([item, f]) => ({ item, name: f.name, level: f.level, price: f.price })),
+    feedBinShop: Object.entries(FEED_BIN).filter(([, f]) => !f.lab).map(([item, f]) => ({ item, name: f.name, level: f.level, price: f.price })),
+    lab: await labDoneOf(env, dairyId),
     pumpUntil: await pumpUntilOf(env, dairyId), pumpCost: PUMP_COST, pumpLevel: PUMP_LEVEL, pumpMinutes: PUMP_SECONDS / 60,
   };
 }
@@ -1628,6 +1643,7 @@ async function shelfStock(env, me, request) {
   const qty = int(b.qty, 1, 50, "qty");
   const mem = await membership(env, me.id);
   if (!mem || !(mem.is_owner || hasRole(mem, "farmer"))) fail(403, "Only farmers and the owner stock the shelf.");
+  if (SHELF_ITEMS[item].lab && !(await labDoneOf(env, mem.dairy_id)).includes(item)) fail(400, `Your dairy hasn't discovered ${SHELF_ITEMS[item].name} yet.`);
   const have = await env.DB.prepare("SELECT COALESCE(SUM(qty), 0) AS n FROM shelf WHERE dairy_id = ? AND item = ?").bind(mem.dairy_id, item).first();
   if (have.n + qty > SHELF_MAX_STOCK) fail(400, `The shelf holds up to ${SHELF_MAX_STOCK} ${SHELF_ITEMS[item].name.toLowerCase()}.`);
   await env.DB.prepare("INSERT INTO shelf (dairy_id, item, baker, baker_name, qty, created) VALUES (?, ?, ?, ?, ?, ?)")
@@ -2109,13 +2125,14 @@ async function setQuota(env, me, install, request) {
 
 async function feedBinOf(env, dairyId) {
   const rows = (await env.DB.prepare("SELECT item FROM dairy_feedbin WHERE dairy_id = ?").bind(dairyId).all()).results.map(r => r.item);
-  return Object.keys(FEED_BIN).filter(k => FEED_BIN[k].price === 0 || rows.includes(k));
+  const lab = await labDoneOf(env, dairyId);
+  return Object.keys(FEED_BIN).filter(k => FEED_BIN[k].lab ? lab.includes("labmash") : FEED_BIN[k].price === 0 || rows.includes(k));
 }
 
 /** The owner unlocks a feed type for the bin with the fund. */
 async function buyFeedBin(env, me, item) {
   const f = FEED_BIN[item];
-  if (!f) fail(404, "That isn't a feed.");
+  if (!f || f.lab) fail(404, "That isn't a feed you can buy.");
   const d = await ownedDairy(env, me);
   if ((await feedBinOf(env, d.id)).includes(item)) fail(400, `The bin already has ${f.name.toLowerCase()}.`);
   const p = await progressOf(env, d.id);
@@ -2765,8 +2782,9 @@ async function loadBreedingStall(env, me, id) {
   if (!mem.is_owner && !hasRole(mem, "farmer")) fail(403, "Farmers and the owner load breeding stalls.");
   if (!inOwnDairy(me, mem)) fail(400, "Be in the dairy to load its breeding stall.");
   if (st.loaded >= BREED_STALL_MAX_LOADED) fail(400, `It's full: ${BREED_STALL_MAX_LOADED} breedings loaded.`);
-  if (!(await takeSeed(env, st.dairy_id, BREED_STALL_OZ)))
-    fail(400, `The seed tank needs ${BREED_STALL_OZ} oz to load a breeding. It needs a bull, or seed bought from another dairy.`);
+  const loadOz = await breedOzOf(env, st.dairy_id);
+  if (!(await takeSeed(env, st.dairy_id, loadOz)))
+    fail(400, `The seed tank needs ${loadOz} oz to load a breeding. It needs a bull, or seed bought from another dairy.`);
   const r = await env.DB.prepare("UPDATE breed_stalls SET loaded = loaded + 1 WHERE stall_id = ? RETURNING loaded").bind(id).first();
   return { ok: true, loaded: r.loaded, tank: Math.round((await seedTank(env, st.dairy_id)) * 100) / 100 };
 }
@@ -3260,4 +3278,222 @@ async function botFarmerWork(env, dairyId, bot, bots, herd, bin, mins, t, stmts,
     stmts.push(env.DB.prepare("UPDATE dairy_tank SET oz = MAX(0, oz - ?) WHERE dairy_id = ? AND grade = 0").bind(take, dairyId));
     stmts.push(env.DB.prepare(`INSERT INTO dairy_progress (dairy_id, fund, week) VALUES (?, ?, ?) ON CONFLICT(dairy_id) DO UPDATE SET fund = fund + excluded.fund`).bind(dairyId, Math.round(take * ORDER_FUND_PER_OZ), weekKey()));
   }
+}
+
+
+// ---------------------------------------------------------------- seed: Velvet musk, the Breeding season, the lab
+
+// Velvet musk: a farmer (or the owner) puts musk on a cow or bull, from the dairy's seed tank. For an hour (two once the
+// lab finds Musk oil) every bit of farmer care on them gives half as much again. One at a time.
+const MUSK_OZ = 5, MUSK_MINUTES = 60, MUSK_OIL_MINUTES = 120;
+
+async function applyMusk(env, me, request) {
+  const b = await body(request);
+  const mem = await membership(env, me.id);
+  if (!mem || !(hasRole(mem, "farmer") || mem.is_owner)) fail(403, "Only farmers and the owner put musk on cows and bulls.");
+  if (!inOwnDairy(me, mem)) fail(400, "Go to your dairy to use its seed for musk.");
+  const toId = String(b.to || "");
+  if (toId === me.id) fail(400, "Another farmer has to put musk on you.");
+  const to = await env.DB.prepare(`SELECT install, name, role FROM memberships WHERE install = ?
+      AND (dairy_id = ? OR (install IN (SELECT id FROM installs WHERE at_dairy = ? AND last_seen >= ?)
+        AND EXISTS (SELECT 1 FROM dairies WHERE id = ? AND is_public = 1)))`)
+    .bind(toId, mem.dairy_id, mem.dairy_id, now() - ONLINE_WINDOW, mem.dairy_id).first();
+  if (!to || !(hasRole(to, "cow") || hasRole(to, "bull"))) fail(400, "Musk is for your dairy's cows and bulls (and guests visiting it).");
+  const t = now();
+  const on = await env.DB.prepare("SELECT until FROM musks WHERE install = ?").bind(to.install).first();
+  if (on && on.until > t) fail(400, `${to.name} is wearing musk for ${Math.ceil((on.until - t) / 60)} more min.`);
+  if (!(await takeSeed(env, mem.dairy_id, MUSK_OZ))) fail(400, `Musk takes ${MUSK_OZ} oz from the seed tank.`);
+  const minutes = (await labDoneOf(env, mem.dairy_id)).includes("muskoil") ? MUSK_OIL_MINUTES : MUSK_MINUTES;
+  const until = t + minutes * 60;
+  await env.DB.batch([
+    env.DB.prepare("INSERT INTO musks (install, until, by_name) VALUES (?, ?, ?) ON CONFLICT(install) DO UPDATE SET until = excluded.until, by_name = excluded.by_name")
+      .bind(to.install, until, mem.name || ""),
+    inboxStmt(env, to.install, "musk", 0, minutes, 0, `${mem.name || "A farmer"} put Velvet musk on you: farmer care gives half as much again for ${minutes} minutes.`),
+  ]);
+  return { ok: true, until, minutes, tank: Math.round((await seedTank(env, mem.dairy_id)) * 100) / 100 };
+}
+
+// The Breeding season: the first Friday to Sunday of every month (Central time). Dairies pour seed from their seed
+// tank into one meter for the whole network. The tiers it reaches give everyone milk and seed a bonus, from the moment
+// they're reached until a week after the season closes. The top dairies are the season's champions.
+// The dev server runs a season all month, so it can always be tried.
+const SEASON_TIERS = [{ oz: 250, pct: 3 }, { oz: 750, pct: 6 }, { oz: 1500, pct: 10 }];
+const SEASON_BONUS_DAYS = 7, SEASON_XP_PER_OZ = 2, SEASON_TITLES = ["Season champion", "Season runner-up", "Season third"];
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+/** Unix seconds of midnight Central time on a calendar day. */
+function centralMidnight(y, m, d) {
+  for (const h of [5, 6, 7]) {
+    const t = Date.UTC(y, m - 1, d, h) / 1000;
+    const parts = new Intl.DateTimeFormat("en-US", { timeZone: "America/Chicago", hourCycle: "h23", hour: "2-digit", day: "2-digit" }).formatToParts(new Date(t * 1000));
+    if (Number(parts.find(p => p.type === "hour").value) === 0 && Number(parts.find(p => p.type === "day").value) === d) return t;
+  }
+  return Date.UTC(y, m - 1, d, 6) / 1000;
+}
+
+function seasonOf(env, y, m) {
+  if (env.BOTS === "on") {
+    const opens = centralMidnight(y, m, 1);
+    const closes = m === 12 ? centralMidnight(y + 1, 1, 1) : centralMidnight(y, m + 1, 1);
+    return { id: `${y}-${String(m).padStart(2, "0")}`, name: `${MONTHS[m - 1]} breeding season (dev: all month)`, opens, closes, bonusUntil: closes + SEASON_BONUS_DAYS * 86400 };
+  }
+  const first = new Date(Date.UTC(y, m - 1, 1)).getUTCDay();       // 0 Sunday .. 5 Friday
+  const fri = 1 + ((5 - first + 7) % 7);
+  const opens = centralMidnight(y, m, fri);
+  const closes = centralMidnight(y, m, fri + 3);                     // the end of Sunday
+  return { id: `${y}-${String(m).padStart(2, "0")}`, name: `${MONTHS[m - 1]} breeding season`, opens, closes, bonusUntil: closes + SEASON_BONUS_DAYS * 86400 };
+}
+
+/** The season that matters at t: this month's once it has opened, otherwise last month's (its bonus may still run). */
+function seasonAt(env, t) {
+  const [y, m] = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Chicago", year: "numeric", month: "2-digit" }).format(new Date(t * 1000)).split("-").map(Number);
+  const cur = seasonOf(env, y, m);
+  if (t >= cur.opens) return { cur, next: m === 12 ? seasonOf(env, y + 1, 1) : seasonOf(env, y, m + 1) };
+  return { cur: m === 1 ? seasonOf(env, y - 1, 12) : seasonOf(env, y, m - 1), next: cur };
+}
+
+async function seasonTotal(env, id) {
+  return (await env.DB.prepare("SELECT COALESCE(SUM(oz), 0) AS oz FROM season_pours WHERE season = ?").bind(id).first()).oz;
+}
+
+function seasonPct(total) {
+  let pct = 0;
+  for (const tier of SEASON_TIERS) if (total >= tier.oz) pct = tier.pct;
+  return pct;
+}
+
+/** For the heartbeat: the bonus everyone gets right now (percent) and until when. */
+async function seasonBonusOf(env, t) {
+  const { cur } = seasonAt(env, t);
+  if (t < cur.opens || t >= cur.bonusUntil) return { pct: 0, until: 0 };
+  return { pct: seasonPct(await seasonTotal(env, cur.id)), until: cur.bonusUntil };
+}
+
+async function seasonTop(env, id, mineId, n) {
+  const rows = (await env.DB.prepare(`SELECT s.dairy_id, d.name, SUM(s.oz) AS oz FROM season_pours s LEFT JOIN dairies d ON d.id = s.dairy_id
+      WHERE s.season = ? GROUP BY s.dairy_id ORDER BY oz DESC LIMIT ?`).bind(id, n).all()).results;
+  return rows.map((r, i) => ({ rank: i + 1, name: r.name || "A dairy", oz: Math.round(r.oz * 10) / 10, mine: r.dairy_id === mineId, title: SEASON_TITLES[i] || "" }));
+}
+
+async function seasonView(env, me) {
+  const t = now();
+  const { cur, next } = seasonAt(env, t);
+  const mem = await membership(env, me.id);
+  const total = await seasonTotal(env, cur.id);
+  const mine = mem ? (await env.DB.prepare("SELECT COALESCE(SUM(oz), 0) AS oz FROM season_pours WHERE season = ? AND dairy_id = ?").bind(cur.id, mem.dairy_id).first()).oz : 0;
+  const open = t >= cur.opens && t < cur.closes;
+  return {
+    id: cur.id, name: cur.name, open, opens: cur.opens, closes: cur.closes, bonusUntil: cur.bonusUntil,
+    nextName: next.name, nextOpens: next.opens,
+    total: Math.round(total * 10) / 10, tiers: SEASON_TIERS, pct: t < cur.bonusUntil && t >= cur.opens ? seasonPct(total) : 0,
+    mine: Math.round(mine * 10) / 10, tank: mem ? Math.round((await seedTank(env, mem.dairy_id)) * 100) / 100 : 0,
+    canPour: !!mem && (mem.is_owner || hasRole(mem, "farmer")),
+    top: await seasonTop(env, cur.id, mem?.dairy_id, 10),
+    xpPerOz: SEASON_XP_PER_OZ,
+  };
+}
+
+async function seasonPour(env, me, request) {
+  const b = await body(request);
+  const oz = Math.round(Number(b.oz) * 10) / 10;
+  if (!Number.isFinite(oz) || oz < 0.5 || oz > 1000) fail(400, "Pour 0.5 to 1,000 oz.");
+  const mem = await membership(env, me.id);
+  if (!mem || !(mem.is_owner || hasRole(mem, "farmer"))) fail(403, "Only farmers and the owner pour the dairy's seed.");
+  const t = now();
+  const { cur, next } = seasonAt(env, t);
+  if (!(t >= cur.opens && t < cur.closes)) fail(400, `The breeding season isn't open. The next one opens ${new Date(next.opens * 1000).toLocaleDateString("en-US", { timeZone: "America/Chicago", weekday: "long", month: "long", day: "numeric" })}.`);
+  if (!(await takeSeed(env, mem.dairy_id, oz))) fail(400, `The seed tank doesn't have ${oz} oz.`);
+  const xp = Math.round(oz * SEASON_XP_PER_OZ);
+  await env.DB.batch([
+    env.DB.prepare("INSERT INTO season_pours (season, dairy_id, install, oz, at) VALUES (?, ?, ?, ?, ?)").bind(cur.id, mem.dairy_id, me.id, oz, t),
+    addXpStmt(env, mem.dairy_id, xp),
+  ]);
+  const total = await seasonTotal(env, cur.id);
+  return { ok: true, oz, xp, total: Math.round(total * 10) / 10, pct: seasonPct(total), tank: Math.round((await seedTank(env, mem.dairy_id)) * 100) / 100 };
+}
+
+// The Experimental lab: farmers (and the owner) put 2 oz of seed with a catalyst (butter, flour or 4 oz of milk from
+// their jugs) at a heat (low, medium, high). Each dairy's best catalyst and heat for each project is hidden and its own.
+// The right pair gives 6 research, one of the two 3 (and says which), neither 1. 20 research finishes a project.
+const LAB_SEED_OZ = 2, LAB_MILK_OZ = 4, LAB_NEED = 20, LAB_XP = 10;
+const LAB_PROJECTS = {
+  labmash: { name: "Lab mash", what: "A feed for the bin: Fed +28% for 20 minutes, more than Golden mash." },
+  studhoney: { name: "Stud's honey", what: "A Kitchen recipe for the shelf: Fed +12% and Happy +12% at once, for 20 minutes." },
+  muskoil: { name: "Musk oil", what: "Velvet musk lasts 2 hours instead of 1." },
+  culture: { name: "Fertile culture", what: "Loading a breeding stall takes 2 oz of seed instead of 3." },
+};
+const LAB_CATALYSTS = ["butter", "flour", "milk"], LAB_HEATS = ["low", "medium", "high"];
+
+async function labDoneOf(env, dairyId) {
+  return (await env.DB.prepare("SELECT project FROM lab_research WHERE dairy_id = ? AND points >= ?").bind(dairyId, LAB_NEED).all()).results.map(r => r.project);
+}
+
+async function breedOzOf(env, dairyId) {
+  return (await labDoneOf(env, dairyId)).includes("culture") ? 2 : BREED_STALL_OZ;
+}
+
+/** The hidden answer for a dairy's project: the same every time, different for each dairy. */
+async function labSecret(dairyId, project) {
+  const h = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`lab:${dairyId}:${project}`)));
+  return { catalyst: h[0] % LAB_CATALYSTS.length, heat: h[1] % LAB_HEATS.length };
+}
+
+async function labView(env, me) {
+  const mem = await membership(env, me.id);
+  if (!mem) return { projects: [], tank: 0 };
+  const rows = (await env.DB.prepare("SELECT * FROM lab_research WHERE dairy_id = ?").bind(mem.dairy_id).all()).results;
+  return {
+    need: LAB_NEED, seedOz: LAB_SEED_OZ, milkOz: LAB_MILK_OZ, tank: Math.round((await seedTank(env, mem.dairy_id)) * 100) / 100,
+    canTry: mem.is_owner || hasRole(mem, "farmer"),
+    projects: Object.entries(LAB_PROJECTS).map(([id, p]) => {
+      const r = rows.find(x => x.project === id);
+      return { id, name: p.name, what: p.what, points: r?.points || 0, tries: r?.tries || 0, done: (r?.points || 0) >= LAB_NEED,
+        catalyst: r && r.found_catalyst >= 0 ? LAB_CATALYSTS[r.found_catalyst] : "", heat: r && r.found_heat >= 0 ? LAB_HEATS[r.found_heat] : "",
+        tried: r?.tried ? JSON.parse(r.tried) : [] };
+    }),
+  };
+}
+
+async function labTry(env, me, request) {
+  const b = await body(request);
+  const project = String(b.project || "");
+  if (!LAB_PROJECTS[project]) fail(400, "That isn't a lab project.");
+  const c = LAB_CATALYSTS.indexOf(String(b.catalyst || "")), h = LAB_HEATS.indexOf(String(b.heat || ""));
+  if (c < 0 || h < 0) fail(400, "Pick a catalyst and a heat.");
+  const mem = await pantryMember(env, me, true);
+  const t = now();
+  const row = await env.DB.prepare("SELECT * FROM lab_research WHERE dairy_id = ? AND project = ?").bind(mem.dairy_id, project).first();
+  if ((row?.points || 0) >= LAB_NEED) fail(400, `${LAB_PROJECTS[project].name} is already discovered.`);
+  // The catalyst first (it can be refunded), then the seed
+  const cat = LAB_CATALYSTS[c];
+  if (cat === "milk") {
+    if (!(await useCarriedOz(env, me.id, LAB_MILK_OZ))) fail(400, `Milk as a catalyst takes ${LAB_MILK_OZ} oz from your jugs. Fill them in the Kitchen.`);
+  } else {
+    const took = await env.DB.prepare("UPDATE dairy_pantry SET qty = qty - 1 WHERE dairy_id = ? AND item = ? AND qty >= 1 RETURNING qty").bind(mem.dairy_id, cat).first();
+    if (!took) fail(400, `The dairy pantry has no ${PANTRY_ITEMS[cat].toLowerCase()}. Make some in the Kitchen.`);
+  }
+  if (!(await takeSeed(env, mem.dairy_id, LAB_SEED_OZ))) {
+    if (cat === "milk") await env.DB.prepare("UPDATE carried SET oz = oz + ? WHERE install = ?").bind(LAB_MILK_OZ, me.id).run();
+    else await env.DB.prepare("UPDATE dairy_pantry SET qty = qty + 1 WHERE dairy_id = ? AND item = ?").bind(mem.dairy_id, cat).run();
+    fail(400, `Each experiment takes ${LAB_SEED_OZ} oz from the seed tank.`);
+  }
+  const secret = await labSecret(mem.dairy_id, project);
+  const catOk = secret.catalyst === c, heatOk = secret.heat === h;
+  const gain = catOk && heatOk ? 6 : catOk || heatOk ? 3 : 1;
+  const points = Math.min(LAB_NEED, (row?.points || 0) + gain);
+  const foundC = catOk ? c : row?.found_catalyst ?? -1, foundH = heatOk ? h : row?.found_heat ?? -1;
+  const tried = row?.tried ? JSON.parse(row.tried) : [];
+  tried.push({ catalyst: cat, heat: LAB_HEATS[h], gain });
+  await env.DB.batch([
+    env.DB.prepare(`INSERT INTO lab_research (dairy_id, project, points, tries, found_catalyst, found_heat, tried, updated) VALUES (?, ?, ?, 1, ?, ?, ?, ?)
+      ON CONFLICT(dairy_id, project) DO UPDATE SET points = excluded.points, tries = tries + 1, found_catalyst = excluded.found_catalyst,
+        found_heat = excluded.found_heat, tried = excluded.tried, updated = excluded.updated`)
+      .bind(mem.dairy_id, project, points, foundC, foundH, JSON.stringify(tried.slice(-12)), t),
+    addXpStmt(env, mem.dairy_id, LAB_XP),
+  ]);
+  const done = points >= LAB_NEED;
+  const hint = catOk && heatOk ? "A breakthrough: the right catalyst at the right heat!"
+    : catOk ? `The ${PANTRY_ITEMS[cat]?.toLowerCase() ?? "milk"} reacts well, but the heat is off.`
+    : heatOk ? `The heat is right, but ${cat === "milk" ? "milk" : PANTRY_ITEMS[cat].toLowerCase()} isn't the catalyst.` : "Nothing much happens. Try something else.";
+  return { ok: true, gain, points, done, hint, catalystRight: catOk, heatRight: heatOk, tank: Math.round((await seedTank(env, mem.dairy_id)) * 100) / 100 };
 }

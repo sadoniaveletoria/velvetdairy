@@ -1188,4 +1188,95 @@ await test("dev server test dairy: a bot-run public dairy you visit as a guest",
   } finally { delete env.BOTS; }
 });
 
+await test("seed uses: Velvet musk, the breeding season and the Experimental lab", async () => {
+  const ola = player("Ola Owner"), fern = player("Fern Farmer"), cleo = player("Cleo Cow");
+  for (const x of [ola, fern, cleo]) await beat(x);
+  const HS = "4440001119991";
+  assert.equal((await call(ola, "PUT", "/v1/dairy", dairyBody({ houseId: HS, name: "Seed Hall", ownerName: "Ola Owner", ward: 23, plot: 9 }))).status, 200);
+  const did = (await beat(ola)).data.membership.dairyId;
+  for (const [who, name, role] of [[fern, "Fern Farmer", "farmer"], [cleo, "Cleo Cow", "cow"]]) {
+    const inv = (await call(ola, "POST", "/v1/invites", { toHash: who.hash, toName: name, role })).data.id;
+    assert.equal((await call(who, "POST", `/v1/invites/${inv}/accept`, { charHash: who.hash, name, worldName: "Gilgamesh" })).status, 200);
+  }
+  for (const x of [ola, fern, cleo]) await beat(x, { houseId: HS, awake: true });
+  const setSeed = oz => sqlite.prepare("INSERT INTO dairy_tank (dairy_id, grade, oz) VALUES (?, -1, ?) ON CONFLICT(dairy_id, grade) DO UPDATE SET oz = excluded.oz").run(did, oz);
+
+  // Musk: 5 oz from the seed tank, one at a time, never on yourself, only farmers and the owner
+  setSeed(4);
+  assert.match((await call(fern, "POST", "/v1/musk", { to: cleo.id })).data.error, /5 oz/);
+  setSeed(20);
+  assert.equal((await call(cleo, "POST", "/v1/musk", { to: fern.id })).status, 403, "cows don't put musk on");
+  assert.equal((await call(fern, "POST", "/v1/musk", { to: fern.id })).status, 400, "not yourself");
+  const m = (await call(fern, "POST", "/v1/musk", { to: cleo.id })).data;
+  assert.equal(m.minutes, 60);
+  assert.equal(m.tank, 15);
+  assert.match((await call(ola, "POST", "/v1/musk", { to: cleo.id })).data.error, /wearing musk/);
+  const told = (await call(cleo, "GET", "/v1/inbox")).data.items.find(i => i.kind === "musk");
+  assert.ok(told && told.oz === 60 && told.coins === 0, "Cleo is told (minutes in oz, no coins): " + JSON.stringify(told));
+  assert.ok((await call(ola, "GET", "/v1/dairy/mine")).data.members.find(x => x.install === cleo.id || x.name === "Cleo Cow").muskUntil > 0, "the herd sees it");
+
+  // The breeding season: closed on the live server outside its weekend (forced here), open all month on the dev server
+  env.BOTS = "on";
+  try {
+    const v = (await call(fern, "GET", "/v1/season")).data;
+    assert.equal(v.open, true, JSON.stringify(v));
+    assert.equal(v.canPour, true);
+    assert.equal((await call(cleo, "POST", "/v1/season/pour", { oz: 2 })).status, 403, "cows don't pour the dairy's seed");
+    assert.match((await call(fern, "POST", "/v1/season/pour", { oz: 100 })).data.error, /doesn't have/);
+    const xpBefore = sqlite.prepare("SELECT xp FROM dairy_progress WHERE dairy_id = ?").get(did)?.xp || 0;
+    const p1 = (await call(fern, "POST", "/v1/season/pour", { oz: 10 })).data;
+    assert.equal(p1.tank, 5);
+    assert.equal(p1.xp, 20);
+    assert.equal(sqlite.prepare("SELECT xp FROM dairy_progress WHERE dairy_id = ?").get(did).xp, xpBefore + 20, "dairy xp");
+    // Reaching a tier turns the bonus on for everyone (in the heartbeat)
+    sqlite.prepare("INSERT INTO season_pours (season, dairy_id, install, oz, at) VALUES (?, 'other', 'x', 245, 0)").run(v.id);
+    const b = (await beat(cleo, { houseId: HS })).data.season;
+    assert.equal(b.pct, 3);
+    assert.ok(b.until > 0);
+    const after = (await call(ola, "GET", "/v1/season")).data;
+    assert.equal(after.mine, 10);
+    assert.equal(after.top[0].mine, false, "the other dairy poured more");
+    assert.equal(after.top[1].mine, true);
+  } finally { delete env.BOTS; }
+
+  // The lab: seed + a catalyst; the hidden best pair gives the most; 20 research discovers it
+  setSeed(200);
+  assert.match((await call(fern, "POST", "/v1/lab/try", { project: "culture", catalyst: "butter", heat: "low" })).data.error, /no butter/);
+  sqlite.prepare("INSERT INTO dairy_pantry (dairy_id, item, qty) VALUES (?, 'butter', 50) ON CONFLICT(dairy_id, item) DO UPDATE SET qty = 50").run(did);
+  sqlite.prepare("INSERT INTO dairy_pantry (dairy_id, item, qty) VALUES (?, 'flour', 50) ON CONFLICT(dairy_id, item) DO UPDATE SET qty = 50").run(did);
+  assert.equal((await call(cleo, "POST", "/v1/lab/try", { project: "culture", catalyst: "butter", heat: "low" })).status, 403, "farmers and the owner");
+  let gains = [];
+  for (const cat of ["butter", "flour"]) for (const heat of ["low", "medium", "high"]) {
+    const r = (await call(fern, "POST", "/v1/lab/try", { project: "culture", catalyst: cat, heat })).data;
+    if (r.error) { assert.match(r.error, /already discovered/); break; }
+    gains.push(r.gain);
+  }
+  assert.ok(gains.every(g => [1, 3, 6].includes(g)), JSON.stringify(gains));
+  const view = (await call(fern, "GET", "/v1/lab")).data;
+  const cult = view.projects.find(x => x.id === "culture");
+  assert.ok(cult.points > 0 && cult.tries > 0);
+  assert.equal(sqlite.prepare("SELECT qty FROM dairy_pantry WHERE dairy_id = ? AND item = 'butter'").get(did).qty < 50, true, "butter used");
+  // Finish it: a breeding stall load costs 2 oz now
+  sqlite.prepare("UPDATE lab_research SET points = 20 WHERE dairy_id = ? AND project = 'culture'").run(did);
+  assert.match((await call(fern, "POST", "/v1/lab/try", { project: "culture", catalyst: "flour", heat: "low" })).data.error, /already discovered/);
+  const stall = (await call(ola, "POST", "/v1/stalls", { name: "Pen", x: 2, y: 0, z: 2 })).data.id;
+  await call(ola, "POST", `/v1/stalls/${stall}/breeding`, { on: true });
+  setSeed(10);
+  assert.equal((await call(fern, "POST", `/v1/stalls/${stall}/load`)).data.tank, 8);
+  // Lab mash and Stud's honey only once discovered
+  assert.ok(!(await call(ola, "GET", "/v1/dairy/mine")).data.progress.feedBin.includes("labmash"));
+  assert.match((await call(fern, "POST", "/v1/shelf/stock", { item: "studhoney", qty: 1 })).data.error, /hasn't discovered/);
+  assert.equal((await call(ola, "POST", "/v1/dairy/feedbin/labmash")).status, 404, "never bought");
+  sqlite.prepare("INSERT INTO lab_research (dairy_id, project, points) VALUES (?, 'labmash', 20), (?, 'studhoney', 20), (?, 'muskoil', 20)").run(did, did, did);
+  const prog = (await call(ola, "GET", "/v1/dairy/mine")).data.progress;
+  assert.ok(prog.feedBin.includes("labmash"));
+  assert.ok(prog.lab.includes("studhoney"));
+  assert.ok(!prog.feedBinShop.some(f => f.item === "labmash"), "not in the shop");
+  assert.equal((await call(fern, "POST", "/v1/shelf/stock", { item: "studhoney", qty: 1 })).status, 200);
+  // Musk oil: musk lasts 2 hours
+  sqlite.prepare("DELETE FROM musks").run();
+  setSeed(10);
+  assert.equal((await call(fern, "POST", "/v1/musk", { to: cleo.id })).data.minutes, 120);
+});
+
 console.log(`\n${passed} passed`);

@@ -28,6 +28,106 @@ public sealed class HeartbeatReply
     public List<CreameryInfo>? Creameries { get; set; }   // up to 3 (one per Grand Company); Creamery is the first
     public float Carried { get; set; }
     public List<MyDairyEntry> Dairies { get; set; } = new();   // every dairy you belong to (you can be in several, and own one)
+    public SeasonBonus? Season { get; set; }        // the Breeding season's bonus for everyone right now
+}
+
+/// <summary>The Breeding season's bonus to milk and seed for everyone on the network (percent), and until when.</summary>
+public sealed class SeasonBonus
+{
+    public int Pct { get; set; }
+    public long Until { get; set; }
+}
+
+/// <summary>The Breeding season: the network's seed meter, its tiers, your dairy's share and the top dairies.</summary>
+public sealed class SeasonView
+{
+    public string Id { get; set; } = "";
+    public string Name { get; set; } = "";
+    public bool Open { get; set; }
+    public long Opens { get; set; }
+    public long Closes { get; set; }
+    public long BonusUntil { get; set; }
+    public string NextName { get; set; } = "";
+    public long NextOpens { get; set; }
+    public float Total { get; set; }
+    public List<SeasonTier> Tiers { get; set; } = new();
+    public int Pct { get; set; }
+    public float Mine { get; set; }
+    public float Tank { get; set; }
+    public bool CanPour { get; set; }
+    public List<SeasonRow> Top { get; set; } = new();
+    public int XpPerOz { get; set; } = 2;
+}
+
+public sealed class SeasonTier
+{
+    public float Oz { get; set; }
+    public int Pct { get; set; }
+}
+
+public sealed class SeasonRow
+{
+    public int Rank { get; set; }
+    public string Name { get; set; } = "";
+    public float Oz { get; set; }
+    public bool Mine { get; set; }
+    public string Title { get; set; } = "";
+}
+
+public sealed class SeasonPourReply
+{
+    public float Oz { get; set; }
+    public int Xp { get; set; }
+    public float Total { get; set; }
+    public int Pct { get; set; }
+    public float Tank { get; set; }
+}
+
+/// <summary>The Experimental lab: the dairy's research projects.</summary>
+public sealed class LabView
+{
+    public int Need { get; set; } = 20;
+    public float SeedOz { get; set; } = 2;
+    public float MilkOz { get; set; } = 4;
+    public float Tank { get; set; }
+    public bool CanTry { get; set; }
+    public List<LabProject> Projects { get; set; } = new();
+}
+
+public sealed class LabProject
+{
+    public string Id { get; set; } = "";
+    public string Name { get; set; } = "";
+    public string What { get; set; } = "";
+    public int Points { get; set; }
+    public int Tries { get; set; }
+    public bool Done { get; set; }
+    public string Catalyst { get; set; } = "";   // found so far ("" = not yet)
+    public string Heat { get; set; } = "";
+    public List<LabTried> Tried { get; set; } = new();
+}
+
+public sealed class LabTried
+{
+    public string Catalyst { get; set; } = "";
+    public string Heat { get; set; } = "";
+    public int Gain { get; set; }
+}
+
+public sealed class LabTryReply
+{
+    public int Gain { get; set; }
+    public int Points { get; set; }
+    public bool Done { get; set; }
+    public string Hint { get; set; } = "";
+    public float Tank { get; set; }
+}
+
+public sealed class MuskReply
+{
+    public long Until { get; set; }
+    public int Minutes { get; set; }
+    public float Tank { get; set; }
 }
 
 /// <summary>One of the dairies you belong to.</summary>
@@ -172,6 +272,7 @@ public sealed class ApplyingInfo
 
 public sealed class DairyListing
 {
+    public string SeasonTitle { get; set; } = "";   // a top-3 finish in the last Breeding season
     public string Id { get; set; } = "";
     public string Name { get; set; } = "";
     public string Description { get; set; } = "";
@@ -250,6 +351,7 @@ public sealed class DairyProgress
     public int PumpCost { get; set; } = 2500;
     public int PumpLevel { get; set; } = 5;
     public int PumpMinutes { get; set; } = 120;
+    public List<string> Lab { get; set; } = new();                    // Experimental lab discoveries this dairy has made
 
     public float LevelProgress => NextXp is { } n && n > LevelXp ? Math.Clamp((Xp - LevelXp) / (float)(n - LevelXp), 0, 1) : 1;
     public int TierPrice(int tier) => tier >= 0 && tier < TierPrices.Count ? TierPrices[tier] : 0;
@@ -411,6 +513,7 @@ public sealed class MemberInfo
     public bool Here { get; set; }              // in this dairy right now (the server's view of where they are)
     public float? QuotaOz { get; set; }         // cow quota a farmer or the owner typed in (oz of milk a day); null = the default
     public float? BullQuotaOz { get; set; }     // bull quota (oz of seed a day)
+    public long MuskUntil { get; set; }         // wearing Velvet musk until this (unix seconds)
 
     public List<string> AllRoles => VelvetDairy.Game.Roles.From(Roles, Role);
     public bool Has(string role) => AllRoles.Contains(role);

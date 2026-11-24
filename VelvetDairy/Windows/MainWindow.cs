@@ -995,6 +995,12 @@ public sealed partial class MainWindow : Window
             Gap(4);
         }
 
+        if (G.MuskOn)
+        {
+            Ui.Wrapped($"Wearing Velvet musk ({DairyGame.Wait(G.MuskLeft)} left): farmer care on you gives half as much again.", Theme.RoseDeep, width);
+            Gap(4);
+        }
+
         var notes = new List<(string, Vector4)>();
         var where = G.Where;
         if (G.Paused) notes.Add(("The game is paused (Developer settings).", Theme.InkSoft));
@@ -1362,6 +1368,7 @@ public sealed partial class MainWindow : Window
         var labels = new List<string> { "Your pay" };
         if (G.CanCarry && G.Networked) labels.Add("Deliveries");
         if (G.Networked && F.NetMember != null) labels.Add("Seed market");
+        if (G.Networked) labels.Add("Breeding season");
         min.Y = DrawTiles(min, max.X, CreameryTiles());
         var top = SubTabs("creamery", labels.ToArray(), min, max.X - min.X);
         var (cmin, cmax) = Column(top, max, 760);
@@ -1370,8 +1377,79 @@ public sealed partial class MainWindow : Window
         {
             case "Deliveries": Panel("##netorders", cmin, cmax, "Deliveries to other dairies", DrawNetOrders, true); return;
             case "Seed market": Panel("##seedmarket", cmin, cmax, "Seed market", DrawSeedMarket, true); return;
+            case "Breeding season": Panel("##season", cmin, cmax, "Breeding season", DrawSeason, true); return;
             default: Panel("##pay", cmin, cmax, "Your pay", DrawPay); return;
         }
+    }
+
+    /// <summary>
+    /// The Breeding season: the first Friday to Sunday of every month, dairies pour seed into one meter for the whole
+    /// network. Its tiers give everyone milk and seed a bonus until a week after it closes.
+    /// </summary>
+    private void DrawSeason(float width)
+    {
+        G.Net.RefreshSeason();
+        var s = G.Net.Season;
+        if (s == null)
+        {
+            TextLine(Theme.InkSoft, "Loading...");
+            return;
+        }
+
+        var now = DairyGame.UnixNow;
+        using (fonts.For(fonts.Heading, s.Name)!.Push()) TextLine(Theme.Ink, s.Name);
+        Ui.Wrapped(s.Open ? $"Open now, until {DayClock.Show(s.Closes)} (Central time)."
+            : now < s.Opens ? $"Opens {DayClock.Show(s.Opens)} (Central time)."
+            : $"Closed. The next one, {s.NextName}, opens {DayClock.Show(s.NextOpens)} (Central time).", s.Open ? Theme.SageDeep : Theme.InkSoft, width);
+        Gap(6);
+
+        // The network's meter, with its tiers marked
+        var top = s.Tiers.Count > 0 ? s.Tiers[^1].Oz : 1;
+        TextLine(Theme.Ink, $"{Units.Oz(s.Total, "0.#")} poured by every dairy" + (s.Pct > 0 ? $" · everyone's milk and seed +{s.Pct}%" : ""));
+        var dl = ImGui.GetWindowDrawList();
+        var p = ImGui.GetCursorScreenPos();
+        Ui.Bar(dl, p + new Vector2(0, 6), p + new Vector2(width, 16), Math.Clamp(s.Total / top, 0, 1), Theme.BlueDeep);
+        foreach (var t in s.Tiers)
+        {
+            var x = p.X + width * Math.Clamp(t.Oz / top, 0, 1);
+            dl.AddLine(new Vector2(x, p.Y + 2), new Vector2(x, p.Y + 20), Ui.U(s.Total >= t.Oz ? Theme.SageDeep : Theme.StoneDeep), 2f);
+        }
+
+        ImGui.Dummy(new Vector2(width, 24));
+        foreach (var t in s.Tiers)
+            TextLine(s.Total >= t.Oz ? Theme.SageDeep : Theme.InkSoft, $"{Units.Oz(t.Oz, "0")}: +{t.Pct}% milk and seed for everyone" + (s.Total >= t.Oz ? "  · reached" : ""));
+        if (s.Pct > 0 && s.BonusUntil > now) TextLine(Theme.InkSoft, $"The bonus lasts until {DayClock.Show(s.BonusUntil)}.");
+
+        SubHeading("Your dairy", width);
+        TextLine(Theme.Ink, $"Poured this season: {Units.Oz(s.Mine, "0.#")} · seed tank: {Units.Oz(s.Tank, "0.#")}");
+        if (s.CanPour && s.Open)
+        {
+            var amounts = new[] { 1f, 5f, 10f, (float)Math.Floor(s.Tank * 10) / 10 };
+            foreach (var (oz, i) in amounts.Select((a, i) => (a, i)))
+            {
+                if (i == 3 && (oz < 0.5f || oz <= 10f)) continue;
+                if (i > 0) ImGui.SameLine();
+                var label = i == 3 ? $"Pour all ({Units.Oz(oz, "0.#")})" : $"Pour {Units.Oz(oz, "0")}";
+                var ok = s.Tank >= oz;
+                if (!ok) ImGui.BeginDisabled();
+                if (ImGui.Button($"{label}##pour{i}")) G.SeasonPour(oz);
+                if (!ok) ImGui.EndDisabled();
+            }
+
+            TextLine(Theme.InkSoft, $"Each oz gives your dairy {s.XpPerOz} dairy xp, and you 1 farmer xp.");
+        }
+        else if (!s.CanPour) Ui.Wrapped("Farmers and the owner pour the dairy's seed.", Theme.InkSoft, width);
+
+        SubHeading(s.Open || now < s.Closes ? "Top dairies" : "This season's champions", width);
+        if (s.Top.Count == 0) Ui.Wrapped("No seed poured yet.", Theme.InkSoft, width);
+        foreach (var r in s.Top)
+            TextLine(r.Mine ? Theme.RoseDeep : r.Rank <= 3 ? Theme.HoneyDeep : Theme.Ink,
+                $"{r.Rank}. {r.Name} · {Units.Oz(r.Oz, "0.#")}" + (r.Rank <= 3 && !string.IsNullOrEmpty(r.Title) ? $" · {r.Title}" : ""));
+
+        Gap(6);
+        Ui.Wrapped("Every month, the first Friday to Sunday (Central time). Pour seed from your dairy's seed tank into the meter for the whole network. " +
+                   "Each tier it reaches gives everyone milk and seed a bonus, from then until a week after the season closes. " +
+                   "When it closes, the top three dairies carry Season champion, runner-up and third on the Dairies list until the next one.", Theme.InkSoft, width);
     }
 
     /// <summary>How you're paid since 0.9.99: your daily quota and daily goals (milking itself doesn't pay).</summary>

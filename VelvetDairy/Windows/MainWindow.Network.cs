@@ -204,6 +204,7 @@ public sealed partial class MainWindow
                 new($"{d.Members} member{(d.Members == 1 ? "" : "s")}{(d.CowsHere > 0 ? $" · {d.CowsHere} there now" : "")}{(d.OpenOrders > 0 ? $" · {d.OpenOrders} buy order{(d.OpenOrders == 1 ? "" : "s")}" : "")}",
                     d.CowsHere > 0 ? Theme.SageDeep : Theme.InkSoft),
             };
+            if (d.SeasonTitle.Length > 0) lines.Add(new Line($"{d.SeasonTitle} of the last Breeding season", Theme.HoneyDeep));
             if (d.Owner.Length > 0) lines.Add(new Line($"Owner: {d.Owner}", Theme.InkSoft));
             if (d.LookingFor.Count > 0) lines.Add(new Line($"Looking for: {string.Join(", ", d.LookingFor.Select(r => char.ToUpperInvariant(r[0]) + r[1..] + "s"))}", Theme.SageDeep));
             if (d.Description.Length > 0 && !d.IsPublic && !d.Mine) lines.Add(new Line(d.Description, Theme.Ink));   // public ones: in Details

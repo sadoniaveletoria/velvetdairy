@@ -158,14 +158,15 @@ public sealed class KitchenWindow : Window
             {
                 if (selected.Length == 0) selected = r.Id;
                 var ready = G.MakeProblem(r) == null;
-                var locked = G.FarmerLevel < r.FarmerLevel;
+                var labLocked = r.Id == "studhoney" && !G.LabFound("studhoney");
+                var locked = G.FarmerLevel < r.FarmerLevel || labLocked;
                 var dl = ImGui.GetWindowDrawList();
                 var p = ImGui.GetCursorScreenPos();
                 var h = ImGui.GetTextLineHeight();
                 dl.AddCircleFilled(p + new Vector2(5, h / 2 + 1), 3.5f, ImGui.ColorConvertFloat4ToU32(ready ? Theme.SageDeep : Theme.InkSoft with { W = 0.4f }));
                 // On the right: how many the dairy has (on the shelf, or in the pantry), or the level a locked one needs
                 var have = Have(r);
-                var right = locked ? $"Lv {r.FarmerLevel}" : $"{have}";
+                var right = labLocked ? "Lab" : locked ? $"Lv {r.FarmerLevel}" : $"{have}";
                 var rowW = ImGui.GetContentRegionAvail().X;
                 var cw = ImGui.CalcTextSize(right).X;
                 ImGui.SetCursorScreenPos(p + new Vector2(14, 0));
@@ -181,10 +182,99 @@ public sealed class KitchenWindow : Window
 
             ImGui.Spacing();
         }
+
+        // The Experimental lab: seed + a catalyst, for discoveries only your dairy has
+        if (G.Networked && F.NetMember != null && (q.Length == 0 || "experimental lab".Contains(q, StringComparison.OrdinalIgnoreCase)))
+        {
+            ImGui.TextColored(Theme.RoseDeep, "LAB");
+            var found = G.Net.Progress?.Lab?.Count ?? 0;
+            if (ImGui.Selectable($"Experimental lab ({found}/4 found)##klab", selected == "lab")) selected = "lab";
+            if (ImGui.IsItemHovered()) ImGui.SetTooltip(Units.Text("Seed from the seed tank and a catalyst, for discoveries only your dairy has."));
+        }
+    }
+
+    private string labProject = "labmash";
+    private int labCatalyst, labHeat;
+
+    /// <summary>
+    /// The Experimental lab: 2 oz of seed with a catalyst (butter, flour or milk) at a heat. Each dairy's best catalyst and
+    /// heat for each project is hidden and its own; getting closer gives more research. 20 research makes the discovery.
+    /// </summary>
+    private void DrawLab(float width)
+    {
+        G.Net.RefreshLab();
+        var lab = G.Net.Lab;
+        ImGui.TextColored(Theme.Ink, "Experimental lab");
+        Ui.Wrapped($"Each experiment takes {Units.Oz(lab?.SeedOz ?? 2, "0")} of seed from the dairy's seed tank and a catalyst: 1 butter or 1 flour from the dairy pantry, " +
+                   $"or {Units.Oz(lab?.MilkOz ?? 4, "0")} of milk from your jugs. Pick a heat too. Every dairy's best catalyst and heat for each project is different and hidden: " +
+                   "the right pair gives 6 research, one of the two gives 3 (and you're told which), neither gives 1. 20 research makes the discovery for your whole dairy.", Theme.InkSoft, width);
+        if (lab == null)
+        {
+            ImGui.TextColored(Theme.InkSoft, "Loading...");
+            return;
+        }
+
+        ImGui.TextColored(Theme.BlueDeep, $"Seed tank: {Units.Oz(lab.Tank, "0.#")}");
+        ImGui.Spacing();
+        foreach (var pr in lab.Projects)
+        {
+            var label = pr.Done ? $"{pr.Name} · found" : $"{pr.Name} · {pr.Points} / {lab.Need}";
+            if (ImGui.RadioButton($"{label}##lp{pr.Id}", labProject == pr.Id)) labProject = pr.Id;
+        }
+
+        var cur = lab.Projects.FirstOrDefault(x => x.Id == labProject) ?? lab.Projects.FirstOrDefault();
+        if (cur == null) return;
+        ImGui.Spacing();
+        ImGui.Separator();
+        ImGui.TextColored(Theme.Ink, cur.Name);
+        Ui.Wrapped(cur.What, Theme.InkSoft, width);
+        ImGui.PushStyleColor(ImGuiCol.PlotHistogram, cur.Done ? Theme.SageDeep : Theme.HoneyDeep);
+        ImGui.ProgressBar(Math.Clamp(cur.Points / (float)Math.Max(1, lab.Need), 0, 1), new Vector2(Math.Min(width, 320), 10), "");
+        ImGui.PopStyleColor();
+        if (cur.Done)
+        {
+            ImGui.TextColored(Theme.SageDeep, "Discovered: your dairy has it.");
+            return;
+        }
+
+        string Nice(string x) => x.Length == 0 ? "?" : char.ToUpperInvariant(x[0]) + x[1..];
+        ImGui.TextColored(Theme.Ink, $"Best catalyst: {Nice(cur.Catalyst)} · best heat: {Nice(cur.Heat)}");
+        if (cur.Tried.Count > 0)
+        {
+            ImGui.TextColored(Theme.InkSoft, "Tried: " + string.Join(", ", cur.Tried.TakeLast(6).Select(t => $"{Nice(t.Catalyst)}/{t.Heat} +{t.Gain}")));
+        }
+
+        ImGui.Spacing();
+        ImGui.TextColored(Theme.Ink, "Catalyst");
+        for (var i = 0; i < Catalog.LabCatalysts.Length; i++)
+        {
+            var c = Catalog.LabCatalysts[i];
+            var have = c == "milk" ? $"{Units.Oz(G.Carried, "0")} in your jugs" : $"{G.Net.DairyPantry.GetValueOrDefault(c)} in the pantry";
+            if (i > 0) ImGui.SameLine();
+            if (ImGui.RadioButton($"{Nice(c)} ({have})##lc{i}", labCatalyst == i)) labCatalyst = i;
+        }
+
+        ImGui.TextColored(Theme.Ink, "Heat");
+        for (var i = 0; i < Catalog.LabHeats.Length; i++)
+        {
+            if (i > 0) ImGui.SameLine();
+            if (ImGui.RadioButton($"{Nice(Catalog.LabHeats[i])}##lh{i}", labHeat == i)) labHeat = i;
+        }
+
+        ImGui.Spacing();
+        var why = G.LabProblem(Catalog.LabCatalysts[labCatalyst]);
+        if (Ui.Button("##labtry", "Experiment", new Vector2(140, 28), "rose", why == null, why ?? $"+{Catalog.LabXp} farmer xp, and some dairy xp."))
+            G.LabTry(cur.Id, Catalog.LabCatalysts[labCatalyst], Catalog.LabHeats[labHeat]);
     }
 
     private void DrawRecipe(float width)
     {
+        if (selected == "lab")
+        {
+            DrawLab(width);
+            return;
+        }
+
         var r = Catalog.RecipeById(selected) ?? Catalog.Recipes.FirstOrDefault();
         if (r == null) return;
         if (r.ToShelf) G.Net.RefreshShelf();   // for the shelf price (at most every 30 seconds)

@@ -501,3 +501,11 @@ CREATE TABLE IF NOT EXISTS deliveries (
   target   TEXT NOT NULL,        -- dairy id (a drop-off) or "order:<id>" (a buy order filled)
   PRIMARY KEY (install, day, target)
 );
+
+-- 0.9.99: seed uses
+CREATE TABLE IF NOT EXISTS musks (install TEXT PRIMARY KEY, until INTEGER NOT NULL, by_name TEXT NOT NULL DEFAULT '');
+CREATE TABLE IF NOT EXISTS season_pours (id INTEGER PRIMARY KEY AUTOINCREMENT, season TEXT NOT NULL, dairy_id TEXT NOT NULL, install TEXT NOT NULL, oz REAL NOT NULL, at INTEGER NOT NULL);
+CREATE INDEX IF NOT EXISTS season_pours_by ON season_pours (season, dairy_id);
+CREATE TABLE IF NOT EXISTS lab_research (dairy_id TEXT NOT NULL, project TEXT NOT NULL, points INTEGER NOT NULL DEFAULT 0, tries INTEGER NOT NULL DEFAULT 0,
+  found_catalyst INTEGER NOT NULL DEFAULT -1, found_heat INTEGER NOT NULL DEFAULT -1, tried TEXT NOT NULL DEFAULT '[]', updated INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (dairy_id, project));

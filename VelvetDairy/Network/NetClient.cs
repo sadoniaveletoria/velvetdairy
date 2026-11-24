@@ -1108,6 +1108,52 @@ public sealed class NetClient : IDisposable
     public void Groom(string cowId, Action ok, Action<string> failed) =>
         Call<object>("POST", "/v1/groom", new { cow = cowId }, _ => ok(), failed);
 
+    public void Musk(string to, Action<MuskReply> ok, Action<string> failed) =>
+        Call<MuskReply>("POST", "/v1/musk", new { to }, r =>
+        {
+            RefreshMine();
+            ok(r);
+        }, failed);
+
+    /// <summary>The Breeding season (Creamery > Breeding season): every 30 seconds while it's open on screen.</summary>
+    public SeasonView? Season { get; private set; }
+    private DateTime lastSeason = DateTime.MinValue;
+
+    public void RefreshSeason(bool now = false)
+    {
+        if (!now && DateTime.UtcNow - lastSeason < TimeSpan.FromSeconds(30)) return;
+        lastSeason = DateTime.UtcNow;
+        Call<SeasonView>("GET", "/v1/season", null, r => Season = r);
+    }
+
+    public void SeasonPour(float oz, Action<SeasonPourReply> ok, Action<string> failed) =>
+        Call<SeasonPourReply>("POST", "/v1/season/pour", new { oz }, r =>
+        {
+            RefreshSeason(true);
+            RefreshMine();
+            ok(r);
+        }, failed);
+
+    /// <summary>The Experimental lab (Kitchen > Lab).</summary>
+    public LabView? Lab { get; private set; }
+    private DateTime lastLab = DateTime.MinValue;
+
+    public void RefreshLab(bool now = false)
+    {
+        if (!now && DateTime.UtcNow - lastLab < TimeSpan.FromSeconds(30)) return;
+        lastLab = DateTime.UtcNow;
+        Call<LabView>("GET", "/v1/lab", null, r => Lab = r);
+    }
+
+    public void LabTry(string project, string catalyst, string heat, Action<LabTryReply> ok, Action<string> failed) =>
+        Call<LabTryReply>("POST", "/v1/lab/try", new { project, catalyst, heat }, r =>
+        {
+            RefreshLab(true);
+            RefreshPantry(true);
+            RefreshMine();
+            ok(r);
+        }, failed);
+
     public void MoveStall(string id, float x, float y, float z, Action ok, Action<string> failed) =>
         Call<object>("PUT", $"/v1/stalls/{id}", new { x, y, z }, _ =>
         {

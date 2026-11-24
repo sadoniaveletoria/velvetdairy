@@ -334,6 +334,7 @@ public class CowState
     public string BellBar { get; set; } = "";                           // the feeding bell: an extra bonus on top of one bar's, for 15 minutes
     public float BellPct { get; set; }
     public DateTime BellUntilUtc { get; set; } = DateTime.MinValue;
+    public DateTime MuskUntilUtc { get; set; } = DateTime.MinValue;   // wearing Velvet musk until (farmer care gives half as much again)
     public float TreatPct { get; set; }                                 // a treat you bought: its own bonus, for a while (not your bars)
     public DateTime TreatUntilUtc { get; set; } = DateTime.MinValue;
     public DateTime? FullSinceUtc { get; set; }   // when every bottle became full (spoils 72 h later)

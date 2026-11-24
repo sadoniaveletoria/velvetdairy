@@ -167,6 +167,10 @@ public static class Catalog
         new Recipe("tart", "Velvet tart", "tart", 2, 24, 0, 70, 60, 130,
             "2 flour, 2 butter and 24 oz of milk make 2 velvet tarts for the dairy shelf: the best treat there is. Members buy them; you get 80% of the price.",
             Uses: "flour", UsesCount: 2, ToShelf: true, Uses2: "butter", UsesCount2: 2),
+        // An Experimental lab discovery: only once your dairy has found it
+        new Recipe("studhoney", "Stud's honey", "studhoney", 2, 8, 0, 1, 20, 60,
+            "1 butter and 8 oz of milk make 2 jars of Stud's honey for the dairy shelf: Fed +12% and Happy +12% at once, for 20 minutes. Found in the Experimental lab.",
+            Uses: "butter", UsesCount: 1, ToShelf: true),
     };
 
     public static Ingredient? IngredientById(string id) => Ingredients.FirstOrDefault(i => i.Id == id);
@@ -178,7 +182,7 @@ public static class Catalog
 
     /// <summary>Treats are baked; ingredients (butter, flour) are made.</summary>
     // Cookies and buns are baked; butter, flour and cheese are made
-    public static bool IsBaked(Recipe r) => r.Id is "cookies" or "buns" or "cake" or "tart";
+    public static bool IsBaked(Recipe r) => r.Id is "cookies" or "buns" or "cake" or "tart" or "studhoney";
     public static string Verb(Recipe r) => IsBaked(r) ? "Bake" : "Make";
     public static string Doing(Recipe r) => IsBaked(r) ? "Baking" : "Making";
 
@@ -193,6 +197,8 @@ public static class Catalog
         new FeedItem("mineral", "Mineral block", "salt", 22, 11, "Better than plain water.", Water: 0.10f),
         new FeedItem("creamclover", "Cream clover", "clover", 35, 13, "A lush treat: a bigger milk bonus for a while.", Happy: 0.09f, BoostMinutes: 45),
         new FeedItem("goldenmash", "Golden mash", "premium", 70, 22, "A feast: the best feed for the dairy's feed bin.", Fed: 0.25f),
+        // Discovered in the Experimental lab: only in that dairy's feed bin, never bought
+        new FeedItem("labmash", "Lab mash", "premium", 0, 999, "Found in your dairy's Experimental lab: the richest feed for the bin.", Fed: 0.28f, Role: "lab"),
         // Quality treats: raise your milk quality score so better grades unlock sooner
         new FeedItem("biscuit", "Cream biscuit", "biscuit", 30, 1, "A rich little treat that builds your milk quality.", Happy: 0.06f, Quality: 20, BoostMinutes: 30),
         new FeedItem("alfalfa", "Golden alfalfa", "alfalfa", 80, 1, "Prized hay that builds your milk quality a lot.", Quality: 50, BoostMinutes: 30),
@@ -201,6 +207,7 @@ public static class Catalog
         new FeedItem("cheese", "Cheese", "cheese", 0, 1, "Made by your dairy's farmers. A little happy, and a milk boost for 10 minutes.", Happy: 0.07f, BoostMinutes: 10, Baked: true),
         new FeedItem("cake", "Honey cream cake", "cake", 0, 1, "Baked by your dairy's farmers. Filling, very happy, and a milk boost for 25 minutes.", Fed: 0.10f, Happy: 0.15f, BoostMinutes: 25, Baked: true),
         new FeedItem("tart", "Velvet tart", "tart", 0, 1, "Baked by your dairy's farmers. The best treat: filling, very happy, and a milk boost for 30 minutes.", Fed: 0.13f, Happy: 0.18f, BoostMinutes: 30, Baked: true),
+        new FeedItem("studhoney", "Stud's honey", "cake", 0, 1, "Made by your dairy's farmers from an Experimental lab discovery: Fed and Happy at once.", Fed: 0.12f, Happy: 0.12f, Baked: true),
         new FeedItem("cookies", "Butter cookies", "biscuit", 0, 1, "Baked by your dairy's farmers. Happy, and a milk boost for 15 minutes.", Happy: 0.10f, BoostMinutes: 15, Baked: true),
         new FeedItem("buns", "Cream buns", "biscuit", 0, 1, "Baked by your dairy's farmers. Filling, happy, and a milk boost for 20 minutes.", Fed: 0.08f, Happy: 0.12f, BoostMinutes: 20, Baked: true),
         // Going away: keeps your grade from slipping
@@ -222,7 +229,7 @@ public static class Catalog
     public static FeedItem? FeedById(string id) => Feed.FirstOrDefault(f => f.Id == id);
 
     /// <summary>Feed that fills the Fed bar: only farmers give it, from the dairy's feed bin (the server's FEED_BIN order).</summary>
-    public static readonly string[] BinOrder = { "hay", "grain", "honeyoats", "premium", "goldenmash" };
+    public static readonly string[] BinOrder = { "hay", "grain", "honeyoats", "premium", "goldenmash", "labmash" };
     // Deliveries to other dairies (buy orders and drop-offs): a daily limit by farmer level, and what a drop-off pays (matches the server)
     public const int DairyGoalMinutes = 30;
     public const int BellMinutes = 15;   // the feeding bell: its bonus goes on top of a bar's for this long
@@ -306,11 +313,17 @@ public static class Catalog
     public const float HandYield = 1.25f;
     /// <summary>What can go on the dairy shelf, in the server's order (a "fed" inbox item says which by its place here).</summary>
     // Same order as the server's SHELF_ITEMS (a fed notice carries the item's place in it): new items go at the end
-    public static readonly string[] ShelfOrder = { "cookies", "buns", "cheese", "cake", "tart" };
+    public static readonly string[] ShelfOrder = { "cookies", "buns", "cheese", "cake", "tart", "studhoney" };
     public const int DailyPaidOz = 1500;   // milk you're paid for each day; past it you still get xp (matches the server's daily tank limit)
 
     // No daily limit on coins (removed in 0.10.0: it was 1,500 in full, then half up to 4,000, then a tenth). The only
     // brake is being Tired: after 12 hours of making milk in a day it comes in at half speed, and so does its pay.
+    // Velvet musk (5 oz from the seed tank): farmer care on whoever wears it gives half as much again, for an hour
+    public const float MuskOz = 5f, MuskBoost = 0.5f;
+    public const int MuskXp = 15;          // farmer xp for putting musk on someone
+    public const int LabXp = 12;           // farmer xp for an experiment in the Experimental lab
+    public static readonly string[] LabCatalysts = { "butter", "flour", "milk" };
+    public static readonly string[] LabHeats = { "low", "medium", "high" };
     public const int FeedXp = 10;          // farmer xp for feeding a cow or bull from the shelf
     public const int FedBullXp = 20;       // bull xp for being fed
     /// <summary>Your cow grade (C, B, A, S, S+) milks you this much faster and gives this much more milk.</summary>

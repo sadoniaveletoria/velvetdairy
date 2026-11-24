@@ -294,6 +294,8 @@ public sealed partial class MainWindow
                 }
             }
 
+            if (c.MuskUntil > DairyGame.UnixNow)
+                lines.Add(new Line($"Wearing Velvet musk ({DairyGame.Wait(TimeSpan.FromSeconds(c.MuskUntil - DairyGame.UnixNow))} left): your care gives half as much again", Theme.RoseDeep));
             lines.Add(new Line($"Milk does {G.MilkEmoteFor(st)} for you", Theme.BlueDeep));
             if (!G.CowAcceptsMyEmote(st))
                 lines.Add(new Line($"They only count {string.Join(", ", st!.Emotes)}: pick one of those in Animation... to milk them", Theme.Warn));
@@ -322,12 +324,14 @@ public sealed partial class MainWindow
                 var groomWhy = G.GroomProblem(c.Name, c.Id, near);
                 var feedWhy = G.AnyFeedProblem(c.Name, c.Id, near);
                 var waterWhy = G.WaterProblem(c.Name, c.Id, near);
+                var muskWhy = G.MuskProblem(c.Name, c.Id, near);
                 buttons = new[]
                 {
                     first,
                     new Btn($"##groom{c.Id}", "Groom", "sage", groomWhy == null, groomWhy ?? $"Brush them down: Happy +{Catalog.GroomHappy * 100:0}% and Comfy +{Catalog.GroomComfy * 100:0}% for {Catalog.NeedMinutes:0} minutes, and {Catalog.GroomXp} farmer xp for you. Once every 15 minutes per cow."),
                     new Btn($"##feed{c.Id}", "Feed", "honey", feedWhy == null, feedWhy ?? G.FeedTip),
                     new Btn($"##water{c.Id}", "Water", "blue", waterWhy == null, waterWhy ?? $"Fresh water: Watered +{Catalog.FarmerWater * 100:0}% for {Catalog.NeedMinutes:0} minutes, and {Catalog.FeedXp} farmer xp for you. Once every 15 minutes each."),
+                    new Btn($"##musk{c.Id}", "Musk", "rose", muskWhy == null, muskWhy ?? $"Velvet musk ({Units.Oz(Catalog.MuskOz, "0")} from the seed tank): for an hour ({(G.LabFound("muskoil") ? "two with Musk oil" : "two once the lab finds Musk oil")}) every bit of farmer care on them gives half as much again. +{Catalog.MuskXp} farmer xp."),
                 };
             }
 
@@ -347,6 +351,7 @@ public sealed partial class MainWindow
             }
             else if (clicked == 1) G.Groom(c.Name, c.Id, near);
             else if (clicked == 3) G.WaterCow(c.Name, c.Id, near);
+            else if (clicked == 4) G.PutMusk(c.Name, c.Id, near);
             else if (clicked == 2)
             {
                 // Pick which treat from the shelf
