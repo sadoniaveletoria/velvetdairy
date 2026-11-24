@@ -55,9 +55,24 @@ public sealed partial class MainWindow
     private void DrawNetwork(Vector2 min, Vector2 max)
     {
         G.Net.WantDirectory = true;
+        min.Y = DrawTiles(min, max.X, NetworkTiles());
         var split = min.X + (max.X - min.X) * 0.62f;
         Panel("##directory", min, new Vector2(split - 7, max.Y), "Dairies on the network", DrawDirectory);
         Panel("##netstatus", new Vector2(split + 7, min.Y), max, "Network", DrawNetStatus, true);
+    }
+
+    private Tile[] NetworkTiles()
+    {
+        var net = G.Net;
+        var online = net.Last?.Online ?? net.Directory?.Online ?? 0;
+        var mine = net.Leaderboard?.Dairies.FirstOrDefault(r => r.Mine);
+        return new Tile[]
+        {
+            new("Online now", $"{online:N0}", "players with Eorzea Milkers running", -1, Theme.SageDeep),
+            new("Dairies", $"{net.Directory?.Dairies.Count ?? 0}", "open to visit on the list", -1, Theme.BlueDeep),
+            new("Your dairy", F.NetMember?.Dairy ?? "None yet", F.NetMember == null ? "register one on the Dairy tab" : G.VisitingDairy is { } v ? $"visiting {v.Name} now" : G.AtHome ? "you're home" : "you're away", -1, Theme.RoseDeep),
+            new("This week", mine != null ? $"#{mine.Rank}" : "-", mine != null ? $"{mine.WeekXp:N0} dairy xp so far" : "no dairy xp yet this week", -1, Theme.HoneyDeep),
+        };
     }
 
     private void DrawNetStatus(float width)

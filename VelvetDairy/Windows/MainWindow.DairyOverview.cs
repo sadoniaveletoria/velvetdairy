@@ -21,36 +21,16 @@ public sealed partial class MainWindow
         var y = min.Y;
         if (p != null)
         {
-            const float tileH = 126f;
-            var tw = (max.X - min.X - gap * 3) / 4;
             var tank = p.Tank;
             var c = p.Contract;
-            var tiles = new (string Title, string Big, string Small, float Bar, Vector4 Color)[]
+            y = DrawTiles(new Vector2(min.X, y), max.X, new Tile[]
             {
-                ("Dairy level", $"{p.Level}", p.NextXp is { } n ? $"{p.Xp:N0} / {n:N0} xp" : "Max level", p.LevelProgress, Theme.SageDeep),
-                ("Dairy fund", $"{p.Fund:N0}", "coins", -1, Theme.HoneyDeep),
-                ("Tanks", Units.Oz(tank?.Total ?? 0, "0"), $"milk · {Units.Oz(tank?.Seed ?? 0, "0.#")} seed", -1, Theme.BlueDeep),
-                ("Contract", c == null ? "..." : c.Completed ? "Done!" : $"{Units.Num(c.OzDone, "0")} / {Units.Num(c.OzNeed)}",
+                new("Dairy level", $"{p.Level}", p.NextXp is { } n ? $"{p.Xp:N0} / {n:N0} xp" : "Max level", p.LevelProgress, Theme.SageDeep),
+                new("Dairy fund", $"{p.Fund:N0}", "coins", -1, Theme.HoneyDeep),
+                new("Tanks", Units.Oz(tank?.Total ?? 0, "0"), $"milk · {Units.Oz(tank?.Seed ?? 0, "0.#")} seed", -1, Theme.BlueDeep),
+                new("Contract", c == null ? "..." : c.Completed ? "Done!" : $"{Units.Num(c.OzDone, "0")} / {Units.Num(c.OzNeed)}",
                     c == null ? "" : c.Completed ? "paid at the week's end" : $"{Units.Unit} shipped this week", c == null ? -1 : c.OzNeed > 0 ? Math.Clamp(c.OzDone / c.OzNeed, 0f, 1f) : 1f, Theme.BlueDeep),
-            };
-            var dl = ImGui.GetWindowDrawList();
-            for (var i = 0; i < tiles.Length; i++)
-            {
-                var t = tiles[i];
-                var a = new Vector2(min.X + i * (tw + gap), y);
-                var b = a + new Vector2(tw, tileH);
-                Ui.Card(dl, a, b);
-                // The same insets as the panels, so nothing touches the card's frame
-                var inner = tw - 56;
-                Ui.Eyebrow(dl, t.Title, a + new Vector2(28, 22), inner, Theme.RoseDeep);
-                var bigSize = Ui.Text(dl, fonts.Heading, t.Big, a + new Vector2(28, 48), Theme.Ink);
-                // The bar sits beside the big number (not under it), so the card stays short and nothing reaches its frame
-                if (t.Bar >= 0 && inner - bigSize.X > 50)
-                    Ui.Bar(dl, a + new Vector2(28 + bigSize.X + 14, 48 + bigSize.Y / 2 - 3), a + new Vector2(28 + inner, 48 + bigSize.Y / 2 + 3), t.Bar, t.Color);
-                TextWrapped(dl, fonts.Small, t.Small, a + new Vector2(28, 48 + bigSize.Y + 4), inner, Theme.InkSoft);
-            }
-
-            y += tileH + gap;
+            });
             y = DrawUnlockLine(new Vector2(min.X, y), max.X, p) + gap;
         }
 
@@ -67,6 +47,38 @@ public sealed partial class MainWindow
 
             DrawDairyLevel(w);
         }, true);
+    }
+
+    /// <summary>One summary tile: a small title, a big number, a line under it and an optional bar (Bar &lt; 0: none).</summary>
+    private readonly record struct Tile(string Title, string Big, string Small, float Bar, Vector4 Color);
+
+    /// <summary>A row of summary tiles across the top of a page (the same look on every page). Returns where the page goes on below them.</summary>
+    private float DrawTiles(Vector2 min, float maxX, IReadOnlyList<Tile> tiles)
+    {
+        const float gap = 14f, tileH = 126f;
+        if (tiles.Count == 0) return min.Y;
+        var tw = (maxX - min.X - gap * (tiles.Count - 1)) / tiles.Count;
+        var dl = ImGui.GetWindowDrawList();
+        for (var i = 0; i < tiles.Count; i++)
+        {
+            var t = tiles[i];
+            var a = new Vector2(min.X + i * (tw + gap), min.Y);
+            var b = a + new Vector2(tw, tileH);
+            Ui.Card(dl, a, b);
+            // The same insets as the panels, so nothing touches the card's frame
+            var inner = tw - 56;
+            Ui.Eyebrow(dl, t.Title, a + new Vector2(28, 22), inner, Theme.RoseDeep);
+            var big = t.Big;
+            // A big number that doesn't fit drops to the body font rather than running out of the card
+            var font = Ui.Measure(fonts.Heading, big).X <= inner ? fonts.Heading : null;
+            var bigSize = Ui.Text(dl, font, big, a + new Vector2(28, 48), Theme.Ink);
+            // The bar sits beside the big number (not under it), so the card stays short and nothing reaches its frame
+            if (t.Bar >= 0 && inner - bigSize.X > 50)
+                Ui.Bar(dl, a + new Vector2(28 + bigSize.X + 14, 48 + bigSize.Y / 2 - 3), a + new Vector2(28 + inner, 48 + bigSize.Y / 2 + 3), Math.Clamp(t.Bar, 0f, 1f), t.Color);
+            TextWrapped(dl, fonts.Small, t.Small, a + new Vector2(28, 48 + bigSize.Y + 4), inner, Theme.InkSoft);
+        }
+
+        return min.Y + tileH + gap;
     }
 
     /// <summary>What each dairy level unlocks, as a row of chips that wraps (green: yours, rose: next, grey: later). Returns the bottom.</summary>

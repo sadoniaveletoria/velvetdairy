@@ -1362,6 +1362,7 @@ public sealed partial class MainWindow : Window
         var labels = new List<string> { "Your pay" };
         if (G.CanCarry && G.Networked) labels.Add("Deliveries");
         if (G.Networked && F.NetMember != null) labels.Add("Seed market");
+        min.Y = DrawTiles(min, max.X, CreameryTiles());
         var top = SubTabs("creamery", labels.ToArray(), min, max.X - min.X);
         var (cmin, cmax) = Column(top, max, 760);
         var pick = labels[Math.Clamp(Sub("creamery"), 0, labels.Count - 1)];
@@ -1434,12 +1435,79 @@ public sealed partial class MainWindow : Window
         Gap(4);
     }
 
+    // Summary tiles for the Market and Progress pages (the same look as Dairy > Overview)
+    private static Tile LevelTile(string title, int xp, Vector4 color)
+    {
+        var (lvl, into, need) = Leveling.FromXp(xp);
+        return new Tile(title, $"{lvl}", need == 0 ? "Max level" : $"{into:N0} / {need:N0} xp to {lvl + 1}", need == 0 ? 1 : (float)into / need, color);
+    }
+
+    private Tile CoinsTile() => new("Coins", $"{F.Coins:N0}", "to spend in the Shop", -1, Theme.HoneyDeep);
+
+    private Tile[] ShopTiles()
+    {
+        var list = new List<Tile> { CoinsTile() };
+        if (G.ProducesMilk || G.ProducesSeed)
+        {
+            // The next level that unlocks something for you
+            var lvl = G.ProducesMilk ? G.Level : G.BullLevel;
+            var next = "";
+            var at = 0;
+            for (var l = lvl + 1; l <= Leveling.MaxLevel && at == 0; l++)
+                if (G.CowUnlocksAt(l).FirstOrDefault() is { } n) { next = n; at = l; }
+            list.Add(new(G.ProducesMilk ? "Cow level" : "Bull level", $"{lvl}", at > 0 ? $"Next reward at {at}: {next}" : "Every reward is yours", -1, Theme.RoseDeep));
+            var milk = G.ProducesMilk ? G.Cow.Milk : G.Cow.Seed;
+            var cap = G.ProducesMilk ? G.Capacity : G.SeedCapacity;
+            list.Add(new(G.ProducesMilk ? "Bottles" : "Vials", $"{G.BottleCount} x {Units.Oz(G.ProducesMilk ? G.BottleSize : G.VialSize, G.ProducesMilk ? "0" : "0.#")}",
+                $"{G.BottleName}s · {Units.Oz(milk, "0.#")} in them now", cap > 0 ? milk / cap : 0, Theme.BlueDeep));
+        }
+
+        if (G.CanCarry)
+            list.Add(new("Farmer tank", Units.Oz(G.MaxCarry, "0"), $"{Units.Oz(G.Carried, "0.#")} in your jugs", G.MaxCarry > 0 ? G.Carried / G.MaxCarry : 0, Theme.SageDeep));
+        return list.ToArray();
+    }
+
+    private Tile[] CreameryTiles()
+    {
+        var list = new List<Tile>();
+        if (G.ProducesMilk)
+            list.Add(new("Cow quota", $"{Units.Num(F.DayOz, "0.#")} / {Units.Num(G.CowQuotaNeed, "0.#")}", $"{Units.Unit} of milk today · pays {G.CowQuotaCoins:N0}",
+                G.CowQuotaNeed > 0 ? F.DayOz / G.CowQuotaNeed : 0, Theme.HoneyDeep));
+        if (G.ProducesSeed)
+            list.Add(new("Bull quota", $"{Units.Num(F.DaySeedOz, "0.##")} / {Units.Num(G.BullQuotaNeed, "0.##")}", $"{Units.Unit} of seed today · pays {G.BullQuotaCoins:N0}",
+                G.BullQuotaNeed > 0 ? F.DaySeedOz / G.BullQuotaNeed : 0, Theme.HoneyDeep));
+        if (G.ProducesMilk || G.ProducesSeed)
+        {
+            var g = G.ProducesMilk ? G.CurrentGrade : G.SeedGrade;
+            list.Add(new("Grade", Grades.Name(g), $"quota pays x{Catalog.QuotaGradeMult[g]:0.##}", -1, Theme.GradeColor(g)));
+        }
+
+        if (G.CanCarry && G.Networked)
+            list.Add(new("Drop-offs left", Units.Oz(G.DeliverLeft, "0"), $"{Math.Max(0, Catalog.DeliveriesPerDay - F.DayDeliveries)} of {Catalog.DeliveriesPerDay} deliveries left today", -1, Theme.SageDeep));
+        list.Add(new("Earned today", $"{F.DayEarned:N0}", "coins", -1, Theme.HoneyDeep));
+        return list.ToArray();
+    }
+
+    private Tile[] ProgressTiles()
+    {
+        var list = new List<Tile>();
+        if (G.ProducesMilk) list.Add(LevelTile("Cow level", F.Xp, Theme.RoseDeep));
+        if (G.ProducesSeed) list.Add(LevelTile("Bull level", F.BullXp, Theme.BlueDeep));
+        if (G.IsFarmer) list.Add(LevelTile("Farmer level", F.FarmerXp, Theme.SageDeep));
+        var goals = G.Goals();
+        var done = goals.Count(x => x.Have >= x.Need - 0.0001f);
+        list.Add(new("Goals today", $"{done} / {goals.Count}", done == goals.Count && goals.Count > 0 ? "all done: claim them on Today" : "resets at midnight Central time",
+            goals.Count > 0 ? (float)done / goals.Count : 0, Theme.HoneyDeep));
+        return list.ToArray();
+    }
+
     // =====================================================================
     // Shop
     // =====================================================================
 
     private void DrawShop(Vector2 min, Vector2 max)
     {
+        min.Y = DrawTiles(min, max.X, ShopTiles());
         var sub = SubTabs("shop", G.CanCarry ? new[] { "Feed & treats", "Level rewards", "Farmer tank" } : new[] { "Feed & treats", "Level rewards" }, min, max.X - min.X);
         var mid = (min.X + max.X) / 2;
         switch (Sub("shop"))
@@ -1903,6 +1971,7 @@ public sealed partial class MainWindow : Window
     private void DrawProgress(Vector2 min, Vector2 max)
     {
         // Your levels down the left; Today and Awards wide on the right, one above the other, so their text fits on a line
+        min.Y = DrawTiles(min, max.X, ProgressTiles());
         var leftW = Math.Clamp((max.X - min.X) * 0.34f, 300f, 400f);
         Panel("##level", min, new Vector2(min.X + leftW, max.Y), "Your levels", DrawLevelsSummary);
         var midY = min.Y + (max.Y - min.Y) * 0.5f;

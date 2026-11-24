@@ -18,6 +18,7 @@ public sealed partial class MainWindow
         var labels = new List<string> { PantryFood };
         if (G.CanCarry || Catalog.Ingredients.Any(i => G.IngredientCount(i.Id) > 0)) labels.Add(PantryIngredients);
         if (G.Networked && F.NetMember != null) labels.Add(PantryShelf);
+        min.Y = DrawTiles(min, max.X, PantryTiles());
         var top = SubTabs("pantry", labels.ToArray(), min, max.X - min.X);
         var which = labels[Math.Clamp(Sub("pantry"), 0, labels.Count - 1)];
         var mid = min.X + (max.X - min.X) * 0.58f;
@@ -39,6 +40,22 @@ public sealed partial class MainWindow
                 Panel("##pantryinfo", new Vector2(mid + 7, top.Y), max, "Milk quality", DrawPantryInfo, true);
                 break;
         }
+    }
+
+    private Tile[] PantryTiles()
+    {
+        var list = new List<Tile> { CoinsTile() };
+        var food = F.Pantry.Values.Where(v => v > 0).Sum();
+        list.Add(new("Food & treats", $"{food}", food == 1 ? "item to eat or give" : "items to eat or give", -1, Theme.RoseDeep));
+        if (G.ProducesMilk || G.ProducesSeed)
+        {
+            var g = G.ProducesMilk ? G.CurrentGrade : G.SeedGrade;
+            list.Add(new(G.ProducesMilk ? "Milk quality" : "Seed quality", $"Grade {Grades.Name(g)}", Grades.All[g].Blurb, -1, Theme.GradeColor(g)));
+        }
+
+        var ingredients = Catalog.Ingredients.Sum(i => G.IngredientCount(i.Id));
+        if (G.CanCarry || ingredients > 0) list.Add(new("Ingredients", $"{ingredients}", "in the dairy pantry, for baking", -1, Theme.SageDeep));
+        return list.ToArray();
     }
 
     private void DrawIngredients(float width)
