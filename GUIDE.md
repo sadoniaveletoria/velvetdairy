@@ -225,11 +225,11 @@ Your main tool is **Herd Care**. Open it from the HUD button or Herd > Farmer. I
 
 | Chore | How | Farmer XP | Limit |
 | --- | --- | --- | --- |
-| **Feed from the feed bin** | Herd Care > pick a cow or bull > Feed > pick a bin feed. Fills their **Fed** bar. Free and unlimited. | 10 | Once per cow every 15 min |
-| **Feed a baked treat** | Herd Care > Feed > pick a treat from the dairy shelf. Gives Happy and a milk boost (bulls get 20 bull XP). | 10 | Once per cow every 15 min |
-| **Groom** | Stand next to them, press Groom. Happy +6% and Comfy +4% for 20 minutes. | 20 | Once per cow every 15 min |
-| **Water** | Herd > Water. Watered +10% for 20 minutes. | 10 | Once per cow every 15 min |
-| **Clean a stall** | Press Clean on a stall nobody is sitting on. Cows milked there get +10% speed and XP for an hour. | 25 | Again when half an hour is left |
+| **Feed from the feed bin** | Herd Care > pick a cow or bull > Feed > pick a bin feed. Fills their **Fed** bar. Free and unlimited. | 5 | Once per cow every 15 min |
+| **Feed a baked treat** | Herd Care > Feed > pick a treat from the dairy shelf. Gives Happy and a milk boost (bulls get 20 bull XP). | 5 | Once per cow every 15 min |
+| **Groom** | Stand next to them, press Groom. Happy +6% and Comfy +4% for 20 minutes. | 10 | Once per cow every 15 min |
+| **Water** | Herd > Water. Watered +10% for 20 minutes. | 5 | Once per cow every 15 min |
+| **Clean a stall** | Press Clean on a stall nobody is sitting on. Cows milked there get +10% speed and XP for an hour. | 15 | Again when half an hour is left |
 | **Ring the feeding bell** | Herd > Ring the bell. Every cow and bull in the dairy picks a bar and gets an extra bonus on top of it for 15 minutes. | 10 | Once an hour per dairy |
 | **Load a breeding stall** | Loads one use of a breeding stall from the seed tank. | 8 | Up to 5 loaded |
 
@@ -249,10 +249,10 @@ Open **Herd > Kitchen**. First fill your jugs from the dairy tank at the top (1 
 
 | Recipe | Needs | Makes | Farmer level | XP |
 | --- | --- | --- | --- | --- |
-| Butter | 16 oz milk | 1 butter | 1 | 12 |
+| Butter | 16 oz milk | 1 butter | 1 | 6 |
 | Cheese | 16 oz milk | 2 cheese | 1 | 10 |
 | Butter cookies | 1 butter + 8 oz | 3 cookies | 3 | 15 |
-| Flour | 2 wheat grain (Shop) | 1 flour | 6 | 6 |
+| Flour | 2 wheat grain (Shop) | 1 flour | 6 | 3 |
 | Cream buns | 1 flour + 1 butter + 12 oz | 2 buns | 10 | 25 |
 | Honey cream cake | 1 flour + 2 butter + 16 oz | 2 cakes | 35 | 40 |
 | Velvet tart | 2 flour + 2 butter + 24 oz | 2 tarts | 70 | 60 |

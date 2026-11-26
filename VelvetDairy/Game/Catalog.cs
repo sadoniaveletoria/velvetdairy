@@ -151,8 +151,8 @@ public static class Catalog
 
     public static readonly IReadOnlyList<Recipe> Recipes = new[]
     {
-        new Recipe("butter", "Butter", "butter", 1, 16, 0, 1, 12, 30, "Churn 16 oz of milk from your jugs into a pat of butter."),
-        new Recipe("flour", "Flour", "flour", 1, 0, 0, 6, 6, 20, "Mill 2 wheat grain (from the Shop) into flour for the dairy pantry.",
+        new Recipe("butter", "Butter", "butter", 1, 16, 0, 1, 6, 30, "Churn 16 oz of milk from your jugs into a pat of butter."),
+        new Recipe("flour", "Flour", "flour", 1, 0, 0, 6, 3, 20, "Mill 2 wheat grain (from the Shop) into flour for the dairy pantry.",
             Uses: "hay", UsesCount: 2),
         new Recipe("cheese", "Cheese", "cheese", 2, 16, 0, 1, 10, 40,
             "16 oz of milk makes 2 cheese for the dairy shelf: the simplest treat, nothing else needed. Members buy them; you get 80% of the price.",
@@ -413,7 +413,7 @@ public static class Catalog
     public const int LabXp = 12;           // farmer xp for an experiment in the Experimental lab
     public const int LabLevel = 6;         // farmer level the lab opens at (when flour does)
     public static readonly string[] LabCatalysts = { "butter", "flour", "milk" };
-    public const int FeedXp = 10;          // farmer xp for feeding a cow or bull from the shelf
+    public const int FeedXp = 5;          // farmer xp for feeding a cow or bull from the shelf
     public const int FedBullXp = 20;       // bull xp for being fed
     /// <summary>Your cow grade (C, B, A, S, S+) milks you this much faster and gives this much more milk.</summary>
     public static readonly float[] GradeBoost = { 0f, 0.10f, 0.20f, 0.35f, 0.50f };
@@ -421,8 +421,8 @@ public static class Catalog
     public const float HandStrokeOz = 1f;
     // ----- Farmer chores -----
     public const float CleanBonus = 0.10f;      // a freshly cleaned stall milks 10% faster and gives 10% more xp (never less than its tier)
-    public const int CleanXp = 25;              // farmer xp per stall cleaned (each stall: once an hour, again when half an hour is left)
-    public const int GroomXp = 20;              // farmer xp per groom (each cow: once every 15 minutes)
+    public const int CleanXp = 15;              // farmer xp per stall cleaned (each stall: once an hour, again when half an hour is left)
+    public const int GroomXp = 10;              // farmer xp per groom (each cow: once every 15 minutes)
     public const float GroomHappy = 0.06f;      // a groom: Happy +6% and Comfy +4% for 20 minutes (a bigger bonus already going is kept)
     public const float GroomComfy = 0.04f;
     public const float FarmerWater = 0.10f;     // fresh water a farmer brings: Watered +10% (the trough is +6%)
