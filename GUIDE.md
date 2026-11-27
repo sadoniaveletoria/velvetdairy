@@ -153,7 +153,7 @@ Breeding works with the **Corruption** plugin. When a bull from your dairy finis
 The dairy's seed tank isn't only for breeding stalls:
 
 - **Velvet musk** (Herd Care > **Musk**): a farmer or the owner puts musk on a cow or bull for **5 oz** from the seed tank. For an hour, every bit of farmer care on them (grooming, feeding, watering, shelf treats) gives **half as much again**: a groom gives Happy +9% instead of +6%. One at a time; you can't put it on yourself. +15 farmer XP. Herd Care shows who's wearing it.
-- **The Breeding season** (Market > Creamery > **Breeding season**): the **first Friday to Sunday of every month** (Central time). Farmers and the owner pour seed from the seed tank into one meter for the whole network. At **250 oz** everyone's milk and seed is **+3%**, at **750 oz +6%**, at **1,500 oz +10%**, from the moment a tier is reached until a week after the season closes. Each oz gives your dairy 2 dairy XP and you 1 farmer XP. When it closes, the top three dairies carry **Season champion**, **runner-up** and **third** on the Dairies list until the next season.
+- **The Breeding season** (Market > Creamery > **Breeding season**): the **first Friday to Sunday of every month** (Central time). Farmers and the owner pour seed from the seed tank into one meter for the whole network. At **100 oz** everyone's milk and seed is **+3%**, at **300 oz +6%**, at **600 oz +10%**, from the moment a tier is reached until a week after the season closes. Each oz gives your dairy 2 dairy XP and you 1 farmer XP. When it closes, the top three dairies carry **Season champion**, **runner-up** and **third** on the Dairies list until the next season.
 - **The Experimental lab** (Kitchen > **Experimental lab**, from farmer level 6, when flour opens): each experiment takes **2 oz of seed** plus a catalyst (1 butter or 1 flour from the dairy pantry, or 4 oz of milk from your jugs) and adds **2 to 5 research**. Nobody knows what's being researched: the first experiment secretly draws something your dairy hasn't found yet, from what your farmer level allows. At **20 research** it's revealed, and it's the whole dairy's. Anyone in the dairy can then bake a found treat, whatever their level. Rare finds come up half as often as treats.
   - **Treats** (Kitchen recipes for the shelf; flour, butter and milk; each bonus for 20 minutes):
 
@@ -335,12 +335,12 @@ Only the owner takes roles away.
 | Feed | Fed bonus | Needs dairy level | Cost |
 | --- | --- | --- | --- |
 | Wheat grain | +8% | 1 | free |
-| Sweet grain | +12% | 3 | 2,000 |
-| Honey oats | +15% | 6 | 6,000 |
-| Velvet blend | +20% | 10 | 15,000 |
-| Golden mash | +25% | 15 | 35,000 |
+| Sweet grain | +12% | 3 | 1,500 |
+| Honey oats | +15% | 6 | 4,000 |
+| Velvet blend | +20% | 10 | 9,000 |
+| Golden mash | +25% | 15 | 20,000 |
 
-**The Velvet pump** (Dairy > Feed & pump, from dairy level 5): 2,500 coins turns on +15% milk and seed for everyone in the dairy for 2 hours. Best used when lots of people are on.
+**The Velvet pump** (Dairy > Feed & pump, from dairy level 5): 1,000 coins turns on +15% milk and seed for everyone in the dairy for 2 hours. Best used when lots of people are on.
 
 **Buy orders** (Market > Creamery > Deliveries): ask other dairies for milk. The coins are held until someone fills the order or you cancel.
 
@@ -354,7 +354,7 @@ Each level gives **+2% quota pay** to everyone, unlocks better stall tiers (Velv
 
 ### The weekly contract
 
-Every Monday at 00:00 UTC (the weekly contract still runs on UTC) the Grand Creamery gives the dairy a contract: **600 oz at dairy level 1, plus 150 oz a level** (up to 3,500). Any milk counts. Farmers or the owner fill jugs and ship them at the Grand Creamery. When it's full, the dairy gets 1.5 dairy XP and 4 fund coins per oz of the contract (600 oz = 900 XP and 2,400 coins). If it isn't full by Monday you still get half of the share you delivered.
+Every Monday at 00:00 UTC (the weekly contract still runs on UTC) the Grand Creamery gives the dairy a contract: **120 oz for each cow or bull who played in the last week, plus 30 oz a dairy level (200 to 3,500)**, so a small dairy can finish its own. Any milk counts. Farmers or the owner fill jugs and ship them at the Grand Creamery. When it's full, the dairy gets 1.5 dairy XP and 6 fund coins per oz of the contract (600 oz = 900 XP and 3,600 coins). If it isn't full by Monday you still get half of the share you delivered.
 
 **Weekend milk contest** (Saturday and Sunday, UTC): milk pumped into the tank also fills the contract, so it counts twice.
 

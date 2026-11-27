@@ -53,7 +53,7 @@ Cow and bull are yours: you add or drop them, and they hold in every dairy you'r
 
 - **The public area** is a box you mark out anywhere: a field, a corner of a city, or a room in a house. Visitors can find it and deliver to it in person.
 - **The feeding bell:** farmers and the owner can ring it from **Herd** (Ring the bell) or **Herd Care**, inside the dairy and while active (not idle), once an hour. Until it can ring again the button is greyed out and shows "Bell ready in …"; hover it to see who rang it last. Everyone in the dairy hears it chime; each cow and bull gets a pop-up to pick one bar (Fed, Watered, Comfy or Happy) and gets an extra bonus on top of it for 15 minutes. The ringer gets 10 farmer xp.
-- **Weekly contract:** 600 oz at dairy level 1, growing 150 oz a level up to 3,500 oz.
+- **Weekly contract:** 120 oz for each cow or bull who played in the last week, plus 30 oz a dairy level (200 to 3,500).
 - **Weekend milk contest** (all of Saturday and Sunday, UTC): milk pumped into your dairy's tank also fills the weekly contract, so it counts twice (now, and again when it's shipped). The Contract card shows the weekend's top pumpers and last weekend's champion.
 - **Details:** on the **Dairies** tab, each public dairy (and your own) has a **Details** button: where it is, its owner, what it's looking for and its description, how much milk (and seed) is in its tank, how many stalls it has, and **who's there right now** with their roles and levels (cow, bull, farmer), member or visiting, and whether each cow can be bred. Handy for finding a dairy with a bull. Players whose scan setting is "My dairy only" or "Nobody" are counted but not named.
 - **Finding a dairy:** the **Dairies** tab shows each one's address (for a box outdoors in a residential district, the district, ward and the plot whose yard it's in). **Visit** uses the [Lifestream](https://github.com/NightmareXIV/Lifestream) plugin to take you there: to the house, or to that ward and plot with the spot flagged on your map. Other outdoor dairies are flagged on your map. Without Lifestream, Visit copies the address.
@@ -62,7 +62,7 @@ Cow and bull are yours: you add or drop them, and they hold in every dairy you'r
 - **Stall markers** (Settings, on by default): a small green dot above each stall, only on your screen, so you can see which seats milk you.
 - **The dairy fund** is shared money, filled by members' donations, its farmers' drop-offs at other dairies (2 coins an oz) and the weekly contract. The owner spends it on stalls, stall upgrades, the **feed bin** and the **Velvet pump** (Dairy → Feed & pump).
 - **The feed bin:** farmers feed cows and bulls from it for free (Herd Care → Feed), each one every 15 minutes; it fills their Fed bar. Wheat grain (+8%) is there from the start; the owner unlocks Sweet grain (dairy level 3, 2,000), Honey oats (6, 6,000), Velvet blend (10, 15,000) and Golden mash (15, 35,000) from the fund.
-- **The Velvet pump** (dairy level 5): 2,500 from the fund runs it for 2 hours; everyone milked in the dairy makes milk and seed 15% faster.
+- **The Velvet pump** (dairy level 5): 1,000 from the fund runs it for 2 hours; everyone milked in the dairy makes milk and seed 15% faster.
 - **Home pasture:** being milked in your own dairy gives +10% milk and seed.
 - **The dairy shelf** (Market > Pantry) sells treats your farmers baked, like Butter cookies (Happy and a milk boost). Any member can buy them inside the dairy; the baker gets 80% and the fund 20%. The owner sets the price.
 - **The milk tank** holds the dairy's milk. Every milking adds to it, and farmers fill their jugs from it.
@@ -117,7 +117,7 @@ Cow and bull are yours: you add or drop them, and they hold in every dairy you'r
   - **Drop-offs:** walk into any other dairy and leave milk from your jugs in their tank (Market → Creamery → Deliveries), no order needed. The Grand Creamery pays you 1.5 coins an oz, your own dairy fund gets 2 coins an oz, and you get farmer XP.
   - **Other dairies' buy orders**, public or private. Fill them from inside your own dairy, or in person at their dairy (same pay).
   - **Daily limit:** you can deliver 30 oz a day to other dairies at farmer level 1, plus 5 oz a level (525 at level 100). Drop-offs and buy orders share it. You can make **10 deliveries a day**, and drop off at each dairy **once a day**.
-  - **The weekly contract** (600 oz at dairy level 1, plus 150 a level, up to 3,500), delivered in person at any **Grand Creamery**. **Dairy → Contract** shows where they are. Fill it for the full reward; if it isn't full by Monday, your dairy still gets the share it delivered.
+  - **The weekly contract** (120 oz for each cow or bull who played in the last week, plus 30 oz a dairy level (200 to 3,500)), delivered in person at any **Grand Creamery**. **Dairy → Contract** shows where they are. Fill it for the full reward; if it isn't full by Monday, your dairy still gets the share it delivered.
 
 ---
 

@@ -337,8 +337,8 @@ await test("dairy XP: only in the dairy, capped per member per day", async () =>
 
   // Weekly contract: sized by level; shipped from carried jugs (at the Grand Creamery once it's set); pays once
   let c = (await call(alice, "GET", "/v1/dairy/mine")).data.progress.contract;
-  assert.equal(c.ozNeed, 600, "sized when first seen (level 1)");
-  assert.equal(c.rewardFund, 2400);
+  assert.equal(c.ozNeed, 250, "sized to the dairy when first seen: 2 cows/bulls x 120 oz at level 1, to the nearest 50");
+  assert.equal(c.rewardFund, 1500);
   // The rest of this test ships a small contract to the end
   sqlite.exec("UPDATE contracts SET oz_need = 200, reward_xp = 300, reward_fund = 800");
   assert.equal(c.minGrade, 0);
@@ -1063,7 +1063,7 @@ await test("quotas, the feed bin, the Velvet pump and order fund pay", async () 
   sqlite.prepare("INSERT INTO dairy_progress (dairy_id, xp, fund, week) VALUES (?, 20000, 6000, 'w') ON CONFLICT(dairy_id) DO UPDATE SET xp = 20000, fund = 6000").run(did);
   assert.equal((await call(alice, "POST", "/v1/dairy/feedbin/grain")).status, 200);
   assert.equal((await call(alice, "POST", "/v1/dairy/feedbin/grain")).status, 400, "already there");
-  assert.equal((await call(alice, "GET", "/v1/dairy/mine")).data.progress.fund, 4000);
+  assert.equal((await call(alice, "GET", "/v1/dairy/mine")).data.progress.fund, 4500, "Sweet grain costs 1,500");
   await call(carl, "POST", "/v1/inbox/claim");
   assert.equal((await call(carl, "POST", "/v1/feedbin/feed", { item: "grain", to: alice.id })).status, 403, "only farmers (and the owner) feed");
   assert.equal((await call(bob, "POST", "/v1/feedbin/feed", { item: "goldenmash", to: carl.id })).status, 400, "not unlocked");
@@ -1075,9 +1075,11 @@ await test("quotas, the feed bin, the Velvet pump and order fund pay", async () 
   assert.equal((await call(bob, "POST", "/v1/dairy/pump")).status, 403, "the owner runs it");
   assert.equal((await call(alice, "POST", "/v1/dairy/pump")).status, 200);
   p = (await call(alice, "GET", "/v1/dairy/mine")).data.progress;
-  assert.equal(p.fund, 1500);
+  assert.equal(p.fund, 3500, "the pump costs 1,000");
   assert.ok(p.pumpUntil > Date.now() / 1000 + 7000);
-  assert.equal((await call(alice, "POST", "/v1/dairy/pump")).status, 400, "not enough in the fund");
+  sqlite.prepare("UPDATE dairy_progress SET fund = 500 WHERE dairy_id = ?").run(did);
+  assert.match((await call(alice, "POST", "/v1/dairy/pump")).data.error, /1,000 coins/, "not enough in the fund");
+  sqlite.prepare("UPDATE dairy_progress SET fund = 1500 WHERE dairy_id = ?").run(did);
   // An order delivered pays the fund 2 coins an oz (only milk actually carried)
   sqlite.prepare("INSERT INTO carried (install, oz) VALUES (?, 20) ON CONFLICT(install) DO UPDATE SET oz = 20").run(bob.id);
   const used = (await call(bob, "POST", "/v1/carry/use", { oz: 30, order: true })).data;

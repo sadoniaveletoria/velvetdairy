@@ -87,21 +87,23 @@ const FEED_COOLDOWN = 900;
 // better feed with the fund once the dairy is high enough. Wheat grain is there from the start. Order = the plugin's.
 const FEED_BIN = {
   hay: { name: "Wheat grain", level: 1, price: 0 },
-  grain: { name: "Sweet grain", level: 3, price: 2000 },
-  honeyoats: { name: "Honey oats", level: 6, price: 6000 },
-  premium: { name: "Velvet blend", level: 10, price: 15000 },
-  goldenmash: { name: "Golden mash", level: 15, price: 35000 },
+  grain: { name: "Sweet grain", level: 3, price: 1500 },          // 2,000 / 6,000 / 15,000 / 35,000 before 0.9.99
+  honeyoats: { name: "Honey oats", level: 6, price: 4000 },
+  premium: { name: "Velvet blend", level: 10, price: 9000 },
+  goldenmash: { name: "Golden mash", level: 15, price: 20000 },
   labmash: { name: "Lab mash", level: 1, price: 0, lab: true },   // discovered in the Experimental lab, never bought
 };
 // The Velvet pump: everyone's milk and seed in the dairy +15% for 2 hours, paid from the fund (dairy level 5 and up)
-const PUMP_COST = 2500, PUMP_SECONDS = 2 * 3600, PUMP_LEVEL = 5;
+const PUMP_COST = 1000, PUMP_SECONDS = 2 * 3600, PUMP_LEVEL = 5;   // 2,500 before 0.9.99: too dear for small dairies
 // A creamery or visitor order delivered pays the farmer, and the farmer's dairy fund this much per oz too
 const ORDER_FUND_PER_OZ = 2;
 const QUOTA_MILK = [1, 50], QUOTA_SEED = [0.1, 8.5];   // typed-in quotas: oz of milk a day for a cow, oz of seed for a bull          // a farmer can feed each cow or bull from the shelf once every 15 minutes
 // Developer (same phrase hash as the plugin's dev mode)
 const DEV_KEY_HASH = "7d4e0a8c4a26de8d2843e2a563f667d74beda3b81ffa447c22bd40d93b5af76f";
 // Weekly contracts
-const CONTRACT_BASE_OZ = 600, CONTRACT_OZ_PER_LEVEL = 150, CONTRACT_NEED_MAX = 3500;   // weekly contract size (1,500 + 250 a level, up to 6,000, before 0.9.99)
+// Weekly contract size: 120 oz for each cow or bull who played in the last week, plus 30 a dairy level (200 to 3,500), so a
+// small dairy can finish its own. (600 + 150 a level for everyone earlier in 0.9.99; 1,500 + 250 a level before.)
+const CONTRACT_OZ_PER_PRODUCER = 120, CONTRACT_OZ_PER_LEVEL = 30, CONTRACT_NEED_MIN = 200, CONTRACT_NEED_MAX = 3500;
 const BELL_GAP = 3600;               // a dairy's feeding bell rings at most once an hour
 
 /** The weekend milk contest: all of Saturday and Sunday (UTC). Milk pumped into a dairy's tank then also fills its contract. */
@@ -116,7 +118,7 @@ function contestWindow(t = now()) {
   return { start, end: start + 2 * 86400 };
 }
 const CONTRACT_MAX_OZ = 1200;       // most one shipment can carry
-const CONTRACT_XP_PER_OZ = 1.5, CONTRACT_FUND_PER_OZ = 4;             // most milk a farmer or owner can carry out of the tank at once
+const CONTRACT_XP_PER_OZ = 1.5, CONTRACT_FUND_PER_OZ = 6;   // 4 coins an oz before 0.9.99             // most milk a farmer or owner can carry out of the tank at once
 const PUMP_PER_BEAT = 120;          // most oz one heartbeat can add to the dairy tank
 const MEMBER_DAILY_PUMP = 1500;     // most oz one member can add to a dairy tank per day
 // A bull's seed works like milk, but there's far less of it (15% of milk's speed at C, up to a fifth at S+), and each oz pays 5x
@@ -1896,8 +1898,13 @@ const contractMinGrade = () => 0;   // milk isn't graded any more: any milk fill
 async function contractFor(env, dairyId, level) {
   const week = weekKey();
   let c = await env.DB.prepare("SELECT * FROM contracts WHERE dairy_id = ? AND week = ?").bind(dairyId, week).first();
-  const need = Math.min(CONTRACT_NEED_MAX, CONTRACT_BASE_OZ + CONTRACT_OZ_PER_LEVEL * (level - 1));
   if (c) return c;
+  // Sized to the dairy: its cows and bulls who've been on in the last week
+  const producers = (await env.DB.prepare(`SELECT m.role FROM memberships m JOIN installs i ON i.id = m.install
+      WHERE m.dairy_id = ? AND i.last_seen >= ?`).bind(dairyId, now() - 7 * 86400).all()).results
+    .filter(m => hasRole(m, "cow") || hasRole(m, "bull")).length;
+  const need = Math.max(CONTRACT_NEED_MIN, Math.min(CONTRACT_NEED_MAX,
+    Math.round((CONTRACT_OZ_PER_PRODUCER * producers + CONTRACT_OZ_PER_LEVEL * (level - 1)) / 50) * 50));
   await settleContracts(env, dairyId);
   await env.DB.prepare(`INSERT OR IGNORE INTO contracts (dairy_id, week, oz_need, min_grade, reward_xp, reward_fund) VALUES (?, ?, ?, ?, ?, ?)`)
     .bind(dairyId, week, need, contractMinGrade(level), Math.round(need * CONTRACT_XP_PER_OZ), Math.round(need * CONTRACT_FUND_PER_OZ)).run();
@@ -3340,7 +3347,7 @@ async function applyMusk(env, me, request) {
 // tank into one meter for the whole network. The tiers it reaches give everyone milk and seed a bonus, from the moment
 // they're reached until a week after the season closes. The top dairies are the season's champions.
 // The dev server runs a season all month, so it can always be tried.
-const SEASON_TIERS = [{ oz: 250, pct: 3 }, { oz: 750, pct: 6 }, { oz: 1500, pct: 10 }];
+const SEASON_TIERS = [{ oz: 100, pct: 3 }, { oz: 300, pct: 6 }, { oz: 600, pct: 10 }];
 const SEASON_BONUS_DAYS = 7, SEASON_XP_PER_OZ = 2, SEASON_TITLES = ["Season champion", "Season runner-up", "Season third"];
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
