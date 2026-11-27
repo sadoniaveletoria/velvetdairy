@@ -3237,10 +3237,24 @@ public sealed partial class DairyGame
     public float[]? TakePumped()
     {
         if (pendingPump.All(v => v <= 0)) return null;
-        var r = pendingPump.Select(v => (float)Math.Round(v, 2)).ToArray();
-        Array.Clear(pendingPump);
-        return r;
+        // The server takes at most 120 oz a heartbeat and drops anything over it, so a big milking (a hand milking can
+        // be 700 oz) goes in over several heartbeats instead of being cut to 120
+        var room = PumpPerBeat;
+        var r = new float[pendingPump.Length];
+        for (var i = 0; i < pendingPump.Length && room > 0; i++)
+        {
+            var take = (float)Math.Floor(Math.Min(pendingPump[i], room) * 100) / 100;
+            r[i] = take;
+            pendingPump[i] = Math.Max(0, pendingPump[i] - take);
+            room -= take;
+        }
+
+        if (pendingPump.All(v => v < 0.01f)) Array.Clear(pendingPump);
+        return r.All(v => v <= 0) ? null : r;
     }
+
+    private const float PumpPerBeat = 120f;              // the server's PUMP_PER_BEAT
+    internal const float SeedPumpPerBeat = 24f;          // the server's SEED_PER_BEAT
 
     public int DairyLevel => Net.Progress?.Level ?? F.NetMember?.Level ?? 1;
 

@@ -23,6 +23,10 @@ public sealed class ChangelogWindow : Window
     /// <summary>Newest first. Write these for players: what changed for them, not how.</summary>
     private static readonly Entry[] Entries =
     {
+        new("0.9.98.1", "Hand milking: all of it reaches the tank", new[]
+        {
+            "Fixed big milkings losing milk on the way to the dairy tank: anything over 120 oz in one go (a hand milking can be 700 oz) was dropped, so only 120 oz arrived. Now it goes in over the next few heartbeats. Seed had the same problem over 24 oz.",
+        }),
         new("0.9.98", "Hand milking fix", new[]
         {
             "Fixed hand milking sometimes not starting: since 0.9.90 a cow's plugin could miss that a farmer had pressed Milk on her, while it was checking every few seconds.",
