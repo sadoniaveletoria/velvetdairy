@@ -93,8 +93,10 @@ public sealed partial class DairyGame
     /// <summary>Seed for the dairy's seed tank since the last heartbeat.</summary>
     public float TakeSeedPumped()
     {
-        var r = (float)Math.Round(pendingSeedPump, 3);
-        pendingSeedPump = 0;
+        // At most what the server takes in one heartbeat; the rest waits for the next ones (it used to be dropped)
+        var r = (float)(Math.Floor(Math.Min(pendingSeedPump, SeedPumpPerBeat) * 1000) / 1000);
+        pendingSeedPump = Math.Max(0, pendingSeedPump - r);
+        if (pendingSeedPump < 0.001f) pendingSeedPump = 0;
         return r;
     }
 
