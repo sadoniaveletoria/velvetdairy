@@ -23,6 +23,10 @@ public sealed class ChangelogWindow : Window
     /// <summary>Newest first. Write these for players: what changed for them, not how.</summary>
     private static readonly Entry[] Entries =
     {
+        new("0.9.88.1", "Hand milking: all of it reaches the tank", new[]
+        {
+            "Fixed big milkings losing milk on the way to the dairy tank: anything over 120 oz in one go (a hand milking can be 700 oz) was dropped, so only 120 oz arrived. Now it goes in over the next few heartbeats. Seed had the same problem over 24 oz.",
+        }),
         new("0.9.88", "Kitchen fixes", new[]
         {
             "Fill up in the Kitchen fills big farmer tanks in one go (it said \"Bad oz\" for more than 96 oz).",
