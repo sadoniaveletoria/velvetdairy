@@ -245,16 +245,23 @@ function houseId(value) {
   return s;
 }
 
-/** Total XP needed to reach a level. Each level takes 250 more than the last (400, 650, 900...). */
-function xpToReach(level) {
+/**
+ * Total XP needed to reach a dairy level. Since 0.9.99 the top levels are steeper (400 + 250 a level + 40 x (level - 1)^2:
+ * 5,700 to level 6, 20,760 to 10, 134,710 to 20), so big dairies don't race to 20 while small ones still move.
+ */
+function xpToReach(level, old = false) {
   let total = 0;
-  for (let l = 1; l < level; l++) total += 400 + 250 * (l - 1);
+  for (let l = 1; l < level; l++) total += 400 + 250 * (l - 1) + (old ? 0 : 40 * (l - 1) ** 2);
   return total;
 }
-function levelFor(xp) {
+function levelFor(xp, old = false) {
   let l = 1;
-  while (l < MAX_LEVEL && xp >= xpToReach(l + 1)) l++;
+  while (l < MAX_LEVEL && xp >= xpToReach(l + 1, old)) l++;
   return l;
+}
+/** A dairy never loses a level it had: the level it had under the old curve is kept as a floor (made the first time it's read). */
+function levelWithFloor(xp, floor) {
+  return Math.max(levelFor(xp), floor ?? levelFor(xp, true));
 }
 /** Stalls aren't limited by level any more, only by the fund (and a sanity cap). */
 const STALL_CAP = 16;
@@ -271,9 +278,14 @@ function weekKey(date = new Date()) {
 }
 
 async function progressOf(env, dairyId) {
-  const p = await env.DB.prepare("SELECT * FROM dairy_progress WHERE dairy_id = ?").bind(dairyId).first();
+  const p = await env.DB.prepare("SELECT p.*, f.level AS level_floor FROM dairy_progress p LEFT JOIN dairy_level_floor f ON f.dairy_id = p.dairy_id WHERE p.dairy_id = ?").bind(dairyId).first();
   const xp = p?.xp || 0;
-  return { xp, fund: p?.fund || 0, weekXp: p && p.week === weekKey() ? p.week_xp : 0, level: levelFor(xp) };
+  let floor = p?.level_floor;
+  if (floor == null) {
+    floor = levelFor(xp, true);
+    await env.DB.prepare("INSERT OR IGNORE INTO dairy_level_floor (dairy_id, level) VALUES (?, ?)").bind(dairyId, floor).run();
+  }
+  return { xp, fund: p?.fund || 0, weekXp: p && p.week === weekKey() ? p.week_xp : 0, level: levelWithFloor(xp, floor) };
 }
 
 function addXpStmt(env, dairyId, amount) {
@@ -1098,7 +1110,7 @@ function listing(row, me) {
     lookingFor: roleList(row.looking_for || ""),
     cowsHere: row.here || 0,
     openOrders: open ? row.orders || 0 : 0,
-    level: levelFor(row.xp || 0),
+    level: levelWithFloor(row.xp || 0, row.level_floor),
     weekXp: row.week === weekKey() ? row.week_xp || 0 : 0,
     updated: row.updated,
   };
@@ -1107,13 +1119,13 @@ function listing(row, me) {
 async function listDairies(env, me) {
   const t = now();
   const rows = await env.DB.prepare(`
-    SELECT d.*, p.xp, p.week, p.week_xp,
+    SELECT d.*, p.xp, p.week, p.week_xp, lf.level AS level_floor,
       a.territory AS a_territory, a.world AS a_world, a.house AS a_house, a.x AS a_x, a.y AS a_y, a.z AS a_z, a.map_id AS a_map, a.zone AS a_zone,
       (SELECT COUNT(*) FROM installs i WHERE i.at_dairy = d.id AND i.last_seen >= ?) AS here,
       (SELECT COUNT(*) FROM memberships m WHERE m.dairy_id = d.id) AS members,
       (SELECT COUNT(*) FROM orders o WHERE o.dairy_id = d.id AND o.status = 'open') AS orders,
       (SELECT looking_for FROM dairy_applying ap WHERE ap.dairy_id = d.id) AS looking_for
-    FROM dairies d LEFT JOIN dairy_progress p ON p.dairy_id = d.id LEFT JOIN dairy_area a ON a.dairy_id = d.id
+    FROM dairies d LEFT JOIN dairy_progress p ON p.dairy_id = d.id LEFT JOIN dairy_area a ON a.dairy_id = d.id LEFT JOIN dairy_level_floor lf ON lf.dairy_id = d.id
     WHERE d.updated >= ? OR d.owner = ?
     ORDER BY COALESCE(p.xp, 0) DESC, here DESC, d.is_public DESC, d.updated DESC
     LIMIT 500`).bind(t - ONLINE_WINDOW, t - LISTING_MAX_AGE, me.id).all();
@@ -1183,7 +1195,7 @@ async function progressOut(env, dairyId, stallCount) {
   const donors = (await env.DB.prepare("SELECT name, coins FROM donations WHERE dairy_id = ? AND coins > 0 ORDER BY coins DESC LIMIT 10")
     .bind(dairyId).all()).results;
   return {
-    xp: p.xp, level: p.level, levelXp: xpToReach(p.level), nextXp: p.level >= MAX_LEVEL ? null : xpToReach(p.level + 1),
+    xp: p.xp, level: p.level, levelXp: Math.min(p.xp, xpToReach(p.level)), nextXp: p.level >= MAX_LEVEL ? null : xpToReach(p.level + 1),
     fund: p.fund, weekXp: p.weekXp, week: weekKey(),
     stallSlots: stallSlots(p.level), maxTier: maxTier(p.level), nextStallPrice: stallPrice(stallCount), tierPrices: TIER_PRICE,
     donors: donors.map(x => ({ name: x.name, coins: x.coins })),
@@ -2309,15 +2321,15 @@ async function leaderboard(env, me) {
   const week = weekKey();
   const mem = await membership(env, me.id);
   const rows = (await env.DB.prepare(`
-    SELECT d.id, d.name, d.is_public, d.world_name, p.xp, p.week_xp
-    FROM dairy_progress p JOIN dairies d ON d.id = p.dairy_id
+    SELECT d.id, d.name, d.is_public, d.world_name, p.xp, p.week_xp, lf.level AS level_floor
+    FROM dairy_progress p JOIN dairies d ON d.id = p.dairy_id LEFT JOIN dairy_level_floor lf ON lf.dairy_id = d.id
     WHERE p.week = ? AND p.week_xp > 0
     ORDER BY p.week_xp DESC LIMIT ?`).bind(week, LEADERBOARD_SIZE).all()).results;
   return {
     week,
     dairies: rows.map((r, i) => ({
       rank: i + 1, id: r.id, name: r.name, isPublic: !!r.is_public, worldName: r.world_name,
-      level: levelFor(r.xp), weekXp: r.week_xp, mine: !!mem && mem.dairy_id === r.id,
+      level: levelWithFloor(r.xp, r.level_floor), weekXp: r.week_xp, mine: !!mem && mem.dairy_id === r.id,
     })),
   };
 }
@@ -3552,7 +3564,7 @@ async function labTry(env, me, request) {
     fail(400, `Each experiment takes ${LAB_SEED_OZ} oz from the seed tank.`);
   }
 
-  const gain = 2 + Math.floor(Math.random() * 4);   // 2-5
+  const gain = 1 + Math.floor(Math.random() * 3);   // 1-3 (2-5 earlier in 0.9.99): about 10 experiments a find
   const points = Math.min(LAB_NEED, cur.points + gain);
   await env.DB.batch([
     env.DB.prepare(`INSERT INTO lab_research (dairy_id, project, points, tries, updated) VALUES (?, ?, ?, 1, ?)

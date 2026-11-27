@@ -240,7 +240,7 @@ public sealed class KitchenWindow : Window
 
         ImGui.Spacing();
         var why = lab.Left == 0 && lab.Current == null ? "Nothing left to find at your farmer level." : G.LabProblem(Catalog.LabCatalysts[labCatalyst]);
-        if (Ui.Button("##labtry", "Experiment", new Vector2(140, 28), "rose", why == null, why ?? $"+2 to 5 research, +{Catalog.LabXp} farmer xp, and some dairy xp."))
+        if (Ui.Button("##labtry", "Experiment", new Vector2(140, 28), "rose", why == null, why ?? $"+1 to 3 research, +{Catalog.LabXp} farmer xp, and some dairy xp."))
             G.LabTry(Catalog.LabCatalysts[labCatalyst]);
 
         if (lab.Found.Count == 0) return;

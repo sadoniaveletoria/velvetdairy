@@ -1256,15 +1256,26 @@ await test("seed uses: Velvet musk, the breeding season and the Experimental lab
   assert.equal(before.current, null);
   assert.ok(before.left > 0 && before.later > 0, JSON.stringify(before));
   const r1 = (await call(fern, "POST", "/v1/lab/try", { catalyst: "flour" })).data;
-  assert.ok(r1.gain >= 2 && r1.gain <= 5, JSON.stringify(r1));
+  assert.ok(r1.gain >= 1 && r1.gain <= 3, JSON.stringify(r1));
   const mid = (await call(fern, "GET", "/v1/lab")).data;
   assert.equal(mid.current.points, r1.gain);
   assert.equal(Object.keys(mid.current).includes("id") || Object.keys(mid.current).includes("name"), false, "the secret stays secret");
   let found = null;
-  for (let n = 0; n < 12 && !found; n++) found = (await call(fern, "POST", "/v1/lab/try", { catalyst: n % 2 ? "butter" : "flour" })).data.found;
+  for (let n = 0; n < 25 && !found; n++) found = (await call(fern, "POST", "/v1/lab/try", { catalyst: n % 2 ? "butter" : "flour" })).data.found;
   assert.ok(found && found.name, "found something");
   const lvl6 = ["crullers", "scones", "milktea", "labmash", "muskoil", "culture"];
   assert.ok(lvl6.includes(found.id), "only what farmer level 6 allows: " + found.id);
+  // A dairy keeps the level it had before the steeper 0.9.99 curve (4,500 xp was level 6, now 5)
+  sqlite.prepare("DELETE FROM dairy_level_floor WHERE dairy_id = ?").run(did);
+  sqlite.prepare("UPDATE dairy_progress SET xp = 4500 WHERE dairy_id = ?").run(did);
+  const kept = (await call(ola, "GET", "/v1/dairy/mine")).data.progress;
+  assert.equal(kept.level, 6, "kept");
+  assert.ok(kept.levelXp <= kept.xp, "its bar starts where it is");
+  sqlite.prepare("DELETE FROM dairy_level_floor WHERE dairy_id = ?").run(did);
+  sqlite.prepare("UPDATE dairy_progress SET xp = 0 WHERE dairy_id = ?").run(did);
+  assert.equal((await call(ola, "GET", "/v1/dairy/mine")).data.progress.level, 1);
+  sqlite.prepare("UPDATE dairy_progress SET xp = 4500 WHERE dairy_id = ?").run(did);
+  assert.equal((await call(ola, "GET", "/v1/dairy/mine")).data.progress.level, 5, "new dairies go by the new curve");
   const after = (await call(fern, "GET", "/v1/lab")).data;
   assert.equal(after.current, null);
   assert.ok(after.found.some(x => x.id === found.id));

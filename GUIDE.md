@@ -154,7 +154,7 @@ The dairy's seed tank isn't only for breeding stalls:
 
 - **Velvet musk** (Herd Care > **Musk**): a farmer or the owner puts musk on a cow or bull for **5 oz** from the seed tank. For an hour, every bit of farmer care on them (grooming, feeding, watering, shelf treats) gives **half as much again**: a groom gives Happy +9% instead of +6%. One at a time; you can't put it on yourself. +15 farmer XP. Herd Care shows who's wearing it.
 - **The Breeding season** (Market > Creamery > **Breeding season**): the **first Friday to Sunday of every month** (Central time). Farmers and the owner pour seed from the seed tank into one meter for the whole network. At **100 oz** everyone's milk and seed is **+3%**, at **300 oz +6%**, at **600 oz +10%**, from the moment a tier is reached until a week after the season closes. Each oz gives your dairy 2 dairy XP and you 1 farmer XP. When it closes, the top three dairies carry **Season champion**, **runner-up** and **third** on the Dairies list until the next season.
-- **The Experimental lab** (Kitchen > **Experimental lab**, from farmer level 6, when flour opens): each experiment takes **2 oz of seed** plus a catalyst (1 butter or 1 flour from the dairy pantry, or 4 oz of milk from your jugs) and adds **2 to 5 research**. Nobody knows what's being researched: the first experiment secretly draws something your dairy hasn't found yet, from what your farmer level allows. At **20 research** it's revealed, and it's the whole dairy's. Anyone in the dairy can then bake a found treat, whatever their level. Rare finds come up half as often as treats.
+- **The Experimental lab** (Kitchen > **Experimental lab**, from farmer level 6, when flour opens): each experiment takes **2 oz of seed** plus a catalyst (1 butter or 1 flour from the dairy pantry, or 4 oz of milk from your jugs) and adds **1 to 3 research** (about 10 experiments a find). Nobody knows what's being researched: the first experiment secretly draws something your dairy hasn't found yet, from what your farmer level allows. At **20 research** it's revealed, and it's the whole dairy's. Anyone in the dairy can then bake a found treat, whatever their level. Rare finds come up half as often as treats.
   - **Treats** (Kitchen recipes for the shelf; flour, butter and milk; each bonus for 20 minutes):
 
   | Farmer level | Treat | Gives |
@@ -348,7 +348,7 @@ Only the owner takes roles away.
 
 ### Dairy level
 
-The dairy has its own level, **1 to 20**. Members earn dairy XP by milking and caring inside it (up to 300 each per day), plus filled buy orders and contracts. Each level needs 250 more than the last (400, then 650, then 900…): about 3,100 XP total for level 5, 12,600 for level 10 and 18,150 for level 12.
+The dairy has its own level, **1 to 20**. Members earn dairy XP by milking and caring inside it (up to 300 each per day), plus filled buy orders and contracts. Each level needs more than the last, and the top levels climb faster (400, then 690, then 1,060…): about 3,660 XP total for level 5, 20,760 for level 10, 61,110 for level 15 and 134,710 for level 20. A dairy never drops a level it already had when this curve changed.
 
 Each level gives **+2% quota pay** to everyone, unlocks better stall tiers (Velvet at 5, Gilded at 12) and feed (levels 3, 6, 10, 15), the pump at 5, and ranks the dairy higher on the Dairies list.
 

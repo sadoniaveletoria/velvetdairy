@@ -509,3 +509,6 @@ CREATE INDEX IF NOT EXISTS season_pours_by ON season_pours (season, dairy_id);
 CREATE TABLE IF NOT EXISTS lab_research (dairy_id TEXT NOT NULL, project TEXT NOT NULL, points INTEGER NOT NULL DEFAULT 0, tries INTEGER NOT NULL DEFAULT 0,
   found_catalyst INTEGER NOT NULL DEFAULT -1, found_heat INTEGER NOT NULL DEFAULT -1, tried TEXT NOT NULL DEFAULT '[]', updated INTEGER NOT NULL DEFAULT 0,
   PRIMARY KEY (dairy_id, project));
+
+-- 0.9.99: the dairy level a dairy had under the old curve (it never loses it)
+CREATE TABLE IF NOT EXISTS dairy_level_floor (dairy_id TEXT PRIMARY KEY, level INTEGER NOT NULL);
